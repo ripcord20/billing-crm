@@ -393,6 +393,13 @@ app.use('/pub/reg', publicRegisterRoutes.apiRouter);
 app.use('/beli-voucher', publicVoucherRoutes.pageRouter);
 app.use('/pub/voucher', publicVoucherRoutes.apiRouter);
 
+// ── Halaman publik pendaftaran tenant self-service (TANPA login) ─
+// /daftar-tenant → form + status ; /pub/tenant-signup/* → API + webhook gateway.
+// Wajib sebelum webRoutes (tanpa authenticate).
+const publicTenantSignupRoutes = require('./routes/publicTenantSignup');
+app.use('/daftar-tenant', publicTenantSignupRoutes.pageRouter);
+app.use('/pub/tenant-signup', publicTenantSignupRoutes.apiRouter);
+
 // ── Isolir redirect guard ───────────────────────────────────────
 // DISABLED: file controllers/IsolirPublicController.js belum dibuat
 // atau belum export `isolirRedirectGuard`. Kalau sudah siap, uncomment

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title><%= title %></title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;font-family:'DM Sans',system-ui,sans-serif;}
+    body{background:linear-gradient(135deg,#0b1220,#132a52);min-height:100vh;color:#0f172a;padding:24px;}
+    .wrap{max-width:520px;margin:0 auto;}
+    .brand{text-align:center;color:#fff;margin:18px 0 22px;}
+    .brand h1{font-size:22px;font-weight:800;}
+    .card{background:#fff;border-radius:18px;padding:28px;box-shadow:0 24px 60px rgba(0,0,0,.35);}
+    h2{font-size:19px;font-weight:800;margin-bottom:12px;}
+    .row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed #e6eef9;font-size:14px;}
+    .row .k{color:#64748b;}.row .v{font-weight:700;}
+    .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;}
+    .b-pending{background:#fef9c3;color:#854d0e;}.b-paid{background:#dbeafe;color:#1e40af;}
+    .b-active{background:#dcfce7;color:#166534;}.b-rejected{background:#fee2e2;color:#b91c1c;}
+    .cred{margin-top:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;}
+    .cred h3{font-size:14px;color:#166534;margin-bottom:10px;}
+    .cred .kv{font-family:monospace;font-size:14px;background:#fff;border:1px solid #d1fae5;border-radius:8px;padding:9px 12px;margin-bottom:8px;display:flex;justify-content:space-between;}
+    .btn{display:inline-block;margin-top:14px;padding:12px 20px;border-radius:10px;background:#2563eb;color:#fff;font-weight:700;text-decoration:none;font-size:14px;}
+    .muted{color:#64748b;font-size:13px;margin-top:12px;}
+    a{color:#2563eb;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand"><h1><%= brand.name %></h1></div>
+    <div class="card" id="card"><h2>Memuat status…</h2></div>
+  </div>
+<script>
+const CODE=<%- JSON.stringify(signupCode) %>;
+function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function rupiah(n){return 'Rp '+Number(n||0).toLocaleString('id-ID');}
+function badge(st){
+  const map={pending_payment:['b-pending','Menunggu Pembayaran'],paid:['b-paid','Sudah Dibayar'],active:['b-active','Aktif'],rejected:['b-rejected','Ditolak'],cancelled:['b-rejected','Dibatalkan']};
+  const m=map[st]||['b-pending',st];return '<span class="badge '+m[0]+'">'+esc(m[1])+'</span>';
+}
+async function load(){
+  try{
+    const r=await fetch('/pub/tenant-signup/'+encodeURIComponent(CODE)+'/status').then(x=>x.json());
+    const c=document.getElementById('card');
+    if(!r.success){c.innerHTML='<h2>Tidak ditemukan</h2><p class="muted">Kode pendaftaran tidak valid.</p>';return;}
+    const d=r.data;
+    let html='<h2>Status Pendaftaran</h2>'
+      +'<div class="row"><span class="k">Kode</span><span class="v">'+esc(d.signup_code)+'</span></div>'
+      +'<div class="row"><span class="k">Nama</span><span class="v">'+esc(d.name)+'</span></div>'
+      +'<div class="row"><span class="k">Perusahaan</span><span class="v">'+esc(d.company_name||'-')+'</span></div>'
+      +'<div class="row"><span class="k">Paket</span><span class="v">'+esc(d.plan_name||d.plan_code)+'</span></div>'
+      +'<div class="row"><span class="k">Nominal</span><span class="v">'+rupiah(d.amount)+'</span></div>'
+      +'<div class="row"><span class="k">Status</span><span class="v">'+badge(d.status)+'</span></div>';
+    if(d.status==='active'&&d.owner_password){
+      html+='<div class="cred"><h3>✓ Akun tenant aktif — kredensial login owner</h3>'
+        +'<div class="kv"><span>Email</span><span>'+esc(d.owner_email)+'</span></div>'
+        +'<div class="kv"><span>Password</span><span>'+esc(d.owner_password)+'</span></div>'
+        +'<a class="btn" href="/login">Login ke Dashboard →</a>'
+        +'<p class="muted">Simpan password ini &amp; segera ganti setelah login pertama.</p></div>';
+    }else if(d.status==='pending_payment'){
+      html+='<p class="muted">Selesaikan pembayaran. Halaman akan diperbarui otomatis setelah pembayaran terkonfirmasi.</p>';
+      if(d.payment_url) html+='<a class="btn" href="'+esc(d.payment_url)+'">Lanjut Bayar →</a>';
+    }else if(d.status==='paid'){
+      html+='<p class="muted">Pembayaran diterima. Aktivasi akun sedang diproses…</p>';
+    }else if(d.status==='rejected'){
+      html+='<p class="muted">Pendaftaran ditolak. Silakan hubungi admin.</p>';
+    }
+    c.innerHTML=html;
+    if(['pending_payment','paid'].includes(d.status)) setTimeout(load,6000);
+  }catch(e){}
+}
+load();
+</script>
+</body>
+</html>

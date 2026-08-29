@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app-layout">
+  <%- include('../partials/sidebar') %>
+  <div class="main-content">
+    <%- include('../partials/topbar') %>
+    <main class="page-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Pendaftaran Tenant</h1>
+          <p style="margin:4px 0 0;color:#64748b;font-size:13px;">Pendaftaran self-service dari <code>/daftar-tenant</code>. Verifikasi pembayaran manual untuk mengaktifkan tenant + owner. Pembayaran via gateway aktif otomatis.</p>
+        </div>
+        <div class="page-header-right" style="display:flex;gap:8px;align-items:center;">
+          <select id="filterStatus" onchange="loadSignups()" style="padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+            <option value="">Semua status</option>
+            <option value="pending_payment">Menunggu Pembayaran</option>
+            <option value="paid">Sudah Dibayar</option>
+            <option value="active">Aktif</option>
+            <option value="rejected">Ditolak</option>
+          </select>
+          <a class="btn btn-secondary" href="/daftar-tenant" target="_blank">Buka Form Publik ↗</a>
+        </div>
+      </div>
+      <div class="card"><div class="card-body">
+        <table class="data-table">
+          <thead><tr><th>Kode</th><th>Pendaftar</th><th>Perusahaan</th><th>Paket</th><th>Nominal</th><th>Status</th><th>Aksi</th></tr></thead>
+          <tbody id="tbl"><tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8;">Memuat…</td></tr></tbody>
+        </table>
+      </div></div>
+    </main>
+  </div>
+</div>
+
+<!-- credential result modal -->
+<div id="credModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:440px;">
+    <h3 style="margin:0 0 10px;">Tenant Diaktifkan ✓</h3>
+    <p style="font-size:13px;color:#64748b;margin-bottom:12px;">Kredensial owner (tampil sekali). Sampaikan ke pendaftar.</p>
+    <div id="credBox" style="font-family:monospace;font-size:13px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+      <button class="btn btn-primary" onclick="document.getElementById('credModal').style.display='none';loadSignups();">Selesai</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function rupiah(n){return 'Rp '+Number(n||0).toLocaleString('id-ID');}
+function statusBadge(st){
+  const map={pending_payment:['#fef9c3','#854d0e','Menunggu Bayar'],paid:['#dbeafe','#1e40af','Dibayar'],active:['#dcfce7','#166534','Aktif'],rejected:['#fee2e2','#b91c1c','Ditolak'],cancelled:['#fee2e2','#b91c1c','Batal']};
+  const m=map[st]||['#e2e8f0','#475569',st];
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:${m[0]};color:${m[1]};">${esc(m[2])}</span>`;
+}
+async function loadSignups(){
+  const tb=document.getElementById('tbl');
+  const st=document.getElementById('filterStatus').value;
+  const d=await App.api('/tenant-signups'+(st?('?status='+st):''));
+  if(!d?.success){tb.innerHTML=`<tr><td colspan="7" style="text-align:center;color:#dc2626;padding:24px;">${esc(d?.message)}</td></tr>`;return;}
+  if(!d.data.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:#94a3b8;">Belum ada pendaftaran.</td></tr>';return;}
+  tb.innerHTML=d.data.map(s=>`<tr>
+    <td class="mono">${esc(s.signup_code)}</td>
+    <td>${esc(s.name)}<br><span style="font-size:11px;color:#64748b;">${esc(s.email)} · ${esc(s.phone)}</span></td>
+    <td>${esc(s.company_name||'—')}</td>
+    <td>${esc(s.plan_name||s.plan_code||'—')}</td>
+    <td>${rupiah(s.amount)}</td>
+    <td>${statusBadge(s.status)}</td>
+    <td style="white-space:nowrap;">
+      ${['pending_payment','paid'].includes(s.status)?`<button class="btn btn-sm btn-primary" onclick="activate(${s.id})" title="Verifikasi pembayaran & aktifkan">Aktifkan</button>
+      <button class="btn btn-sm btn-danger" onclick="reject(${s.id})">Tolak</button>`:
+      (s.status==='active'?`<span style="font-size:12px;color:#166534;">tenant #${s.tenant_id||'-'}</span>`:'—')}
+    </td>
+  </tr>`).join('');
+}
+window.activate=async(id)=>{
+  if(!confirm('Verifikasi pembayaran diterima dan aktifkan tenant + owner?')) return;
+  const r=await App.api('/tenant-signups/'+id+'/activate',{method:'POST',body:JSON.stringify({})});
+  if(!r?.success) return App.showToast(r?.message||'Gagal','error');
+  const t=r.data.tenant, o=r.data.owner, pw=r.data.temp_password;
+  document.getElementById('credBox').innerHTML=
+    'Tenant : '+esc(t?.name)+' (slug: '+esc(t?.slug)+')<br>'+
+    'Login  : '+esc(o?.email)+'<br>'+
+    'Password: '+esc(pw||'(sudah pernah dibuat)');
+  document.getElementById('credModal').style.display='flex';
+};
+window.reject=async(id)=>{
+  const reason=prompt('Alasan penolakan (opsional):')||'';
+  const r=await App.api('/tenant-signups/'+id+'/reject',{method:'POST',body:JSON.stringify({reason})});
+  App.showToast(r?.message||(r?.success?'Ditolak':'Gagal'), r?.success?'success':'error');
+  loadSignups();
+};
+document.addEventListener('DOMContentLoaded', loadSignups);
+</script>
+</body>
+</html>
