@@ -196,6 +196,11 @@ router.get('/tenants', authenticate, (req, res) => {
   if (!['superadmin', 'admin'].includes(role)) return res.redirect('/tenant');
   res.render('pages/tenants', { title: 'Multi Tenant', user: req.user, active: 'tenants' });
 });
+router.get('/tenant-signups', authenticate, (req, res) => {
+  const role = (req.user?.role?.name || '').toLowerCase();
+  if (!['superadmin', 'admin'].includes(role)) return res.redirect('/dashboard');
+  res.render('pages/tenant-signups', { title: 'Pendaftaran Tenant', user: req.user, active: 'tenant-signups' });
+});
 router.get('/nas', authenticate, allowFinanceArea, (req, res) => {
   res.render('pages/nas', { title: 'Modul NAS', user: req.user, active: 'nas' });
 });

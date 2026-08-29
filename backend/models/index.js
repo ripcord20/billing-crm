@@ -135,6 +135,7 @@ const ResellerPromoRedemption = require('./ResellerPromoRedemption')(sequelize);
 const PublicVoucherOrder      = require('./PublicVoucherOrder')(sequelize);
 
 const Tenant        = require('./Tenant')(sequelize);
+const TenantSignup  = require('./TenantSignup')(sequelize);
 const RadiusServer  = require('./RadiusServer')(sequelize);
 const NasDevice     = require('./NasDevice')(sequelize);
 const RadiusAccount = require('./RadiusAccount')(sequelize);
@@ -322,6 +323,7 @@ const db = {
   ResellerPromoRedemption,
   PublicVoucherOrder,
   Tenant,
+  TenantSignup,
   RadiusServer,
   NasDevice,
   RadiusAccount
@@ -539,6 +541,10 @@ RadiusAccount.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' })
 RadiusAccount.belongsTo(RadiusServer, { foreignKey: 'radius_server_id', as: 'radius_server' });
 RadiusAccount.belongsTo(NasDevice, { foreignKey: 'nas_id', as: 'nas' });
 Customer.hasMany(RadiusAccount, { foreignKey: 'customer_id', as: 'radius_accounts' });
+
+// ── Tenant self-service signup ─────────────────────────────────
+TenantSignup.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+TenantSignup.belongsTo(User, { foreignKey: 'owner_user_id', as: 'owner' });
 
 Invoice.addHook('beforeCreate', async (inv) => {
   if (inv.tenant_id || !inv.customer_id) return;

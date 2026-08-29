@@ -269,6 +269,10 @@
             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             Payment Gateway
           </div>
+          <div class="st-nav-item" onclick="showSection('tenantplans',this)">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7h-9M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+            Paket Langganan Tenant
+          </div>
           <div class="st-nav-item" onclick="showSection('push',this)">
             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
             Push Notification
@@ -838,6 +842,28 @@
                     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                     Simpan
                   </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TENANT SUBSCRIPTION PLANS SECTION -->
+          <div class="st-section" id="sec-tenantplans">
+            <div class="st-card">
+              <div class="st-card-hdr">
+                <div class="st-card-icon" style="background:linear-gradient(135deg,#2563eb,#1d4ed8)"><svg width="16" height="16" fill="none" stroke="#fff" stroke-width="2.2" viewBox="0 0 24 24"><path d="M20 7h-9M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg></div>
+                <div style="flex:1">
+                  <div style="font-size:14px;font-weight:700;color:var(--d-text);">Paket Langganan Tenant</div>
+                  <div style="font-size:12px;color:var(--d-muted);">Paket yang muncul di halaman pendaftaran tenant publik <code>/daftar-tenant</code>. Harga jadi nominal yang dibayar untuk mengaktifkan tenant.</div>
+                </div>
+              </div>
+              <div class="st-card-body">
+                <div id="tpRows" style="display:flex;flex-direction:column;gap:10px;"></div>
+                <button type="button" class="btn btn-secondary" style="margin-top:12px;" onclick="tpAddRow()">+ Tambah Paket</button>
+                <div style="margin-top:8px;font-size:12px;color:var(--d-muted);">Kode dipakai sebagai identifier (huruf kecil/tanpa spasi). Harga dalam Rupiah tanpa titik.</div>
+                <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px;">
+                  <button type="button" class="btn btn-secondary" onclick="loadTenantPlans()">Reset</button>
+                  <button type="button" class="btn btn-primary" onclick="saveTenantPlans()">Simpan Paket</button>
                 </div>
               </div>
             </div>
@@ -2120,6 +2146,55 @@
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
 <script>
+// ── Paket Langganan Tenant ──────────────────────────────────────────────
+function tpEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function tpAddRow(plan){
+  plan = plan || { code:'', name:'', price:0, desc:'' };
+  const wrap = document.getElementById('tpRows');
+  const row = document.createElement('div');
+  row.className = 'tp-row';
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 1.2fr 1fr 1.6fr auto;gap:8px;align-items:center;';
+  row.innerHTML =
+    '<input class="tp-code" placeholder="kode" value="'+tpEsc(plan.code)+'" style="padding:8px;border:1px solid var(--d-border);border-radius:8px;">'+
+    '<input class="tp-name" placeholder="Nama paket" value="'+tpEsc(plan.name)+'" style="padding:8px;border:1px solid var(--d-border);border-radius:8px;">'+
+    '<input class="tp-price" type="number" min="0" placeholder="harga" value="'+tpEsc(plan.price)+'" style="padding:8px;border:1px solid var(--d-border);border-radius:8px;">'+
+    '<input class="tp-desc" placeholder="Deskripsi (opsional)" value="'+tpEsc(plan.desc)+'" style="padding:8px;border:1px solid var(--d-border);border-radius:8px;">'+
+    '<button type="button" class="btn btn-sm btn-danger" onclick="this.closest(\'.tp-row\').remove()">Hapus</button>';
+  wrap.appendChild(row);
+}
+async function loadTenantPlans(){
+  const wrap = document.getElementById('tpRows');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  try {
+    const r = await fetch('/pub/tenant-signup/plans').then(x=>x.json());
+    const plans = (r && r.success && r.data && r.data.plans) ? r.data.plans : [];
+    if (!plans.length) { tpAddRow(); return; }
+    plans.forEach(p => tpAddRow(p));
+  } catch(e){ tpAddRow(); }
+}
+function tpCollect(){
+  const rows = document.querySelectorAll('#tpRows .tp-row');
+  const out = [];
+  rows.forEach(row => {
+    const code = row.querySelector('.tp-code').value.trim().toLowerCase().replace(/[^a-z0-9_-]+/g,'-');
+    const name = row.querySelector('.tp-name').value.trim();
+    const price = parseInt(row.querySelector('.tp-price').value, 10) || 0;
+    const desc = row.querySelector('.tp-desc').value.trim();
+    if (code && name) out.push({ code, name, price, desc });
+  });
+  return out;
+}
+async function saveTenantPlans(){
+  const plans = tpCollect();
+  if (!plans.length) { App.showToast('Tambahkan minimal satu paket dengan kode & nama.', 'error'); return; }
+  const codes = plans.map(p=>p.code);
+  if (new Set(codes).size !== codes.length) { App.showToast('Kode paket tidak boleh duplikat.', 'error'); return; }
+  const r = await App.api('/app-settings', { method:'POST', body: JSON.stringify({ tenant_signup_plans: JSON.stringify(plans) }) });
+  if (r && r.success) App.showToast('Paket langganan tenant disimpan', 'success');
+  else App.showToast((r && r.message) || 'Gagal menyimpan', 'error');
+}
+
 function showSection(id, el) {
   document.querySelectorAll('.st-section').forEach(s => s.classList.remove('show'));
   document.querySelectorAll('.st-nav-item').forEach(i => i.classList.remove('active'));
@@ -2130,6 +2205,7 @@ function showSection(id, el) {
   if (id === 'gateway' && typeof loadGatewaySettings === 'function') {
     loadGatewaySettings();
   }
+  if (id === 'tenantplans' && typeof loadTenantPlans === 'function') loadTenantPlans();
   if (id === 'isolir')    loadIsolirSettings();
   if (id === 'wagateway') loadWaGateway();
   if (id === 'invoice')   loadInvoiceSettings();

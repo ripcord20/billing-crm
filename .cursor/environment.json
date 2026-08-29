@@ -1,0 +1,20 @@
+{
+  "name": "FLAYNET ISP NetOps",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "ports": [
+    {
+      "name": "app-server",
+      "port": 3003
+    }
+  ],
+  "terminals": [
+    {
+      "name": "app-server",
+      "command": "node backend/server.js"
+    }
+  ]
+}
