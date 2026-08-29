@@ -5,6 +5,12 @@
   },
   "install": "bash .cursor/install.sh",
   "start": "bash .cursor/start.sh",
+  "ports": [
+    {
+      "name": "app-server",
+      "port": 3003
+    }
+  ],
   "terminals": [
     {
       "name": "app-server",
