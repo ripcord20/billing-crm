@@ -367,6 +367,12 @@ router.get('/tenants/:id', authenticate, demoGuard, TenantController.show);
 router.put('/tenants/:id', authenticate, demoGuard, TenantController.update);
 router.post('/tenants/:id/owner', authenticate, demoGuard, TenantController.createOwner);
 
+// Tenant self-service signups (admin: verifikasi & aktivasi)
+const TenantSignupController = require('../controllers/TenantSignupController');
+router.get('/tenant-signups', authenticate, demoGuard, (r, s) => TenantSignupController.adminList(r, s));
+router.post('/tenant-signups/:id/activate', authenticate, demoGuard, (r, s) => TenantSignupController.adminActivate(r, s));
+router.post('/tenant-signups/:id/reject', authenticate, demoGuard, (r, s) => TenantSignupController.adminReject(r, s));
+
 router.get('/radius/servers', authenticate, demoGuard, radiusStaff, RadiusController.listServers);
 router.post('/radius/servers', authenticate, demoGuard, radiusStaff, RadiusController.createServer);
 router.put('/radius/servers/:id', authenticate, demoGuard, radiusStaff, RadiusController.updateServer);
@@ -379,9 +385,14 @@ router.post('/radius/customers/:customerId/restore', authenticate, demoGuard, ra
 
 router.get('/nas', authenticate, demoGuard, radiusStaff, NasController.index);
 router.post('/nas', authenticate, demoGuard, radiusStaff, NasController.create);
+// WireGuard server settings (harus sebelum '/nas/:id' agar tidak ketimpa param)
+router.get('/nas/wireguard/server', authenticate, demoGuard, radiusStaff, NasController.wgServerGet);
+router.put('/nas/wireguard/server', authenticate, demoGuard, radiusStaff, NasController.wgServerSave);
+router.post('/nas/wireguard/server/init-keys', authenticate, demoGuard, radiusStaff, NasController.wgServerInitKeys);
 router.put('/nas/:id', authenticate, demoGuard, radiusStaff, NasController.update);
 router.delete('/nas/:id', authenticate, demoGuard, radiusStaff, NasController.destroy);
 router.post('/nas/:id/sync', authenticate, demoGuard, radiusStaff, NasController.syncOne);
+router.post('/nas/:id/wireguard/generate', authenticate, demoGuard, radiusStaff, NasController.wgGenerate);
 router.post('/nas/import', authenticate, demoGuard, radiusStaff, NasController.importFromRadius);
 
 // ===== BILLING =====

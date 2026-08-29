@@ -43,6 +43,21 @@ async function run(db) {
   await addColumn(sequelize, 'payments', 'tenant_id', 'tenant_id INT NULL');
   await addColumn(sequelize, 'devices', 'tenant_id', 'tenant_id INT NULL');
 
+  // ── NAS: mode koneksi + WireGuard (additive) ─────────────────────────────
+  await addColumn(sequelize, 'nas_devices', 'conn_mode', "conn_mode ENUM('public','vpn') NOT NULL DEFAULT 'public'");
+  await addColumn(sequelize, 'nas_devices', 'vpn_type', "vpn_type VARCHAR(20) NULL DEFAULT 'wireguard'");
+  await addColumn(sequelize, 'nas_devices', 'tunnel_address', 'tunnel_address VARCHAR(64) NULL');
+  await addColumn(sequelize, 'nas_devices', 'wg_public_key', 'wg_public_key VARCHAR(128) NULL');
+  await addColumn(sequelize, 'nas_devices', 'wg_private_key', 'wg_private_key VARCHAR(256) NULL');
+  await addColumn(sequelize, 'nas_devices', 'wg_preshared_key', 'wg_preshared_key VARCHAR(256) NULL');
+  await addColumn(sequelize, 'nas_devices', 'wg_endpoint', 'wg_endpoint VARCHAR(160) NULL');
+  await addColumn(sequelize, 'nas_devices', 'wg_allowed_ips', 'wg_allowed_ips VARCHAR(255) NULL');
+  await addColumn(sequelize, 'nas_devices', 'wg_keepalive', 'wg_keepalive INT NULL DEFAULT 25');
+  await addColumn(sequelize, 'nas_devices', 'wg_last_applied_at', 'wg_last_applied_at DATETIME NULL');
+
+  // Tabel signup tenant (self-service) — dibuat bila belum ada.
+  if (db.TenantSignup) await db.TenantSignup.sync();
+
   const [defaultTenant] = await db.Tenant.findOrCreate({
     where: { slug: 'default' },
     defaults: {
