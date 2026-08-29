@@ -34,8 +34,8 @@ class UserController {
   // Create user
   async create(req, res) {
     try {
-      const { name, email, password, role_id, phone } = req.body;
-      const user = await User.create({ name, email, password, role_id, phone });
+      const { name, email, password, role_id, phone, tenant_id } = req.body;
+      const user = await User.create({ name, email, password, role_id, phone, tenant_id: tenant_id || null });
       const fullUser = await User.findByPk(user.id, {
         include: [{ model: Role, as: 'role' }]
       });
@@ -64,13 +64,14 @@ class UserController {
       const user = await User.findByPk(req.params.id);
       if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-      const { name, email, role_id, phone, is_active, password } = req.body;
+      const { name, email, role_id, phone, is_active, password, tenant_id } = req.body;
 
       // Build payload: hanya include field yang relevan.
       // PENTING: password hanya di-include kalau diisi (non-empty), supaya admin
       // bisa edit field lain tanpa harus re-input password lama. Hash dilakukan
       // otomatis di hook `beforeUpdate` di User model (lihat models/User.js).
       const payload = { name, email, role_id, phone, is_active };
+      if (tenant_id !== undefined) payload.tenant_id = tenant_id || null;
       if (password && String(password).trim()) {
         const pwd = String(password);
         if (pwd.length < 6) {

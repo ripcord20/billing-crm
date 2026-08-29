@@ -39,6 +39,7 @@ router.get('/login', async (req, res) => {
           if (roleName === 'technician') dest = '/technician';
           else if (roleName === 'collector')  dest = '/collect/field';
           else if (roleName === 'finance')    dest = '/finance';
+          else if (roleName === 'tenant_owner') dest = '/tenant';
           else if (roleName === 'noc')        dest = '/noc';
           else if (roleName === 'sales')      dest = '/sales';
           return res.redirect(dest);
@@ -63,6 +64,7 @@ router.get('/', authenticate, (req, res) => {
   if (roleName === 'technician') return res.redirect('/technician');
   if (roleName === 'collector')  return res.redirect('/collect/field');
   if (roleName === 'finance')    return res.redirect('/finance');
+  if (roleName === 'tenant_owner') return res.redirect('/tenant');
   if (roleName === 'noc')        return res.redirect('/noc');
   if (roleName === 'sales')      return res.redirect('/sales');
   return res.redirect('/dashboard');
@@ -126,6 +128,32 @@ router.use((req, res, next) => {
   next();
 });
 
+const _tenantOwnerAllowedPaths = new Set([
+  '/tenant', '/login', '/logout',
+  '/customers', '/packages', '/billing', '/payments',
+  '/invoice-template', '/nas', '/radius', '/isolir', '/tenants'
+]);
+const _tenantOwnerAllowedPrefixes = [
+  '/customers/', '/billing/', '/payments/', '/packages/',
+  '/nas/', '/radius/', '/isolir/', '/tenant/'
+];
+router.use((req, res, next) => {
+  if (req.method !== 'GET') return next();
+  const token = req.cookies && req.cookies.token;
+  if (!token) return next();
+  try {
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const roleName = (decoded.role || decoded.roleName || '').toLowerCase();
+    if (roleName === 'tenant_owner') {
+      const allowed = _tenantOwnerAllowedPaths.has(req.path)
+        || _tenantOwnerAllowedPrefixes.some(p => req.path.startsWith(p));
+      if (!allowed) return res.redirect('/tenant');
+    }
+  } catch (_) {}
+  next();
+});
+
 // Dashboard utama — admin-only (role finance/noc/sales di-redirect ke dashboard masing-masing)
 router.get('/dashboard', authenticate, blockFinanceArea, blockNocArea, blockSalesArea, (req, res) => {
   res.render('pages/dashboard', { title: 'Dashboard', user: req.user, active: 'dashboard' });
@@ -155,6 +183,25 @@ router.get('/finance', authenticate, allowFinanceArea, (req, res) => {
   });
 });
 router.get('/finance/dashboard', authenticate, allowFinanceArea, (req, res) => res.redirect('/finance'));
+
+router.get('/tenant', authenticate, allowFinanceArea, (req, res) => {
+  res.render('pages/tenant-dashboard', {
+    title: 'Dashboard Tenant',
+    user: req.user,
+    active: 'tenant-dashboard'
+  });
+});
+router.get('/tenants', authenticate, (req, res) => {
+  const role = (req.user?.role?.name || '').toLowerCase();
+  if (!['superadmin', 'admin'].includes(role)) return res.redirect('/tenant');
+  res.render('pages/tenants', { title: 'Multi Tenant', user: req.user, active: 'tenants' });
+});
+router.get('/nas', authenticate, allowFinanceArea, (req, res) => {
+  res.render('pages/nas', { title: 'Modul NAS', user: req.user, active: 'nas' });
+});
+router.get('/radius', authenticate, allowFinanceArea, (req, res) => {
+  res.render('pages/radius', { title: 'Modul RADIUS', user: req.user, active: 'radius' });
+});
 
 // ═══════════════════════════════════════════════════════════════════
 // SALES DASHBOARD — halaman utama role sales (juga dapat diakses admin)

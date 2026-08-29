@@ -67,7 +67,7 @@ class AuthController {
 
       // Generate tokens
       const token = jwt.sign(
-        { id: user.id, email: user.email, role: user.role?.name, isDemo },
+        { id: user.id, email: user.email, role: user.role?.name, isDemo, tenant_id: user.tenant_id || null },
         process.env.JWT_SECRET,
         { expiresIn: tokenExpiry }
       );
@@ -120,6 +120,7 @@ class AuthController {
       let redirect = '/dashboard';
       if (roleName === 'technician') redirect = '/technician';
       else if (roleName === 'finance')    redirect = '/finance';
+      else if (roleName === 'tenant_owner') redirect = '/tenant';
       else if (roleName === 'noc')        redirect = '/noc';
       // demo → default ke /dashboard (tapi sebagian besar menu akan auto-disabled)
 
@@ -183,6 +184,7 @@ class AuthController {
       let redirect = '/dashboard';
       if (roleName === 'technician') redirect = '/technician';
       else if (roleName === 'finance')    redirect = '/finance';
+      else if (roleName === 'tenant_owner') redirect = '/tenant';
       else if (roleName === 'noc')        redirect = '/noc';
       return res.json({ success: true, redirect });
     } catch (e) {

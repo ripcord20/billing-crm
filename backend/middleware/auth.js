@@ -74,7 +74,8 @@ const authenticate = async (req, res, next) => {
 
     req.user = user;
     req.userPermissions = user.role?.permissions?.map(p => p.name) || [];
-    next();
+    const { applyToRequest } = require('./tenantContext');
+    return applyToRequest(req, next);
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
       if (req.xhr || req.headers.accept?.includes('application/json')) {
@@ -120,6 +121,7 @@ const hasPermission = (...permissions) => {
     const roleName = (req.user.role?.name || '').toLowerCase();
     const ROLE_GRANTS = {
       finance: ['customer_view', 'customer_create', 'customer_update', 'customer_delete'],
+      tenant_owner: ['customer_view', 'customer_create', 'customer_update', 'customer_delete'],
     };
     const granted = ROLE_GRANTS[roleName] || [];
     if (granted.length && permissions.some(p => granted.includes(p))) {

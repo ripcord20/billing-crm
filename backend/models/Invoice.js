@@ -12,6 +12,10 @@ module.exports = (sequelize) => {
       unique: true,
       allowNull: false
     },
+    tenant_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
     customer_id: {
       type: DataTypes.INTEGER,
       allowNull: false,

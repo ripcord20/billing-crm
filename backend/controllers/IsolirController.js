@@ -17,14 +17,21 @@ class IsolirController {
 
   async stats(req, res) {
     try {
-      const [[isolated]]   = await sequelize.query("SELECT COUNT(*) AS cnt FROM customers WHERE isolir_status='isolated'");
-      // "Eligible" = pelanggan yang bisa diisolir = punya static_ip ATAU pppoe_username + mikrotik_id
+      const { sqlAndTenant } = require('../middleware/tenantContext');
+      const tCust = sqlAndTenant('customers.tenant_id');
+      const [[isolated]]   = await sequelize.query(
+        "SELECT COUNT(*) AS cnt FROM customers WHERE isolir_status='isolated'" + tCust.sql,
+        { replacements: tCust.replacements }
+      );
       const [[withIP]]     = await sequelize.query(
         `SELECT COUNT(*) AS cnt FROM customers
-         WHERE status='active' AND mikrotik_id IS NOT NULL
+         WHERE status='active'
+           AND ( mikrotik_id IS NOT NULL
+              OR (pppoe_username IS NOT NULL AND pppoe_username!='') )
            AND ( (static_ip IS NOT NULL AND static_ip!='')
               OR (pppoe_username IS NOT NULL AND pppoe_username!='')
-              OR (connection_type='hotspot' AND mac_address IS NOT NULL AND mac_address!='') )`
+              OR (connection_type='hotspot' AND mac_address IS NOT NULL AND mac_address!='') )` + tCust.sql,
+        { replacements: tCust.replacements }
       );
       // Devices: count dari devices (master), filter MikroTik router aktif yang punya extension isolir
       const [[devices]]    = await sequelize.query(
@@ -303,6 +310,8 @@ class IsolirController {
 
   async listIsolated(req, res) {
     try {
+      const { sqlAndTenant } = require('../middleware/tenantContext');
+      const tCust = sqlAndTenant('c.tenant_id');
       const rows = await sequelize.query(
         `SELECT c.id, c.customer_id, c.name, c.static_ip, c.pppoe_username,
                 c.connection_type, c.mac_address,
@@ -316,9 +325,9 @@ class IsolirController {
          LEFT JOIN mikrotik_devices md ON md.id=c.mikrotik_id
          LEFT JOIN devices d           ON d.id = md.device_id
          LEFT JOIN packages pkg        ON pkg.id=c.package_id
-         WHERE c.isolir_status IN ('isolated','restoring')
+         WHERE c.isolir_status IN ('isolated','restoring') ${tCust.sql}
          ORDER BY c.isolir_at DESC`,
-        { type: sequelize.QueryTypes.SELECT }
+        { type: sequelize.QueryTypes.SELECT, replacements: tCust.replacements }
       );
       // Tag method per row (hotspot_binding / static / pppoe) — untuk badge di UI
       rows.forEach(r => { r.isolir_method = detectMethod(r); });
@@ -328,7 +337,8 @@ class IsolirController {
 
   async listEligible(req, res) {
     try {
-      // Include customer dengan static_ip ATAU pppoe_username ATAU hotspot(mac)
+      const { sqlAndTenant } = require('../middleware/tenantContext');
+      const tCust = sqlAndTenant('c.tenant_id');
       const rows = await sequelize.query(
         `SELECT c.id, c.customer_id, c.name, c.static_ip, c.pppoe_username,
                 c.connection_type, c.mac_address,
@@ -338,11 +348,12 @@ class IsolirController {
                 (SELECT status FROM invoices WHERE customer_id=c.id ORDER BY due_date DESC LIMIT 1) AS last_inv_status
          FROM customers c
          LEFT JOIN packages pkg ON pkg.id=c.package_id
-         WHERE (c.static_ip IS NOT NULL AND c.static_ip != '')
+         WHERE ((c.static_ip IS NOT NULL AND c.static_ip != '')
             OR (c.pppoe_username IS NOT NULL AND c.pppoe_username != '')
-            OR (c.connection_type='hotspot' AND c.mac_address IS NOT NULL AND c.mac_address != '')
+            OR (c.connection_type='hotspot' AND c.mac_address IS NOT NULL AND c.mac_address != ''))
+            ${tCust.sql}
          ORDER BY c.name ASC`,
-        { type: sequelize.QueryTypes.SELECT }
+        { type: sequelize.QueryTypes.SELECT, replacements: tCust.replacements }
       );
       rows.forEach(r => { r.isolir_method = detectMethod(r); });
       res.json({ success:true, data: rows });
@@ -353,6 +364,8 @@ class IsolirController {
   // Untuk panel "Aksi Manual" — bantu admin isolir/restore tanpa harus tahu siapa yang overdue
   async dueAlerts(req, res) {
     try {
+      const { sqlAndTenant } = require('../middleware/tenantContext');
+      const tCust = sqlAndTenant('c.tenant_id');
       // Ambil grace days untuk highlight "sudah lewat grace period"
       const graceRow = await sequelize.query(
         "SELECT value FROM app_settings WHERE `key`='isolir_grace_days'",
@@ -380,9 +393,9 @@ class IsolirController {
          INNER JOIN invoices i           ON i.customer_id = c.id
          WHERE i.status IN ('unpaid','overdue')
            AND DATE(i.due_date) <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)
-           AND c.status != 'inactive'
+           AND c.status != 'inactive' ${tCust.sql}
          ORDER BY i.due_date ASC, c.name ASC`,
-        { type: sequelize.QueryTypes.SELECT }
+        { type: sequelize.QueryTypes.SELECT, replacements: tCust.replacements }
       );
 
       // Klasifikasi: upcoming (akan jatuh tempo, due_date masih di masa depan/hari ini)
@@ -398,7 +411,7 @@ class IsolirController {
         // Eligible untuk isolir: punya MIKROTIK + method valid
         const isolirMethod = detectMethod(r);
         const hasMethod = isolirMethod !== 'unknown';
-        const isEligibleForIsolir = !!(hasMethod && r.mikrotik_id);
+        const isEligibleForIsolir = !!(hasMethod && (r.mikrotik_id || r.pppoe_username));
         const overdueDays = parseInt(r.days_overdue) || 0;
         const item = {
           id:              r.id,
