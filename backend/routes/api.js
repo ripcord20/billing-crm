@@ -393,6 +393,7 @@ router.put('/nas/:id', authenticate, demoGuard, radiusStaff, NasController.updat
 router.delete('/nas/:id', authenticate, demoGuard, radiusStaff, NasController.destroy);
 router.post('/nas/:id/sync', authenticate, demoGuard, radiusStaff, NasController.syncOne);
 router.post('/nas/:id/wireguard/generate', authenticate, demoGuard, radiusStaff, NasController.wgGenerate);
+router.post('/nas/:id/vpn/generate', authenticate, demoGuard, radiusStaff, NasController.vpnGenerate);
 router.post('/nas/import', authenticate, demoGuard, radiusStaff, NasController.importFromRadius);
 
 // ===== BILLING =====
@@ -1071,6 +1072,8 @@ router.post('/app-settings', authenticate, demoGuard, async (req, res) => {
       'payment_gateway_merchant_code',
       // Tripay-specific: private key (untuk signature transaksi & verifikasi callback HMAC-SHA256)
       'payment_gateway_private_key',
+      // Paket langganan tenant self-service (JSON array {code,name,price,desc})
+      'tenant_signup_plans',
       // Tax / PPN settings
       'tax_enabled', 'tax_rate', 'tax_mode', 'tax_label',
       // Auto-generate invoice (cron tiap awal bulan)

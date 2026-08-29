@@ -4,6 +4,7 @@ const { NasDevice, RadiusServer, Device } = require('../models');
 const RadiusSQL = require('../services/RadiusSqlService');
 const RadiusProv = require('../services/RadiusProvisionService');
 const Wireguard = require('../services/WireguardService');
+const VpnProvision = require('../services/VpnProvisionService');
 const { getTenantId } = require('../middleware/tenantContext');
 
 // Push konfigurasi NAS ke server FreeRADIUS (tabel `nas`). Fungsi modul-level
@@ -192,6 +193,22 @@ class NasController {
       const row = await NasDevice.findByPk(req.params.id);
       if (!row) return res.status(404).json({ success: false, message: 'NAS tidak ditemukan' });
       const out = await Wireguard.generatePeerForNas(row, {
+        reallocate: !!(req.body && req.body.reallocate),
+        allowedIps: req.body && req.body.allowed_ips
+      });
+      res.json({ success: true, data: { vpn_type: 'wireguard', ...out } });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  // ── VPN generik: dispatch by vpn_type (wireguard/l2tp/openvpn) ──────────
+  async vpnGenerate(req, res) {
+    try {
+      const row = await NasDevice.findByPk(req.params.id);
+      if (!row) return res.status(404).json({ success: false, message: 'NAS tidak ditemukan' });
+      const out = await VpnProvision.generate(row, {
+        vpn_type: req.body && req.body.vpn_type,
         reallocate: !!(req.body && req.body.reallocate),
         allowedIps: req.body && req.body.allowed_ips
       });

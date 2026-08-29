@@ -87,6 +87,21 @@ module.exports = (sequelize) => {
       type: DataTypes.DATE,
       allowNull: true
     },
+    // ── Kredensial VPN generik (L2TP/IPsec & OpenVPN) ────────────────────
+    vpn_username: {
+      type: DataTypes.STRING(120),
+      allowNull: true
+    },
+    vpn_password: {
+      type: DataTypes.STRING(256),
+      allowNull: true,
+      comment: 'Password VPN (dienkripsi) untuk L2TP/OpenVPN.'
+    },
+    vpn_psk: {
+      type: DataTypes.STRING(256),
+      allowNull: true,
+      comment: 'Pre-shared key IPsec (dienkripsi) untuk L2TP/IPsec.'
+    },
     ports: {
       type: DataTypes.INTEGER,
       allowNull: true
@@ -128,7 +143,12 @@ module.exports = (sequelize) => {
     // endpoint generate/config, bukan lewat toJSON.
     if (values.wg_private_key) values.wg_private_key = '********';
     if (values.wg_preshared_key) values.wg_preshared_key = '********';
-    values.wg_configured = !!(this.get('wg_public_key') && this.get('wg_private_key'));
+    if (values.vpn_password) values.vpn_password = '********';
+    if (values.vpn_psk) values.vpn_psk = '********';
+    const t = this.get('vpn_type');
+    values.wg_configured = t === 'wireguard'
+      ? !!(this.get('wg_public_key') && this.get('wg_private_key'))
+      : !!(this.get('vpn_username') && this.get('vpn_password'));
     return values;
   };
 

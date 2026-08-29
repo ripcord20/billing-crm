@@ -5,7 +5,8 @@ let __wgLastConfig = null; // {nas, client_config, filename}
 function modeBadge(n){
   if(n.conn_mode==='vpn'){
     const ok = n.wg_configured;
-    return `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:${ok?'#dcfce7':'#fef9c3'};color:${ok?'#166534':'#854d0e'};">VPN${ok?' ✓':' (belum gen)'}</span>`;
+    const t = (n.vpn_type||'wireguard').toUpperCase();
+    return `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:${ok?'#dcfce7':'#fef9c3'};color:${ok?'#166534':'#854d0e'};">VPN·${t}${ok?' ✓':' (belum gen)'}</span>`;
   }
   return `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:#e2e8f0;color:#475569;">Public IP</span>`;
 }
@@ -22,7 +23,7 @@ async function loadNas(){
     <td>${modeBadge(n)}</td>
     <td>${n.last_error?`<span style="color:#dc2626;">${esc(n.last_error)}</span>`:(n.last_sync_at?esc(n.last_sync_at):'belum')}</td>
     <td style="white-space:nowrap;">
-      ${n.conn_mode==='vpn'?`<button class="btn btn-sm btn-primary" onclick="wgGen(${n.id},'${esc(n.shortname||n.nasname)}')" title="Generate/regenerate config WireGuard">WG</button>`:''}
+      ${n.conn_mode==='vpn'?`<button class="btn btn-sm btn-primary" onclick="wgGen(${n.id},'${esc(n.shortname||n.nasname)}')" title="Generate/regenerate config VPN">VPN</button>`:''}
       <button class="btn btn-sm btn-secondary" onclick="syncNas(${n.id})">Sync</button>
       <button class="btn btn-sm btn-danger" onclick="delNas(${n.id})">Hapus</button>
     </td>
@@ -32,6 +33,7 @@ async function loadNas(){
 window.onConnModeChange=()=>{
   const vpn=document.getElementById('nasConnMode').value==='vpn';
   document.getElementById('nasVpnHint').style.display=vpn?'block':'none';
+  document.getElementById('nasVpnTypeWrap').style.display=vpn?'block':'none';
 };
 
 window.openNas=()=>{
@@ -42,6 +44,7 @@ window.openNas=()=>{
   document.getElementById('nasSecret').value='';
   document.getElementById('nasType').value='mikrotik';
   document.getElementById('nasConnMode').value='public';
+  document.getElementById('nasVpnType').value='wireguard';
   onConnModeChange();
   document.getElementById('nasModal').style.display='flex';
 };
@@ -51,7 +54,8 @@ window.saveNas=async()=>{
     shortname:document.getElementById('nasShort').value.trim(),
     secret:document.getElementById('nasSecret').value,
     type:document.getElementById('nasType').value.trim()||'mikrotik',
-    conn_mode:document.getElementById('nasConnMode').value
+    conn_mode:document.getElementById('nasConnMode').value,
+    vpn_type:document.getElementById('nasVpnType').value
   };
   const id=document.getElementById('nasId').value;
   const r=await App.api(id?'/nas/'+id:'/nas',{method:id?'PUT':'POST',body:JSON.stringify(body)});
@@ -114,22 +118,59 @@ window.wgInitKeys=async()=>{
   App.showToast(r.created?'Keypair server dibuat':'Keypair server sudah ada','success');
 };
 
-// ── Generate peer/config untuk satu NAS ─────────────────────────────────────
+// ── Generate credential/config VPN untuk satu NAS (dispatch per tipe) ─────────
 window.wgGen=async(id,label)=>{
-  const r=await App.api('/nas/'+id+'/wireguard/generate',{method:'POST',body:JSON.stringify({})});
+  const r=await App.api('/nas/'+id+'/vpn/generate',{method:'POST',body:JSON.stringify({})});
   if(!r?.success) return App.showToast(r?.message||'Gagal generate','error');
   const d=r.data;
-  __wgLastConfig={label,client_config:d.client_config,filename:'wg-'+(label||id)+'.conf'};
+  const type=(d.vpn_type||'wireguard');
+  const ext=type==='wireguard'?'.conf':(type==='openvpn'?'.ovpn':'.txt');
+  __wgLastConfig={label,client_config:d.client_config,filename:'vpn-'+type+'-'+(label||id)+ext};
+  document.getElementById('wgCfgType').textContent=type;
   document.getElementById('wgCfgNas').textContent=label||('#'+id);
-  document.getElementById('wgCfgAddr').textContent=d.tunnel_address;
-  document.getElementById('wgCfgClient').textContent=d.client_config;
-  document.getElementById('wgCfgMikrotik').textContent=d.mikrotik_commands;
-  document.getElementById('wgCfgPeer').textContent=d.server_peer_block;
-  const note=document.getElementById('wgApplyNote');
-  if(d.applied&&d.applied.attempted){
-    note.textContent=d.applied.ok?'✓ Peer otomatis terpasang ke interface WireGuard server ini.':'Peer belum terpasang otomatis: '+(d.applied.message||'')+' — tempel blok [Peer] di server secara manual.';
+  document.getElementById('wgCfgAddr').textContent=d.tunnel_address||'—';
+  document.getElementById('wgCfgClient').textContent=d.client_config||'';
+  document.getElementById('wgCfgMikrotik').textContent=d.mikrotik_commands||'';
+
+  // Kredensial (l2tp/openvpn)
+  const credWrap=document.getElementById('wgCredWrap');
+  if(d.username){
+    credWrap.style.display='block';
+    document.getElementById('wgCredUser').textContent=d.username;
+    document.getElementById('wgCredPass').textContent=d.password||'';
+    document.getElementById('wgCredPskWrap').style.display=d.psk?'block':'none';
+    document.getElementById('wgCredPsk').textContent=d.psk||'';
   }else{
-    note.textContent='Server ini tidak menjalankan daemon WireGuard (wg) — tempel blok [Peer] di server WireGuard Anda secara manual.';
+    credWrap.style.display='none';
+  }
+
+  // Blok server: WireGuard → [Peer]; lainnya → provisioning server
+  const peerWrap=document.getElementById('wgPeerWrap');
+  if(type==='wireguard'){
+    document.getElementById('wgCfgClientLabel').textContent='Config Klien (wg-quick / router)';
+    document.getElementById('wgCfgPeerLabel').textContent='Blok [Peer] untuk server';
+    document.getElementById('wgCfgPeer').textContent=d.server_peer_block||'';
+    peerWrap.style.display='block';
+  }else{
+    document.getElementById('wgCfgClientLabel').textContent=(type==='openvpn'?'Config Klien (.ovpn)':'Parameter Koneksi L2TP/IPsec');
+    if(d.server_provisioning){
+      document.getElementById('wgCfgPeerLabel').textContent='Provisioning di Server VPN';
+      document.getElementById('wgCfgPeer').textContent=d.server_provisioning;
+      peerWrap.style.display='block';
+    }else{
+      peerWrap.style.display='none';
+    }
+  }
+
+  const note=document.getElementById('wgApplyNote');
+  if(type==='wireguard'){
+    if(d.applied&&d.applied.attempted){
+      note.textContent=d.applied.ok?'✓ Peer otomatis terpasang ke interface WireGuard server ini.':'Peer belum terpasang otomatis: '+(d.applied.message||'')+' — tempel blok [Peer] di server secara manual.';
+    }else{
+      note.textContent='Server ini tidak menjalankan daemon WireGuard (wg) — tempel blok [Peer] di server WireGuard Anda secara manual.';
+    }
+  }else{
+    note.textContent='Terapkan blok "Provisioning di Server VPN" pada server '+type.toUpperCase()+' Anda, lalu pasang config klien di MikroTik.';
   }
   document.getElementById('wgConfigModal').style.display='flex';
   loadNas();

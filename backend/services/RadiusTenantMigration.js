@@ -54,6 +54,9 @@ async function run(db) {
   await addColumn(sequelize, 'nas_devices', 'wg_allowed_ips', 'wg_allowed_ips VARCHAR(255) NULL');
   await addColumn(sequelize, 'nas_devices', 'wg_keepalive', 'wg_keepalive INT NULL DEFAULT 25');
   await addColumn(sequelize, 'nas_devices', 'wg_last_applied_at', 'wg_last_applied_at DATETIME NULL');
+  await addColumn(sequelize, 'nas_devices', 'vpn_username', 'vpn_username VARCHAR(120) NULL');
+  await addColumn(sequelize, 'nas_devices', 'vpn_password', 'vpn_password VARCHAR(256) NULL');
+  await addColumn(sequelize, 'nas_devices', 'vpn_psk', 'vpn_psk VARCHAR(256) NULL');
 
   // Tabel signup tenant (self-service) — dibuat bila belum ada.
   if (db.TenantSignup) await db.TenantSignup.sync();
