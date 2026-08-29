@@ -126,7 +126,7 @@ module.exports = (sequelize) => {
       allowNull: true
     },
     mikrotik_id: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.INTEGER,
       allowNull: true
     },
     isolir_status: {
