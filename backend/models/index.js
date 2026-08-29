@@ -133,6 +133,11 @@ const ResellerVoucherLog      = require('./ResellerVoucherLog')(sequelize);
 const ResellerPromo           = require('./ResellerPromo')(sequelize);
 const ResellerPromoRedemption = require('./ResellerPromoRedemption')(sequelize);
 const PublicVoucherOrder      = require('./PublicVoucherOrder')(sequelize);
+
+const Tenant        = require('./Tenant')(sequelize);
+const RadiusServer  = require('./RadiusServer')(sequelize);
+const NasDevice     = require('./NasDevice')(sequelize);
+const RadiusAccount = require('./RadiusAccount')(sequelize);
  
 
 // ===== ASSOCIATIONS =====
@@ -315,7 +320,11 @@ const db = {
   ResellerVoucherLog,
   ResellerPromo,
   ResellerPromoRedemption,
-  PublicVoucherOrder
+  PublicVoucherOrder,
+  Tenant,
+  RadiusServer,
+  NasDevice,
+  RadiusAccount
 };
 
 // ── Todo associations
@@ -506,5 +515,49 @@ Employee.hasMany(HrisPayrollItem,      { foreignKey: 'employee_id', as: 'payroll
 // onDelete CASCADE: hapus job → itemnya ikut terhapus.
 PppoeProvisionItem.belongsTo(PppoeProvisionJob, { foreignKey: 'job_id', as: 'job', onDelete: 'CASCADE' });
 PppoeProvisionJob.hasMany(PppoeProvisionItem,  { foreignKey: 'job_id', as: 'items', onDelete: 'CASCADE' });
+
+// ── Multi-tenant + RADIUS / NAS ────────────────────────────────
+Tenant.belongsTo(User, { foreignKey: 'owner_user_id', as: 'owner' });
+Tenant.belongsTo(RadiusServer, { foreignKey: 'radius_server_id', as: 'radius_server' });
+User.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+Tenant.hasMany(User, { foreignKey: 'tenant_id', as: 'users' });
+Tenant.hasMany(Customer, { foreignKey: 'tenant_id', as: 'customers' });
+Customer.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+Package.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+Invoice.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+Payment.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+Device.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+
+RadiusServer.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+NasDevice.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+NasDevice.belongsTo(RadiusServer, { foreignKey: 'radius_server_id', as: 'radius_server' });
+NasDevice.belongsTo(Device, { foreignKey: 'device_id', as: 'device' });
+RadiusServer.hasMany(NasDevice, { foreignKey: 'radius_server_id', as: 'nas_devices' });
+
+RadiusAccount.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+RadiusAccount.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
+RadiusAccount.belongsTo(RadiusServer, { foreignKey: 'radius_server_id', as: 'radius_server' });
+RadiusAccount.belongsTo(NasDevice, { foreignKey: 'nas_id', as: 'nas' });
+Customer.hasMany(RadiusAccount, { foreignKey: 'customer_id', as: 'radius_accounts' });
+
+Invoice.addHook('beforeCreate', async (inv) => {
+  if (inv.tenant_id || !inv.customer_id) return;
+  const c = await Customer.findByPk(inv.customer_id);
+  if (c && c.tenant_id) inv.tenant_id = c.tenant_id;
+});
+Payment.addHook('beforeCreate', async (pay) => {
+  if (pay.tenant_id || !pay.invoice_id) return;
+  const inv = await Invoice.findByPk(pay.invoice_id);
+  if (inv && inv.tenant_id) pay.tenant_id = inv.tenant_id;
+});
+
+const { attachTenantHooks } = require('../middleware/tenantContext');
+attachTenantHooks(Customer);
+attachTenantHooks(Package);
+attachTenantHooks(Invoice);
+attachTenantHooks(Payment);
+attachTenantHooks(Device);
+attachTenantHooks(NasDevice);
+attachTenantHooks(RadiusAccount);
 
 module.exports = db;

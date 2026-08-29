@@ -349,15 +349,45 @@ router.delete('/customers/:id/payment-link',
 // ===== PACKAGES =====
 router.get('/packages/stats', authenticate, demoGuard, PackageController.stats);
 router.get('/packages', authenticate, demoGuard, PackageController.index);
-router.post('/packages', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('create', 'package'), PackageController.create);
+router.post('/packages', authenticate, demoGuard, authorize('superadmin', 'admin', 'tenant_owner'), logActivity('create', 'package'), PackageController.create);
 router.get('/packages/:id', authenticate, demoGuard, PackageController.show);
-router.put('/packages/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'package'), PackageController.update);
-router.delete('/packages/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('delete', 'package'), PackageController.destroy);
+router.put('/packages/:id', authenticate, demoGuard, authorize('superadmin', 'admin', 'tenant_owner'), logActivity('update', 'package'), PackageController.update);
+router.delete('/packages/:id', authenticate, demoGuard, authorize('superadmin', 'admin', 'tenant_owner'), logActivity('delete', 'package'), PackageController.destroy);
+
+// ===== TENANTS / RADIUS / NAS =====
+const TenantController = require('../controllers/TenantController');
+const RadiusController = require('../controllers/RadiusController');
+const NasController = require('../controllers/NasController');
+const radiusStaff = authorize('superadmin', 'admin', 'tenant_owner', 'finance');
+
+router.get('/tenants', authenticate, demoGuard, TenantController.index);
+router.post('/tenants', authenticate, demoGuard, TenantController.create);
+router.get('/tenants/dashboard', authenticate, demoGuard, TenantController.dashboard);
+router.get('/tenants/:id', authenticate, demoGuard, TenantController.show);
+router.put('/tenants/:id', authenticate, demoGuard, TenantController.update);
+router.post('/tenants/:id/owner', authenticate, demoGuard, TenantController.createOwner);
+
+router.get('/radius/servers', authenticate, demoGuard, radiusStaff, RadiusController.listServers);
+router.post('/radius/servers', authenticate, demoGuard, radiusStaff, RadiusController.createServer);
+router.put('/radius/servers/:id', authenticate, demoGuard, radiusStaff, RadiusController.updateServer);
+router.post('/radius/servers/:id/test', authenticate, demoGuard, radiusStaff, RadiusController.testServer);
+router.get('/radius/sessions', authenticate, demoGuard, radiusStaff, RadiusController.sessions);
+router.get('/radius/users', authenticate, demoGuard, radiusStaff, RadiusController.radiusUsers);
+router.post('/radius/provision', authenticate, demoGuard, radiusStaff, RadiusController.provision);
+router.post('/radius/customers/:customerId/isolir', authenticate, demoGuard, radiusStaff, RadiusController.isolate);
+router.post('/radius/customers/:customerId/restore', authenticate, demoGuard, radiusStaff, RadiusController.restore);
+
+router.get('/nas', authenticate, demoGuard, radiusStaff, NasController.index);
+router.post('/nas', authenticate, demoGuard, radiusStaff, NasController.create);
+router.put('/nas/:id', authenticate, demoGuard, radiusStaff, NasController.update);
+router.delete('/nas/:id', authenticate, demoGuard, radiusStaff, NasController.destroy);
+router.post('/nas/:id/sync', authenticate, demoGuard, radiusStaff, NasController.syncOne);
+router.post('/nas/import', authenticate, demoGuard, radiusStaff, NasController.importFromRadius);
 
 // ===== BILLING =====
 router.get('/billing/invoices', authenticate, demoGuard, BillingController.listInvoices);
 router.get('/billing/invoices/:id', authenticate, demoGuard, BillingController.showInvoice);
-router.post('/billing/generate', authenticate, demoGuard, authorize('superadmin', 'admin', 'finance'), logActivity('generate', 'invoice'), BillingController.generateInvoices);
+router.post('/billing/generate', authenticate, demoGuard, authorize('superadmin', 'admin', 'finance', 'tenant_owner'), logActivity('generate', 'invoice'), BillingController.generateInvoices);
 router.post('/billing/payment', authenticate, demoGuard, hasPermission('billing_payment'), logActivity('create', 'payment'), BillingController.recordPayment);
 router.post('/billing/mark-overdue', authenticate, demoGuard, authorize('superadmin', 'admin'), BillingController.markOverdue);
 router.post('/billing/invoices/:id/reminder', authenticate, demoGuard, BillingController.sendReminder);

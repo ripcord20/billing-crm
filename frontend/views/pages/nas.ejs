@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app-layout">
+  <%- include('../partials/sidebar') %>
+  <div class="main-content">
+    <%- include('../partials/topbar') %>
+    <main class="page-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Modul NAS</h1>
+          <p style="margin:4px 0 0;color:#64748b;font-size:13px;">Daftar NAS (client RADIUS) untuk FreeRADIUS/daloRADIUS. Sync menulis ke tabel <code>nas</code> di server RADIUS, bukan ke database billing pelanggan.</p>
+        </div>
+        <div class="page-header-right" style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" onclick="importNas()">Import dari RADIUS</button>
+          <button class="btn btn-primary" onclick="openNas()">+ NAS</button>
+        </div>
+      </div>
+      <div class="card"><div class="card-body">
+        <table class="data-table">
+          <thead><tr><th>NAS IP</th><th>Nama</th><th>Tipe</th><th>Sync</th><th>Aksi</th></tr></thead>
+          <tbody id="nasTable"><tr><td colspan="5" style="text-align:center;padding:32px;color:#94a3b8;">Memuat…</td></tr></tbody>
+        </table>
+      </div></div>
+    </main>
+  </div>
+</div>
+<div id="nasModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:460px;">
+    <h3 style="margin:0 0 12px;" id="nasTitle">NAS baru</h3>
+    <input type="hidden" id="nasId">
+    <label style="font-size:13px;">IP NAS (nasname) *</label>
+    <input id="nasIp" placeholder="192.168.22.1" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <label style="font-size:13px;">Shortname</label>
+    <input id="nasShort" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <label style="font-size:13px;">Secret *</label>
+    <input id="nasSecret" type="password" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <label style="font-size:13px;">Tipe</label>
+    <input id="nasType" value="mikrotik" style="width:100%;margin:6px 0 16px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn btn-secondary" onclick="document.getElementById('nasModal').style.display='none'">Batal</button>
+      <button class="btn btn-primary" onclick="saveNas()">Simpan &amp; sync</button>
+    </div>
+  </div>
+</div>
+<script src="/js/app.js"></script>
+<script src="/js/nas.js"></script>
+</body>
+</html>

@@ -113,6 +113,10 @@ module.exports = (sequelize) => {
     },
     // FK ke infrastructure_points (type='pop'). Boleh null untuk device
     // yang tidak terkait dengan POP tertentu (mis. router pelanggan, dll).
+    tenant_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
     pop_id: {
       type: DataTypes.INTEGER,
       allowNull: true,

@@ -30,7 +30,7 @@ function isFinanceRole(req) {
 
 function isFinanceAreaUser(req) {
   const r = _roleName(req);
-  return r === 'superadmin' || r === 'admin' || r === 'finance';
+  return r === 'superadmin' || r === 'admin' || r === 'finance' || r === 'tenant_owner';
 }
 
 /**

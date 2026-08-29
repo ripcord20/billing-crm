@@ -1015,6 +1015,12 @@ const startServer = async () => {
       logger.warn('Failed reseller voucher migration: ' + (e.message || e));
     }
 
+    try {
+      await require('./services/RadiusTenantMigration').run(db);
+    } catch (e) {
+      logger.warn('Failed radius/tenant migration: ' + (e.message || e));
+    }
+
     // Start SNMP monitoring
     const snmpService = new SNMPService(io);
     SNMPService.setInstance(snmpService);

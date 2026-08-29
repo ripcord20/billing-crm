@@ -1,7 +1,7 @@
 const { Package, Customer } = require('../models');
 
 // Allowed fields untuk create/update
-const ALLOWED = ['name','speed_down','speed_up','price','description','category','is_active'];
+const ALLOWED = ['name','speed_down','speed_up','price','description','category','is_active','mikrotik_profile','radius_group'];
 
 function pickFields(body) {
   const out = {};
