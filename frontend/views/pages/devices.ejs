@@ -927,6 +927,14 @@
     return 'mb-blue';
   }
 
+  // cpu-load MikroTik = 0–100. 1400 = cpu-frequency MHz, bukan utilisasi.
+  function displayPct(raw) {
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) return null;
+    if (n > 100) return null;
+    return Math.round(n);
+  }
+
   function renderTable(list) {
     renderTableDesktop(list);
     renderMobileList(list);
@@ -952,8 +960,8 @@
     }
 
     tbody.innerHTML = list.map(d => {
-      const cpu = d.cpu_load != null ? Math.round(d.cpu_load) : null;
-      const mem = d.memory_usage != null ? Math.round(d.memory_usage) : null;
+      const cpu = d.cpu_display != null ? d.cpu_display : displayPct(d.cpu_load);
+      const mem = d.memory_display != null ? d.memory_display : displayPct(d.memory_usage);
 
       const cpuHtml = cpu != null ? `
         <div class="metric-bar">
@@ -1025,8 +1033,8 @@
     }
 
     wrap.innerHTML = list.map(d => {
-      const cpu = d.cpu_load != null ? Math.round(d.cpu_load) : null;
-      const mem = d.memory_usage != null ? Math.round(d.memory_usage) : null;
+      const cpu = d.cpu_display != null ? d.cpu_display : displayPct(d.cpu_load);
+      const mem = d.memory_display != null ? d.memory_display : displayPct(d.memory_usage);
       const status = d.status || 'offline';
       const type = d.type || 'other';
       const brandLine = [d.brand, d.model].filter(Boolean).join(' · ');

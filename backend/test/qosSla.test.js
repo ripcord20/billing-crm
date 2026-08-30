@@ -10,11 +10,22 @@ const {
   classifyAuthFails,
   classifyTrafficAnomaly,
   classifyDns,
+  shouldRaiseDdos,
+  dnsCompare,
   alertAudience,
   alertRoles,
   mergeSettings,
   parseServerList
 } = require('../utils/qosSla');
+const {
+  normalizeCpuPercent,
+  displayCpuPercent,
+  isCustomerTunnelIface,
+  isUplinkIface,
+  pppoeIfaceMatchesUsername,
+  aggregateDeviceTraffic,
+  latestUniqueBy
+} = require('../utils/deviceMetrics');
 
 assert.strictEqual(computeJitter([10, 12, 11, 40]), 10.67);
 assert.strictEqual(computeJitter([{ ms: 10 }, { ms: 20 }]), 10);
@@ -71,5 +82,50 @@ assert.deepStrictEqual(merged.ispDns, ['10.0.0.1', '10.0.0.2']);
 assert.strictEqual(merged.rttMs, 180);
 assert.deepStrictEqual(merged.publicDns, DEFAULTS.publicDns);
 assert.deepStrictEqual(parseServerList('1.1.1.1;8.8.8.8'), ['1.1.1.1', '8.8.8.8']);
+
+assert.strictEqual(shouldRaiseDdos({ currentBps: 90, baselineBps: 40, consecutive: 2 }), false);
+assert.strictEqual(shouldRaiseDdos({ currentBps: 20e6, baselineBps: 2e6, consecutive: 2 }), false);
+assert.strictEqual(shouldRaiseDdos({ currentBps: 200e6, baselineBps: 40e6, consecutive: 1 }), false);
+assert.strictEqual(shouldRaiseDdos({ currentBps: 200e6, baselineBps: 40e6, consecutive: 2 }), true);
+
+const cmp = dnsCompare([
+  { group: 'public', value: 12, status: 'ok' },
+  { group: 'public', value: 18, status: 'ok' },
+  { group: 'isp', value: 40, status: 'ok' }
+]);
+assert.strictEqual(cmp.public_avg, 15);
+assert.strictEqual(cmp.isp_avg, 40);
+assert.strictEqual(cmp.winner, 'public');
+
+assert.strictEqual(normalizeCpuPercent(14), 14);
+assert.strictEqual(normalizeCpuPercent(1400), 0);
+assert.strictEqual(displayCpuPercent(1400), null);
+assert.strictEqual(displayCpuPercent(22.4), 22);
+assert.ok(isCustomerTunnelIface('<pppoe-andi>', 'pppoe-out'));
+assert.ok(isCustomerTunnelIface('pppoe-andi'));
+assert.ok(!isCustomerTunnelIface('sfp-sfpplus1', 'sfp-sfpplus'));
+assert.ok(isUplinkIface('sfp-sfpplus1', 'sfp-sfpplus'));
+assert.ok(isUplinkIface('ether1', 'ether'));
+assert.ok(!isUplinkIface('<pppoe-andi>', 'pppoe-out'));
+assert.ok(pppoeIfaceMatchesUsername('<pppoe-andi>', 'andi'));
+assert.ok(!pppoeIfaceMatchesUsername('<pppoe-andika>', 'andi'));
+assert.ok(!pppoeIfaceMatchesUsername('<pppoe-andi>', 'an'));
+
+const totals = aggregateDeviceTraffic([
+  { name: 'sfp-sfpplus1', type: 'sfp-sfpplus', running: true, rxMbps: 174.88, txMbps: 12.1 },
+  { name: '<pppoe-a>', type: 'pppoe-out', running: true, rxMbps: 12.1, txMbps: 174.88 },
+  { name: '<pppoe-b>', type: 'pppoe-out', running: true, rxMbps: 8, txMbps: 40 }
+]);
+assert.ok(Math.abs(totals.totalRxMbps - 174.88) < 0.01);
+assert.ok(Math.abs(totals.totalTxMbps - 12.1) < 0.01);
+assert.deepStrictEqual(totals.trafficIfaces, ['sfp-sfpplus1']);
+
+const unique = latestUniqueBy([
+  { server: '8.8.8.8', value: 11 },
+  { server: '1.1.1.1', value: 12 },
+  { server: '8.8.8.8', value: 99 }
+], (r) => r.server);
+assert.strictEqual(unique.length, 2);
+assert.strictEqual(unique[0].value, 11);
 
 console.log('qosSla.test.js OK');
