@@ -126,7 +126,14 @@ app.use(helmet({
         "*.tripay.co.id", "tripay.co.id"
       ]
     }
-  } : false
+  } : false,
+  // Default helmet memasang includeSubDomains. Satu kunjungan ke
+  // fiberix.my.id lalu memaksa HTTPS di app.fiberix.my.id (HSTS 180 hari),
+  // padahal subdomain app dilayani origin HTTP / tunnel terpisah.
+  hsts: {
+    maxAge: 15552000,
+    includeSubDomains: false
+  }
 }));
 // ── CORS khusus endpoint publik yang dipanggil dari landing page ──
 // HARUS dipasang SEBELUM CORS global di bawah. Alasannya: paket `cors` global

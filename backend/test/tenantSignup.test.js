@@ -45,7 +45,7 @@ assert.strictEqual(publicSignupEnabled(), false);
 process.env.PUBLIC_TENANT_SIGNUP = '1';
 assert.strictEqual(publicSignupEnabled(), true);
 delete process.env.PUBLIC_TENANT_SIGNUP;
-assert.strictEqual(publicSignupEnabled(), true);
+assert.strictEqual(publicSignupEnabled(), false);
 if (prev === undefined) delete process.env.PUBLIC_TENANT_SIGNUP;
 else process.env.PUBLIC_TENANT_SIGNUP = prev;
 

@@ -65,18 +65,11 @@ router.get('/', optionalAuth, (req, res) => {
   });
 });
 
-router.get('/mitra', (req, res) => res.redirect(301, '/mitra/daftar'));
+const SAAS_APP_URL = String(process.env.SAAS_APP_URL || 'https://app.fiberix.my.id').replace(/\/$/, '');
 
-router.get('/mitra/daftar', optionalAuth, (req, res) => {
-  if (req.user) {
-    return res.redirect(homePathForRole(req.user.role?.name));
-  }
-  res.render('pages/mitra-daftar', {
-    title: 'Daftar Mitra ISP',
-    layout: false,
-    saasPage: 'daftar'
-  });
-});
+router.get('/mitra', (req, res) => res.redirect(301, `${SAAS_APP_URL}/register`));
+
+router.get('/mitra/daftar', (req, res) => res.redirect(301, `${SAAS_APP_URL}/register`));
 
 // ═══════════════════════════════════════════════════════════════════
 // SALES CONFINEMENT — role 'sales' hanya boleh akses halaman /sales.
