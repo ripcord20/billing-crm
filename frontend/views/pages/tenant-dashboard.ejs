@@ -16,13 +16,28 @@
       <main class="page-content tod-page">
         <div class="page-header">
           <div class="page-header-left">
-            <h1 id="todTitle">Dashboard Tenant</h1>
-            <p class="tod-sub" id="todSub">Ringkasan usaha Anda — pelanggan, tagihan, penerimaan</p>
+            <h1 id="todTitle">Billing</h1>
+            <p class="tod-sub" id="todSub">Aplikasi billing Fiberix untuk usaha Anda — pelanggan, paket, tagihan, dan pembayaran</p>
           </div>
           <div class="page-header-right tod-filters">
             <select id="todMonth" class="tod-select" onchange="TenantDash.load()"></select>
             <select id="todYear" class="tod-select" onchange="TenantDash.load()"></select>
             <button class="btn-secondary" type="button" onclick="TenantDash.load()">Refresh</button>
+          </div>
+        </div>
+
+        <div class="tod-start card ui-enter" id="todStart" style="margin-bottom:16px;">
+          <div class="card-body" style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;">
+            <div>
+              <strong id="todStartTitle">Ini aplikasi billing Fiberix</strong>
+              <p style="margin:6px 0 0;color:var(--text-secondary);font-size:13px;max-width:560px;">
+                Bukan konsol teknis RADIUS. Mulai dari paket internet, lalu daftarkan pelanggan. Tagihan dan pembayaran muncul otomatis di menu Billing.
+              </p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <a class="btn-primary" href="/packages">Buat paket</a>
+              <a class="btn-secondary" href="/customers">Tambah pelanggan</a>
+            </div>
           </div>
         </div>
 
