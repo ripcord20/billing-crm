@@ -225,6 +225,13 @@ const authLimiter = rateLimit({
   message: { success: false, message: 'Terlalu banyak percobaan login. Coba lagi nanti.' }
 });
 app.use(['/api/auth/login', '/api/auth/register', '/portal/api/auth/login', '/reseller/api/auth/login'], authLimiter);
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 8,
+  skipSuccessfulRequests: false,
+  message: { success: false, message: 'Terlalu banyak pendaftaran dari IP ini. Coba lagi nanti.' }
+});
+app.use('/api/public/tenant-signup', signupLimiter);
 app.use('/api', apiLimiter);
 
 // ── Demo-specific rate limiter (60 req/min untuk role demo) ─────────

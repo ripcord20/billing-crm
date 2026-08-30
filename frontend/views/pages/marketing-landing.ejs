@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <%- include('../partials/public-saas-head') %>
+</head>
+<body class="saas-body">
+  <%- include('../partials/public-saas-nav') %>
+
+  <section class="saas-hero">
+    <div class="saas-wrap saas-hero-grid">
+      <div>
+        <span class="saas-kicker">Platform manajemen ISP</span>
+        <h1>Solusi cerdas kelola ISP Anda</h1>
+        <p class="lead">
+          <%= appName %> menyatukan billing pelanggan, autentikasi RADIUS/MikroTik,
+          WhatsApp, peta jaringan, tiket, dan multi-tenant dalam satu dashboard.
+          Daftar sebagai mitra, lalu kelola usaha Anda sendiri — data tidak tercampur
+          dengan mitra lain.
+        </p>
+        <div class="saas-hero-cta">
+          <a class="saas-btn saas-btn-primary" href="/mitra/daftar">Daftar mitra</a>
+          <a class="saas-btn saas-btn-ghost" href="/login">Masuk</a>
+        </div>
+        <p class="saas-hero-note">Gratis memulai. Tenant baru kosong — siap diisi pelanggan Anda.</p>
+      </div>
+      <div class="saas-hero-card" aria-hidden="true">
+        <div class="saas-mini-row"><span>Pelanggan aktif</span><strong>Dashboard tenant</strong></div>
+        <div class="saas-mini-row"><span>Tagihan &amp; pembayaran</span><span class="saas-pill">Otomatis</span></div>
+        <div class="saas-mini-row"><span>RADIUS + MikroTik</span><span class="saas-pill">Terpusat</span></div>
+        <div class="saas-mini-row"><span>WhatsApp &amp; isolir</span><span class="saas-pill">Siap pakai</span></div>
+        <div class="saas-mini-row"><span>Multi-tenant</span><strong>Keuangan terpisah</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="saas-section" id="fitur">
+    <div class="saas-wrap saas-center">
+      <h2>Semua yang dibutuhkan operasional ISP</h2>
+      <p class="saas-muted">Dari autentikasi sampai penagihan, tanpa harus buka banyak aplikasi.</p>
+    </div>
+    <div class="saas-wrap saas-grid-4">
+      <article class="saas-card"><div class="saas-icon">R</div><h3>RADIUS &amp; MikroTik</h3><p class="saas-muted">Kelola user PPPoE/Hotspot terpusat. Hubungkan NAS dan isolir dari billing.</p></article>
+      <article class="saas-card"><div class="saas-icon">B</div><h3>Billing otomatis</h3><p class="saas-muted">Paket, invoice, jatuh tempo, pembayaran, dan payment gateway dalam satu alur.</p></article>
+      <article class="saas-card"><div class="saas-icon">W</div><h3>WhatsApp Gateway</h3><p class="saas-muted">Kirim tagihan, pengingat, dan notifikasi pelanggan langsung dari sistem.</p></article>
+      <article class="saas-card"><div class="saas-icon">P</div><h3>Peta infrastruktur</h3><p class="saas-muted">ODC, ODP, tiang, dan relasi pelanggan di peta untuk troubleshooting lebih cepat.</p></article>
+      <article class="saas-card"><div class="saas-icon">T</div><h3>Multi-tenant</h3><p class="saas-muted">Setiap mitra punya dashboard, pelanggan, dan keuangan sendiri.</p></article>
+      <article class="saas-card"><div class="saas-icon">C</div><h3>CPE / GenieACS</h3><p class="saas-muted">Pantau perangkat pelanggan bila ACS Anda sudah terhubung ke platform.</p></article>
+      <article class="saas-card"><div class="saas-icon">K</div><h3>Tiket &amp; lapangan</h3><p class="saas-muted">Tiket, work order, dan peran sales/teknisi/kolektor sesuai alur kerja ISP.</p></article>
+      <article class="saas-card"><div class="saas-icon">L</div><h3>Laporan</h3><p class="saas-muted">Pantau tagihan tertunggak, penerimaan, dan performa periode berjalan.</p></article>
+    </div>
+  </section>
+
+  <section class="saas-section" id="cara-kerja" style="padding-top:0">
+    <div class="saas-wrap">
+      <h2>Cara berlangganan / mulai memakai</h2>
+      <p class="saas-muted">Prosesnya sama seperti SaaS billing ISP: daftar, masuk, lalu setup.</p>
+      <div class="saas-grid-3 saas-steps">
+        <article class="saas-card saas-step"><h3>Daftar akun mitra</h3><p class="saas-muted">Isi nama usaha, nama Anda, email, dan password. Sistem membuat tenant baru yang masih kosong.</p></article>
+        <article class="saas-card saas-step"><h3>Masuk ke dashboard</h3><p class="saas-muted">Setelah daftar, Anda langsung masuk ke dashboard tenant: pelanggan, tagihan, pembayaran, paket.</p></article>
+        <article class="saas-card saas-step"><h3>Hubungkan jaringan</h3><p class="saas-muted">Admin platform membantu menautkan RADIUS/MikroTik. Pelanggan Anda tidak tercampur dengan mitra lain.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="saas-section" style="padding-top:0">
+    <div class="saas-wrap">
+      <div class="saas-cta-band">
+        <div>
+          <h2 style="color:#fff">Siap kelola ISP dari satu layar?</h2>
+          <p style="color:#c5e4ea;margin:8px 0 0">Buat akun mitra sekarang, atau masuk jika sudah punya akses.</p>
+        </div>
+        <div class="saas-hero-cta">
+          <a class="saas-btn saas-btn-primary" href="/mitra/daftar">Daftar</a>
+          <a class="saas-btn saas-btn-ghost" href="/login">Masuk</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="saas-section saas-faq" id="faq" style="padding-top:0">
+    <div class="saas-wrap">
+      <h2>Pertanyaan yang sering diajukan</h2>
+      <details open>
+        <summary>Ini daftar mitra ISP atau daftar pelanggan rumahan?</summary>
+        <p>Tombol <strong>Daftar</strong> di halaman ini untuk pemilik ISP / mitra. Anda mendapat dashboard tenant. Pelanggan akhir yang ingin berlangganan internet memakai tautan <a href="/daftar">daftar layanan</a> dari sales.</p>
+      </details>
+      <details>
+        <summary>Apakah data saya tercampur dengan mitra lain?</summary>
+        <p>Tidak. Pendaftaran mandiri membuat tenant baru yang kosong. Pelanggan, tagihan, dan pembayaran hanya milik tenant Anda.</p>
+      </details>
+      <details>
+        <summary>Bagaimana cara masuk setelah daftar?</summary>
+        <p>Setelah formulir berhasil, Anda otomatis masuk ke <code>/tenant</code>. Lain kali buka <a href="/login">halaman masuk</a> dengan email dan password yang sama.</p>
+      </details>
+      <details>
+        <summary>Apakah ini menyalin BillingRadius cloud?</summary>
+        <p>Bukan. Tampilan dan alur daftar/masuk dibuat nyaman seperti situs produk ISP, tetapi RADIUS dan perangkat tetap di infrastruktur Anda — tidak memindahkan pelanggan ke layanan cloud pihak ketiga.</p>
+      </details>
+    </div>
+  </section>
+
+  <%- include('../partials/public-saas-footer') %>
+</body>
+</html>

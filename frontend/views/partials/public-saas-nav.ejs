@@ -1,0 +1,24 @@
+<% var brand = typeof appName !== 'undefined' && appName ? appName : 'Fiberix'; %>
+<% var page = typeof saasPage !== 'undefined' ? saasPage : 'home'; %>
+<header class="saas-nav">
+  <div class="saas-wrap saas-nav-inner">
+    <a class="saas-brand" href="/">
+      <% if (typeof logoUrl !== 'undefined' && logoUrl) { %>
+        <img src="<%= logoUrl %>" alt="<%= brand %>" class="saas-brand-logo">
+      <% } else { %>
+        <span class="saas-brand-mark"><%= String(brand).charAt(0) %></span>
+      <% } %>
+      <span class="saas-brand-name"><%= brand %></span>
+    </a>
+    <button type="button" class="saas-nav-toggle" id="saasNavToggle" aria-expanded="false" aria-controls="saasNavLinks">Menu</button>
+    <nav class="saas-nav-links" id="saasNavLinks">
+      <a href="/#fitur">Fitur</a>
+      <a href="/#cara-kerja">Cara kerja</a>
+      <a href="/#faq">FAQ</a>
+      <a href="/login" class="saas-btn saas-btn-ghost">Masuk</a>
+      <% if (page !== 'daftar') { %>
+        <a href="/mitra/daftar" class="saas-btn saas-btn-primary">Daftar</a>
+      <% } %>
+    </nav>
+  </div>
+</header>
