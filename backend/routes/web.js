@@ -16,6 +16,8 @@ const {
   blockSalesArea,
 } = require('../middleware/salesAccess');
 const { allowHrisAdmin } = require('../middleware/hrisAccess');
+const { allowTenantArea } = require('../middleware/tenantAccess');
+const { homePathForRole } = require('../utils/tenantScope');
 
 // Login page — auto-redirect kalau user sudah punya session valid.
 // Cek cookie 'token' (HttpOnly yang di-set saat login berhasil). Kalau JWT
@@ -34,14 +36,7 @@ router.get('/login', async (req, res) => {
           include: [{ model: Role, as: 'role' }]
         });
         if (user && user.is_active) {
-          const roleName = (user.role?.name || '').toLowerCase();
-          let dest = '/dashboard';
-          if (roleName === 'technician') dest = '/technician';
-          else if (roleName === 'collector')  dest = '/collect/field';
-          else if (roleName === 'finance')    dest = '/finance';
-          else if (roleName === 'noc')        dest = '/noc';
-          else if (roleName === 'sales')      dest = '/sales';
-          return res.redirect(dest);
+          return res.redirect(homePathForRole(user.role?.name));
         }
         // user tidak aktif / tidak ada — clear cookie
         res.clearCookie('token');
@@ -59,13 +54,7 @@ router.get('/login', async (req, res) => {
 
 // Root redirect — role-aware
 router.get('/', authenticate, (req, res) => {
-  const roleName = (req.user?.role?.name || '').toLowerCase();
-  if (roleName === 'technician') return res.redirect('/technician');
-  if (roleName === 'collector')  return res.redirect('/collect/field');
-  if (roleName === 'finance')    return res.redirect('/finance');
-  if (roleName === 'noc')        return res.redirect('/noc');
-  if (roleName === 'sales')      return res.redirect('/sales');
-  return res.redirect('/dashboard');
+  return res.redirect(homePathForRole(req.user?.role?.name));
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -126,9 +115,45 @@ router.use((req, res, next) => {
   next();
 });
 
+const _tenantAllowedPaths = new Set([
+  '/tenant', '/customers', '/billing', '/payments', '/packages',
+  '/login', '/logout'
+]);
+const _tenantAllowedPrefixes = ['/customers/', '/billing/', '/payments/', '/packages/'];
+router.use((req, res, next) => {
+  if (req.method !== 'GET') return next();
+  const token = req.cookies && req.cookies.token;
+  if (!token) return next();
+  try {
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const roleName = (decoded.role || decoded.roleName || '').toLowerCase();
+    if (roleName === 'tenant_owner') {
+      const allowed = _tenantAllowedPaths.has(req.path)
+        || _tenantAllowedPrefixes.some(p => req.path.startsWith(p));
+      if (!allowed) return res.redirect('/tenant');
+    }
+  } catch (_) { /* token invalid → authenticate */ }
+  next();
+});
+
 // Dashboard utama — admin-only (role finance/noc/sales di-redirect ke dashboard masing-masing)
 router.get('/dashboard', authenticate, blockFinanceArea, blockNocArea, blockSalesArea, (req, res) => {
   res.render('pages/dashboard', { title: 'Dashboard', user: req.user, active: 'dashboard' });
+});
+
+router.get('/tenant', authenticate, allowTenantArea, (req, res) => {
+  res.render('pages/tenant-dashboard', {
+    title: 'Dashboard Tenant',
+    user: req.user,
+    active: 'tenant-dashboard'
+  });
+});
+
+router.get('/tenants', authenticate, (req, res) => {
+  const role = (req.user?.role?.name || '').toLowerCase();
+  if (role !== 'superadmin' && role !== 'admin') return res.redirect('/tenant');
+  res.render('pages/tenants', { title: 'Multi Tenant', user: req.user, active: 'tenants' });
 });
 
 // ═══════════════════════════════════════════════════════════════════

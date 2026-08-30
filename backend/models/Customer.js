@@ -61,6 +61,11 @@ module.exports = (sequelize) => {
       type: DataTypes.DATE,
       allowNull: true
     },
+    tenant_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: { model: 'tenants', key: 'id' }
+    },
     package_id: {
       type: DataTypes.INTEGER,
       allowNull: true,

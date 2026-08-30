@@ -27,6 +27,8 @@ const { demoGuard } = require('../middleware/demoGuard');
 const { apiBlockFinanceArea } = require('../middleware/financeAccess');
 const { apiBlockNocArea }     = require('../middleware/nocAccess');
 const { apiBlockSalesArea }   = require('../middleware/salesAccess');
+const { apiBlockTenantOwner } = require('../middleware/tenantAccess');
+const TenantController = require('../controllers/TenantController');
 const demoRoutes = require('./demo');
 
 // Controllers (existing)
@@ -190,6 +192,25 @@ const _salesBlockedPrefixes = [
 for (const p of _salesBlockedPrefixes) {
   router.use(p, authenticate, apiBlockSalesArea);
 }
+
+const _tenantBlockedPrefixes = [
+  '/keuangan', '/finance', '/laporan',
+  '/devices', '/infrastructure', '/monitoring', '/mikrotik',
+  '/genieacs', '/olt', '/ont', '/hotspot', '/isolir',
+  '/wa', '/whatsapp', '/broadcast', '/email-broadcast', '/mikrotik-backup', '/message-logs',
+  '/users', '/roles', '/permissions', '/activity-logs', '/system',
+  '/dashboard', '/tenants'
+];
+for (const p of _tenantBlockedPrefixes) {
+  router.use(p, authenticate, apiBlockTenantOwner);
+}
+
+router.get('/tenant/dashboard', authenticate, demoGuard, TenantController.dashboard);
+router.get('/tenants', authenticate, demoGuard, authorize('superadmin', 'admin'), TenantController.list);
+router.post('/tenants', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('create', 'tenant'), TenantController.create);
+router.put('/tenants/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'tenant'), TenantController.update);
+router.post('/tenants/:id/owners', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('create', 'tenant_owner'), TenantController.createOwner);
+router.post('/tenants/:id/assign-customers', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'tenant'), TenantController.assignCustomers);
 
 // ===== DASHBOARD =====
 router.get('/dashboard/overview', authenticate, demoGuard, DashboardController.overview);

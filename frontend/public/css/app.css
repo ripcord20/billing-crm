@@ -1942,3 +1942,73 @@ input, select, textarea { font-family: inherit; }
   .iface-select { min-width:90px; max-width:120px; font-size:11px; }
   .bw-trends-controls { flex-wrap:wrap; gap:6px; }
 }
+
+/* ===== Tenant owner dashboard + admin tenants ===== */
+.tod-page { font-family: 'DM Sans', sans-serif; }
+.tod-sub { margin: 4px 0 0; font-size: 13px; color: var(--text-secondary); }
+.tod-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.tod-select, .tod-input {
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--bg-input); color: var(--text); font-family: inherit; font-size: 13px;
+}
+.tod-kpi-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px;
+}
+.tod-kpi {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 16px 18px; box-shadow: var(--shadow-sm);
+}
+.tod-kpi.ok { box-shadow: inset 3px 0 0 var(--success); }
+.tod-kpi.warn { box-shadow: inset 3px 0 0 var(--warning); }
+.tod-kpi-label { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+.tod-kpi-value { font-size: 22px; font-weight: 800; color: var(--text); margin: 6px 0 2px; letter-spacing: -.03em; }
+.tod-kpi-sub { font-size: 11.5px; color: var(--text-muted); }
+.tod-grid { display: grid; grid-template-columns: 1.4fr .8fr; gap: 16px; margin-bottom: 16px; }
+.tod-grid-tables { grid-template-columns: 1fr 1fr; }
+.tod-muted { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+.tod-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tod-table th {
+  text-align: left; padding: 10px 14px; color: var(--text-muted); font-size: 11px;
+  text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border);
+}
+.tod-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text); }
+.tod-name { font-weight: 700; }
+.tod-cid { font-size: 11px; color: var(--text-muted); }
+.tod-amt { font-weight: 700; white-space: nowrap; }
+.tod-empty { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
+.tod-legend { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.tod-leg-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); }
+.tod-note {
+  background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412;
+  border-radius: var(--radius); padding: 12px 14px; margin-bottom: 16px; font-size: 13px;
+}
+.tod-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.tod-badge.active { background: #dcfce7; color: #15803d; }
+.tod-badge.suspended { background: #fee2e2; color: #b91c1c; }
+.tod-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.tod-btn {
+  border: 1px solid var(--border); background: var(--bg-card); color: var(--text);
+  border-radius: 8px; padding: 6px 9px; font-size: 12px; font-weight: 600;
+  cursor: pointer; font-family: inherit; text-decoration: none;
+}
+.tod-btn:hover { background: var(--bg-hover); color: var(--primary); }
+.tn-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(13,27,62,.45);
+  z-index: 80; align-items: center; justify-content: center; padding: 20px;
+}
+.tn-overlay.open { display: flex; }
+.tn-modal {
+  width: min(440px, 94vw); background: var(--bg-card); border-radius: 16px;
+  padding: 22px 20px; box-shadow: var(--shadow-lg);
+}
+.tn-modal h3 { margin: 0 0 8px; }
+.tn-modal label { display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin: 10px 0 4px; }
+.tn-modal .tod-input { width: 100%; box-sizing: border-box; }
+.tod-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+[data-theme="dark"] .tod-note { background: #3b2a10; border-color: #854d0e; color: #fde68a; }
+@media (max-width: 900px) {
+  .tod-kpi-row, .tod-grid, .tod-grid-tables { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .tod-kpi-row, .tod-grid, .tod-grid-tables { grid-template-columns: 1fr; }
+}

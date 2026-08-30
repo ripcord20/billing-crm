@@ -442,8 +442,40 @@ const startServer = async () => {
           is_system: true
         }
       });
+      await Role.findOrCreate({
+        where: { name: 'tenant_owner' },
+        defaults: {
+          name: 'tenant_owner',
+          display_name: 'Pemilik Tenant',
+          description: 'Pemilik usaha tenant: dashboard pelanggan, tagihan, dan penerimaan.',
+          is_system: true
+        }
+      });
     } catch (e) {
       logger.warn('Failed to ensure finance role: ' + (e.message || e));
+    }
+
+    try {
+      const { Tenant } = require('./models');
+      await Tenant.sync();
+      const adds = [
+        ['users', 'tenant_id', 'INT NULL'],
+        ['customers', 'tenant_id', 'INT NULL']
+      ];
+      for (const [table, col, ddl] of adds) {
+        const [rows] = await db.sequelize.query(
+          `SELECT COUNT(*) AS c FROM information_schema.columns
+            WHERE table_schema = DATABASE() AND table_name = :table AND column_name = :col`,
+          { replacements: { table, col } }
+        );
+        const exists = rows && rows[0] && parseInt(rows[0].c, 10) > 0;
+        if (!exists) {
+          await db.sequelize.query(`ALTER TABLE ${table} ADD COLUMN ${col} ${ddl}`);
+          logger.info(`Migrated: ${table}.${col} column added`);
+        }
+      }
+    } catch (e) {
+      logger.warn('Failed to ensure tenant schema: ' + (e.message || e));
     }
 
     // Idempotent ALTER untuk kolom tracking reminder WA — aman dipanggil

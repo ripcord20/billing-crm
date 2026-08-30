@@ -35,6 +35,7 @@
 <% const isFinanceUser = user && user.role && (user.role.name === 'finance'); %>
 <% const isNocUser     = user && user.role && (user.role.name === 'noc'); %>
 <% const isSalesUser   = user && user.role && (user.role.name === 'sales'); %>
+<% const isTenantOwner = user && user.role && (user.role.name === 'tenant_owner'); %>
 <% function demoHide(flag) { return flag ? 'style="display:none;"' : ''; } %>
 <% function financeHide(flag) { return flag ? 'style="display:none;"' : ''; } %>
   <div class="sidebar-header">
@@ -365,6 +366,34 @@
       </a>
     </div>
 
+  <% } else if (isTenantOwner) { %>
+    <div class="nav-section">
+      <span class="nav-section-title">USAHA SAYA</span>
+      <a href="/tenant" class="nav-item <%= active === 'tenant-dashboard' ? 'active' : '' %>">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        <span>Dashboard Tenant</span>
+      </a>
+    </div>
+    <div class="nav-section">
+      <span class="nav-section-title">BILLING</span>
+      <a href="/customers" class="nav-item <%= active === 'customers' ? 'active' : '' %>">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        <span>Pelanggan</span>
+      </a>
+      <a href="/billing" class="nav-item <%= active === 'billing' ? 'active' : '' %>">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        <span>Tagihan</span>
+      </a>
+      <a href="/payments" class="nav-item <%= active === 'payments' ? 'active' : '' %>">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+        <span>Pembayaran</span>
+      </a>
+      <a href="/packages" class="nav-item <%= active === 'packages' ? 'active' : '' %>">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        <span>Paket</span>
+      </a>
+    </div>
+
   <% } else { %>
 
     <!-- OVERVIEW -->
@@ -386,6 +415,10 @@
       <a href="/sales" class="nav-item <%= active === 'sales-dashboard' ? 'active' : '' %>">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
         <span>Sales Dashboard</span>
+      </a>
+      <a href="/tenants" class="nav-item <%= active === 'tenants' ? 'active' : '' %>">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-8h6v8"/></svg>
+        <span>Multi Tenant</span>
       </a>
       <% } %>
     </div>

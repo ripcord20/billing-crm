@@ -44,6 +44,16 @@ class BillingController {
       if (year)  where.period_year  = year;
 
       // Search by customer name, CID, atau invoice number
+      const { getTenantId } = require('../utils/tenantScope');
+      const tenantId = getTenantId(req);
+      const customerWhere = {};
+      if (search) {
+        customerWhere[Op.or] = [
+          { name:        { [Op.like]: '%' + search + '%' } },
+          { customer_id: { [Op.like]: '%' + search + '%' } }
+        ];
+      }
+      if (tenantId) customerWhere.tenant_id = tenantId;
       const includeOpts = [
         {
           model: Customer, as: 'customer',
@@ -51,11 +61,8 @@ class BillingController {
           // bisa menghitung "jatuh tempo berikutnya" (= due_date + 1 bulan) dan
           // menampilkan kondisi pelanggan tanpa request tambahan.
           attributes: ['id', 'customer_id', 'name', 'phone', 'email', 'due_date', 'status'],
-          where: search ? { [Op.or]: [
-            { name:        { [Op.like]: '%' + search + '%' } },
-            { customer_id: { [Op.like]: '%' + search + '%' } }
-          ]} : undefined,
-          required: !!search
+          where: Object.keys(customerWhere).length ? customerWhere : undefined,
+          required: !!search || !!tenantId
         },
         {
           model: Payment, as: 'payments',

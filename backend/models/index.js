@@ -33,6 +33,7 @@ sequelize.afterConnect(async (connection) => {
 // Import Models
 const User = require('./User')(sequelize);
 const Role = require('./Role')(sequelize);
+const Tenant = require('./Tenant')(sequelize);
 const Permission = require('./Permission')(sequelize);
 const RolePermission = require('./RolePermission')(sequelize);
 const Customer = require('./Customer')(sequelize);
@@ -183,6 +184,12 @@ AssetHistory.belongsTo(User, { foreignKey: 'performed_by', as: 'performer' });
 Role.hasMany(User, { foreignKey: 'role_id', as: 'users' });
 User.belongsTo(Role, { foreignKey: 'role_id', as: 'role' });
 
+// Tenant <-> User / Customer
+Tenant.hasMany(User, { foreignKey: 'tenant_id', as: 'users' });
+User.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+Tenant.hasMany(Customer, { foreignKey: 'tenant_id', as: 'customers' });
+Customer.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+
 // Role <-> Permission (Many-to-Many)
 Role.belongsToMany(Permission, { through: RolePermission, foreignKey: 'role_id', as: 'permissions' });
 Permission.belongsToMany(Role, { through: RolePermission, foreignKey: 'permission_id', as: 'roles' });
@@ -246,6 +253,7 @@ const db = {
   Sequelize,
   User,
   Role,
+  Tenant,
   Permission,
   RolePermission,
   Customer,

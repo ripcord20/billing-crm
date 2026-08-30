@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { User, Role, Permission } = require('../models');
+const { User, Role, Permission, Tenant } = require('../models');
 
 // Bangun URL redirect ke /login sambil menyimpan tujuan awal (?next=...).
 // Hanya path internal yang aman (diawali '/', bukan '//' atau 'http') yang
@@ -58,6 +58,10 @@ const authenticate = async (req, res, next) => {
           as: 'permissions',
           through: { attributes: [] }
         }]
+      }, {
+        model: Tenant,
+        as: 'tenant',
+        required: false
       }]
     });
 
@@ -120,6 +124,7 @@ const hasPermission = (...permissions) => {
     const roleName = (req.user.role?.name || '').toLowerCase();
     const ROLE_GRANTS = {
       finance: ['customer_view', 'customer_create', 'customer_update', 'customer_delete'],
+      tenant_owner: ['customer_view', 'customer_create', 'customer_update'],
     };
     const granted = ROLE_GRANTS[roleName] || [];
     if (granted.length && permissions.some(p => granted.includes(p))) {

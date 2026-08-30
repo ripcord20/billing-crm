@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <div class="app-layout">
+    <%- include('../partials/sidebar') %>
+    <div class="main-content">
+      <%- include('../partials/topbar') %>
+      <main class="page-content tod-page">
+        <div class="page-header">
+          <div class="page-header-left">
+            <h1>Multi Tenant</h1>
+            <p class="tod-sub">Buat tenant, pemilik dashboard, dan ikat pelanggan</p>
+          </div>
+          <div class="page-header-right">
+            <button class="btn-primary" type="button" onclick="TenantsAdmin.openCreate()">+ Tenant baru</button>
+          </div>
+        </div>
+
+        <div class="tod-note" id="tnUnassigned" style="display:none;"></div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title-group"><h3>Daftar tenant</h3></div>
+            <input type="search" id="tnSearch" class="tod-select" placeholder="Cari nama / email..." oninput="TenantsAdmin.onSearch()">
+          </div>
+          <div class="card-body" style="padding:0;">
+            <table class="tod-table">
+              <thead>
+                <tr>
+                  <th>Tenant</th>
+                  <th>Status</th>
+                  <th>Pelanggan</th>
+                  <th>Pemilik</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="tnTable">
+                <tr><td colspan="5"><div class="sk-line"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="tn-overlay" id="tnOverlay" onclick="if(event.target===this)TenantsAdmin.closeModal()">
+    <div class="tn-modal" id="tnModal"></div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/tenants-admin.js"></script>
+</body>
+</html>

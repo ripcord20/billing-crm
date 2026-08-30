@@ -1,5 +1,6 @@
 const { Invoice, Payment, PaymentDeferral, Customer, Package, User, sequelize } = require('../models');
 const { resolvePromiseDate, normalizeBulkPayload } = require('../utils/paymentExtras');
+const { applyTenantSql, assertCustomerTenant, getTenantId } = require('../utils/tenantScope');
 const { Op } = require('sequelize');
 const { generateInvoiceNumber } = require('../utils/helpers');
 const moment = require('moment');
@@ -57,6 +58,11 @@ class PaymentController {
       const year  = parseInt(req.query.year)  || moment().year();
       const prevMonth = month === 1 ? 12 : month - 1;
       const prevYear  = month === 1 ? year - 1 : year;
+      const tenant = applyTenantSql(req, 'c');
+      const tJoin = tenant.sql ? 'JOIN customers c ON c.id = i.customer_id' : '';
+      const tInvJoin = tenant.sql ? 'JOIN customers c ON c.id = invoices.customer_id' : '';
+      const tDefJoin = tenant.sql ? 'JOIN customers c ON c.id = payment_deferrals.customer_id' : '';
+      const trep = tenant.replacements;
 
       // Current period totals
       const [cur] = await sequelize.query(
@@ -66,8 +72,9 @@ class PaymentController {
                 SUM(p.payment_method IN ('dana','ovo','gopay','qris')) AS digital_count
          FROM payments p
          JOIN invoices i ON p.invoice_id = i.id
-         WHERE i.period_year=:year AND i.period_month=:month`,
-        { replacements: { year, month }, type: sequelize.QueryTypes.SELECT }
+         ${tJoin}
+         WHERE i.period_year=:year AND i.period_month=:month${tenant.sql}`,
+        { replacements: { year, month, ...trep }, type: sequelize.QueryTypes.SELECT }
       );
 
       // Previous period
@@ -75,24 +82,27 @@ class PaymentController {
         `SELECT COUNT(*) AS total_tx, COALESCE(SUM(p.amount),0) AS total_amount
          FROM payments p
          JOIN invoices i ON p.invoice_id = i.id
-         WHERE i.period_year=:year AND i.period_month=:month`,
-        { replacements: { year: prevYear, month: prevMonth }, type: sequelize.QueryTypes.SELECT }
+         ${tJoin}
+         WHERE i.period_year=:year AND i.period_month=:month${tenant.sql}`,
+        { replacements: { year: prevYear, month: prevMonth, ...trep }, type: sequelize.QueryTypes.SELECT }
       );
 
       // Total Invoices (semua tagihan bulan ini)
       const [invoiceTotals] = await sequelize.query(
         `SELECT COUNT(*) AS total_invoices, COALESCE(SUM(total),0) AS total_invoice_amount
          FROM invoices
-         WHERE period_year=:year AND period_month=:month`,
-        { replacements: { year, month }, type: sequelize.QueryTypes.SELECT }
+         ${tInvJoin}
+         WHERE period_year=:year AND period_month=:month${tenant.sql}`,
+        { replacements: { year, month, ...trep }, type: sequelize.QueryTypes.SELECT }
       );
 
       // Overdue/Unpaid Invoices (tagihan tertunggak)
       const [overdueData] = await sequelize.query(
         `SELECT COUNT(*) AS overdue_count, COALESCE(SUM(total),0) AS overdue_amount
          FROM invoices
-         WHERE period_year=:year AND period_month=:month AND status IN ('unpaid','overdue')`,
-        { replacements: { year, month }, type: sequelize.QueryTypes.SELECT }
+         ${tInvJoin}
+         WHERE period_year=:year AND period_month=:month AND status IN ('unpaid','overdue')${tenant.sql}`,
+        { replacements: { year, month, ...trep }, type: sequelize.QueryTypes.SELECT }
       );
 
       let deferralStats = { open_count: 0, overdue_promise_count: 0 };
@@ -102,8 +112,9 @@ class PaymentController {
              SUM(status='open') AS open_count,
              SUM(status='open' AND promise_date < CURDATE()) AS overdue_promise_count
            FROM payment_deferrals
-           WHERE period_year=:year AND period_month=:month`,
-          { replacements: { year, month }, type: sequelize.QueryTypes.SELECT }
+           ${tDefJoin}
+           WHERE period_year=:year AND period_month=:month${tenant.sql}`,
+          { replacements: { year, month, ...trep }, type: sequelize.QueryTypes.SELECT }
         );
         deferralStats = {
           open_count: parseInt(drow?.open_count || 0),
@@ -122,9 +133,10 @@ class PaymentController {
                 COUNT(*) AS cnt, COALESCE(SUM(p.amount),0) AS total
          FROM payments p
          JOIN invoices i ON p.invoice_id = i.id
-         WHERE ${msWhere}
+         ${tJoin}
+         WHERE ${msWhere}${tenant.sql}
          GROUP BY method ORDER BY total DESC`,
-        { replacements: { year, month }, type: sequelize.QueryTypes.SELECT }
+        { replacements: { year, month, ...trep }, type: sequelize.QueryTypes.SELECT }
       );
 
       const prevTx  = parseInt(prev?.total_tx || 0);
@@ -202,10 +214,13 @@ class PaymentController {
 
       let custWhere = '';
       const params = { year: y, month: m };
+      const tenant = applyTenantSql(req, 'c');
+      Object.assign(params, tenant.replacements);
       if (search) {
         custWhere = `AND (c.name LIKE :search OR c.customer_id LIKE :search OR c.phone LIKE :search)`;
         params.search = '%' + search + '%';
       }
+      custWhere += tenant.sql;
 
       const [countRow] = await sequelize.query(
         `SELECT COUNT(*) AS n FROM payments p
@@ -271,6 +286,10 @@ class PaymentController {
         transaction: t
       });
       if (!customer) { await t.rollback(); return res.status(404).json({ success: false, message: 'Customer tidak ditemukan' }); }
+      if (!assertCustomerTenant(req, customer)) {
+        await t.rollback();
+        return res.status(404).json({ success: false, message: 'Customer tidak ditemukan' });
+      }
 
       const pm = parseInt(period_month) || moment().month() + 1;
       const py = parseInt(period_year)  || moment().year();
@@ -1574,7 +1593,8 @@ class PaymentController {
   async searchCustomers(req, res) {
     try {
       const { q } = req.query;
-      const where = { status: { [Op.in]: ['active', 'isolated'] } };
+      const { applyTenantWhere } = require('../utils/tenantScope');
+      const where = applyTenantWhere(req, { status: { [Op.in]: ['active', 'isolated'] } });
       if (q) where[Op.or] = [
         { name: { [Op.like]: '%' + q + '%' } },
         { customer_id: { [Op.like]: '%' + q + '%' } },
@@ -1610,6 +1630,9 @@ class PaymentController {
         include: [{ model: Package, as: 'package' }]
       });
       if (!customer) return res.status(404).json({ success: false, message: 'Customer tidak ditemukan' });
+      if (!assertCustomerTenant(req, customer)) {
+        return res.status(404).json({ success: false, message: 'Customer tidak ditemukan' });
+      }
 
       const pm = parseInt(period_month) || moment().month() + 1;
       const py = parseInt(period_year) || moment().year();
@@ -1690,6 +1713,9 @@ class PaymentController {
       const offset = (page - 1) * limit;
       const where = [];
       const params = {};
+      const tenant = applyTenantSql(req, 'c');
+      Object.assign(params, tenant.replacements);
+      if (tenant.sql) where.push('c.tenant_id = :_tenantId');
       if (status && status !== 'all') {
         where.push('d.status = :status');
         params.status = status;
@@ -1760,9 +1786,11 @@ class PaymentController {
       const year = parseInt(req.query.year) || moment().year();
       const limit = Math.min(200, parseInt(req.query.limit) || 200);
       const params = { month, year, limit };
-      let searchSql = '';
+      const tenant = applyTenantSql(req, 'c');
+      Object.assign(params, tenant.replacements);
+      let searchSql = tenant.sql;
       if (q) {
-        searchSql = 'AND (c.name LIKE :q OR c.customer_id LIKE :q OR c.phone LIKE :q)';
+        searchSql += ' AND (c.name LIKE :q OR c.customer_id LIKE :q OR c.phone LIKE :q)';
         params.q = '%' + q + '%';
       }
       const rows = await sequelize.query(
@@ -1810,7 +1838,7 @@ class PaymentController {
           include: [{ model: Package, as: 'package' }],
           transaction: t
         });
-        if (!customer) {
+        if (!customer || !assertCustomerTenant(req, customer)) {
           await t.rollback();
           fail.push({ customer_id: item.customer_id, message: 'Pelanggan tidak ditemukan' });
           continue;
