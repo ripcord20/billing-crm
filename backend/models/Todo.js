@@ -14,8 +14,8 @@ module.exports = (sequelize) => {
       defaultValue: 'medium'
     },
     due_date: { type: DataTypes.DATEONLY, allowNull: true },
-    assigned_to: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
-    created_by: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+    assigned_to: { type: DataTypes.INTEGER, allowNull: true },
+    created_by: { type: DataTypes.INTEGER, allowNull: true },
     position: { type: DataTypes.INTEGER, defaultValue: 0, comment: 'Sort order dalam kolom' },
     tags: { type: DataTypes.JSON, allowNull: true },
     color: { type: DataTypes.STRING(20), defaultValue: 'blue' }

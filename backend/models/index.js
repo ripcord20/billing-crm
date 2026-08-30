@@ -22,8 +22,9 @@ const sequelize = new Sequelize(
 // Disable ONLY_FULL_GROUP_BY di setiap koneksi baru dari pool
 sequelize.afterConnect(async (connection) => {
   return new Promise((resolve, reject) => {
+    const extra = env === 'development' ? '; SET FOREIGN_KEY_CHECKS=0' : '';
     connection.query(
-      "SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'",
+      "SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'" + extra,
       (err) => { if (err) reject(err); else resolve(); }
     );
   });

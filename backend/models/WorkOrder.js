@@ -32,7 +32,7 @@ module.exports = (sequelize) => {
 
     // Relasi ke customer & ticket (opsional)
     customer_id: {
-      type: DataTypes.INTEGER.UNSIGNED, allowNull: true,
+      type: DataTypes.INTEGER, allowNull: true,
       references: { model: 'customers', key: 'id' }
     },
     ticket_id: {
@@ -41,7 +41,7 @@ module.exports = (sequelize) => {
     },
 
     // Teknisi: bisa user sistem ATAU nama manual
-    assigned_user_id:  { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+    assigned_user_id:  { type: DataTypes.INTEGER, allowNull: true },
     technician_name:   { type: DataTypes.STRING(150), allowNull: true, comment: 'Nama teknisi manual jika bukan user sistem' },
     technician_phone:  { type: DataTypes.STRING(20),  allowNull: true },
 
@@ -65,7 +65,7 @@ module.exports = (sequelize) => {
     photos: { type: DataTypes.JSON, defaultValue: [] },
 
     // Siapa yang buat
-    created_by: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true }
+    created_by: { type: DataTypes.INTEGER, allowNull: true }
 
   }, {
     tableName: 'work_orders',
