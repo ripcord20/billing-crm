@@ -136,6 +136,12 @@ async function run(db) {
     await defaultTenant.update({ radius_server_id: radiusSrv.id });
   }
 
+  try {
+    await require('./RadiusLocalBootstrap').run(db);
+  } catch (e) {
+    logger.warn('[RadiusTenant] local bootstrap: ' + e.message);
+  }
+
   logger.info('Radius/NAS/tenant migration OK (additive, no destructive ALTER)');
 }
 

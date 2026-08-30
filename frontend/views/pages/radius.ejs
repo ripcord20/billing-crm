@@ -16,7 +16,7 @@
       <div class="page-header">
         <div class="page-header-left">
           <h1>Modul RADIUS</h1>
-          <p style="margin:4px 0 0;color:#64748b;font-size:13px;">Integrasi billing (192.168.22.99) ke FreeRADIUS + daloRADIUS (192.168.22.9) lewat MySQL schema radius — tanpa mengubah tabel tagihan yang sudah ada.</p>
+          <p style="margin:4px 0 0;color:#64748b;font-size:13px;">Koneksi SQL ke schema <code>radius</code>. Host daemon FreeRADIUS bisa 192.168.22.9; MySQL untuk sync/tes memakai 127.0.0.1 di server billing jika port 3306 remote tertutup.</p>
         </div>
       </div>
 
@@ -24,7 +24,10 @@
         <div class="card-body">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <strong>Server FreeRADIUS</strong>
-            <button class="btn btn-sm btn-primary" onclick="openSrv()">+ Server</button>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-sm btn-secondary" type="button" onclick="ensureLocal()">Pakai MySQL lokal</button>
+              <button class="btn btn-sm btn-primary" type="button" onclick="openSrv()">+ Server</button>
+            </div>
           </div>
           <table class="data-table">
             <thead><tr><th>Nama</th><th>Host</th><th>MySQL</th><th>Status tes</th><th></th></tr></thead>
@@ -64,7 +67,7 @@
     <label style="font-size:13px;">Host FreeRADIUS</label>
     <input id="sHost" value="192.168.22.9" style="width:100%;margin:6px 0 8px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
     <label style="font-size:13px;">MySQL host</label>
-    <input id="sMysql" value="192.168.22.9" style="width:100%;margin:6px 0 8px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <input id="sMysql" value="127.0.0.1" style="width:100%;margin:6px 0 8px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
     <label style="font-size:13px;">Database</label>
     <input id="sDb" value="radius" style="width:100%;margin:6px 0 8px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
     <label style="font-size:13px;">User MySQL</label>

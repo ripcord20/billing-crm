@@ -23,8 +23,10 @@ async function pushNas(row) {
       community: row.community,
       description: row.description
     });
-    await row.update({ last_sync_at: new Date(), last_error: null });
-    return { success: true };
+    const patch = { last_sync_at: new Date(), last_error: null };
+    if (!row.radius_server_id && server.id) patch.radius_server_id = server.id;
+    await row.update(patch);
+    return { success: true, server_id: server.id, mysql_host: server.mysql_host };
   } catch (e) {
     await row.update({ last_error: String(e.message).slice(0, 250) });
     return { success: false, message: e.message };

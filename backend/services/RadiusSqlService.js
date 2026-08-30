@@ -8,6 +8,7 @@
 const mysql = require('mysql2/promise');
 const { decryptSecret } = require('../utils/secretBox');
 const logger = require('../utils/logger');
+const { describeMysqlError } = require('../utils/radiusMysql');
 
 const pools = new Map();
 
@@ -24,11 +25,16 @@ function poolKey(server) {
 async function getPool(server) {
   const key = poolKey(server);
   if (pools.has(key)) return pools.get(key);
-  const password = decryptSecret(server.mysql_password || '');
+  let password = '';
+  try {
+    password = decryptSecret(server.mysql_password || '');
+  } catch (e) {
+    throw Object.assign(new Error('Password MySQL RADIUS tidak bisa didekripsi. Isi ulang di modul RADIUS.'), { code: 'ER_ACCESS_DENIED_ERROR' });
+  }
   const pool = mysql.createPool({
-    host: server.mysql_host,
+    host: server.mysql_host || '127.0.0.1',
     port: server.mysql_port || 3306,
-    user: server.mysql_user,
+    user: server.mysql_user || 'radius',
     password,
     database: server.mysql_database || 'radius',
     waitForConnections: true,
@@ -37,6 +43,18 @@ async function getPool(server) {
   });
   pools.set(key, pool);
   return pool;
+}
+
+async function withPool(server, fn) {
+  try {
+    const pool = await getPool(server);
+    return await fn(pool);
+  } catch (e) {
+    invalidatePool(server);
+    const err = new Error(describeMysqlError(e, server));
+    err.code = e.code;
+    throw err;
+  }
 }
 
 function invalidatePool(server) {
@@ -48,10 +66,17 @@ function invalidatePool(server) {
   }
 }
 
+function invalidateAll() {
+  for (const pool of pools.values()) pool.end().catch(() => {});
+  pools.clear();
+}
+
 async function testConnection(server) {
-  const pool = await getPool(server);
-  const [rows] = await pool.query('SELECT 1 AS ok');
-  return { ok: true, ping: rows[0]?.ok === 1 };
+  return withPool(server, async (pool) => {
+    const [rows] = await pool.query('SELECT 1 AS ok');
+    const [[nas]] = await pool.query('SELECT COUNT(*) AS c FROM nas').catch(() => [[{ c: 0 }]]);
+    return { ok: true, ping: rows[0]?.ok === 1, nas_count: nas?.c || 0, host: server.mysql_host };
+  });
 }
 
 async function upsertCheck(pool, username, attribute, op, value) {
@@ -105,7 +130,7 @@ async function setUserGroup(pool, username, groupname) {
 }
 
 async function provisionUser(server, { username, password, groupname, rateLimit }) {
-  const pool = await getPool(server);
+  const pool = await withPool(server, (p) => Promise.resolve(p));
   await upsertCheck(pool, username, 'Cleartext-Password', ':=', password);
   await deleteCheck(pool, username, 'Auth-Type');
   if (groupname) await setUserGroup(pool, username, groupname);
@@ -115,12 +140,12 @@ async function provisionUser(server, { username, password, groupname, rateLimit 
 }
 
 async function isolateUser(server, username) {
-  const pool = await getPool(server);
+  const pool = await withPool(server, (p) => Promise.resolve(p));
   await upsertCheck(pool, username, 'Auth-Type', ':=', 'Reject');
 }
 
 async function restoreUser(server, username) {
-  const pool = await getPool(server);
+  const pool = await withPool(server, (p) => Promise.resolve(p));
   await deleteCheck(pool, username, 'Auth-Type');
 }
 
@@ -129,14 +154,14 @@ async function disableUser(server, username) {
 }
 
 async function deleteUser(server, username) {
-  const pool = await getPool(server);
+  const pool = await withPool(server, (p) => Promise.resolve(p));
   await pool.query('DELETE FROM radcheck WHERE username = ?', [username]);
   await pool.query('DELETE FROM radreply WHERE username = ?', [username]);
   await pool.query('DELETE FROM radusergroup WHERE username = ?', [username]);
 }
 
 async function upsertNas(server, nas) {
-  const pool = await getPool(server);
+  return withPool(server, async (pool) => {
   const [rows] = await pool.query('SELECT id FROM nas WHERE nasname = ? LIMIT 1', [nas.nasname]);
   const payload = {
     nasname: nas.nasname,
@@ -158,22 +183,23 @@ async function upsertNas(server, nas) {
     'INSERT INTO nas (nasname, shortname, type, ports, secret, community, description) VALUES (?,?,?,?,?,?,?)',
     [payload.nasname, payload.shortname, payload.type, payload.ports, payload.secret, payload.community, payload.description]
   );
-  return ins.insertId;
+    return ins.insertId;
+  });
 }
 
 async function deleteNas(server, nasname) {
-  const pool = await getPool(server);
-  await pool.query('DELETE FROM nas WHERE nasname = ?', [nasname]);
+  return withPool(server, (pool) => pool.query('DELETE FROM nas WHERE nasname = ?', [nasname]));
 }
 
 async function listNas(server) {
-  const pool = await getPool(server);
-  const [rows] = await pool.query('SELECT id, nasname, shortname, type, ports, description FROM nas ORDER BY nasname');
-  return rows;
+  return withPool(server, async (pool) => {
+    const [rows] = await pool.query('SELECT id, nasname, shortname, type, ports, description FROM nas ORDER BY nasname');
+    return rows;
+  });
 }
 
 async function listOnline(server, limit = 100) {
-  const pool = await getPool(server);
+  return withPool(server, async (pool) => {
   const [rows] = await pool.query(
     `SELECT radacctid, username, nasipaddress, framedipaddress, callingstationid,
             acctstarttime, acctsessiontime, acctinputoctets, acctoutputoctets, acctuniqueid
@@ -183,11 +209,12 @@ async function listOnline(server, limit = 100) {
       LIMIT ?`,
     [parseInt(limit, 10) || 100]
   );
-  return rows;
+    return rows;
+  });
 }
 
 async function listUsers(server, search, limit = 50) {
-  const pool = await getPool(server);
+  return withPool(server, async (pool) => {
   const like = '%' + (search || '') + '%';
   const [rows] = await pool.query(
     `SELECT username,
@@ -200,7 +227,8 @@ async function listUsers(server, search, limit = 50) {
       LIMIT ?`,
     [like, parseInt(limit, 10) || 50]
   );
-  return rows;
+    return rows;
+  });
 }
 
 async function safeCall(fn) {
@@ -215,6 +243,7 @@ async function safeCall(fn) {
 module.exports = {
   getPool,
   invalidatePool,
+  invalidateAll,
   testConnection,
   provisionUser,
   isolateUser,

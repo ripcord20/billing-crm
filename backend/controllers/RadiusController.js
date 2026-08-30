@@ -71,6 +71,23 @@ class RadiusController {
     }
   }
 
+  async ensureLocal(req, res) {
+    try {
+      const db = require('../models');
+      const result = await require('../services/RadiusLocalBootstrap').run(db);
+      RadiusSQL.invalidateAll();
+      if (!result.ok) return res.status(400).json({ success: false, message: result.message || 'Gagal siapkan schema lokal' });
+      const rows = await RadiusServer.findAll({ where: serverWhere(req), order: [['id', 'ASC']] });
+      res.json({
+        success: true,
+        data: rows,
+        message: 'Schema RADIUS lokal (127.0.0.1/radius) siap. Tes MySQL seharusnya berhasil.'
+      });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
   async testServer(req, res) {
     try {
       const row = await RadiusServer.findByPk(req.params.id);

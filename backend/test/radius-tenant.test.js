@@ -41,4 +41,11 @@ assert.strictEqual(decryptSecret(enc), 'radpass');
 assert.strictEqual(rateLimitFromPackage({ speed_up: 5, speed_down: 20 }), '5M/20M');
 assert.strictEqual(rateLimitFromPackage(null), null);
 
+const { describeMysqlError, FREERADIUS_TABLES, localRadiusPassword } = require('../utils/radiusMysql');
+assert.ok(describeMysqlError({ code: 'ECONNREFUSED', message: 'connect ECONNREFUSED 192.168.22.9:3306' }, { mysql_host: '192.168.22.9', mysql_port: 3306 }).includes('3306'));
+assert.ok(describeMysqlError({ code: 'ER_ACCESS_DENIED_ERROR', message: 'denied' }, { mysql_host: '127.0.0.1' }).includes('password'));
+assert.ok(FREERADIUS_TABLES.length >= 5);
+assert.ok(FREERADIUS_TABLES.every((s) => /CREATE TABLE IF NOT EXISTS/i.test(s)));
+assert.ok(localRadiusPassword().length >= 8);
+
 console.log('radius-tenant.test.js OK');
