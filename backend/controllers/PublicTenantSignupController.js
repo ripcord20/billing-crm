@@ -1,13 +1,12 @@
 'use strict';
 
 const jwt = require('jsonwebtoken');
-const { User, Tenant, ActivityLog, sequelize } = require('../models');
+const { ActivityLog } = require('../models');
 const logger = require('../utils/logger');
 const { homePathForRole } = require('../utils/tenantScope');
 const {
   validateTenantSignup,
-  uniqueSlug,
-  ensureTenantOwnerRole,
+  createMitraTenant,
   publicSignupEnabled
 } = require('../utils/tenantSignup');
 
@@ -29,38 +28,17 @@ class PublicTenantSignupController {
         return res.status(parsed.status || 400).json({ success: false, message: parsed.message });
       }
 
-      const { company_name, owner_name, email, password, phone } = parsed.data;
-
-      const exists = await User.findOne({ where: { email } });
-      if (exists) {
-        return res.status(400).json({ success: false, message: 'Email sudah terpakai' });
-      }
-
-      const role = await ensureTenantOwnerRole();
-      const slug = await uniqueSlug(company_name);
-
-      const created = await sequelize.transaction(async (t) => {
-        const tenant = await Tenant.create({
-          name: company_name,
-          slug,
-          email,
-          phone,
-          status: 'active',
+      let created;
+      try {
+        created = await createMitraTenant(parsed.data, {
           notes: 'Daftar mandiri dari halaman publik'
-        }, { transaction: t });
-
-        const user = await User.create({
-          name: owner_name,
-          email,
-          password,
-          phone,
-          role_id: role.id,
-          tenant_id: tenant.id,
-          is_active: true
-        }, { transaction: t });
-
-        return { tenant, user };
-      });
+        });
+      } catch (err) {
+        if (err.status === 400) {
+          return res.status(400).json({ success: false, message: err.message });
+        }
+        throw err;
+      }
 
       try {
         await ActivityLog.create({

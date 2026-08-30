@@ -30,6 +30,7 @@ const { apiBlockSalesArea }   = require('../middleware/salesAccess');
 const { apiBlockTenantOwner } = require('../middleware/tenantAccess');
 const TenantController = require('../controllers/TenantController');
 const PublicTenantSignupController = require('../controllers/PublicTenantSignupController');
+const InternalProvisionController = require('../controllers/InternalProvisionController');
 const demoRoutes = require('./demo');
 
 // Controllers (existing)
@@ -61,6 +62,9 @@ router.use('/reseller-admin', resellerAdminRoutes);
 // ===== AUTH =====
 router.post('/auth/login', AuthController.login);
 router.post('/public/tenant-signup', PublicTenantSignupController.signup);
+router.get('/internal/health', InternalProvisionController.health.bind(InternalProvisionController));
+router.get('/internal/mitra-summary', InternalProvisionController.summary.bind(InternalProvisionController));
+router.post('/internal/provision-tenant', InternalProvisionController.provision.bind(InternalProvisionController));
 router.post('/auth/refresh', AuthController.refreshToken);
 router.post('/auth/logout', authenticate, demoGuard, AuthController.logout);
 router.get('/auth/profile', authenticate, demoGuard, AuthController.profile);
