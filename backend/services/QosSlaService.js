@@ -14,7 +14,7 @@ const {
   shouldRaiseDdos, dnsCompare, classifyDns, alertAudience, alertRoles
 } = require('../utils/qosSla');
 const {
-  isCustomerTunnelIface, isUplinkIface, pppoeIfaceMatchesUsername, latestUniqueBy
+  isCustomerTunnelIface, isUplinkIface, isDdosWatchIface, pppoeIfaceMatchesUsername, latestUniqueBy
 } = require('../utils/deviceMetrics');
 
 const METRIC_RETENTION_DAYS = 7;
@@ -302,7 +302,7 @@ async function ackPppoeDdosAlerts() {
   let acked = 0;
   for (const a of open) {
     const ifn = (a.metadata && a.metadata.interface_name) || String(a.target_key || '');
-    if (!isCustomerTunnelIface(ifn) && !/pppoe/i.test(String(ifn))) continue;
+    if (isDdosWatchIface(ifn)) continue;
     await a.update({
       status: 'acked',
       acked_at: new Date(),
@@ -340,7 +340,7 @@ async function runBandwidthChecks(settings, opts = {}) {
   for (const [key, latest] of latestByIf) {
     const name = latest.interface_name;
     const tunnel = isCustomerTunnelIface(name);
-    const uplink = isUplinkIface(name);
+    const uplink = isDdosWatchIface(name);
     const hist = histByIf.get(key) || [];
     const baseline = hist.length > 1
       ? hist.slice(1, 13).reduce((a, b) => a + b, 0) / Math.max(1, Math.min(12, hist.length - 1))
@@ -454,7 +454,7 @@ async function runBandwidthChecks(settings, opts = {}) {
   }
 
   return {
-    interfaces: interfaces.filter((i) => isUplinkIface(i.interface_name) && !isCustomerTunnelIface(i.interface_name)),
+    interfaces: interfaces.filter((i) => isDdosWatchIface(i.interface_name)),
     upsell,
     sample_count: samples.length
   };

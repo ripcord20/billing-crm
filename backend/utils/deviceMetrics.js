@@ -67,13 +67,15 @@ function isCustomerTunnelIface(name, type) {
     n.includes('<pppoe')
     || n.startsWith('pppoe-')
     || n.startsWith('pppoe<')
-    || /^<?(l2tp|pptp|sstp|ovpn|wg)[-<]/.test(n)
-    || n.includes('wireguard')
-    || n.startsWith('<l2tp')
-    || n.startsWith('<pptp')
-    || n.startsWith('<sstp')
-    || n.startsWith('<ovpn')
+    || /pppoe|l2tp|pptp|sstp|ovpn|openvpn|wireguard/.test(n)
+    || /^<?wg[-<]/.test(n)
   );
+}
+
+/** DDoS/bottleneck watch: WAN/SFP only, never LAN ether or VPN tunnels. */
+function isDdosWatchIface(name, type) {
+  if (isCustomerTunnelIface(name, type) || isVirtualSwitchIface(name, type)) return false;
+  return /wan|sfp|combo|qsfp/.test(ifaceName(name));
 }
 
 function isVirtualSwitchIface(name, type) {
@@ -181,6 +183,7 @@ module.exports = {
   isCustomerTunnelIface,
   isVirtualSwitchIface,
   isUplinkIface,
+  isDdosWatchIface,
   pppoeIfaceMatchesUsername,
   pickTrafficIfaces,
   aggregateDeviceTraffic,

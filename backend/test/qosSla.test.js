@@ -22,6 +22,7 @@ const {
   displayCpuPercent,
   isCustomerTunnelIface,
   isUplinkIface,
+  isDdosWatchIface,
   pppoeIfaceMatchesUsername,
   aggregateDeviceTraffic,
   latestUniqueBy
@@ -107,6 +108,10 @@ assert.ok(!isCustomerTunnelIface('sfp-sfpplus1', 'sfp-sfpplus'));
 assert.ok(isUplinkIface('sfp-sfpplus1', 'sfp-sfpplus'));
 assert.ok(isUplinkIface('ether1', 'ether'));
 assert.ok(!isUplinkIface('<pppoe-andi>', 'pppoe-out'));
+assert.ok(isDdosWatchIface('sfp-sfpplus1', 'sfp-sfpplus'));
+assert.ok(!isDdosWatchIface('ether6', 'ether'));
+assert.ok(!isDdosWatchIface('BILLINGRADIUS_L2TP'));
+assert.ok(isCustomerTunnelIface('BILLINGRADIUS_L2TP'));
 assert.ok(pppoeIfaceMatchesUsername('<pppoe-andi>', 'andi'));
 assert.ok(!pppoeIfaceMatchesUsername('<pppoe-andika>', 'andi'));
 assert.ok(!pppoeIfaceMatchesUsername('<pppoe-andi>', 'an'));
