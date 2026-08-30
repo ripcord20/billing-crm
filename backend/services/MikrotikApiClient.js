@@ -149,7 +149,8 @@ class MikrotikApiClient {
     if (msg.includes('ECONNREFUSED')) {
       return reject(new Error(
         `Koneksi ditolak ke ${this.host}:${this.port}. ` +
-        `Pastikan service API aktif di MikroTik: /ip service enable api${this.useSSL ? '-ssl' : ''}`
+        `Pastikan service API aktif: /ip service enable api${this.useSSL ? '-ssl' : ''} ` +
+        `dan IP server billing diizinkan di /ip service set api address=`
       ));
     }
     if (msg.includes('ETIMEDOUT') || msg.includes('EHOSTUNREACH')) {

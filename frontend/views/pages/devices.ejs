@@ -243,6 +243,18 @@
     }
     .field textarea { resize:vertical; min-height:60px; font-family:inherit; }
     .field-hint { font-size:11px; color:var(--muted); margin-top:4px; }
+    .field-warn {
+      display:none;
+      margin-top:8px;
+      padding:8px 10px;
+      border-radius:10px;
+      background:#fff7ed;
+      border:1px solid #fdba74;
+      color:#9a3412;
+      font-size:12px;
+      line-height:1.45;
+    }
+    .field-warn code { font-size:11px; }
 
     .fieldset-group {
       background:#f8fafc;
@@ -784,6 +796,13 @@
               Aktifkan di MikroTik: <code>/ip service enable api</code> atau <code>www</code>.
               Untuk SSL/HTTPS, ganti API Port ke <strong>443</strong> (REST HTTPS) atau <strong>8729</strong> (Binary SSL).
             </div>
+            <div id="apiRestV6Warn" class="field-warn">
+              REST (<code>/rest</code>) hanya ada di RouterOS <strong>v7.1+</strong>.
+              RouterOS v6 membalas HTML <strong>404 Not Found</strong> — itu bukan salah password.
+              Pilih <strong>API Binary</strong>, port <code>8728</code>, user API (bukan Winbox saja),
+              lalu di MikroTik: <code>/ip service enable api</code>
+              dan izinkan IP server billing di <code>/ip service set api address=</code>.
+            </div>
           </div>
           <div class="form-grid">
             <div class="field">
@@ -1152,10 +1171,11 @@
     document.getElementById('devApiUser').value = '';
     document.getElementById('devApiPass').value = '';
     document.getElementById('devApiPort').value = '80';
-    document.getElementById('devApiProtocol').value = 'rest-http';
+    document.getElementById('devApiProtocol').value = 'rest';
     document.getElementById('devNotes').value = '';
     hideTestResult();
     onMonTypeChange();
+    syncApiProtocolHint();
     loadPopOptions();
     document.getElementById('deviceModal').classList.add('active');
     setTimeout(() => document.getElementById('devName').focus(), 100);
@@ -1190,6 +1210,7 @@
     document.getElementById('devNotes').value         = d.notes || '';
     hideTestResult();
     onMonTypeChange();
+    syncApiProtocolHint();
     // Load POP options async, lalu set value berdasarkan device.pop_id
     loadPopOptions(d.pop_id || '');
     document.getElementById('deviceModal').classList.add('active');
@@ -1268,12 +1289,18 @@
     return p === 443 ? 'rest-https' : 'rest-http';
   }
 
+  function syncApiProtocolHint() {
+    const proto = document.getElementById('devApiProtocol').value;
+    const warn = document.getElementById('apiRestV6Warn');
+    if (warn) warn.style.display = proto === 'rest' ? 'block' : 'none';
+  }
   function onApiProtocolChange() {
     // Saat user pilih protocol, set port default. User bebas ubah ke port
     // SSL (443 / 8729) atau port custom setelahnya — protocol UI tetap.
     const proto = document.getElementById('devApiProtocol').value;
     const def   = PROTO_DEFAULT_PORT[proto];
     if (def) document.getElementById('devApiPort').value = String(def);
+    syncApiProtocolHint();
   }
   function onApiPortInput() {
     // Tidak perlu mengubah dropdown otomatis — user bertanggung jawab pilih

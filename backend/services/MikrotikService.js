@@ -6,6 +6,7 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
 const { MikrotikApiClient } = require('./MikrotikApiClient');
+const { explainRestFailure, explainApiConnectRefused } = require('../utils/mikrotikRestErrors');
 
 /**
  * Port → protokol detection (FALLBACK MODE — dipakai kalau caller tidak
@@ -223,7 +224,7 @@ class MikrotikService {
         await new Promise(r => setTimeout(r, 500));
         return this.request(method, endpoint, data, { ...opts, retries: retries - 1 });
       }
-      if (err.code === 'ECONNREFUSED') throw new Error(`Cannot connect to MikroTik at ${this.host}:${this.port}`);
+      if (err.code === 'ECONNREFUSED') throw new Error(explainApiConnectRefused(this.host, this.port));
       if (err.code === 'ETIMEDOUT' || err.code === 'ECONNABORTED') throw new Error('Connection timeout');
       if (err.code === 'ECONNRESET') throw new Error('Koneksi ke MikroTik terputus');
       // SSL/TLS handshake gagal: ini umum kalau user pilih port 443 + SSL tapi MikroTik
@@ -244,13 +245,13 @@ class MikrotikService {
       }
       if (err.response) {
         const body = err.response.data;
-        const detail = (body && body.detail) ? body.detail
-                     : (body && body.message) ? body.message
-                     : redactSecrets(body);
         if (debug) {
           logger.error(`[MT] ← ${method} ${endpoint} status=${err.response.status} body=${redactSecrets(body)}`);
         }
-        throw new Error(`MikroTik: ${detail}`);
+        throw new Error(explainRestFailure(err.response.status, body, {
+          host: this.host,
+          port: this.port
+        }));
       }
       throw err;
     }
@@ -1133,5 +1134,7 @@ module.exports = {
   getMikrotikInstance,
   setMikrotikInstance,
   resetInstance,
-  getMikrotikInstanceByDevice
+  getMikrotikInstanceByDevice,
+  explainRestFailure,
+  explainApiConnectRefused
 };
