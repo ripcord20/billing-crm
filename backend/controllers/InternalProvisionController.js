@@ -26,7 +26,12 @@ class InternalProvisionController {
 
   async health(req, res) {
     if (!this.requireKey(req, res)) return;
-    res.json({ success: true, service: 'fiberix-billing', login_url: `${loginBase()}/login` });
+    res.json({
+      success: true,
+      service: 'fiberix-billing',
+      login_url: `${loginBase()}/login`,
+      dashboard_url: `${loginBase()}/dashboard`
+    });
   }
 
   async summary(req, res) {
@@ -107,7 +112,8 @@ class InternalProvisionController {
             name: created.user.name
           },
           login_url: `${loginBase()}/login`,
-          home_path: '/tenant'
+          home_path: '/dashboard',
+          dashboard_url: `${loginBase()}/dashboard`
         }
       });
     } catch (error) {

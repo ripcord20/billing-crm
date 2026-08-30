@@ -44,7 +44,7 @@ const TenantDash = {
   render(data) {
     const t = data.tenant || {};
     const k = data.kpis || {};
-    document.getElementById('todTitle').textContent = t.name || 'Billing';
+    document.getElementById('todTitle').textContent = t.name || 'Dashboard';
     const nCust = k.customers || 0;
     document.getElementById('todSub').textContent =
       (t.status === 'suspended' ? 'Akun ditangguhkan · ' : '') +

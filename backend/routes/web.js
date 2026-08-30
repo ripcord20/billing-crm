@@ -17,7 +17,7 @@ const {
 } = require('../middleware/salesAccess');
 const { allowHrisAdmin } = require('../middleware/hrisAccess');
 const { allowTenantArea } = require('../middleware/tenantAccess');
-const { homePathForRole } = require('../utils/tenantScope');
+const { homePathForRole, isTenantOwner } = require('../utils/tenantScope');
 
 // Login page — auto-redirect kalau user sudah punya session valid.
 // Cek cookie 'token' (HttpOnly yang di-set saat login berhasil). Kalau JWT
@@ -130,7 +130,7 @@ router.use((req, res, next) => {
 });
 
 const _tenantAllowedPaths = new Set([
-  '/tenant', '/customers', '/billing', '/payments', '/packages',
+  '/dashboard', '/tenant', '/customers', '/billing', '/payments', '/packages',
   '/login', '/logout', '/', '/mitra', '/mitra/daftar'
 ]);
 const _tenantAllowedPrefixes = ['/customers/', '/billing/', '/payments/', '/packages/'];
@@ -145,28 +145,39 @@ router.use((req, res, next) => {
     if (roleName === 'tenant_owner') {
       const allowed = _tenantAllowedPaths.has(req.path)
         || _tenantAllowedPrefixes.some(p => req.path.startsWith(p));
-      if (!allowed) return res.redirect('/tenant');
+      if (!allowed) return res.redirect('/dashboard');
     }
   } catch (_) { /* token invalid → authenticate */ }
   next();
 });
 
-// Dashboard utama — admin-only (role finance/noc/sales di-redirect ke dashboard masing-masing)
+// Mitra ISP (tenant_owner) memakai URL yang sama dengan owner: /dashboard.
+// Isinya dashboard billing terisolasi — bukan monitoring MikroTik tenant Default.
+// Owner platform tetap melihat dashboard monitoring INETmedia.
 router.get('/dashboard', authenticate, blockFinanceArea, blockNocArea, blockSalesArea, (req, res) => {
+  if (isTenantOwner(req)) {
+    return res.render('pages/tenant-dashboard', {
+      title: 'Dashboard',
+      user: req.user,
+      active: 'dashboard'
+    });
+  }
   res.render('pages/dashboard', { title: 'Dashboard', user: req.user, active: 'dashboard' });
 });
 
+// Alias lama: mitra diarahkan ke /dashboard. Admin tetap bisa preview tenant via ?tenant_id=
 router.get('/tenant', authenticate, allowTenantArea, (req, res) => {
+  if (isTenantOwner(req)) return res.redirect(302, '/dashboard');
   res.render('pages/tenant-dashboard', {
     title: 'Dashboard Tenant',
     user: req.user,
-    active: 'tenant-dashboard'
+    active: 'tenants'
   });
 });
 
 router.get('/tenants', authenticate, (req, res) => {
   const role = (req.user?.role?.name || '').toLowerCase();
-  if (role !== 'superadmin' && role !== 'admin') return res.redirect('/tenant');
+  if (role !== 'superadmin' && role !== 'admin') return res.redirect('/dashboard');
   res.render('pages/tenants', { title: 'Multi Tenant', user: req.user, active: 'tenants' });
 });
 

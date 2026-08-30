@@ -12,7 +12,7 @@ const {
 
 assert.strictEqual(slugify('ISP Baru Jaya'), 'isp-baru-jaya');
 assert.strictEqual(slugify('  '), 'tenant');
-assert.strictEqual(homePathForRole('tenant_owner'), '/tenant');
+assert.strictEqual(homePathForRole('tenant_owner'), '/dashboard');
 assert.strictEqual(homePathForRole('superadmin'), '/dashboard');
 
 const ownerReq = { user: { tenant_id: 7, role: { name: 'tenant_owner' } } };
