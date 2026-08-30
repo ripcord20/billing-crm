@@ -39,6 +39,7 @@ const CustomerPushSubscription = require('./CustomerPushSubscription')(sequelize
 const Package = require('./Package')(sequelize);
 const Invoice = require('./Invoice')(sequelize);
 const Payment = require('./Payment')(sequelize);
+const PaymentDeferral = require('./PaymentDeferral')(sequelize);
 const Device = require('./Device')(sequelize);
 const DeviceLog = require('./DeviceLog')(sequelize);
 const InfrastructurePoint = require('./InfrastructurePoint')(sequelize);
@@ -203,6 +204,14 @@ Invoice.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
 Invoice.hasMany(Payment, { foreignKey: 'invoice_id', as: 'payments' });
 Payment.belongsTo(Invoice, { foreignKey: 'invoice_id', as: 'invoice' });
 
+// PaymentDeferral (hutang / janji bayar)
+Customer.hasMany(PaymentDeferral, { foreignKey: 'customer_id', as: 'deferrals' });
+PaymentDeferral.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
+Invoice.hasMany(PaymentDeferral, { foreignKey: 'invoice_id', as: 'deferrals' });
+PaymentDeferral.belongsTo(Invoice, { foreignKey: 'invoice_id', as: 'invoice' });
+PaymentDeferral.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+PaymentDeferral.belongsTo(Payment, { foreignKey: 'settled_payment_id', as: 'settledPayment' });
+
 // Payment <-> User (recorded by)
 User.hasMany(Payment, { foreignKey: 'recorded_by', as: 'recorded_payments' });
 Payment.belongsTo(User, { foreignKey: 'recorded_by', as: 'recorder' });
@@ -243,6 +252,7 @@ const db = {
   Package,
   Invoice,
   Payment,
+  PaymentDeferral,
   Device,
   DeviceLog,
   InfrastructurePoint,

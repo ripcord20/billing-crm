@@ -364,30 +364,32 @@ async function loadBandwidthTrends() {
       bandwidthTrendsChart.destroy();
     }
 
+    const th = (typeof App !== 'undefined' && App.chartTheme) ? App.chartTheme() : { primary:'#3b82f6', orange:'#f97316', foreColor:'#94a3b8', gridColor:'#e8eef7', tooltipTheme:'light' };
     bandwidthTrendsChart = new ApexCharts(chartEl, {
       chart: {
         type: 'area',
         height: 280,
         toolbar: { show: false },
         fontFamily: 'DM Sans, sans-serif',
-        zoom: { enabled: false }
+        zoom: { enabled: false },
+        background: 'transparent'
       },
       series: [
         { name: 'Download', data: avgDownload },
         { name: 'Upload', data: avgUpload }
       ],
-      colors: ['#3b82f6', '#f97316'],
+      colors: [th.primary, th.orange],
       dataLabels: { enabled: false },
       stroke: {
         curve: 'smooth',
-        width: 2
+        width: 2.5
       },
       fill: {
         type: 'gradient',
         gradient: {
           shadeIntensity: 1,
-          opacityFrom: 0.4,
-          opacityTo: 0.1,
+          opacityFrom: 0.45,
+          opacityTo: 0.04,
           stops: [0, 100]
         }
       },
@@ -395,20 +397,21 @@ async function loadBandwidthTrends() {
         categories: categories,
         labels: {
           rotate: -45,
-          style: { fontSize: '10px', colors: '#94a3b8' }
+          style: { fontSize: '10px', colors: th.foreColor }
         }
       },
       yaxis: {
         labels: {
           formatter: v => v.toFixed(1) + ' Mbps',
-          style: { fontSize: '10px', colors: '#94a3b8' }
+          style: { fontSize: '10px', colors: th.foreColor }
         }
       },
       grid: {
-        borderColor: '#f0f4ff',
+        borderColor: th.gridColor,
         strokeDashArray: 3
       },
       tooltip: {
+        theme: th.tooltipTheme,
         shared: true,
         intersect: false,
         y: {
@@ -417,7 +420,8 @@ async function loadBandwidthTrends() {
       },
       legend: {
         position: 'top',
-        horizontalAlign: 'right'
+        horizontalAlign: 'right',
+        labels: { colors: th.foreColor }
       }
     });
 
@@ -467,18 +471,20 @@ async function loadCustomerGrowth() {
       customerGrowthChart.destroy();
     }
 
+    const th = (typeof App !== 'undefined' && App.chartTheme) ? App.chartTheme() : { primary:'#3b82f6', success:'#22c55e', foreColor:'#94a3b8', gridColor:'#e8eef7', tooltipTheme:'light' };
     customerGrowthChart = new ApexCharts(chartEl, {
       chart: {
         type: 'bar',
         height: 280,
         toolbar: { show: false },
-        fontFamily: 'DM Sans, sans-serif'
+        fontFamily: 'DM Sans, sans-serif',
+        background: 'transparent'
       },
       series: [
         { name: 'New Customers', type: 'column', data: newCustomers },
         { name: 'Total Customers', type: 'line', data: cumulativeTotal }
       ],
-      colors: ['#3b82f6', '#22c55e'],
+      colors: [th.primary, th.success],
       plotOptions: {
         bar: {
           borderRadius: 6,
@@ -493,33 +499,35 @@ async function loadCustomerGrowth() {
       xaxis: {
         categories: categories,
         labels: {
-          style: { fontSize: '10px', colors: '#94a3b8' }
+          style: { fontSize: '10px', colors: th.foreColor }
         }
       },
       yaxis: [
         {
-          title: { text: 'New Customers' },
+          title: { text: 'New Customers', style: { color: th.foreColor } },
           labels: {
-            style: { fontSize: '10px', colors: '#94a3b8' }
+            style: { fontSize: '10px', colors: th.foreColor }
           }
         },
         {
           opposite: true,
-          title: { text: 'Total Customers' },
+          title: { text: 'Total Customers', style: { color: th.foreColor } },
           labels: {
-            style: { fontSize: '10px', colors: '#94a3b8' }
+            style: { fontSize: '10px', colors: th.foreColor }
           }
         }
       ],
       grid: {
-        borderColor: '#f0f4ff',
+        borderColor: th.gridColor,
         strokeDashArray: 3
       },
       legend: {
         position: 'top',
-        horizontalAlign: 'right'
+        horizontalAlign: 'right',
+        labels: { colors: th.foreColor }
       },
       tooltip: {
+        theme: th.tooltipTheme,
         shared: true,
         intersect: false
       }
@@ -565,18 +573,20 @@ async function loadRevenueForecast() {
       revenueForecastChart.destroy();
     }
 
+    const th = (typeof App !== 'undefined' && App.chartTheme) ? App.chartTheme() : { primary:'#3b82f6', warning:'#f59e0b', foreColor:'#94a3b8', gridColor:'#e8eef7', tooltipTheme:'light' };
     revenueForecastChart = new ApexCharts(chartEl, {
       chart: {
         type: 'line',
         height: 280,
         toolbar: { show: false },
-        fontFamily: 'DM Sans, sans-serif'
+        fontFamily: 'DM Sans, sans-serif',
+        background: 'transparent'
       },
       series: [
         { name: 'Actual Revenue', data: historicalPadded },
         { name: 'Forecasted', data: forecastPadded }
       ],
-      colors: ['#3b82f6', '#f59e0b'],
+      colors: [th.primary, th.warning],
       stroke: {
         width: [3, 3],
         curve: 'smooth',
@@ -586,7 +596,7 @@ async function loadRevenueForecast() {
       xaxis: {
         categories: categories,
         labels: {
-          style: { fontSize: '10px', colors: '#94a3b8' }
+          style: { fontSize: '10px', colors: th.foreColor }
         }
       },
       yaxis: {
@@ -595,11 +605,11 @@ async function loadRevenueForecast() {
             if (!v) return '';
             return 'Rp ' + (v / 1000000).toFixed(1) + 'M';
           },
-          style: { fontSize: '10px', colors: '#94a3b8' }
+          style: { fontSize: '10px', colors: th.foreColor }
         }
       },
       grid: {
-        borderColor: '#f0f4ff',
+        borderColor: th.gridColor,
         strokeDashArray: 3
       },
       markers: {
@@ -608,9 +618,11 @@ async function loadRevenueForecast() {
       },
       legend: {
         position: 'top',
-        horizontalAlign: 'right'
+        horizontalAlign: 'right',
+        labels: { colors: th.foreColor }
       },
       tooltip: {
+        theme: th.tooltipTheme,
         shared: true,
         intersect: false,
         y: {
@@ -859,4 +871,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const rf=document.getElementById('alertsRefresh');
   if(rf) rf.addEventListener('click', ()=>loadAlerts());
   setInterval(()=>{ if(typeof loadAlerts==='function') loadAlerts(); }, 60000);
+});
+
+window.addEventListener('themechange', () => {
+  if (typeof loadBandwidthTrends === 'function') loadBandwidthTrends();
+  if (typeof loadCustomerGrowth === 'function') loadCustomerGrowth();
+  if (typeof loadRevenueForecast === 'function') loadRevenueForecast();
 });

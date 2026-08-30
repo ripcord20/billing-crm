@@ -2056,6 +2056,11 @@ router.get('/payments/chart',      authenticate, demoGuard, PaymentController.ch
 router.get('/payments/list',       authenticate, demoGuard, PaymentController.list);
 router.get('/payments/check-paid', authenticate, demoGuard, PaymentController.checkPaid);
 router.post('/payments/record',    authenticate, demoGuard, logActivity('create','payment'), PaymentController.record);
+router.post('/payments/record-bulk', authenticate, demoGuard, logActivity('create','payment'), PaymentController.recordBulk);
+router.get('/payments/unpaid-customers', authenticate, demoGuard, PaymentController.unpaidCustomers);
+router.get('/payments/deferrals',  authenticate, demoGuard, PaymentController.listDeferrals);
+router.post('/payments/defer',     authenticate, demoGuard, logActivity('create','payment_deferral'), PaymentController.defer);
+router.post('/payments/deferrals/:id/cancel', authenticate, demoGuard, logActivity('update','payment_deferral'), PaymentController.cancelDeferral);
 router.delete('/payments/:id',     authenticate, demoGuard, authorize('superadmin','admin'), logActivity('delete','payment'), PaymentController.destroy);
 router.get('/payments/customers',  authenticate, demoGuard, PaymentController.searchCustomers);
 // Public invoice data — TANPA authenticate. Dipakai halaman /pub/invoice/:token

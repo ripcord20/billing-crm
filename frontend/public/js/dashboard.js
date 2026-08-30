@@ -218,11 +218,11 @@ async function initInterfaceList() {
       </div>
       <div class="iface-right">
         <div class="iface-traffic-row">
-          <span class="iface-arrow" style="color:#3b82f6;">↓</span>
+          <span class="iface-arrow" style="color:var(--primary);">↓</span>
           <span class="iface-rx" id="rx-${safeid(iface.name)}">— Mbps</span>
         </div>
         <div class="iface-traffic-row">
-          <span class="iface-arrow" style="color:#f97316;">↑</span>
+          <span class="iface-arrow" style="color:var(--orange);">↑</span>
           <span class="iface-tx" id="tx-${safeid(iface.name)}">— Mbps</span>
         </div>
       </div>
@@ -301,11 +301,11 @@ function renderTrafficList(interfaces) {
       </div>
       <div class="iface-right">
         <div class="iface-traffic-row">
-          <span class="iface-arrow" style="color:#3b82f6;">↓</span>
+          <span class="iface-arrow" style="color:var(--primary);">↓</span>
           <span class="iface-rx" id="rx-${safeid(iface.name)}">${(iface.rxMbps||0)} Mbps</span>
         </div>
         <div class="iface-traffic-row">
-          <span class="iface-arrow" style="color:#f97316;">↑</span>
+          <span class="iface-arrow" style="color:var(--orange);">↑</span>
           <span class="iface-tx" id="tx-${safeid(iface.name)}">${(iface.txMbps||0)} Mbps</span>
         </div>
       </div>
@@ -342,11 +342,12 @@ function updateChartStats() {
   setText('avgTx', avgTx + ' Mbps');
 }
 
-function initActivityChart() {
-  const el = document.getElementById('activityChart');
-  if (!el) return;
-
-  activityChart = new ApexCharts(el, {
+function activityChartOptions() {
+  const th = (typeof App !== 'undefined' && App.chartTheme) ? App.chartTheme() : {
+    rx: '#1e78ff', tx: '#f97316', gridColor: '#e8eef7', foreColor: '#94a3b8',
+    card: '#fff', text: '#1e293b', tooltipTheme: 'light'
+  };
+  return {
     chart: {
       type: 'area',
       height: 240,
@@ -362,22 +363,22 @@ function initActivityChart() {
       dropShadow: {
         enabled: true,
         top: 8, left: 0, blur: 12,
-        color: ['#1e78ff', '#f97316'],
+        color: [th.rx, th.tx],
         opacity: 0.12
       }
     },
     series: [
-      { name: 'RX', data: [] },
-      { name: 'TX', data: [] }
+      { name: 'RX', data: [...rxSeries] },
+      { name: 'TX', data: [...txSeries] }
     ],
-    colors: ['#1e78ff', '#f97316'],
+    colors: [th.rx, th.tx],
     fill: {
       type: ['gradient', 'gradient'],
       gradient: {
         type: 'vertical',
         shadeIntensity: 1,
-        opacityFrom: 0.35,
-        opacityTo: 0.01,
+        opacityFrom: 0.4,
+        opacityTo: 0.02,
         stops: [0, 100]
       }
     },
@@ -389,7 +390,7 @@ function initActivityChart() {
     dataLabels: { enabled: false },
     legend: { show: false },
     grid: {
-      borderColor: '#f0f4ff',
+      borderColor: th.gridColor,
       strokeDashArray: 3,
       xaxis: { lines: { show: false } },
       yaxis: { lines: { show: true } },
@@ -398,7 +399,7 @@ function initActivityChart() {
     xaxis: {
       type: 'datetime',
       labels: {
-        style: { fontSize: '10px', colors: '#b0bec5', fontWeight: 500 },
+        style: { fontSize: '10px', colors: th.foreColor, fontWeight: 500 },
         datetimeUTC: false,
         format: 'HH:mm:ss',
         rotate: 0
@@ -407,39 +408,39 @@ function initActivityChart() {
       axisTicks: { show: false },
       crosshairs: {
         show: true,
-        stroke: { color: '#1e78ff', width: 1, dashArray: 4 }
+        stroke: { color: th.rx, width: 1, dashArray: 4 }
       }
     },
     yaxis: {
       labels: {
-        style: { fontSize: '10px', colors: '#b0bec5', fontWeight: 500 },
+        style: { fontSize: '10px', colors: th.foreColor, fontWeight: 500 },
         formatter: v => v >= 1000 ? (v/1000).toFixed(1)+'G' : v.toFixed(1)+' M'
       },
       min: 0,
       forceNiceScale: true
     },
     tooltip: {
-      theme: 'light',
+      theme: th.tooltipTheme,
       shared: true,
       intersect: false,
       x: { format: 'HH:mm:ss' },
       y: { formatter: v => v.toFixed(2) + ' Mbps' },
       style: { fontSize: '12px', fontFamily: 'DM Sans, sans-serif' },
       marker: { show: true },
-      custom: function({ series, seriesIndex, dataPointIndex, w }) {
+      custom: function({ series, dataPointIndex, w }) {
         const rx = series[0][dataPointIndex] ?? 0;
         const tx = series[1][dataPointIndex] ?? 0;
         const t  = new Date(w.globals.seriesX[0][dataPointIndex]);
         const ts = t.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-        return `<div style="background:#fff;border:1px solid #e0e8ff;border-radius:10px;padding:10px 14px;box-shadow:0 4px 16px rgba(30,120,255,.12);font-family:'DM Sans',sans-serif;">
-          <div style="font-size:10px;color:#94a3b8;font-weight:600;margin-bottom:6px;">${ts}</div>
+        return `<div style="background:${th.card};border:1px solid ${th.gridColor};border-radius:10px;padding:10px 14px;box-shadow:0 8px 20px rgba(15,23,42,.12);font-family:'DM Sans',sans-serif;">
+          <div style="font-size:10px;color:${th.foreColor};font-weight:600;margin-bottom:6px;">${ts}</div>
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
-            <span style="width:8px;height:8px;border-radius:50%;background:#1e78ff;display:inline-block;"></span>
-            <span style="font-size:12px;color:#1e293b;font-weight:700;">RX ${rx.toFixed(2)} Mbps</span>
+            <span style="width:8px;height:8px;border-radius:50%;background:${th.rx};display:inline-block;"></span>
+            <span style="font-size:12px;color:${th.text};font-weight:700;">RX ${rx.toFixed(2)} Mbps</span>
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
-            <span style="width:8px;height:8px;border-radius:50%;background:#f97316;display:inline-block;"></span>
-            <span style="font-size:12px;color:#1e293b;font-weight:700;">TX ${tx.toFixed(2)} Mbps</span>
+            <span style="width:8px;height:8px;border-radius:50%;background:${th.tx};display:inline-block;"></span>
+            <span style="font-size:12px;color:${th.text};font-weight:700;">TX ${tx.toFixed(2)} Mbps</span>
           </div>
         </div>`;
       }
@@ -448,9 +449,20 @@ function initActivityChart() {
       size: 0,
       hover: { size: 5, sizeOffset: 2 }
     }
-  });
+  };
+}
+
+function initActivityChart() {
+  const el = document.getElementById('activityChart');
+  if (!el) return;
+  activityChart = new ApexCharts(el, activityChartOptions());
   activityChart.render();
 }
+
+window.addEventListener('themechange', () => {
+  if (!activityChart) return;
+  activityChart.updateOptions(activityChartOptions(), false, true);
+});
 
 // ─── BANDWIDTH SIDEBAR BAR ────────────────────────────────────
 function updateBandwidthBar(rxMbps) {

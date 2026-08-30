@@ -1,3 +1,6 @@
+<script>
+(function(){ try { var t = localStorage.getItem('ui-theme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) {} })();
+</script>
 <!-- White-label theme override (dari Settings > Tema Warna) -->
 <% if (locals.themePrimary) { %>
 <%

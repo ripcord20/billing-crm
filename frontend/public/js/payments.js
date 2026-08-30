@@ -6,6 +6,15 @@ let _payPage    = 1;
 let _payMethod  = 'cash';
 let _selCust    = null;
 let _searchTimer= null;
+let _payMode    = 'pay';
+let _debtDays   = 7;
+let _debtPage   = 1;
+let _debtLoaded = false;
+let _bulkLoaded = false;
+let _bulkRows   = [];
+let _bulkSelected = new Set();
+let _debtSearchTimer = null;
+let _bulkSearchTimer = null;
 const MONTHS = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 const METHOD_COLORS = { cash:'#059669',transfer:'#2563eb',dana:'#0ea5e9',ovo:'#1d4ed8',gopay:'#16a34a',qris:'#d97706',field_collection:'#0d9488' };
 let _proofRows = [];
@@ -48,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Set default due date = next month same billing day (day 1 default)
   setDefaultDueDate(1);
+  syncDebtDateFromDays();
 
   // WA toggle visual
   const waChk = document.getElementById('paySendWa');
@@ -164,7 +174,13 @@ async function loadStats() {
   setW('fcOverdueBar', s.total_invoices > 0 ? (s.overdue_count||0)/(s.total_invoices||1)*100 : 0);
 
   // Update header sub
-  setT('payHeaderSub', `${s.total_tx} transaksi dicatat · Total ${fmtAmt(s.total_amount)} · ${MONTHS[s.month]} ${s.year}`);
+  setT('payHeaderSub', `${s.total_tx} transaksi dicatat · Total ${fmtAmt(s.total_amount)} · ${MONTHS[s.month]} ${s.year}` +
+    (s.deferral_open ? ` · ${s.deferral_open} janji hutang` : ''));
+  const debtBadge = document.getElementById('debtTabBadge');
+  if (debtBadge) {
+    if (s.deferral_open > 0) { debtBadge.style.display = 'inline'; debtBadge.textContent = s.deferral_open; }
+    else debtBadge.style.display = 'none';
+  }
 
   // Update donut chart
   if (s.method_stats?.length) updateDonut(s.method_stats, s.month, s.year);
@@ -479,10 +495,20 @@ async function checkAlreadyPaid(custId, month, year) {
     }
   } else {
     // Periode dipilih BELUM lunas → aktifkan tombol
-    if (submitBtn) {
+    if (submitBtn && _payMode === 'pay') {
       submitBtn.disabled = false;
       submitBtn.style.background = '';
       submitBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Catat Pembayaran';
+    }
+    if (d?.deferral && warn) {
+      const pDate = d.deferral.promise_date
+        ? new Date(d.deferral.promise_date + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' })
+        : '–';
+      warn.innerHTML =
+        '<div style="margin-top:8px;padding:10px 12px;background:#fff7ed;border:1.5px solid #fdba74;border-radius:8px;">' +
+          '<div style="font-size:12.5px;font-weight:700;color:#c2410c;">Sudah ada janji hutang</div>' +
+          '<div style="font-size:11px;color:#9a3412;">Janji bayar: ' + pDate + (d.deferral.notes ? ' · ' + esc(d.deferral.notes) : '') + '</div>' +
+        '</div>';
     }
   }
 }
@@ -511,6 +537,7 @@ window.formatAmount = function(el) {
 
 // ── SUBMIT ────────────────────────────────────────────────────
 window.submitPayment = async function() {
+  if (_payMode === 'debt') return submitDeferral();
   const custId = document.getElementById('selectedCustId')?.value;
   const rawAmt = document.getElementById('payAmount')?.value?.replace(/\D/g,'') || '0';
   const amount = parseInt(rawAmt);
@@ -663,22 +690,23 @@ let _proofSearchTimer = null;
 let _proofLoaded = false;
 
 window.switchPayTab = function(tab) {
-  const panePay = document.getElementById('tabPanelPay');
-  const paneProof = document.getElementById('tabPanelProof');
-  const btnPay = document.getElementById('tabBtnPay');
-  const btnProof = document.getElementById('tabBtnProof');
-  if (tab === 'proof') {
-    if (panePay) panePay.style.display = 'none';
-    if (paneProof) paneProof.style.display = 'block';
-    if (btnPay) btnPay.classList.remove('pay-tab-active');
-    if (btnProof) btnProof.classList.add('pay-tab-active');
-    if (!_proofLoaded) { _proofLoaded = true; loadProofs(1); }
-  } else {
-    if (panePay) panePay.style.display = 'block';
-    if (paneProof) paneProof.style.display = 'none';
-    if (btnProof) btnProof.classList.remove('pay-tab-active');
-    if (btnPay) btnPay.classList.add('pay-tab-active');
-  }
+  const panes = {
+    pay: document.getElementById('tabPanelPay'),
+    debt: document.getElementById('tabPanelDebt'),
+    bulk: document.getElementById('tabPanelBulk'),
+    proof: document.getElementById('tabPanelProof')
+  };
+  const btns = {
+    pay: document.getElementById('tabBtnPay'),
+    debt: document.getElementById('tabBtnDebt'),
+    bulk: document.getElementById('tabBtnBulk'),
+    proof: document.getElementById('tabBtnProof')
+  };
+  Object.keys(panes).forEach(k => { if (panes[k]) panes[k].style.display = k === tab ? 'block' : 'none'; });
+  Object.keys(btns).forEach(k => { if (btns[k]) btns[k].classList.toggle('pay-tab-active', k === tab); });
+  if (tab === 'proof' && !_proofLoaded) { _proofLoaded = true; loadProofs(1); }
+  if (tab === 'debt') { _debtLoaded = true; loadDeferrals(1); }
+  if (tab === 'bulk') { _bulkLoaded = true; loadUnpaidCustomers(); }
 };
 
 window.onProofSearchChange = function() {
@@ -1008,3 +1036,316 @@ document.addEventListener('keydown', function(e) {
   const pm = document.getElementById('proofModal');
   if (pm && pm.classList.contains('open')) { closeProofModal(); }
 });
+
+function addDaysYmd(days) {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + Math.max(1, parseInt(days, 10) || 1));
+  return toYmd(d);
+}
+
+function syncDebtDateFromDays() {
+  const daysEl = document.getElementById('debtDays');
+  const dateEl = document.getElementById('debtDate');
+  const days = parseInt(daysEl?.value, 10) || _debtDays || 7;
+  _debtDays = days;
+  if (dateEl) dateEl.value = addDaysYmd(days);
+}
+
+function markDurationChip(days) {
+  document.querySelectorAll('.dur-chip').forEach(c => c.classList.remove('on'));
+  document.querySelectorAll('.dur-chip').forEach(c => {
+    const fn = c.getAttribute('onclick') || '';
+    if (fn.includes(',' + days + ')')) c.classList.add('on');
+  });
+}
+
+window.setPayMode = function(mode) {
+  _payMode = mode === 'debt' ? 'debt' : 'pay';
+  document.getElementById('modePayBtn')?.classList.toggle('on', _payMode === 'pay');
+  document.getElementById('modeDebtBtn')?.classList.toggle('on', _payMode === 'debt');
+  document.querySelectorAll('.pay-only').forEach(el => {
+    el.style.display = _payMode === 'debt' ? 'none' : '';
+  });
+  const debtBox = document.getElementById('debtOnlyFields');
+  if (debtBox) debtBox.style.display = _payMode === 'debt' ? 'block' : 'none';
+  const title = document.getElementById('formCardTitle');
+  const sub = document.getElementById('formCardSub');
+  const btn = document.getElementById('submitBtn');
+  if (_payMode === 'debt') {
+    if (title) title.textContent = 'Catat Hutang';
+    if (sub) sub.textContent = 'Pelanggan menunda pembayaran — durasi bebas';
+    if (btn) {
+      btn.classList.add('debt');
+      btn.disabled = false;
+      btn.style.background = '';
+      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Catat Janji Bayar';
+    }
+    const bankField = document.getElementById('bankField');
+    if (bankField) bankField.style.display = 'none';
+    syncDebtDateFromDays();
+  } else {
+    if (title) title.textContent = 'Input Payment';
+    if (sub) sub.textContent = 'Bayar lunas atau catat janji hutang';
+    if (btn) {
+      btn.classList.remove('debt');
+      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Catat Pembayaran';
+    }
+    const bankField = document.getElementById('bankField');
+    if (bankField) bankField.style.display = _payMethod === 'transfer' ? 'block' : 'none';
+  }
+};
+
+window.selectDuration = function(el, days) {
+  document.querySelectorAll('.dur-chip').forEach(c => c.classList.remove('on'));
+  if (el) el.classList.add('on');
+  _debtDays = days;
+  const daysEl = document.getElementById('debtDays');
+  if (daysEl) daysEl.value = days;
+  syncDebtDateFromDays();
+};
+
+window.onDebtDaysChange = function() {
+  const days = Math.min(365, Math.max(1, parseInt(document.getElementById('debtDays')?.value, 10) || 1));
+  _debtDays = days;
+  const daysEl = document.getElementById('debtDays');
+  if (daysEl) daysEl.value = days;
+  syncDebtDateFromDays();
+  markDurationChip(days);
+};
+
+window.onDebtDateChange = function() {
+  const dateEl = document.getElementById('debtDate');
+  if (!dateEl?.value) return;
+  const target = new Date(dateEl.value + 'T00:00:00');
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = Math.max(1, Math.round((target - today) / 86400000));
+  _debtDays = days;
+  const daysEl = document.getElementById('debtDays');
+  if (daysEl) daysEl.value = days;
+  markDurationChip(days);
+};
+
+async function submitDeferral() {
+  const custId = document.getElementById('selectedCustId')?.value;
+  if (!custId) { App.showToast('Pilih pelanggan terlebih dahulu', 'error'); return; }
+  const rawAmt = document.getElementById('payAmount')?.value?.replace(/\D/g, '') || '0';
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = 'Menyimpan janji...';
+  const d = await App.api('/payments/defer', {
+    method: 'POST',
+    body: JSON.stringify({
+      customer_id: custId,
+      amount: parseInt(rawAmt, 10) || 0,
+      promise_date: document.getElementById('debtDate')?.value,
+      duration_days: parseInt(document.getElementById('debtDays')?.value, 10) || _debtDays,
+      notes: document.getElementById('payNotes')?.value || '',
+      period_month: document.getElementById('payPeriodMonth')?.value,
+      period_year: document.getElementById('payPeriodYear')?.value
+    })
+  });
+  btn.disabled = false;
+  btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Catat Janji Bayar';
+  if (d?.success) {
+    const banner = document.getElementById('successBanner');
+    const msgEl = document.getElementById('successMsg');
+    const invEl = document.getElementById('successInvNum');
+    if (banner) banner.style.display = 'block';
+    if (msgEl) msgEl.textContent = d.message;
+    if (invEl) invEl.textContent = 'Janji: ' + (d.data?.promise_date || '–');
+    setTimeout(() => { if (banner) banner.style.display = 'none'; }, 8000);
+    resetForm();
+    setPayMode('debt');
+    loadStats();
+    loadDeferrals(1);
+    App.showToast(d.message, 'success');
+  } else {
+    App.showToast(d?.message || 'Gagal mencatat janji bayar', 'error');
+  }
+}
+
+window.onDebtSearchChange = function() {
+  clearTimeout(_debtSearchTimer);
+  _debtSearchTimer = setTimeout(() => loadDeferrals(1), 300);
+};
+
+async function loadDeferrals(page) {
+  _debtPage = page || 1;
+  const tbody = document.getElementById('debtTable');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7"><div class="tbl-empty"><p>Memuat data...</p></div></td></tr>';
+  const status = document.getElementById('debtStatusFilter')?.value || 'open';
+  const search = document.getElementById('debtSearch')?.value || '';
+  const d = await App.api('/payments/deferrals?status=' + encodeURIComponent(status) +
+    '&search=' + encodeURIComponent(search) + '&page=' + _debtPage + '&limit=30');
+  if (!d?.success) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="tbl-empty friendly"><p>Gagal memuat</p><span>Coba refresh halaman</span></div></td></tr>';
+    return;
+  }
+  const rows = d.data || [];
+  setT('debtCount', rows.length + ' / ' + (d.total || 0));
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="tbl-empty friendly"><p>Belum ada hutang tercatat</p><span>Pilih pelanggan di kiri, lalu mode Hutang / Tunda</span></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const amt = 'Rp ' + Number(r.amount || r.invoice_total || r.pkg_price || 0).toLocaleString('id-ID');
+    const janji = r.promise_date
+      ? new Date(r.promise_date + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' })
+      : '–';
+    const badge = r.status === 'open'
+      ? (r.overdue_promise ? '<span class="debt-badge late">Lewat janji</span>' : '<span class="debt-badge">Aktif · ' + (r.duration_days || '–') + ' hari</span>')
+      : r.status === 'paid' ? '<span class="mbadge" style="background:#dcfce7;color:#15803d;">Lunas</span>'
+      : '<span class="mbadge" style="background:#f1f5f9;color:#64748b;">Batal</span>';
+    const act = r.status === 'open'
+      ? '<button class="inv-btn" onclick="fillFromDebt(' + r.customer_pk + ',\'' + esc(r.cust_name).replace(/'/g,'\\\'') + '\',\'' + esc(r.cid).replace(/'/g,'\\\'') + '\',' + Number(r.amount || r.pkg_price || 0) + ')">Bayar</button> ' +
+        '<button class="del-btn" onclick="cancelDeferral(' + r.id + ')">Batal</button>'
+      : '–';
+    return '<tr>' +
+      '<td><div style="font-weight:700;">' + esc(r.cust_name) + '</div><div style="font-size:11px;color:#94a3b8;">' + esc(r.cid) + '</div></td>' +
+      '<td>' + (MONTHS[r.period_month] || '') + ' ' + (r.period_year || '') + '</td>' +
+      '<td style="font-weight:700;">' + amt + '</td>' +
+      '<td>' + janji + '</td>' +
+      '<td>' + badge + '</td>' +
+      '<td style="font-size:12px;color:#64748b;">' + esc(r.notes || '–') + '</td>' +
+      '<td>' + act + '</td></tr>';
+  }).join('');
+  const totalPages = Math.ceil((d.total || 0) / 30);
+  const pg = document.getElementById('debtPagination');
+  if (pg) {
+    if (totalPages <= 1) pg.innerHTML = '';
+    else {
+      let html = '';
+      if (_debtPage > 1) html += '<button class="pg-btn" onclick="loadDeferrals(' + (_debtPage - 1) + ')">←</button>';
+      html += '<span class="pg-btn active">' + _debtPage + '</span>';
+      if (_debtPage < totalPages) html += '<button class="pg-btn" onclick="loadDeferrals(' + (_debtPage + 1) + ')">→</button>';
+      pg.innerHTML = html;
+    }
+  }
+}
+
+window.fillFromDebt = function(id, name, cid, amount) {
+  setPayMode('pay');
+  document.getElementById('custSearch').value = name + ' (' + cid + ')';
+  document.getElementById('selectedCustId').value = id;
+  _selCust = { id, name, cid };
+  if (amount) document.getElementById('payAmount').value = Number(amount).toLocaleString('id-ID');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.cancelDeferral = async function(id) {
+  if (!confirm('Batalkan janji bayar ini?')) return;
+  const d = await App.api('/payments/deferrals/' + id + '/cancel', { method: 'POST', body: '{}' });
+  if (d?.success) { App.showToast(d.message, 'success'); loadDeferrals(_debtPage); loadStats(); }
+  else App.showToast(d?.message || 'Gagal membatalkan', 'error');
+};
+
+window.onBulkSearchChange = function() {
+  clearTimeout(_bulkSearchTimer);
+  _bulkSearchTimer = setTimeout(() => loadUnpaidCustomers(), 300);
+};
+
+async function loadUnpaidCustomers() {
+  const tbody = document.getElementById('bulkTable');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty"><p>Memuat pelanggan...</p></div></td></tr>';
+  const month = document.getElementById('payPeriodMonth')?.value || document.getElementById('filterMonth')?.value;
+  const year = document.getElementById('payPeriodYear')?.value || document.getElementById('filterYear')?.value;
+  const q = document.getElementById('bulkSearch')?.value || '';
+  const d = await App.api('/payments/unpaid-customers?q=' + encodeURIComponent(q) + '&month=' + month + '&year=' + year);
+  if (!d?.success) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty friendly"><p>Gagal memuat daftar</p></div></td></tr>';
+    return;
+  }
+  _bulkRows = d.data || [];
+  const keep = new Set();
+  _bulkSelected.forEach(id => { if (_bulkRows.some(r => r.id === id)) keep.add(id); });
+  _bulkSelected = keep;
+  if (!_bulkRows.length) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty friendly"><p>Tidak ada pelanggan tertunggak</p><span>Semua sudah lunas untuk periode ini, atau coba kata kunci lain</span></div></td></tr>';
+    updateBulkBar();
+    return;
+  }
+  tbody.innerHTML = _bulkRows.map(r => {
+    const checked = _bulkSelected.has(r.id) ? 'checked' : '';
+    const due = (r.invoice_due || r.due_date)
+      ? new Date((r.invoice_due || r.due_date) + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short' })
+      : '–';
+    const janji = r.promise_date
+      ? '<span class="debt-badge">' + new Date(r.promise_date + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short' }) + '</span>'
+      : '–';
+    return '<tr class="bulk-row' + (checked ? ' sel' : '') + '" onclick="toggleBulkRow(' + r.id + ', event)">' +
+      '<td><input type="checkbox" class="bulk-check" data-id="' + r.id + '" ' + checked + ' onclick="event.stopPropagation(); toggleBulkRow(' + r.id + ')"></td>' +
+      '<td><div style="font-weight:700;">' + esc(r.name) + '</div><div style="font-size:11px;color:#94a3b8;">' + esc(r.cid) + (r.phone ? ' · ' + esc(r.phone) : '') + '</div></td>' +
+      '<td>' + esc(r.pkg_name || '–') + '</td>' +
+      '<td style="font-weight:700;">Rp ' + Number(r.amount || 0).toLocaleString('id-ID') + '</td>' +
+      '<td>' + due + '</td>' +
+      '<td>' + janji + '</td></tr>';
+  }).join('');
+  updateBulkBar();
+}
+
+window.toggleBulkRow = function(id, ev) {
+  if (ev && ev.target && ev.target.classList && ev.target.classList.contains('bulk-check')) return;
+  if (_bulkSelected.has(id)) _bulkSelected.delete(id);
+  else _bulkSelected.add(id);
+  const cb = document.querySelector('.bulk-check[data-id="' + id + '"]');
+  if (cb) cb.checked = _bulkSelected.has(id);
+  const row = cb && cb.closest('tr');
+  if (row) row.classList.toggle('sel', _bulkSelected.has(id));
+  updateBulkBar();
+};
+
+window.toggleBulkAll = function(on) {
+  _bulkRows.forEach(r => { if (on) _bulkSelected.add(r.id); else _bulkSelected.delete(r.id); });
+  document.querySelectorAll('#bulkTable .bulk-check').forEach(cb => { cb.checked = on; cb.closest('tr')?.classList.toggle('sel', on); });
+  updateBulkBar();
+};
+
+function updateBulkBar() {
+  const n = _bulkSelected.size;
+  let total = 0;
+  _bulkRows.forEach(r => { if (_bulkSelected.has(r.id)) total += Number(r.amount || 0); });
+  setT('bulkSummary', n + ' pelanggan dipilih');
+  setT('bulkSummarySub', n ? ('Total Rp ' + total.toLocaleString('id-ID') + ' · jumlah bebas, tidak dibatasi 10') : 'Centang daftar dulu, baru tekan bayar');
+  const btn = document.getElementById('bulkPayBtn');
+  if (btn) btn.disabled = n === 0;
+  const all = document.getElementById('bulkCheckAll');
+  if (all) all.checked = n > 0 && n === _bulkRows.length;
+}
+
+window.submitBulkPay = async function() {
+  if (!_bulkSelected.size) { App.showToast('Centang pelanggan dulu', 'error'); return; }
+  const items = _bulkRows.filter(r => _bulkSelected.has(r.id)).map(r => ({
+    customer_id: r.id,
+    amount: r.amount
+  }));
+  const btn = document.getElementById('bulkPayBtn');
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan ' + items.length + ' pembayaran...';
+  const d = await App.api('/payments/record-bulk', {
+    method: 'POST',
+    body: JSON.stringify({
+      items,
+      method: document.getElementById('bulkMethod')?.value || 'cash',
+      payment_date: document.getElementById('payDate')?.value,
+      period_month: document.getElementById('payPeriodMonth')?.value,
+      period_year: document.getElementById('payPeriodYear')?.value,
+      notes: 'Setor massal'
+    })
+  });
+  btn.textContent = 'Bayar yang dicentang';
+  if (d?.success || (d?.data && d.data.total_ok > 0)) {
+    App.showToast(d.message, d.data.total_fail ? 'warning' : 'success');
+    _bulkSelected.clear();
+    loadUnpaidCustomers();
+    loadStats();
+    loadChart();
+    loadPayments();
+    loadDeferrals(1);
+  } else {
+    App.showToast(d?.message || 'Gagal setor massal', 'error');
+    btn.disabled = false;
+  }
+};
