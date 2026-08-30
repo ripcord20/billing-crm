@@ -50,10 +50,12 @@ router.get('/login', async (req, res) => {
   }
   const nextRaw = String((req.query && req.query.next) || '');
   const nextUrl = (nextRaw.charAt(0) === '/' && nextRaw.charAt(1) !== '/') ? nextRaw : '';
+  res.set('Cache-Control', 'private, no-store');
   res.render('pages/login', { title: 'Masuk', layout: false, nextUrl });
 });
 
 router.get('/kebijakan-privasi', (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
   res.render('pages/kebijakan-privasi', {
     title: 'Kebijakan privasi',
     layout: false,
