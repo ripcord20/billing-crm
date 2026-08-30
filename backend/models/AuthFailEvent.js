@@ -12,6 +12,10 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: 'portal'
     },
+    device_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
     identifier: {
       type: DataTypes.STRING(120),
       allowNull: true

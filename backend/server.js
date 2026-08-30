@@ -482,6 +482,23 @@ const startServer = async () => {
       if (db.QosMetric) await db.QosMetric.sync();
       if (db.QosAlert) await db.QosAlert.sync();
       if (db.AuthFailEvent) await db.AuthFailEvent.sync();
+      const qosCols = [
+        ['qos_metrics', 'device_id', 'INT NULL'],
+        ['qos_alerts', 'device_id', 'INT NULL'],
+        ['auth_fail_events', 'device_id', 'INT NULL']
+      ];
+      for (const [table, col, ddl] of qosCols) {
+        const [rows] = await db.sequelize.query(
+          `SELECT COUNT(*) AS c FROM information_schema.columns
+            WHERE table_schema = DATABASE() AND table_name = :table AND column_name = :col`,
+          { replacements: { table, col } }
+        );
+        const exists = rows && rows[0] && parseInt(rows[0].c, 10) > 0;
+        if (!exists) {
+          await db.sequelize.query(`ALTER TABLE ${table} ADD COLUMN ${col} ${ddl}`);
+          logger.info(`Migrated: ${table}.${col} column added`);
+        }
+      }
     } catch (e) {
       logger.warn('Failed to sync qos tables: ' + (e.message || e));
     }
