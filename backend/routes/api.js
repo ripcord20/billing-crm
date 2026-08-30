@@ -213,11 +213,17 @@ for (const p of _tenantBlockedPrefixes) {
 }
 
 router.get('/tenant/dashboard', authenticate, demoGuard, TenantController.dashboard);
-router.get('/tenants', authenticate, demoGuard, authorize('superadmin', 'admin'), TenantController.list);
-router.post('/tenants', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('create', 'tenant'), TenantController.create);
-router.put('/tenants/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'tenant'), TenantController.update);
-router.post('/tenants/:id/owners', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('create', 'tenant_owner'), TenantController.createOwner);
-router.post('/tenants/:id/assign-customers', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'tenant'), TenantController.assignCustomers);
+
+function tenantAdminMoved(_req, res) {
+  return res.status(410).json({
+    success: false,
+    message: 'Manajemen mitra ada di app.fiberix.my.id, bukan di billing Fiberix'
+  });
+}
+router.all('/tenants', authenticate, tenantAdminMoved);
+router.all('/tenants/:id', authenticate, tenantAdminMoved);
+router.all('/tenants/:id/owners', authenticate, tenantAdminMoved);
+router.all('/tenants/:id/assign-customers', authenticate, tenantAdminMoved);
 
 // ===== DASHBOARD =====
 router.get('/dashboard/overview', authenticate, demoGuard, DashboardController.overview);

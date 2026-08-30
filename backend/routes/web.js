@@ -16,7 +16,6 @@ const {
   blockSalesArea,
 } = require('../middleware/salesAccess');
 const { allowHrisAdmin } = require('../middleware/hrisAccess');
-const { allowTenantArea } = require('../middleware/tenantAccess');
 const { homePathForRole, isTenantOwner } = require('../utils/tenantScope');
 
 // Login page — auto-redirect kalau user sudah punya session valid.
@@ -165,21 +164,9 @@ router.get('/dashboard', authenticate, blockFinanceArea, blockNocArea, blockSale
   res.render('pages/dashboard', { title: 'Dashboard', user: req.user, active: 'dashboard' });
 });
 
-// Alias lama: mitra diarahkan ke /dashboard. Admin tetap bisa preview tenant via ?tenant_id=
-router.get('/tenant', authenticate, allowTenantArea, (req, res) => {
-  if (isTenantOwner(req)) return res.redirect(302, '/dashboard');
-  res.render('pages/tenant-dashboard', {
-    title: 'Dashboard Tenant',
-    user: req.user,
-    active: 'tenants'
-  });
-});
-
-router.get('/tenants', authenticate, (req, res) => {
-  const role = (req.user?.role?.name || '').toLowerCase();
-  if (role !== 'superadmin' && role !== 'admin') return res.redirect('/dashboard');
-  res.render('pages/tenants', { title: 'Multi Tenant', user: req.user, active: 'tenants' });
-});
+// Manajemen mitra ada di app.fiberix.my.id — bukan modul di billing Fiberix.
+router.get('/tenant', authenticate, (req, res) => res.redirect(302, '/dashboard'));
+router.get('/tenants', authenticate, (req, res) => res.redirect(302, '/dashboard'));
 
 // ═══════════════════════════════════════════════════════════════════
 // NOC DASHBOARD — halaman utama role NOC
