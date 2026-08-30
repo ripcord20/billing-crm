@@ -296,8 +296,8 @@ async function runPingTargets(settings) {
 
 async function ackPppoeDdosAlerts() {
   const open = await QosAlert.findAll({
-    where: { type: 'ddos_anomaly', status: 'open' },
-    attributes: ['id', 'target_key', 'metadata', 'title']
+    where: { type: { [Op.in]: ['ddos_anomaly', 'bandwidth_bottleneck'] }, status: 'open' },
+    attributes: ['id', 'type', 'target_key', 'metadata', 'title']
   });
   let acked = 0;
   for (const a of open) {
@@ -306,7 +306,35 @@ async function ackPppoeDdosAlerts() {
     await a.update({
       status: 'acked',
       acked_at: new Date(),
-      message: 'Ditutup otomatis: session PPPoE pelanggan bukan sinyal DDoS.'
+      message: a.type === 'ddos_anomaly'
+        ? 'Ditutup otomatis: bukan uplink WAN/SFP, jadi bukan sinyal DDoS.'
+        : 'Ditutup otomatis: bottleneck hanya dipantau di uplink WAN/SFP.'
+    });
+    acked += 1;
+  }
+  return acked;
+}
+
+async function ackRecoveredDnsAlerts() {
+  const open = await QosAlert.findAll({
+    where: { type: 'dns_degraded', status: 'open' },
+    attributes: ['id', 'target_key', 'metadata']
+  });
+  if (!open.length) return 0;
+  const latest = await latestByKind('dns', 40);
+  const unique = latestUniqueBy(latest, (r) => `${r.source}:${r.target}`);
+  const ok = new Set(unique.filter((r) => r.status === 'ok').map((r) => `${r.source}:${r.target}`));
+  let acked = 0;
+  for (const a of open) {
+    const key = String(a.target_key || ''); // dns:public:8.8.8.8
+    const parts = key.split(':');
+    const source = parts[1] === 'isp' ? 'isp_dns' : 'public_dns';
+    const server = parts[2] || (a.metadata && a.metadata.server);
+    if (!ok.has(`${source}:${server}`)) continue;
+    await a.update({
+      status: 'acked',
+      acked_at: new Date(),
+      message: `Resolver ${server} sudah kembali cepat & akurat.`
     });
     acked += 1;
   }
@@ -335,6 +363,7 @@ async function runBandwidthChecks(settings, opts = {}) {
   }
 
   await ackPppoeDdosAlerts();
+  await ackRecoveredDnsAlerts();
 
   const interfaces = [];
   for (const [key, latest] of latestByIf) {
