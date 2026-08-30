@@ -334,7 +334,7 @@ async function runBandwidthChecks(settings, opts = {}) {
     histByIf.get(key).push(used);
   }
 
-  if (!light) await ackPppoeDdosAlerts();
+  await ackPppoeDdosAlerts();
 
   const interfaces = [];
   for (const [key, latest] of latestByIf) {
