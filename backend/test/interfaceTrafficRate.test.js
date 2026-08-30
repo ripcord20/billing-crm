@@ -3,6 +3,7 @@ const assert = require('assert');
 const {
   rosTrue,
   parseCounter,
+  ifaceRxTxBytes,
   combineMonitorBits,
   rateFromDelta
 } = require('../utils/interfaceTrafficRate');
@@ -43,5 +44,9 @@ assert.ok(rate.rxBps !== rate.txBps);
 
 assert.strictEqual(rateFromDelta(null, next, t0).ok, false);
 assert.strictEqual(rateFromDelta(prev, { rx: 10, tx: 10 }, t0 + 1000).ok, false);
+
+assert.deepStrictEqual(ifaceRxTxBytes({ 'rx-byte': '9000', 'tx-byte': '1000' }), { rx: 9000, tx: 1000 });
+assert.deepStrictEqual(ifaceRxTxBytes({ 'rx-bytes': 50, 'tx-bytes': 7 }), { rx: 50, tx: 7 });
+assert.deepStrictEqual(ifaceRxTxBytes({ 'fp-rx-byte': '400', 'fp-tx-byte': '20' }), { rx: 400, tx: 20 });
 
 console.log('interfaceTrafficRate.test.js OK');

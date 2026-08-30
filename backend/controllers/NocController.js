@@ -28,6 +28,7 @@ const {
   NocMonitorPreset, sequelize
 } = require('../models');
 const { getMikrotikInstanceByDevice } = require('../services/MikrotikService');
+const { scopeDeviceTraffic } = require('../utils/deviceMetrics');
 const logger = require('../utils/logger');
 const dns = require('dns').promises;
 
@@ -351,14 +352,15 @@ class NocController {
       if (sampleIfaces.length) {
         try {
           const stats = await mt.getInterfacesBulkStats(sampleIfaces);
+          const scoped = scopeDeviceTraffic(
+            physicalRunning,
+            stats.filter((s) => physSetFinal.has(s.name))
+          );
+          totalRxBps = scoped.totalRxBps;
+          totalTxBps = scoped.totalTxBps;
           for (const s of stats) {
             const rx = s.rxBitsPerSecond || 0;
             const tx = s.txBitsPerSecond || 0;
-            // Hanya interface fisik yang masuk ke total agregat (hindari double-count)
-            if (physSetFinal.has(s.name)) {
-              totalRxBps += rx;
-              totalTxBps += tx;
-            }
             perIface[s.name] = {
               rxMbps: Math.round((rx / 1e6) * 100) / 100,
               txMbps: Math.round((tx / 1e6) * 100) / 100,

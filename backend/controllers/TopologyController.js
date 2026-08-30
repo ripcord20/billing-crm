@@ -62,14 +62,13 @@ async function fetchMikrotikStats(host, username, password, port) {
 
     const interfaceNames = interfaces.filter(i => i.running).map(i => i.name);
     const trafficStats = await mikrotik.getInterfacesBulkStats(interfaceNames).catch(() => []);
-
-    let totalRxBps = 0;
-    let totalTxBps = 0;
-
-    trafficStats.forEach(stat => {
-      totalRxBps += stat.rxBitsPerSecond || 0;
-      totalTxBps += stat.txBitsPerSecond || 0;
-    });
+    const { scopeDeviceTraffic } = require('../utils/deviceMetrics');
+    const scoped = scopeDeviceTraffic(
+      interfaces.filter((i) => i.running),
+      trafficStats
+    );
+    const totalRxBps = scoped.totalRxBps;
+    const totalTxBps = scoped.totalTxBps;
 
     const topInterfaces = trafficStats
       .sort((a, b) => ((b.rxBitsPerSecond + b.txBitsPerSecond) - (a.rxBitsPerSecond + a.txBitsPerSecond)))

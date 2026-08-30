@@ -10,6 +10,18 @@ function parseCounter(v) {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
+/** RouterOS REST/API kadang `rx-byte`, kadang `rx-bytes`, kadang camelCase. */
+function ifaceRxTxBytes(i) {
+  const row = i && typeof i === 'object' ? i : {};
+  const rx = parseCounter(row['rx-byte'] ?? row['rx-bytes'] ?? row.rxByte);
+  const tx = parseCounter(row['tx-byte'] ?? row['tx-bytes'] ?? row.txByte);
+  if (rx > 0 || tx > 0) return { rx, tx };
+  return {
+    rx: parseCounter(row['fp-rx-byte'] ?? row.fpRxByte),
+    tx: parseCounter(row['fp-tx-byte'] ?? row.fpTxByte)
+  };
+}
+
 /**
  * Winbox Traffic = slow-path + fast-path. FastTrack/PPPoE sering hanya
  * muncul di fp-*-bits-per-second; kalau diabaikan RX≈TX (kecil/sama).
@@ -41,6 +53,7 @@ function rateFromDelta(prev, next, nowMs) {
 module.exports = {
   rosTrue,
   parseCounter,
+  ifaceRxTxBytes,
   combineMonitorBits,
   rateFromDelta
 };

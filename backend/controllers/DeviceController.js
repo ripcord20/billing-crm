@@ -3,7 +3,7 @@ const { Op } = require('sequelize');
 const { paginateResponse } = require('../utils/helpers');
 const net = require('net');
 const logger = require('../utils/logger');
-const { presentDeviceMetrics, normalizeCpuPercent, normalizeMemPercent } = require('../utils/deviceMetrics');
+const { presentDeviceMetrics, normalizeCpuPercent, normalizeMemPercent, scopeDeviceTraffic, isCustomerTunnelIface, isVirtualSwitchIface } = require('../utils/deviceMetrics');
 
 class DeviceController {
   async index(req, res) {
@@ -491,20 +491,32 @@ class DeviceController {
 
           if (ifRes.status === 'fulfilled') {
             const ifaces = ifRes.value || [];
-            // Ambil live bitrate untuk interface yang running (top 10)
-            const running = ifaces.filter(i => i.running).slice(0, 10);
+            const running = ifaces.filter(i => i.running && !i.disabled);
+            const names = running
+              .filter(i => !isCustomerTunnelIface(i.name, i.type) && !isVirtualSwitchIface(i.name, i.type))
+              .map(i => i.name)
+              .slice(0, 40);
             let liveStats = [];
             try {
-              liveStats = await mt.getInterfacesBulkStats(running.map(i => i.name));
+              liveStats = await mt.getInterfacesBulkStats(names.length ? names : running.slice(0, 10).map(i => i.name));
             } catch (_) {}
             const statsByName = {};
             liveStats.forEach(s => { statsByName[s.name] = s; });
-
-            result.interfaces = ifaces.map(i => ({
+            const withRates = ifaces.map(i => ({
               ...i,
               rxBitsPerSecond: statsByName[i.name]?.rxBitsPerSecond || 0,
               txBitsPerSecond: statsByName[i.name]?.txBitsPerSecond || 0
             }));
+            const scoped = scopeDeviceTraffic(withRates.filter(i => i.running), liveStats);
+            const wan = new Set(scoped.trafficIfaces);
+            result.interfaces = withRates.map(i => ({
+              ...i,
+              include_in_total: wan.has(i.name)
+            }));
+            result.totalRxMbps = scoped.totalRxMbps;
+            result.totalTxMbps = scoped.totalTxMbps;
+            result.trafficIfaces = scoped.trafficIfaces;
+            result.trafficScope = scoped.trafficScope;
           } else {
             result.errors.push({ step: 'interfaces', error: ifRes.reason?.message });
           }

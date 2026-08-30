@@ -13,9 +13,12 @@ const {
   normalizeMemPercent,
   presentDeviceMetrics,
   aggregateDeviceTraffic,
+  scopeDeviceTraffic,
   isCustomerTunnelIface,
-  isUplinkIface
+  isVirtualSwitchIface
 } = require('../utils/deviceMetrics');
+
+const _snmpByteSnap = new Map();
 
 let snmp;
 try { snmp = require('net-snmp'); } catch(e) {}
@@ -265,36 +268,32 @@ async function _pollMikrotikApi(device) {
     const usedMem  = Math.max(0, totalMem - freeMem);
     const memPct   = totalMem > 0 ? normalizeMemPercent((usedMem / totalMem) * 100) : 0;
 
-    // Poll uplink/physical only — summing WAN + all PPPoE makes RX/TX look symmetric.
+    // Byte-delta on physical ports only, then pick WAN — jangan jumlahkan
+    // semua ether terdaftar (LAN+WAN) atau monitor-traffic (FastTrack = RX≈TX).
     const monitorIfaces = ifaceRaw
-      .filter((i) => !i.disabled && i.running && !isCustomerTunnelIface(i.name, i.type))
-      .filter((i) => isUplinkIface(i.name, i.type) || !['bridge', 'vlan', 'vrrp'].includes(String(i.type || '').toLowerCase()))
-      .sort((a, b) => {
-        const aw = isUplinkIface(a.name, a.type) ? 0 : 1;
-        const bw = isUplinkIface(b.name, b.type) ? 0 : 1;
-        return aw - bw;
-      })
-      .slice(0, 8);
-    const ifaceStats = await Promise.allSettled(
-      monitorIfaces.map(i => mt.getInterfaceStats(i.name).catch(() => null))
-    );
-
-    const interfaces = ifaceStats
-      .map((r, idx) => {
-        const s = r.status === 'fulfilled' ? r.value : null;
-        if (!s) return null;
-        const rxMbps = ((s.rxBitsPerSecond || 0) / 1e6);
-        const txMbps = ((s.txBitsPerSecond || 0) / 1e6);
-        return {
-          name:    monitorIfaces[idx]?.name || s.name || '',
-          type:    monitorIfaces[idx]?.type || 'ether',
-          running: monitorIfaces[idx]?.running || false,
-          rxMbps:  parseFloat(rxMbps.toFixed(3)),
-          txMbps:  parseFloat(txMbps.toFixed(3))
-        };
-      })
-      .filter(Boolean);
-    const traffic = aggregateDeviceTraffic(interfaces);
+      .filter((i) => i && !i.disabled && i.running)
+      .filter((i) => !isCustomerTunnelIface(i.name, i.type) && !isVirtualSwitchIface(i.name, i.type))
+      .slice(0, 40);
+    let liveStats = [];
+    try {
+      liveStats = await mt.getInterfacesBulkStats(monitorIfaces.map((i) => i.name));
+    } catch (_) { /* rates stay 0 on this tick */ }
+    const scoped = scopeDeviceTraffic(monitorIfaces, liveStats);
+    const interfaces = scoped.interfaces.map((i) => ({
+      name:    i.name,
+      type:    i.type || 'ether',
+      running: i.running,
+      comment: i.comment || '',
+      rxMbps:  i.rxMbps,
+      txMbps:  i.txMbps,
+      include_in_total: !!i.include_in_total
+    }));
+    const traffic = {
+      totalRxMbps: scoped.totalRxMbps,
+      totalTxMbps: scoped.totalTxMbps,
+      trafficScope: scoped.trafficScope,
+      trafficIfaces: scoped.trafficIfaces
+    };
 
     // Disk — ambil langsung dari /system/resource raw
     let diskPct = 0;
@@ -388,13 +387,25 @@ async function _pollSnmp(device) {
         let interfaces = [];
 
         if (!ifErr && table) {
+          const now = Date.now();
           Object.values(table).forEach(row => {
+            const name = row[2]?.toString() || '';
             const rxOctets = parseInt(row[10]) || 0;
             const txOctets = parseInt(row[16]) || 0;
-            const rxMbps   = (rxOctets * 8) / 1e6;
-            const txMbps   = (txOctets * 8) / 1e6;
+            const key = `${device.id}:${name}`;
+            const prev = _snmpByteSnap.get(key);
+            let rxMbps = 0;
+            let txMbps = 0;
+            if (prev) {
+              const sec = (now - prev.at) / 1000;
+              if (sec >= 0.3 && sec <= 180 && rxOctets >= prev.rx && txOctets >= prev.tx) {
+                rxMbps = ((rxOctets - prev.rx) * 8) / sec / 1e6;
+                txMbps = ((txOctets - prev.tx) * 8) / sec / 1e6;
+              }
+            }
+            _snmpByteSnap.set(key, { rx: rxOctets, tx: txOctets, at: now });
             interfaces.push({
-              name:    row[2]?.toString() || '',
+              name,
               running: row[8] === 1,
               rxMbps:  parseFloat(rxMbps.toFixed(3)),
               txMbps:  parseFloat(txMbps.toFixed(3))

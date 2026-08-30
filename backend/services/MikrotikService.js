@@ -9,6 +9,7 @@ const { MikrotikApiClient } = require('./MikrotikApiClient');
 const {
   rosTrue,
   parseCounter,
+  ifaceRxTxBytes,
   combineMonitorBits,
   rateFromDelta
 } = require('../utils/interfaceTrafficRate');
@@ -714,14 +715,17 @@ class MikrotikService {
   // ── INTERFACES ─────────────────────────────────────────────
   async getInterfaces() {
     const ifaces = await this.get('/interface');
-    return (Array.isArray(ifaces) ? ifaces : []).map(i => ({
-      id: i['.id'], name: i.name, type: i.type || 'ether',
-      mtu: i.mtu || 1500, running: rosTrue(i.running),
-      disabled: rosTrue(i.disabled), comment: i.comment || '',
-      macAddress: i['mac-address'] || '',
-      txByte: parseCounter(i['tx-byte']), rxByte: parseCounter(i['rx-byte']),
-      txPacket: parseCounter(i['tx-packet']), rxPacket: parseCounter(i['rx-packet'])
-    }));
+    return (Array.isArray(ifaces) ? ifaces : []).map(i => {
+      const bytes = ifaceRxTxBytes(i);
+      return {
+        id: i['.id'], name: i.name, type: i.type || 'ether',
+        mtu: i.mtu || 1500, running: rosTrue(i.running),
+        disabled: rosTrue(i.disabled), comment: i.comment || '',
+        macAddress: i['mac-address'] || '',
+        txByte: bytes.tx, rxByte: bytes.rx,
+        txPacket: parseCounter(i['tx-packet']), rxPacket: parseCounter(i['rx-packet'])
+      };
+    });
   }
 
   // ── IP SCAN (Tools > IP Scan) ──────────────────────────────
