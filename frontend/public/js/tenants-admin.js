@@ -39,7 +39,7 @@ const TenantsAdmin = {
         <td>${t.customer_count || 0}</td>
         <td>${owners}</td>
         <td class="tod-actions">
-          <a class="tod-btn" href="/tenant?tenant_id=${t.id}">Dashboard</a>
+          <a class="tod-btn" href="/tenant?tenant_id=${t.id}">Lihat billing</a>
           <button class="tod-btn" type="button" onclick="TenantsAdmin.openOwner(${t.id})">+ Owner</button>
           <button class="tod-btn" type="button" onclick="TenantsAdmin.assignUnassigned(${t.id})">Ikat pelanggan</button>
           <button class="tod-btn" type="button" onclick="TenantsAdmin.toggleStatus(${t.id},'${t.status}')">${t.status === 'active' ? 'Tangguhkan' : 'Aktifkan'}</button>
@@ -81,7 +81,7 @@ const TenantsAdmin = {
   openOwner(id) {
     document.getElementById('tnModal').innerHTML = `
       <h3>Buat pemilik tenant</h3>
-      <p class="tod-sub">User ini login di /login lalu otomatis masuk dashboard /tenant</p>
+      <p class="tod-sub">User ini login di /login lalu otomatis masuk <code>/dashboard</code></p>
       <label>Nama</label><input id="owName" class="tod-input" placeholder="Budi">
       <label>Email</label><input id="owEmail" class="tod-input" type="email" placeholder="owner@isp.id">
       <label>Password</label><input id="owPass" class="tod-input" type="password" placeholder="minimal 8 karakter">

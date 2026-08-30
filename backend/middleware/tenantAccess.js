@@ -13,7 +13,7 @@ function allowTenantArea(req, res, next) {
 
 function blockTenantOwner(req, res, next) {
   if (!req.user) return res.redirect('/login');
-  if (isTenantOwner(req)) return res.redirect('/tenant');
+  if (isTenantOwner(req)) return res.redirect('/dashboard');
   next();
 }
 

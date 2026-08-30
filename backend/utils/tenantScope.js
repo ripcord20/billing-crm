@@ -68,7 +68,7 @@ function homePathForRole(roleName) {
   if (r === 'finance') return '/finance';
   if (r === 'noc') return '/noc';
   if (r === 'sales') return '/sales';
-  if (r === 'tenant_owner') return '/tenant';
+  if (r === 'tenant_owner') return '/dashboard';
   return '/dashboard';
 }
 

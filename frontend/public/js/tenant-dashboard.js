@@ -44,10 +44,15 @@ const TenantDash = {
   render(data) {
     const t = data.tenant || {};
     const k = data.kpis || {};
-    document.getElementById('todTitle').textContent = t.name || 'Dashboard Tenant';
+    document.getElementById('todTitle').textContent = t.name || 'Dashboard';
+    const nCust = k.customers || 0;
     document.getElementById('todSub').textContent =
-      (t.status === 'suspended' ? 'Tenant ditangguhkan · ' : '') +
-      `${k.customers || 0} pelanggan · ${k.tx_count || 0} transaksi periode ini`;
+      (t.status === 'suspended' ? 'Akun ditangguhkan · ' : '') +
+      (nCust
+        ? `${nCust} pelanggan · ${k.tx_count || 0} transaksi periode ini`
+        : 'Belum ada pelanggan — buat paket, lalu tambah pelanggan di menu Billing');
+    const start = document.getElementById('todStart');
+    if (start) start.style.display = nCust ? 'none' : '';
 
     document.getElementById('todKpiBiz').innerHTML = [
       this.kpi('Pelanggan', k.customers, 'Semua status'),

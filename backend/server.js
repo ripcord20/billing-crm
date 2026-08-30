@@ -239,6 +239,7 @@ const signupLimiter = rateLimit({
   message: { success: false, message: 'Terlalu banyak pendaftaran dari IP ini. Coba lagi nanti.' }
 });
 app.use('/api/public/tenant-signup', signupLimiter);
+app.use('/api/internal/provision-tenant', signupLimiter);
 app.use('/api', apiLimiter);
 
 // ── Demo-specific rate limiter (60 req/min untuk role demo) ─────────

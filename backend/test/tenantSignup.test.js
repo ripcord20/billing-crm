@@ -3,7 +3,8 @@
 const assert = require('assert');
 const {
   validateTenantSignup,
-  publicSignupEnabled
+  publicSignupEnabled,
+  provisionKeyMatches
 } = require('../utils/tenantSignup');
 
 const valid = {
@@ -48,5 +49,11 @@ delete process.env.PUBLIC_TENANT_SIGNUP;
 assert.strictEqual(publicSignupEnabled(), false);
 if (prev === undefined) delete process.env.PUBLIC_TENANT_SIGNUP;
 else process.env.PUBLIC_TENANT_SIGNUP = prev;
+
+assert.strictEqual(provisionKeyMatches('short', 'short-but-not-16'), false);
+assert.strictEqual(provisionKeyMatches('abcdabcdabcdabcd', 'abcdabcdabcdabcd'), true);
+assert.strictEqual(provisionKeyMatches('abcdabcdabcdabce', 'abcdabcdabcdabcd'), false);
+assert.strictEqual(provisionKeyMatches('', 'abcdefghijklmnop'), false);
+assert.strictEqual(provisionKeyMatches('abcdefghijklmnop', ''), false);
 
 console.log('tenantSignup.test.js OK');

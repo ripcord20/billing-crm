@@ -322,8 +322,8 @@ class TenantController {
       });
       res.json({
         success: true,
-        message: 'Pemilik tenant dibuat. Login di /login, lalu otomatis ke /tenant',
-        data: { id: user.id, name: user.name, email: user.email, tenant_id: tenant.id, redirect: '/tenant' }
+        message: 'Pemilik tenant dibuat. Login di /login, lalu otomatis ke /dashboard',
+        data: { id: user.id, name: user.name, email: user.email, tenant_id: tenant.id, redirect: '/dashboard' }
       });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
