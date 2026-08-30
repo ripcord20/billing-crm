@@ -28,12 +28,22 @@
     done();
   }
 
-  document.querySelectorAll('.mk-tab').forEach((tab) => {
+  document.querySelectorAll('.mk-tab[data-tab]').forEach((tab) => {
     tab.addEventListener('click', () => {
       const name = tab.getAttribute('data-tab');
-      document.querySelectorAll('.mk-tab').forEach((t) => t.classList.toggle('on', t === tab));
+      document.querySelectorAll('.mk-tab[data-tab]').forEach((t) => t.classList.toggle('on', t === tab));
       document.querySelectorAll('[data-pane]').forEach((pane) => {
         pane.style.display = pane.getAttribute('data-pane') === name ? '' : 'none';
+      });
+    });
+  });
+
+  document.querySelectorAll('.mk-tab[data-verify]').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const name = tab.getAttribute('data-verify');
+      document.querySelectorAll('.mk-tab[data-verify]').forEach((t) => t.classList.toggle('on', t === tab));
+      document.querySelectorAll('[data-vfy]').forEach((pane) => {
+        pane.style.display = pane.getAttribute('data-vfy') === name ? '' : 'none';
       });
     });
   });
@@ -41,9 +51,14 @@
   document.querySelectorAll('.mk-copy').forEach((btn) => {
     btn.addEventListener('click', () => {
       const which = btn.getAttribute('data-copy');
-      if (which === 'v7') copy(textOf('mkScriptV7'), btn);
-      else if (which === 'v6') copy(textOf('mkScriptV6'), btn);
-      else if (which === 'verify') copy(textOf('mkVerify'), btn);
+      const map = {
+        v7: 'mkScriptV7',
+        v6: 'mkScriptV6',
+        verify7: 'mkVerify7',
+        verify6: 'mkVerify6',
+        verify: 'mkVerify7'
+      };
+      copy(textOf(map[which] || 'mkScriptV7'), btn);
     });
   });
 })();

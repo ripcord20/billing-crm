@@ -1,8 +1,9 @@
 'use strict';
 
 /**
- * Panduan mitra ISP: hubungkan MikroTik ke billing Fiberix
- * tanpa IP public di sisi mitra (hanya outbound WireGuard).
+ * Panduan mitra: hubungkan MikroTik tanpa IP public.
+ * ROS 7 → WireGuard. ROS 6 → L2TP/IPsec (bawaan, tanpa paket WireGuard).
+ * Modul RADIUS (FreeRADIUS SQL) bukan pekerjaan mitra.
  */
 
 const DEFAULT_RADIUS_HOST = process.env.RADIUS_HOST || '192.168.22.9';
@@ -15,7 +16,8 @@ const SETTING_KEYS = [
   'wg_server_address',
   'wg_tunnel_subnet',
   'wg_server_public_key',
-  'wg_enabled'
+  'wg_enabled',
+  'vpn_server_host'
 ];
 
 function isPrivateHost(host) {
@@ -37,27 +39,18 @@ function escapeRos(s) {
   return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
-function buildExampleScripts(guide) {
+function buildWireguardV7(guide) {
   const endpoint = guide.endpoint_host || 'IP_PUBLIK_FIBERIX';
   const port = guide.endpoint_port || 51820;
   const serverPub = guide.server_public_key || 'SERVER_PUBLIC_KEY';
   const serverIp = stripCidr(guide.server_address || DEFAULT_SERVER_ADDR);
-  const radius = guide.radius_host || DEFAULT_RADIUS_HOST;
+  const radius = guide.radius_host;
   const tunnel = guide.example_tunnel_ip;
   const allowed = `${serverIp}/32,${radius}/32`;
-
-  const header = [
-    '# FIBERIX — contoh script mitra TANPA IP public',
-    '# Ganti MY_PRIVATE_KEY dan RADIUS_SECRET dengan nilai dari owner Fiberix.',
-    `# Endpoint: ${endpoint}:${port}`,
-    `# IP tunnel router ini (contoh): ${tunnel}`,
-    '# Jangan tempel sebelum key peer dibuat — handshake akan gagal.',
-    ''
-  ];
-
-  const v7 = [
-    ...header,
-    `/interface/wireguard/add name=wg-fiberix private-key="MY_PRIVATE_KEY" listen-port=0 comment="FIBERIX"`,
+  return [
+    '# Fiberix — RouterOS 7 (WireGuard bawaan)',
+    '# Ganti MY_PRIVATE_KEY dan RADIUS_SECRET dari owner. Jangan buka Modul RADIUS.',
+    `/interface/wireguard/add name=wg-fiberix private-key="${escapeRos('MY_PRIVATE_KEY')}" listen-port=0 comment="FIBERIX"`,
     `/ip/address/add address=${tunnel}/32 interface=wg-fiberix comment="FIBERIX"`,
     `/interface/wireguard/peers/add interface=wg-fiberix \\`,
     `    public-key="${escapeRos(serverPub)}" \\`,
@@ -66,43 +59,32 @@ function buildExampleScripts(guide) {
     `/ip/route/add dst-address=${serverIp}/32 gateway=wg-fiberix comment="FIBERIX"`,
     `/ip/route/add dst-address=${radius}/32 gateway=wg-fiberix comment="FIBERIX"`,
     `/radius/add service=ppp,hotspot address=${radius} secret="RADIUS_SECRET" timeout=3s comment="FIBERIX"`,
-    '/radius/incoming/set accept=yes',
     '/ppp/aaa/set use-radius=yes accounting=yes interim-update=5m'
   ].join('\n');
-
-  const v6 = [
-    ...header,
-    `/interface wireguard add name=wg-fiberix private-key="MY_PRIVATE_KEY" listen-port=0 comment="FIBERIX"`,
-    `/ip address add address=${tunnel}/32 interface=wg-fiberix comment="FIBERIX"`,
-    `/interface wireguard peers add interface=wg-fiberix \\`,
-    `    public-key="${escapeRos(serverPub)}" \\`,
-    `    endpoint-address=${endpoint} endpoint-port=${port} \\`,
-    `    allowed-address=${allowed} persistent-keepalive=25s comment="FIBERIX"`,
-    `/ip route add dst-address=${serverIp}/32 gateway=wg-fiberix comment="FIBERIX"`,
-    `/ip route add dst-address=${radius}/32 gateway=wg-fiberix comment="FIBERIX"`,
-    `/radius add service=ppp,hotspot address=${radius} secret="RADIUS_SECRET" timeout=3s comment="FIBERIX"`,
-    '/radius incoming set accept=yes',
-    '/ppp aaa set use-radius=yes accounting=yes interim-update=5m'
-  ].join('\n');
-
-  return { v7, v6 };
 }
 
-function buildVerifyCommands(guide) {
+function buildL2tpV6(guide) {
+  const host = guide.l2tp_host || guide.endpoint_host || 'IP_PUBLIK_FIBERIX';
+  const radius = guide.radius_host;
   const serverIp = stripCidr(guide.server_address || DEFAULT_SERVER_ADDR);
-  const radius = guide.radius_host || DEFAULT_RADIUS_HOST;
   return [
-    '/interface wireguard peers print',
-    `/ping ${serverIp} count=4`,
-    `/ping ${radius} count=4`,
-    '/radius print',
-    '/ppp aaa print'
-  ];
+    '# Fiberix — RouterOS 6 (L2TP/IPsec bawaan, TANPA WireGuard)',
+    '# Ganti L2TP_USER / L2TP_PASS / IPSEC_PSK / RADIUS_SECRET dari owner.',
+    `/interface l2tp-client add name=l2tp-fiberix connect-to=${host} \\`,
+    '    user=L2TP_USER password=L2TP_PASS \\',
+    '    use-ipsec=yes ipsec-secret="IPSEC_PSK" \\',
+    '    add-default-route=no disabled=no comment="FIBERIX"',
+    `/ip route add dst-address=${serverIp}/32 gateway=l2tp-fiberix comment="FIBERIX"`,
+    `/ip route add dst-address=${radius}/32 gateway=l2tp-fiberix comment="FIBERIX"`,
+    `/radius add service=ppp,hotspot address=${radius} secret="RADIUS_SECRET" timeout=3s comment="FIBERIX"`,
+    '/ppp aaa set use-radius=yes accounting=yes interim-update=5m'
+  ].join('\n');
 }
 
 function buildMitraMikrotikGuide(settings) {
   const s = settings && typeof settings === 'object' ? settings : {};
   const endpointHost = String(s.wg_endpoint_host || '').trim();
+  const l2tpHost = String(s.vpn_server_host || endpointHost || '').trim();
   const endpointPort = parseInt(s.wg_listen_port, 10) || 51820;
   const serverAddress = stripCidr(s.wg_server_address) || DEFAULT_SERVER_ADDR;
   const subnet = s.wg_tunnel_subnet || DEFAULT_SUBNET;
@@ -110,16 +92,25 @@ function buildMitraMikrotikGuide(settings) {
   const radiusHost = String(s.radius_host || process.env.RADIUS_HOST || DEFAULT_RADIUS_HOST).trim();
   const wgEnabled = String(s.wg_enabled || '').toLowerCase() === 'true';
   const endpointIsPrivate = isPrivateHost(endpointHost);
+  const l2tpIsPrivate = isPrivateHost(l2tpHost);
   const reachableFromInternet = Boolean(endpointHost) && !endpointIsPrivate;
+  const l2tpReachable = Boolean(l2tpHost) && !l2tpIsPrivate;
 
   const guide = {
-    title: 'Hubungkan MikroTik tanpa IP public',
+    title: 'Hubungkan MikroTik',
+    show_radius_module: false,
+    ros6_method: 'l2tp',
+    ros7_method: 'wireguard',
     radius_host: radiusHost,
     endpoint_host: endpointHost,
     endpoint_port: endpointPort,
     endpoint_display: endpointHost ? `${endpointHost}:${endpointPort}` : `IP_PUBLIK_FIBERIX:${endpointPort}`,
+    l2tp_host: l2tpHost,
+    l2tp_display: l2tpHost ? `${l2tpHost}:1701` : 'IP_PUBLIK_FIBERIX:1701',
     endpoint_is_private: endpointIsPrivate,
+    l2tp_is_private: l2tpIsPrivate,
     reachable_from_internet: reachableFromInternet,
+    l2tp_reachable_from_internet: l2tpReachable,
     server_address: serverAddress,
     tunnel_subnet: subnet,
     example_tunnel_ip: DEFAULT_TUNNEL_EXAMPLE,
@@ -129,15 +120,31 @@ function buildMitraMikrotikGuide(settings) {
     winbox_port: 8291
   };
 
-  guide.scripts = buildExampleScripts(guide);
-  guide.verify_commands = buildVerifyCommands(guide);
-  guide.owner_action_needed = !reachableFromInternet;
+  guide.scripts = {
+    v7: buildWireguardV7(guide),
+    v6: buildL2tpV6(guide)
+  };
+  guide.verify_v7 = [
+    '/interface wireguard peers print',
+    `/ping ${serverAddress} count=4`,
+    `/ping ${radiusHost} count=4`,
+    '/radius print'
+  ];
+  guide.verify_v6 = [
+    '/interface l2tp-client print',
+    `/ping ${serverAddress} count=4`,
+    `/ping ${radiusHost} count=4`,
+    '/radius print'
+  ];
+  guide.verify_commands = guide.verify_v7.concat(['', '# RouterOS 6:'], guide.verify_v6);
+  guide.owner_action_needed = !reachableFromInternet && !l2tpReachable;
 
-  if (!endpointHost) {
-    guide.endpoint_warning = 'Endpoint WireGuard belum diisi. Owner Fiberix harus mengisi IP/DNS publik di pengaturan WireGuard Server.';
-  } else if (endpointIsPrivate) {
+  const missing = !endpointHost && !l2tpHost;
+  if (missing) {
+    guide.endpoint_warning = 'Owner belum mengisi host VPN publik. Mitra di internet belum bisa nyambung.';
+  } else if (endpointIsPrivate && l2tpIsPrivate) {
     guide.endpoint_warning =
-      `Endpoint sekarang ${guide.endpoint_display} (alamat LAN). Ini hanya tembus dari jaringan yang sama dengan server Fiberix. Mitra di internet tidak akan handshake sebelum endpoint diganti ke IP/DNS publik dan UDP ${endpointPort} dibuka.`;
+      `Host VPN sekarang masih LAN (${guide.l2tp_display} / ${guide.endpoint_display}). Itu hanya tembus dari jaringan Fiberix. Mitra remote butuh IP/DNS publik + port UDP 51820 (ROS7) atau UDP 1701 + IPsec (ROS6).`;
   } else {
     guide.endpoint_warning = null;
   }
