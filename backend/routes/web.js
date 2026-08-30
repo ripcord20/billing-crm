@@ -48,7 +48,19 @@ router.get('/login', async (req, res) => {
     // Defensive: kalau apa pun gagal di check ini, tetap render halaman login
     // (lebih baik render daripada loop atau error 500).
   }
-  res.render('pages/login', { title: 'Login', layout: false });
+  const nextRaw = String((req.query && req.query.next) || '');
+  const nextUrl = (nextRaw.charAt(0) === '/' && nextRaw.charAt(1) !== '/') ? nextRaw : '';
+  res.set('Cache-Control', 'private, no-store');
+  res.render('pages/login', { title: 'Masuk', layout: false, nextUrl });
+});
+
+router.get('/kebijakan-privasi', (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  res.render('pages/kebijakan-privasi', {
+    title: 'Kebijakan privasi',
+    layout: false,
+    saasPage: 'privacy'
+  });
 });
 
 // Root — tamu melihat landing publik (gaya SaaS). User yang sudah login
@@ -78,7 +90,7 @@ router.get('/mitra/daftar', (req, res) => res.redirect(301, `${SAAS_APP_URL}/reg
 // (Admin/superadmin & role lain tidak terpengaruh.)
 // ═══════════════════════════════════════════════════════════════════
 const _salesAllowedPaths = new Set([
-  '/sales', '/sales/dashboard', '/login', '/logout',
+  '/sales', '/sales/dashboard', '/login', '/logout', '/kebijakan-privasi',
   '/tickets', '/todos', '/work-orders'
 ]);
 // Prefix yang diizinkan (untuk path dinamis seperti /tickets/123).
@@ -108,7 +120,7 @@ router.use((req, res, next) => {
 // di-redirect ke /collect/field. (Admin/superadmin tidak terpengaruh.)
 // ═══════════════════════════════════════════════════════════════════
 const _collectorAllowedPaths = new Set([
-  '/collect/field', '/login', '/logout'
+  '/collect/field', '/login', '/logout', '/kebijakan-privasi'
 ]);
 const _collectorAllowedPrefixes = ['/collect/field'];
 router.use((req, res, next) => {
@@ -130,7 +142,7 @@ router.use((req, res, next) => {
 
 const _tenantAllowedPaths = new Set([
   '/dashboard', '/tenant', '/customers', '/billing', '/payments', '/packages',
-  '/login', '/logout', '/', '/mitra', '/mitra/daftar'
+  '/login', '/logout', '/', '/mitra', '/mitra/daftar', '/kebijakan-privasi'
 ]);
 const _tenantAllowedPrefixes = ['/customers/', '/billing/', '/payments/', '/packages/'];
 router.use((req, res, next) => {
