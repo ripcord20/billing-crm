@@ -11,6 +11,24 @@ function slugify(name) {
     .slice(0, 60) || 'tenant';
 }
 
+/** Baris server yang dipakai ulang. Jangan cocokkan mysql_host: bootstrap
+ *  mengubah 192.168.22.9 → 127.0.0.1, lalu findOrCreate bikin baris baru tiap restart. */
+function pickExistingRadiusServer(rows, radiusHost) {
+  const list = Array.isArray(rows) ? rows : [];
+  return list.find((r) => r && r.host === radiusHost) || list[0] || null;
+}
+
+function duplicateServerIds(rows) {
+  const keep = new Set();
+  const drop = [];
+  for (const r of rows || []) {
+    const key = [r.host, r.mysql_host, r.mysql_database].join('|');
+    if (!keep.has(key)) keep.add(key);
+    else drop.push(r.id);
+  }
+  return drop;
+}
+
 async function hasColumn(sequelize, table, col) {
   const [rows] = await sequelize.query(
     `SELECT COUNT(*) AS c FROM information_schema.columns
@@ -114,9 +132,24 @@ async function run(db) {
   const mysqlPassRaw = process.env.RADIUS_MYSQL_PASSWORD || '';
   const mysqlPass = mysqlPassRaw ? encryptSecret(mysqlPassRaw) : '';
 
-  const [radiusSrv] = await db.RadiusServer.findOrCreate({
-    where: { host: radiusHost, mysql_host: mysqlHost },
-    defaults: {
+  const existing = await db.RadiusServer.findAll({ order: [['id', 'ASC']] });
+  for (const id of duplicateServerIds(existing)) {
+    const row = existing.find((r) => r.id === id);
+    if (!row) continue;
+    const keeper = pickExistingRadiusServer(existing.filter((r) => r.id !== id && r.host === row.host), row.host)
+      || pickExistingRadiusServer(existing.filter((r) => r.id !== id), row.host);
+    if (keeper && db.Tenant) {
+      try { await db.Tenant.update({ radius_server_id: keeper.id }, { where: { radius_server_id: row.id } }); } catch (_) {}
+    }
+    await row.destroy();
+  }
+
+  let radiusSrv = pickExistingRadiusServer(
+    await db.RadiusServer.findAll({ order: [['id', 'ASC']] }),
+    radiusHost
+  );
+  if (!radiusSrv) {
+    radiusSrv = await db.RadiusServer.create({
       tenant_id: defaultId,
       name: 'daloRADIUS / FreeRADIUS',
       host: radiusHost,
@@ -129,8 +162,8 @@ async function run(db) {
       mysql_password: mysqlPass,
       notes: 'Server RADIUS LAN. Billing di 192.168.22.99. Isi password MySQL radius di modul RADIUS bila masih kosong.',
       is_active: true
-    }
-  });
+    });
+  }
 
   if (!defaultTenant.radius_server_id) {
     await defaultTenant.update({ radius_server_id: radiusSrv.id });
@@ -145,4 +178,4 @@ async function run(db) {
   logger.info('Radius/NAS/tenant migration OK (additive, no destructive ALTER)');
 }
 
-module.exports = { run, slugify };
+module.exports = { run, slugify, pickExistingRadiusServer, duplicateServerIds };
