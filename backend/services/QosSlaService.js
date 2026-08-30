@@ -14,7 +14,7 @@ const {
   shouldRaiseDdos, dnsCompare, classifyDns, alertAudience, alertRoles
 } = require('../utils/qosSla');
 const {
-  isCustomerTunnelIface, isUplinkIface, isDdosWatchIface, pppoeIfaceMatchesUsername, latestUniqueBy
+  isCustomerTunnelIface, isDdosWatchIface, pppoeIfaceMatchesUsername, latestUniqueBy
 } = require('../utils/deviceMetrics');
 
 const METRIC_RETENTION_DAYS = 7;
