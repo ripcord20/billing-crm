@@ -7,6 +7,7 @@ const axios = require('axios');
 const logger = require('../utils/logger');
 const { MikrotikApiClient } = require('./MikrotikApiClient');
 const { explainRestFailure, explainApiConnectRefused } = require('../utils/mikrotikRestErrors');
+const { startBinaryKeepalive, stopBinaryKeepalive } = require('../utils/mikrotikApiSession');
 
 /**
  * Port → protokol detection (FALLBACK MODE — dipakai kalau caller tidak
@@ -1022,6 +1023,7 @@ function setMikrotikInstance(config) {
  */
 function resetInstance(deviceId = null) {
   const closeIfBinary = (inst) => {
+    stopBinaryKeepalive(inst);
     if (inst && inst._apiClient) {
       try { inst._apiClient.close(); } catch (_) {}
     }
@@ -1065,12 +1067,17 @@ async function getMikrotikInstanceByDevice(deviceId = null) {
           cached.host === device.ip_address &&
           String(cached.port) === String(device.api_port || 80) &&
           cached.username === (device.api_username || 'admin') &&
+          cached._apiPassword === (device.api_password || '') &&
           cached._apiProtocol === (device.api_protocol || null)) {
+        cached._pollIntervalSec = device.poll_interval || 60;
+        cached._monitoringType = device.monitoring_type || 'snmp';
+        startBinaryKeepalive(cached);
         logger.debug(`[MT] cache hit device_id=${deviceId} host=${device.ip_address}`);
         return cached;
       }
       // Cache stale → invalidate (& close binary socket kalau ada)
       if (cached) {
+        stopBinaryKeepalive(cached);
         if (cached._apiClient) { try { cached._apiClient.close(); } catch (_) {} }
         _deviceInstances.delete(Number(deviceId));
       }
@@ -1115,6 +1122,10 @@ async function getMikrotikInstanceByDevice(deviceId = null) {
   const inst = new MikrotikService(cfg);
   // Tag biar cache invalidation bisa cek perubahan api_protocol
   inst._apiProtocol = device.api_protocol || null;
+  inst._apiPassword = device.api_password || '';
+  inst._pollIntervalSec = device.poll_interval || 60;
+  inst._monitoringType = device.monitoring_type || 'snmp';
+  startBinaryKeepalive(inst);
   _deviceInstances.set(Number(device.id), inst);
   return inst;
 }

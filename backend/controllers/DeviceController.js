@@ -342,15 +342,8 @@ class DeviceController {
         return res.status(400).json({ success: false, message: 'Device tidak mendukung MikroTik API' });
       }
 
-      const { MikrotikService } = require('../services/MikrotikService');
-      const mt = new MikrotikService({
-        host: device.ip_address,
-        port: device.api_port || 80,
-        username: device.api_username,
-        password: device.api_password || '',
-        api_protocol: device.api_protocol || null,
-        timeout: 6000
-      });
+      const { getMikrotikInstanceByDevice } = require('../services/MikrotikService');
+      const mt = await getMikrotikInstanceByDevice(device.id);
 
       // Fetch live stats + current counters secara paralel
       const [stats, ifaces] = await Promise.all([
@@ -459,15 +452,8 @@ class DeviceController {
 
       if (canUseMt) {
         try {
-          const { MikrotikService } = require('../services/MikrotikService');
-          const mt = new MikrotikService({
-            host: device.ip_address,
-            port: device.api_port || 80,
-            username: device.api_username,
-            password: device.api_password || '',
-            api_protocol: device.api_protocol || null,
-            timeout: 8000
-          });
+          const { getMikrotikInstanceByDevice } = require('../services/MikrotikService');
+          const mt = await getMikrotikInstanceByDevice(device.id);
 
           // Parallel: identity + resource + interfaces
           const [idRes, resRes, ifRes] = await Promise.allSettled([
@@ -623,13 +609,17 @@ async function _probeDevice(cfg) {
         api_protocol: cfg.api_protocol || null,
         timeout: 6000
       });
-      const test = await mt.testConnection();
-      if (test.success) {
-        result.identity = test.identity;
-        result.method   = 'API';
-        result.checks.push({ step: 'API Auth', ok: true, detail: `identity: ${test.identity}` });
-      } else {
-        result.checks.push({ step: 'API Auth', ok: false, detail: test.error || 'auth failed' });
+      try {
+        const test = await mt.testConnection();
+        if (test.success) {
+          result.identity = test.identity;
+          result.method   = 'API';
+          result.checks.push({ step: 'API Auth', ok: true, detail: `identity: ${test.identity}` });
+        } else {
+          result.checks.push({ step: 'API Auth', ok: false, detail: test.error || 'auth failed' });
+        }
+      } finally {
+        if (mt._apiClient) { try { mt._apiClient.close(); } catch (_) {} }
       }
     } catch (e) {
       result.checks.push({ step: 'API Auth', ok: false, detail: e.message });

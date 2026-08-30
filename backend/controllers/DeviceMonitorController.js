@@ -219,25 +219,8 @@ exports.summary = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 async function _pollMikrotikApi(device) {
   try {
-    let mt;
-    // Cek apakah device punya credential sendiri atau pakai config global
-    if (device.api_username && device.api_port) {
-      // Device punya config sendiri — buat instance baru pakai credential device
-      // (FIX: dulu pakai `MikrotikAPI` yang tidak diexport, fallback ke env. Sekarang pakai MikrotikService yang benar.)
-      const { MikrotikService } = require('../services/MikrotikService');
-      mt = new MikrotikService({
-        host:         device.ip_address,
-        port:         device.api_port,
-        username:     device.api_username,
-        password:     device.api_password || '',
-        api_protocol: device.api_protocol || null,
-        useSSL:       parseInt(device.api_port) === 443
-      });
-    } else {
-      // Pakai MikroTik utama dari config (.env atau primary device)
-      const { getMikrotikInstanceByDevice } = require('../services/MikrotikService');
-      mt = await getMikrotikInstanceByDevice(device.id);
-    }
+    const { getMikrotikInstanceByDevice } = require('../services/MikrotikService');
+    const mt = await getMikrotikInstanceByDevice(device.id);
 
     // Ambil semua data paralel
     const [resResult, ifaceResult] = await Promise.allSettled([
@@ -411,23 +394,8 @@ async function _pollSnmp(device) {
 
 async function _getMikrotikInterfaces(device) {
   try {
-    let mt;
-    // FIX: dulu function ini ignore parameter device dan selalu pakai env.
-    // Sekarang prefer credential device kalau ada, fallback ke config global.
-    if (device.api_username && device.api_port) {
-      const { MikrotikService } = require('../services/MikrotikService');
-      mt = new MikrotikService({
-        host:         device.ip_address,
-        port:         device.api_port,
-        username:     device.api_username,
-        password:     device.api_password || '',
-        api_protocol: device.api_protocol || null,
-        useSSL:       parseInt(device.api_port) === 443
-      });
-    } else {
-      const { getMikrotikInstanceByDevice } = require('../services/MikrotikService');
-      mt = await getMikrotikInstanceByDevice(device.id);
-    }
+    const { getMikrotikInstanceByDevice } = require('../services/MikrotikService');
+    const mt = await getMikrotikInstanceByDevice(device.id);
     const ifaces = await mt.getInterfaces();
     return ifaces.filter(i => !i.disabled).map(i => ({
       name:    i.name,

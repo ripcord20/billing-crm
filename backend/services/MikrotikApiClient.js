@@ -82,7 +82,12 @@ class MikrotikApiClient {
 
       const onConnect = async () => {
         try {
+          // Timeout socket HANYA untuk handshake. Setelah TCP up, command
+          // punya timer sendiri. Jangan destroy sesi idle — RouterOS v6
+          // menulis login/logout setiap reconnect ("dial terus" di /log).
+          if (this.sock) this.sock.setTimeout(0);
           await this._login();
+          if (this.sock) this.sock.setTimeout(0);
           this._connected = true;
           safeResolve(this);
         } catch (err) {
@@ -114,7 +119,10 @@ class MikrotikApiClient {
         // Translate ke pesan yg actionable kalau bisa, lalu reject.
         this._onSocketError(err, safeReject);
       });
-      this.sock.on('timeout', () => this._onSocketTimeout(safeReject));
+      this.sock.once('timeout', () => {
+        if (this._connected) return; // idle setelah login: jangan bunuh sesi
+        this._onSocketTimeout(safeReject);
+      });
       this.sock.on('data',    (d)   => this._onData(d));
       this.sock.on('close',   ()    => {
         this._connected = false;

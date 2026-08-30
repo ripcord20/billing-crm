@@ -243,18 +243,25 @@
     }
     .field textarea { resize:vertical; min-height:60px; font-family:inherit; }
     .field-hint { font-size:11px; color:var(--muted); margin-top:4px; }
-    .field-warn {
+    .field-warn, .field-info {
       display:none;
       margin-top:8px;
       padding:8px 10px;
       border-radius:10px;
-      background:#fff7ed;
-      border:1px solid #fdba74;
-      color:#9a3412;
       font-size:12px;
       line-height:1.45;
     }
-    .field-warn code { font-size:11px; }
+    .field-warn {
+      background:#fff7ed;
+      border:1px solid #fdba74;
+      color:#9a3412;
+    }
+    .field-info {
+      background:#ecfdf5;
+      border:1px solid #6ee7b7;
+      color:#065f46;
+    }
+    .field-warn code, .field-info code { font-size:11px; }
 
     .fieldset-group {
       background:#f8fafc;
@@ -760,6 +767,10 @@
             <option value="api">API saja (MikroTik)</option>
             <option value="both">SNMP + API</option>
           </select>
+          <div class="field-hint">
+            <strong>SNMP saja</strong> = Fiberix tidak login API (cocok untuk NAGA v6 jika cukup isolir on-demand).
+            <strong>API / SNMP+API</strong> = sesi binary ditahan (satu login), bukan login/logout tiap detik.
+          </div>
         </div>
 
         <!-- SNMP fields -->
@@ -802,6 +813,13 @@
               Pilih <strong>API Binary</strong>, port <code>8728</code>, user API (bukan Winbox saja),
               lalu di MikroTik: <code>/ip service enable api</code>
               dan izinkan IP server billing di <code>/ip service set api address=</code>.
+            </div>
+            <div id="apiBinaryKeepWarn" class="field-info">
+              API Binary menahan <strong>1 sesi</strong> — di log MikroTik hanya satu
+              <code>logged in via api</code>, bukan login/logout berulang.
+              Poll live router v6 paling cepat 15 detik (atau <code>poll_interval</code> device).
+              Kalau NAGA tidak perlu traffic pelanggan di dashboard: set Metode Monitoring ke
+              <strong>SNMP saja</strong>.
             </div>
           </div>
           <div class="form-grid">
@@ -1291,8 +1309,10 @@
 
   function syncApiProtocolHint() {
     const proto = document.getElementById('devApiProtocol').value;
-    const warn = document.getElementById('apiRestV6Warn');
-    if (warn) warn.style.display = proto === 'rest' ? 'block' : 'none';
+    const restWarn = document.getElementById('apiRestV6Warn');
+    const binInfo = document.getElementById('apiBinaryKeepWarn');
+    if (restWarn) restWarn.style.display = proto === 'rest' ? 'block' : 'none';
+    if (binInfo) binInfo.style.display = proto === 'api-binary' ? 'block' : 'none';
   }
   function onApiProtocolChange() {
     // Saat user pilih protocol, set port default. User bebas ubah ke port

@@ -1685,20 +1685,18 @@ class CronService {
   async _pollDeviceTraffic() {
     try {
       const { Device } = require('../models');
-      const { MikrotikService } = require('./MikrotikService');
+      const { getMikrotikInstanceByDevice } = require('./MikrotikService');
+      const { shouldApiPollDevice } = require('../utils/mikrotikApiSession');
 
-      // Ambil semua device aktif yang PUNYA kredensial API MikroTik.
-      // Tidak lagi mensyaratkan monitoring_type='api' — banyak device dipakai
-      // via API walau monitoring_type masih default 'snmp'. Cukup ada
-      // api_username + tipe router/olt. Ini yang mengisi traffic_data untuk
-      // Bandwidth Trends di dashboard.
+      // Device dengan monitoring_type=snmp dilewati (shouldApiPollDevice) supaya
+      // router v6 isolir-only tidak kena login API tiap menit.
       const devices = await Device.findAll({
         where: {
           is_active: true,
           type: { [Op.in]: ['router', 'olt'] },
           api_username: { [Op.ne]: null }
         },
-        attributes: ['id','name','ip_address','api_port','api_username','api_password','api_protocol']
+        attributes: ['id','name','ip_address','api_port','api_username','api_password','api_protocol','monitoring_type']
       });
 
       if (!devices.length) return;
@@ -1709,14 +1707,8 @@ class CronService {
         const batch = devices.slice(i, i + batchSize);
         await Promise.all(batch.map(async (device) => {
           try {
-            const mt = new MikrotikService({
-              host:         device.ip_address,
-              port:         device.api_port || 80,
-              username:     device.api_username,
-              password:     device.api_password || '',
-              api_protocol: device.api_protocol || null,
-              timeout:      6000
-            });
+            if (!shouldApiPollDevice(device)) return;
+            const mt = await getMikrotikInstanceByDevice(device.id);
 
             // Ambil list interface + bulk traffic stats
             const ifaces = await mt.getInterfaces();
