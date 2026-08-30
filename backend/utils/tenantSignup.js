@@ -85,8 +85,9 @@ async function ensureTenantOwnerRole() {
 }
 
 function publicSignupEnabled() {
-  const raw = String(process.env.PUBLIC_TENANT_SIGNUP == null ? '1' : process.env.PUBLIC_TENANT_SIGNUP).trim();
-  return raw !== '0' && raw.toLowerCase() !== 'false' && raw.toLowerCase() !== 'off';
+  // Default off: mitra daftar di app.fiberix.my.id (server SAAS), bukan tenant Fiberix.
+  const raw = String(process.env.PUBLIC_TENANT_SIGNUP == null ? '0' : process.env.PUBLIC_TENANT_SIGNUP).trim();
+  return raw === '1' || raw.toLowerCase() === 'true' || raw.toLowerCase() === 'on';
 }
 
 module.exports = {
