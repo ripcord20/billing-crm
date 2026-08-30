@@ -47,8 +47,8 @@ class InterfaceTrafficController {
       const interfaces = await mt.getInterfaces();
       const running = interfaces.filter(i => i.running && !i.disabled);
 
-      // Limit 10 interface untuk performa
-      const names = running.slice(0, 10).map(i => i.name);
+      // Byte-delta murah: cukup semua iface running (batas aman 80).
+      const names = running.slice(0, 80).map(i => i.name);
 
       // Bulk request - 1 call ke MikroTik untuk semua interface
       const stats = await mt.getInterfacesBulkStats(names);

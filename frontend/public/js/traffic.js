@@ -141,7 +141,7 @@ const TrafficPage = {
             <div class="rate-cell">
               <div class="rate-head">
                 <span class="rate-arrow arrow-rx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="19 12 12 19 5 12"/><line x1="12" y1="5" x2="12" y2="19"/></svg></span>
-                <span class="rate-lbl">RX</span>
+                <span class="rate-lbl">Download</span>
               </div>
               <div><span class="rate-val rx rx-rate-${id}">0.00</span><span class="rate-unit">Mbps</span></div>
               <div class="rate-spark"><svg viewBox="0 0 100 18" preserveAspectRatio="none">
@@ -152,7 +152,7 @@ const TrafficPage = {
             <div class="rate-cell">
               <div class="rate-head">
                 <span class="rate-arrow arrow-tx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="5 12 12 5 19 12"/><line x1="12" y1="19" x2="12" y2="5"/></svg></span>
-                <span class="rate-lbl">TX</span>
+                <span class="rate-lbl">Upload</span>
               </div>
               <div><span class="rate-val tx tx-rate-${id}">0.00</span><span class="rate-unit">Mbps</span></div>
               <div class="rate-spark"><svg viewBox="0 0 100 18" preserveAspectRatio="none">
