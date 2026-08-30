@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .mk-page { max-width: 880px; }
+    .mk-lead { margin: 6px 0 0; color: var(--text-secondary); font-size: 14px; line-height: 1.55; }
+    .mk-alert {
+      border-radius: 12px; padding: 13px 15px; margin: 16px 0; font-size: 13.5px; line-height: 1.6;
+    }
+    .mk-alert.warn { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; }
+    .mk-alert.ok { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+    .mk-alert.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; }
+    [data-theme="dark"] .mk-alert.warn { background: #3b2a10; border-color: #854d0e; color: #fde68a; }
+    [data-theme="dark"] .mk-alert.ok { background: #064e3b; border-color: #047857; color: #a7f3d0; }
+    [data-theme="dark"] .mk-alert.info { background: #1e3a5f; border-color: #1d4ed8; color: #bfdbfe; }
+    .mk-flow {
+      display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 8px; align-items: stretch;
+      margin: 8px 0 4px;
+    }
+    .mk-box {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px;
+      font-size: 13px;
+    }
+    .mk-box b { display: block; margin-bottom: 4px; }
+    .mk-arrow { display: flex; align-items: center; color: var(--text-muted); font-size: 12px; font-weight: 700; }
+    .mk-dl { display: grid; grid-template-columns: 180px 1fr; gap: 8px 14px; font-size: 13.5px; margin: 0; }
+    .mk-dl dt { color: var(--text-muted); font-weight: 600; }
+    .mk-dl dd { margin: 0; font-family: 'DM Mono', monospace; word-break: break-all; }
+    .mk-steps { margin: 0; padding-left: 22px; }
+    .mk-steps li { margin: 0 0 12px; line-height: 1.55; }
+    .mk-steps code, .mk-inline {
+      font-family: 'DM Mono', monospace; font-size: 12px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 1px 6px;
+    }
+    .mk-prewrap { position: relative; }
+    .mk-pre {
+      margin: 0; background: #0f172a; color: #e2e8f0; border-radius: 12px; padding: 14px 16px 14px;
+      font-family: 'DM Mono', monospace; font-size: 12px; line-height: 1.5; overflow: auto; white-space: pre;
+    }
+    .mk-copy {
+      position: absolute; top: 8px; right: 8px; border: 0; background: #1e293b; color: #e2e8f0;
+      border-radius: 8px; padding: 5px 9px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .mk-copy:hover { background: #334155; }
+    .mk-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+    .mk-tab {
+      border: 1px solid var(--border); background: var(--bg-card); color: var(--text); border-radius: 8px;
+      padding: 6px 10px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .mk-tab.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .mk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .mk-table th, .mk-table td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .mk-table th { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+    .mk-kv { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .mk-pill { background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; font-size: 12px; }
+    @media (max-width: 720px) {
+      .mk-flow { grid-template-columns: 1fr; }
+      .mk-arrow { transform: rotate(90deg); justify-content: center; }
+      .mk-dl { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <%- include('../partials/sidebar') %>
+    <div class="main-content">
+      <%- include('../partials/topbar') %>
+      <main class="page-content mk-page">
+        <div class="page-header">
+          <div class="page-header-left">
+            <h1>Hubungkan MikroTik tanpa IP public</h1>
+            <p class="mk-lead">
+              Mitra ISP tidak perlu sewa IP public, tidak perlu buka port di rumah/POP, dan tidak perlu VPS VPN pihak ketiga.
+              Router hanya <strong>keluar</strong> ke Fiberix lewat WireGuard. Billing yang menghubungi MikroTik lewat IP tunnel.
+            </p>
+          </div>
+        </div>
+
+        <% if (guide.endpoint_warning) { %>
+          <div class="mk-alert warn" id="mkWarn"><%= guide.endpoint_warning %></div>
+        <% } else { %>
+          <div class="mk-alert ok">Endpoint WireGuard siap dari internet: <code class="mk-inline"><%= guide.endpoint_display %></code></div>
+        <% } %>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><h3>Kenapa tanpa IP public tetap bisa</h3></div>
+          <div class="card-body">
+            <div class="mk-flow">
+              <div class="mk-box">
+                <b>MikroTik mitra</b>
+                NAT / IP dynamic dari ISP. Tidak perlu port-forward.
+              </div>
+              <div class="mk-arrow">UDP 51820 →</div>
+              <div class="mk-box">
+                <b>WireGuard Fiberix</b>
+                Server tunnel <code class="mk-inline"><%= guide.server_address %></code>
+              </div>
+              <div class="mk-arrow">→</div>
+              <div class="mk-box">
+                <b>Billing + RADIUS</b>
+                Auth PPPoE dan isolir lewat IP tunnel.
+              </div>
+            </div>
+            <p style="margin:14px 0 0;font-size:13.5px;color:var(--text-secondary);line-height:1.55;">
+              Yang perlu tembus internet hanya <strong>satu arah</strong>: MikroTik → server Fiberix (UDP <%= guide.endpoint_port %>).
+              Setelah handshake hidup, RADIUS ke <code class="mk-inline"><%= guide.radius_host %></code> dan API billing ke
+              IP tunnel router (contoh <code class="mk-inline"><%= guide.example_tunnel_ip %>:<%= guide.api_port %></code>).
+            </p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><h3>Jangan lakukan ini</h3></div>
+          <div class="card-body">
+            <ul class="mk-steps">
+              <li>Jangan pilih mode <strong>Public IP (langsung)</strong> di Modul NAS. Itu untuk router yang IP-nya sudah terlihat server RADIUS.</li>
+              <li>Jangan sewa VPN cloud / L2TP orang lain. Pakai tunnel Fiberix (<code class="mk-inline"><%= guide.tunnel_subnet %></code>).</li>
+              <li>Jangan buka Winbox/API (8291/8728) ke internet dari sisi mitra. Billing masuk lewat tunnel.</li>
+              <li>Jangan isi <code class="mk-inline">nasname</code> dengan IP LAN rumah (192.168.x). Setelah VPN, pakai <strong>IP tunnel</strong>.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><h3>Persiapan di sisi mitra</h3></div>
+          <div class="card-body">
+            <ul class="mk-steps">
+              <li>RouterOS <strong>v7</strong> (WireGuard bawaan) atau v6.48+ dengan paket WireGuard terpasang.</li>
+              <li>Internet keluar tidak memblokir UDP <%= guide.endpoint_port %> (sebagian hotspot hotel/kampus memblokir ini).</li>
+              <li>User Winbox yang boleh menambah interface, route, dan RADIUS.</li>
+              <li>Minta ke owner Fiberix: <strong>script peer</strong> (private key + secret RADIUS + IP tunnel). Contoh di bawah belum bisa handshake sebelum peer dibuat.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><h3>Langkah 1 — Owner Fiberix siapkan peer</h3></div>
+          <div class="card-body">
+            <ol class="mk-steps">
+              <li>Buka <strong>Modul NAS</strong> (menu staf Fiberix). Tambah NAS mitra: mode <strong>VPN → WireGuard</strong>.</li>
+              <li>Klik <strong>VPN</strong> untuk generate key + alokasi IP tunnel (10.10.0.x).</li>
+              <li>Pasang blok <code class="mk-inline">[Peer]</code> di server WireGuard Fiberix (bukan di MikroTik mitra).</li>
+              <li>Klik <strong>Script</strong>, kirim hasilnya ke mitra (Winbox → New Terminal).</li>
+              <li>Set <code class="mk-inline">nasname</code> = IP tunnel mitra, secret sama dengan yang di script.</li>
+              <li>Di Device Management, host API = IP tunnel, port <%= guide.api_port %> (bukan IP LAN mitra).</li>
+            </ol>
+            <div class="mk-alert info" style="margin:12px 0 0;">
+              Kalau endpoint masih alamat LAN, ganti dulu ke IP/DNS publik VPS lalu buka UDP <%= guide.endpoint_port %> ke mesin WireGuard.
+              Router INETmedia di LAN yang sama tetap bisa pakai endpoint LAN; mitra remote tidak.
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><h3>Langkah 2 — Mitra tempel script di MikroTik</h3></div>
+          <div class="card-body">
+            <ol class="mk-steps">
+              <li>Winbox → <strong>New Terminal</strong> (bukan Script scheduler).</li>
+              <li>Pilih tab RouterOS v7 atau v6 sesuai versi router.</li>
+              <li>Tempel script dari owner. Object lama comment <code class="mk-inline">FIBERIX</code> akan diganti; comment <code class="mk-inline">BILLINGRADIUS</code> tidak disentuh.</li>
+              <li>Tunggu 5–15 detik. Cek handshake (langkah 3).</li>
+            </ol>
+            <p style="margin:14px 0 8px;font-size:13px;color:var(--text-secondary);">
+              Contoh kerangka (masih ada <code class="mk-inline">MY_PRIVATE_KEY</code> / <code class="mk-inline">RADIUS_SECRET</code> — ganti dengan milik Anda):
+            </p>
+            <div class="mk-tabs">
+              <button type="button" class="mk-tab on" data-tab="v7">RouterOS v7</button>
+              <button type="button" class="mk-tab" data-tab="v6">RouterOS v6</button>
+            </div>
+            <div class="mk-prewrap" data-pane="v7">
+              <button type="button" class="mk-copy" data-copy="v7">Salin</button>
+              <pre class="mk-pre" id="mkScriptV7"><%= guide.scripts.v7 %></pre>
+            </div>
+            <div class="mk-prewrap" data-pane="v6" style="display:none">
+              <button type="button" class="mk-copy" data-copy="v6">Salin</button>
+              <pre class="mk-pre" id="mkScriptV6"><%= guide.scripts.v6 %></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><h3>Langkah 3 — Cek tunnel dan RADIUS</h3></div>
+          <div class="card-body">
+            <p style="margin:0 0 10px;font-size:13.5px;color:var(--text-secondary);">Tempel satu per satu di terminal MikroTik:</p>
+            <div class="mk-prewrap">
+              <button type="button" class="mk-copy" data-copy="verify">Salin</button>
+              <pre class="mk-pre" id="mkVerify"><%= guide.verify_commands.join('\n') %></pre>
+            </div>
+            <ul class="mk-steps" style="margin-top:14px;">
+              <li><code class="mk-inline">last-handshake</code> harus ada angka (bukan 00:00:00). Kalau 0 detik terus, endpoint/UDP/key salah.</li>
+              <li>Ping <code class="mk-inline"><%= guide.server_address %></code> dan <code class="mk-inline"><%= guide.radius_host %></code> harus reply.</li>
+              <li><code class="mk-inline">/radius print</code> menampilkan server Fiberix, secret terisi.</li>
+              <li>Tes 1 pelanggan PPPoE. Kalau timeout, secret/nasname belum cocok di billing.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><h3>Nilai yang dipakai Fiberix sekarang</h3></div>
+          <div class="card-body">
+            <dl class="mk-dl">
+              <dt>Endpoint WireGuard</dt>
+              <dd id="mkEndpoint"><%= guide.endpoint_display %></dd>
+              <dt>IP server tunnel</dt>
+              <dd><%= guide.server_address %></dd>
+              <dt>Subnet tunnel</dt>
+              <dd><%= guide.tunnel_subnet %></dd>
+              <dt>Host RADIUS</dt>
+              <dd><%= guide.radius_host %> :1812 / :1813</dd>
+              <dt>Public key server</dt>
+              <dd><%= guide.server_public_key || '(belum digenerate)' %></dd>
+              <dt>API / Winbox via tunnel</dt>
+              <dd><%= guide.example_tunnel_ip %>:<%= guide.api_port %> / :<%= guide.winbox_port %></dd>
+            </dl>
+            <div class="mk-kv">
+              <span class="mk-pill">Mitra: outbound saja</span>
+              <span class="mk-pill">Port UDP <%= guide.endpoint_port %></span>
+              <span class="mk-pill">Keepalive 25s</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><h3>Kalau macet</h3></div>
+          <div class="card-body" style="padding:0;">
+            <table class="mk-table">
+              <thead>
+                <tr><th>Gejala</th><th>Penyebab umum</th><th>Perbaikan</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Handshake 0s</td>
+                  <td>Endpoint LAN, UDP diblokir, atau peer belum dipasang di server</td>
+                  <td>Owner ganti endpoint ke IP publik + buka UDP <%= guide.endpoint_port %>. Cek key kiri-kanan.</td>
+                </tr>
+                <tr>
+                  <td>Ping tunnel OK, PPPoE timeout</td>
+                  <td>Secret RADIUS beda, atau nasname masih IP LAN</td>
+                  <td>Samakan secret. Isi nasname = IP tunnel MikroTik.</td>
+                </tr>
+                <tr>
+                  <td>Pelanggan online, isolir tidak jalan</td>
+                  <td>Device Management masih pakai IP LAN mitra</td>
+                  <td>Ganti host perangkat ke IP tunnel, port <%= guide.api_port %>.</td>
+                </tr>
+                <tr>
+                  <td>WG up lalu putus</td>
+                  <td>NAT ISP tutup sesi UDP</td>
+                  <td>Pastikan persistent-keepalive=25s (sudah di script).</td>
+                </tr>
+                <tr>
+                  <td>Auth lewat billing lama / sewa RADIUS</td>
+                  <td>Masih ada entry RADIUS lain yang menang</td>
+                  <td>Disable RADIUS sewa secara manual. Script Fiberix tidak menghapus comment BILLINGRADIUS.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="mk-alert info">
+          Setelah tunnel hidup: buat paket di Fiberix, daftarkan pelanggan PPPoE, lalu tes login.
+          Data pelanggan mitra tetap terisolasi per tenant.
+          <% if (typeof isStaff !== 'undefined' && isStaff) { %>
+            Staf: buka juga <a href="/nas">Modul NAS</a> untuk generate script jadi.
+          <% } %>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="/js/app.js"></script>
+  <script src="/js/panduan-mikrotik.js"></script>
+</body>
+</html>

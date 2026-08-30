@@ -142,7 +142,8 @@ router.use((req, res, next) => {
 
 const _tenantAllowedPaths = new Set([
   '/dashboard', '/tenant', '/customers', '/billing', '/payments', '/packages',
-  '/login', '/logout', '/', '/mitra', '/mitra/daftar', '/kebijakan-privasi'
+  '/login', '/logout', '/', '/mitra', '/mitra/daftar', '/kebijakan-privasi',
+  '/panduan/mikrotik'
 ]);
 const _tenantAllowedPrefixes = ['/customers/', '/billing/', '/payments/', '/packages/'];
 router.use((req, res, next) => {
@@ -179,6 +180,31 @@ router.get('/dashboard', authenticate, blockFinanceArea, blockNocArea, blockSale
 // Manajemen mitra ada di app.fiberix.my.id — bukan modul di billing Fiberix.
 router.get('/tenant', authenticate, (req, res) => res.redirect(302, '/dashboard'));
 router.get('/tenants', authenticate, (req, res) => res.redirect(302, '/dashboard'));
+
+function allowMitraGuidePage(req, res, next) {
+  const r = (req.user?.role?.name || '').toLowerCase();
+  if (['superadmin', 'admin', 'finance', 'noc', 'tenant_owner'].includes(r)) return next();
+  return res.redirect('/dashboard');
+}
+
+router.get('/panduan/mikrotik', authenticate, allowMitraGuidePage, async (req, res) => {
+  const MitraMikrotikGuideController = require('../controllers/MitraMikrotikGuideController');
+  let guide;
+  try {
+    guide = await MitraMikrotikGuideController.loadGuide();
+  } catch (_) {
+    const { buildMitraMikrotikGuide } = require('../utils/mitraMikrotikGuide');
+    guide = buildMitraMikrotikGuide({});
+  }
+  const role = (req.user?.role?.name || '').toLowerCase();
+  res.render('pages/panduan-mikrotik', {
+    title: 'Hubungkan MikroTik',
+    user: req.user,
+    active: 'panduan-mikrotik',
+    guide,
+    isStaff: ['superadmin', 'admin', 'finance', 'noc'].includes(role)
+  });
+});
 
 // ═══════════════════════════════════════════════════════════════════
 // NOC DASHBOARD — halaman utama role NOC

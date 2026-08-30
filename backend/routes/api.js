@@ -70,6 +70,7 @@ router.post('/auth/logout', authenticate, demoGuard, AuthController.logout);
 router.get('/auth/profile', authenticate, demoGuard, AuthController.profile);
 router.put('/auth/profile', authenticate, demoGuard, AuthController.updateProfile);
 router.put('/auth/password', authenticate, demoGuard, AuthController.changePassword);
+router.get('/mitra/mikrotik-guide', authenticate, demoGuard, require('../controllers/MitraMikrotikGuideController').show);
 
 // ═══════════════════════════════════════════════════════════════════
 // FINANCE ROLE — Path-prefix API block
