@@ -1,11 +1,13 @@
 'use strict';
 
-const { RadiusServer, RadiusAccount } = require('../models');
+const { RadiusServer, RadiusAccount, NasDevice } = require('../models');
 const { Op } = require('sequelize');
 const RadiusSQL = require('../services/RadiusSqlService');
 const RadiusProv = require('../services/RadiusProvisionService');
-const { encryptSecret } = require('../utils/secretBox');
+const { encryptSecret, decryptSecret } = require('../utils/secretBox');
 const { getTenantId } = require('../middleware/tenantContext');
+const { localRadiusPassword } = require('../utils/radiusMysql');
+const { buildSqlGuide } = require('../utils/freeradiusSqlGuide');
 
 function serverWhere(req) {
   const tid = getTenantId();
@@ -85,6 +87,43 @@ class RadiusController {
       });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  async sqlGuide(req, res) {
+    try {
+      const row = await RadiusServer.findOne({
+        where: { ...serverWhere(req), is_active: true },
+        order: [['id', 'ASC']]
+      }) || await RadiusServer.findOne({ where: serverWhere(req), order: [['id', 'ASC']] });
+
+      let password = '';
+      if (row && row.mysql_password) password = decryptSecret(row.mysql_password);
+      if (!password) password = localRadiusPassword();
+
+      let nasnameHint = '';
+      let nasSecretSet = false;
+      try {
+        const nas = await NasDevice.findOne({ order: [['id', 'ASC']] });
+        if (nas) {
+          nasnameHint = nas.nasname || '';
+          nasSecretSet = !!(nas.secret && String(nas.secret).length);
+        }
+      } catch (_) {}
+
+      const data = buildSqlGuide({
+        billingLan: process.env.RADIUS_BILLING_LAN || '192.168.22.99',
+        daemonHost: (row && row.host) || process.env.RADIUS_HOST || '192.168.22.9',
+        mysqlUser: (row && row.mysql_user) || process.env.RADIUS_MYSQL_USER || 'radius',
+        mysqlDatabase: (row && row.mysql_database) || 'radius',
+        mysqlPort: (row && row.mysql_port) || 3306,
+        password,
+        nasnameHint,
+        nasSecretSet
+      });
+      res.json({ success: true, data });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
     }
   }
 

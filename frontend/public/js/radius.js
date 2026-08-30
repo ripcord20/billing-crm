@@ -1,5 +1,76 @@
 function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
+window.__sqlGuide=null;
+window.__sqlPassVisible=false;
+
+function maskGuide(g){
+  if(!g) return g;
+  const hidden=Object.assign({},g);
+  const stars='********';
+  hidden.mysql_password=stars;
+  hidden.sql_snippet=(g.sql_snippet||'').replace(/password\s*=\s*"[^"]*"/,'password = "'+stars+'"');
+  hidden.daloradius_php=(g.daloradius_php||'').replace(/CONFIG_DB_PASS'\] = '[^']*'/,"CONFIG_DB_PASS'] = '"+stars+"'");
+  return hidden;
+}
+function shownGuide(){
+  const g=window.__sqlGuide;
+  if(!g) return null;
+  return window.__sqlPassVisible?g:maskGuide(g);
+}
+function renderSqlGuide(){
+  const g=shownGuide();
+  const raw=window.__sqlGuide;
+  if(!g||!raw) return;
+  const daemon=document.getElementById('gDaemon');
+  const test=document.getElementById('gMysqlTest');
+  if(daemon) daemon.textContent=raw.daemon_host||'192.168.22.9';
+  if(test) test.textContent=raw.mysql_test||'';
+  const set=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v||'';};
+  set('gSql', g.sql_snippet);
+  set('gEnable', (raw.mysql_test||'')+'\n\n'+(raw.enable_cmds||''));
+  set('gPhp', g.daloradius_php);
+  set('gMk', raw.mikrotik);
+  const notes=document.getElementById('gNotes');
+  if(notes) notes.textContent=(raw.notes||[]).join(' ');
+}
+async function loadSqlGuide(){
+  const d=await App.api('/radius/sql-guide');
+  if(!d?.success){
+    const el=document.getElementById('gSql');
+    if(el) el.textContent=d?.message||'Gagal memuat panduan';
+    return;
+  }
+  window.__sqlGuide=d.data;
+  renderSqlGuide();
+}
+window.toggleSqlPass=()=>{
+  window.__sqlPassVisible=!window.__sqlPassVisible;
+  renderSqlGuide();
+};
+function copyText(t){
+  const text=String(t||'');
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    return navigator.clipboard.writeText(text).then(()=>App.showToast('Disalin','success'),()=>App.showToast('Gagal menyalin','error'));
+  }
+  const ta=document.createElement('textarea');
+  ta.value=text; document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); App.showToast('Disalin','success'); }
+  catch(_){ App.showToast('Gagal menyalin','error'); }
+  document.body.removeChild(ta);
+}
+window.copySqlSnippet=()=>{
+  const g=window.__sqlGuide;
+  if(!g) return App.showToast('Panduan belum dimuat','error');
+  copyText(g.sql_snippet);
+};
+window.copyGuideField=(id)=>{
+  const el=document.getElementById(id);
+  if(!el) return;
+  if(id==='gSql') return copySqlSnippet();
+  if(id==='gPhp' && window.__sqlGuide) return copyText(window.__sqlGuide.daloradius_php);
+  copyText(el.textContent);
+};
+
 async function loadServers(){
   const d=await App.api('/radius/servers');
   const tb=document.getElementById('srvTable');
@@ -92,4 +163,4 @@ window.loadUsers=async()=>{
     <td>${esc(u.auth_type||'Accept')}</td>
   </tr>`).join('');
 };
-document.addEventListener('DOMContentLoaded', ()=>{loadServers();});
+document.addEventListener('DOMContentLoaded', ()=>{loadServers(); loadSqlGuide();});

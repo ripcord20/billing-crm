@@ -384,6 +384,7 @@ const radiusStaff = authorize('superadmin', 'admin', 'tenant_owner', 'finance', 
 router.get('/radius/servers', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => RadiusController.listServers(r, s));
 router.post('/radius/servers', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => RadiusController.createServer(r, s));
 router.post('/radius/ensure-local', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => RadiusController.ensureLocal(r, s));
+router.get('/radius/sql-guide', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => RadiusController.sqlGuide(r, s));
 router.put('/radius/servers/:id', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => RadiusController.updateServer(r, s));
 router.post('/radius/servers/:id/test', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => RadiusController.testServer(r, s));
 router.get('/radius/sessions', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => RadiusController.sessions(r, s));

@@ -48,4 +48,23 @@ assert.ok(FREERADIUS_TABLES.length >= 5);
 assert.ok(FREERADIUS_TABLES.every((s) => /CREATE TABLE IF NOT EXISTS/i.test(s)));
 assert.ok(localRadiusPassword().length >= 8);
 
+const { buildSqlGuide, BILLING_LAN, FREERADIUS_HOST } = require('../utils/freeradiusSqlGuide');
+const guide = buildSqlGuide({
+  password: 'p"ass\\word',
+  nasnameHint: '192.168.61.2',
+  nasSecretSet: true
+});
+assert.strictEqual(guide.billing_lan, BILLING_LAN);
+assert.strictEqual(guide.daemon_host, FREERADIUS_HOST);
+assert.ok(guide.sql_snippet.includes(`server = "${BILLING_LAN}"`));
+assert.ok(guide.sql_snippet.includes('read_clients = yes'));
+assert.ok(guide.sql_snippet.includes('password = "p\\"ass\\\\word"'));
+assert.ok(guide.daloradius_php.includes(`CONFIG_DB_HOST'] = '${BILLING_LAN}'`));
+assert.ok(guide.mysql_test.includes(BILLING_LAN));
+assert.ok(guide.ufw_cmd.includes('192.168.22.9'));
+assert.ok(guide.ufw_cmd.includes('3306'));
+assert.ok(!guide.ufw_cmd.includes('Anywhere'));
+assert.ok(guide.mikrotik.includes(FREERADIUS_HOST));
+assert.ok(guide.mikrotik.includes('192.168.61.2'));
+
 console.log('radius-tenant.test.js OK');

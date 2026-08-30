@@ -16,9 +16,67 @@
       <div class="page-header">
         <div class="page-header-left">
           <h1>Modul RADIUS</h1>
-          <p style="margin:4px 0 0;color:#64748b;font-size:13px;">Koneksi SQL ke schema <code>radius</code>. Host daemon FreeRADIUS bisa 192.168.22.9; MySQL untuk sync/tes memakai 127.0.0.1 di server billing jika port 3306 remote tertutup.</p>
+          <p style="margin:4px 0 0;color:var(--text-secondary);font-size:13px;">CRM tes/sync MySQL lewat <code>127.0.0.1</code>. Auth PPPoE baru lewat billing setelah daemon FreeRADIUS di <code>192.168.22.9</code> mengarah ke MySQL <code>192.168.22.99</code>.</p>
         </div>
       </div>
+
+      <div class="card" style="margin-bottom:16px;" id="sqlGuideCard">
+        <div class="card-body">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+            <div>
+              <strong>Arahkan SQL FreeRADIUS (22.9) ke billing 192.168.22.99</strong>
+              <p style="margin:6px 0 0;color:var(--text-secondary);font-size:13px;max-width:720px;">Langkah di bawah dikerjakan di server daloRADIUS/FreeRADIUS (<span class="mono" id="gDaemon">192.168.22.9</span>). Agent tidak punya SSH ke host itu — salin snippet, lalu tes dari 22.9.</p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-sm btn-secondary" type="button" onclick="toggleSqlPass()">Tampilkan password</button>
+              <button class="btn btn-sm btn-primary" type="button" onclick="copySqlSnippet()">Salin blok SQL</button>
+            </div>
+          </div>
+          <ol id="sqlGuideSteps" style="margin:0 0 14px;padding-left:20px;color:var(--text);font-size:13px;line-height:1.55;">
+            <li>Di billing, TCP 3306 hanya dibuka dari 192.168.22.9 (bukan ke internet).</li>
+            <li>Dari 22.9, tes: <code class="mono" id="gMysqlTest">mysql -h 192.168.22.99 -u radius -p radius</code></li>
+            <li>Edit <code>/etc/freeradius/3.0/mods-available/sql</code> — <code>server</code> = 192.168.22.99, user/db <code>radius</code>, <code>read_clients = yes</code>.</li>
+            <li>Enable modul SQL, cek config, restart FreeRADIUS (perintah di bawah).</li>
+            <li>Samakan host MySQL di <code>daloradius.conf.php</code> supaya UI daloRADIUS melihat user/sesi yang sama.</li>
+            <li>Di MikroTik: <code>/radius</code> ke 192.168.22.9, secret sama dengan Modul NAS; <code>/ppp aaa use-radius=yes</code>.</li>
+            <li>Kembali ke halaman ini → Tes MySQL, lalu Refresh sesi setelah PPPoE login.</li>
+          </ol>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);">mods-available/sql</span>
+                <button class="btn btn-sm btn-secondary" type="button" onclick="copySqlSnippet()">Salin</button>
+              </div>
+              <pre id="gSql" class="radius-guide-pre">Memuat…</pre>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);">Enable + tes MySQL</span>
+                <button class="btn btn-sm btn-secondary" type="button" onclick="copyGuideField('gEnable')">Salin</button>
+              </div>
+              <pre id="gEnable" class="radius-guide-pre">Memuat…</pre>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);">daloRADIUS PHP</span>
+                <button class="btn btn-sm btn-secondary" type="button" onclick="copyGuideField('gPhp')">Salin</button>
+              </div>
+              <pre id="gPhp" class="radius-guide-pre">Memuat…</pre>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-size:12px;font-weight:600;color:var(--text-secondary);">MikroTik</span>
+                <button class="btn btn-sm btn-secondary" type="button" onclick="copyGuideField('gMk')">Salin</button>
+              </div>
+              <pre id="gMk" class="radius-guide-pre">Memuat…</pre>
+            </div>
+          </div>
+          <p id="gNotes" style="margin:12px 0 0;color:var(--text-secondary);font-size:12px;"></p>
+        </div>
+      </div>
+      <style>
+        .radius-guide-pre{margin:0;padding:12px;border-radius:10px;background:var(--bg-hover);border:1px solid var(--border);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.45;white-space:pre-wrap;word-break:break-all;color:var(--text);max-height:220px;overflow:auto;}
+      </style>
 
       <div class="card" style="margin-bottom:16px;">
         <div class="card-body">
