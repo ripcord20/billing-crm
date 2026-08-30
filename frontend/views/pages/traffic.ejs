@@ -341,13 +341,13 @@
 
         <!-- Total RX -->
         <div class="tf-card" id="tc-rx" data-filter="rx" onclick="tcClick(this)">
-          <div class="card-lbl">Total RX</div>
+          <div class="card-lbl">Download</div>
           <div class="card-body">
             <div class="card-left">
               <span class="card-val" id="sumRx">0</span>
               <div class="card-meta">
                 <span class="card-pill pill-blue" id="pill-rx">↓ Mbps</span>
-                <span class="card-sub">Download agregat</span>
+                <span class="card-sub">WAN saja</span>
               </div>
             </div>
             <div class="card-spark">
@@ -362,13 +362,13 @@
 
         <!-- Total TX -->
         <div class="tf-card" id="tc-tx" data-filter="tx" onclick="tcClick(this)">
-          <div class="card-lbl">Total TX</div>
+          <div class="card-lbl">Upload</div>
           <div class="card-body">
             <div class="card-left">
               <span class="card-val" id="sumTx">0</span>
               <div class="card-meta">
                 <span class="card-pill pill-orange" id="pill-tx">↑ Mbps</span>
-                <span class="card-sub">Upload agregat</span>
+                <span class="card-sub">WAN saja</span>
               </div>
             </div>
             <div class="card-spark">
@@ -454,7 +454,7 @@
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
 <script src="/js/app.js"></script>
 <script src="/js/mikrotik-selector.js"></script>
-<script src="/js/traffic.js"></script>
+<script src="/js/traffic.js?v=wan-20260830"></script>
 
 <script>
 /* ── Traffic stat card sparkline helper ── */

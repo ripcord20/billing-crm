@@ -293,7 +293,7 @@ function updateInterfaceGrid(interfaces) {
       <div class="dm-iface-header">
         <div class="dm-iface-name">
           <span class="dm-iface-dot ${i.running ? '' : 'down'}"></span>
-          ${i.name}
+          ${i.name}${i.include_in_total ? ' <span style="font-size:9px;font-weight:700;color:#2563eb;">WAN</span>' : ''}
         </div>
         <span style="font-size:10px;color:var(--dm-muted);">${i.type || 'ether'}</span>
       </div>

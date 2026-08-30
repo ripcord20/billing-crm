@@ -1723,7 +1723,8 @@ class CronService {
               normalizeCpuPercent,
               normalizeMemPercent,
               isCustomerTunnelIface,
-              isUplinkIface
+              isVirtualSwitchIface,
+              scopeDeviceTraffic
             } = require('../utils/deviceMetrics');
 
             // CPU/RAM dari /system/resource (0–100), bukan SNMP frequency/MHz.
@@ -1749,17 +1750,30 @@ class CronService {
             const ifaces = await mt.getInterfaces();
             if (!ifaces || !ifaces.length) return;
 
-            // Uplink + PPPoE (untuk upsell). Skip bridge/vlan supaya tidak double-count.
-            const running = ifaces.filter(i =>
-              i.running && !['bridge','vlan','vrrp'].includes((i.type||'').toLowerCase())
-              && (isUplinkIface(i.name, i.type) || isCustomerTunnelIface(i.name, i.type))
+            // WAN saja untuk total device. Jangan simpan semua ether terdaftar
+            // (LAN+WAN) — itu membuat RX/TX simetris di setiap router.
+            const runningPhys = ifaces.filter(i =>
+              i.running && !i.disabled
+              && !isCustomerTunnelIface(i.name, i.type)
+              && !isVirtualSwitchIface(i.name, i.type)
             );
-            if (!running.length) return;
+            const tunnels = ifaces.filter(i =>
+              i.running && isCustomerTunnelIface(i.name, i.type)
+            ).slice(0, 40);
+            if (!runningPhys.length && !tunnels.length) return;
 
-            const uplink = running.filter(i => isUplinkIface(i.name, i.type) && !isCustomerTunnelIface(i.name, i.type));
-            const stats = uplink.length ? await mt.getInterfacesBulkStats(uplink.map(i => i.name)) : [];
+            const stats = runningPhys.length
+              ? await mt.getInterfacesBulkStats(runningPhys.map(i => i.name).slice(0, 40))
+              : [];
+            const scoped = scopeDeviceTraffic(runningPhys, stats);
             const statsByName = {};
             stats.forEach(s => { statsByName[s.name] = s; });
+            const wanNames = new Set(scoped.trafficIfaces);
+            const persistIfaces = [
+              ...runningPhys.filter(i => wanNames.has(i.name)),
+              ...tunnels
+            ];
+            if (!persistIfaces.length) return;
 
             const prevRows = await TrafficData.findAll({
               where: { device_id: device.id },
@@ -1773,7 +1787,7 @@ class CronService {
             }
 
             const now = new Date();
-            const rows = running.map(i => {
+            const rows = persistIfaces.map(i => {
               let rxRate = statsByName[i.name]?.rxBitsPerSecond || 0;
               let txRate = statsByName[i.name]?.txBitsPerSecond || 0;
               if (!statsByName[i.name]) {

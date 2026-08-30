@@ -1,4 +1,5 @@
 const { getMikrotikInstance, getMikrotikInstanceByDevice } = require('../services/MikrotikService');
+const { scopeDeviceTraffic, isCustomerTunnelIface, isVirtualSwitchIface } = require('../utils/deviceMetrics');
 const logger = require('../utils/logger');
 
 const monitoringSessions = new Map();
@@ -47,22 +48,37 @@ class InterfaceTrafficController {
       const interfaces = await mt.getInterfaces();
       const running = interfaces.filter(i => i.running && !i.disabled);
 
-      // Limit 10 interface untuk performa
-      const names = running.slice(0, 10).map(i => i.name);
+      // Byte-delta murah: cukup semua iface running (batas aman 80).
+      const names = running.slice(0, 80).map(i => i.name);
 
       // Bulk request - 1 call ke MikroTik untuk semua interface
       const stats = await mt.getInterfacesBulkStats(names);
+      const physical = running.filter((i) =>
+        !isCustomerTunnelIface(i.name, i.type) && !isVirtualSwitchIface(i.name, i.type)
+      );
+      const scoped = scopeDeviceTraffic(physical, stats);
+      const wan = new Set(scoped.trafficIfaces);
 
       res.json({
         success: true,
-        data: stats,
+        data: stats.map((s) => ({
+          ...s,
+          include_in_total: wan.has(s.name)
+        })),
         interfaces: running.map(i => ({
           name: i.name, type: i.type,
           running: i.running, comment: i.comment,
+          include_in_total: wan.has(i.name),
           // Total byte kumulatif sejak interface up — dipakai kartu
           // "Total Bytes Download/Upload" di halaman monitoring mobile.
           rxByte: i.rxByte || 0, txByte: i.txByte || 0
         })),
+        totals: {
+          rxBitsPerSecond: scoped.totalRxBps,
+          txBitsPerSecond: scoped.totalTxBps,
+          ifaces: scoped.trafficIfaces,
+          scope: scoped.trafficScope
+        },
         timestamp: new Date()
       });
     } catch (err) {

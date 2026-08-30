@@ -25,6 +25,7 @@ const {
   isDdosWatchIface,
   pppoeIfaceMatchesUsername,
   aggregateDeviceTraffic,
+  scopeDeviceTraffic,
   latestUniqueBy
 } = require('../utils/deviceMetrics');
 
@@ -124,6 +125,40 @@ const totals = aggregateDeviceTraffic([
 assert.ok(Math.abs(totals.totalRxMbps - 174.88) < 0.01);
 assert.ok(Math.abs(totals.totalTxMbps - 12.1) < 0.01);
 assert.deepStrictEqual(totals.trafficIfaces, ['sfp-sfpplus1']);
+
+const lanWan = aggregateDeviceTraffic([
+  { name: 'ether1', type: 'ether', running: true, comment: 'WAN ISP', rxMbps: 80, txMbps: 8 },
+  { name: 'ether2', type: 'ether', running: true, comment: 'LAN switch', rxMbps: 8, txMbps: 80 },
+  { name: 'ether3', type: 'ether', running: true, rxMbps: 2, txMbps: 2 },
+  { name: '<pppoe-a>', type: 'pppoe-out', running: true, rxMbps: 8, txMbps: 80 }
+]);
+assert.deepStrictEqual(lanWan.trafficIfaces, ['ether1']);
+assert.ok(Math.abs(lanWan.totalRxMbps - 80) < 0.01);
+assert.ok(Math.abs(lanWan.totalTxMbps - 8) < 0.01);
+assert.ok(lanWan.totalRxMbps !== lanWan.totalTxMbps);
+
+const unnamedMirror = aggregateDeviceTraffic([
+  { name: 'ether1', type: 'ether', running: true, rxMbps: 90, txMbps: 10 },
+  { name: 'ether2', type: 'ether', running: true, rxMbps: 10, txMbps: 90 }
+]);
+assert.deepStrictEqual(unnamedMirror.trafficIfaces, ['ether1']);
+assert.ok(Math.abs(unnamedMirror.totalRxMbps - 90) < 0.01);
+assert.ok(Math.abs(unnamedMirror.totalTxMbps - 10) < 0.01);
+
+const scoped = scopeDeviceTraffic(
+  [
+    { name: 'ether1', type: 'ether', running: true, comment: '' },
+    { name: 'ether2', type: 'ether', running: true, comment: '' }
+  ],
+  [
+    { name: 'ether1', rxBitsPerSecond: 80e6, txBitsPerSecond: 8e6 },
+    { name: 'ether2', rxBitsPerSecond: 8e6, txBitsPerSecond: 80e6 }
+  ]
+);
+assert.deepStrictEqual(scoped.trafficIfaces, ['ether1']);
+assert.ok(scoped.interfaces.find((i) => i.name === 'ether1').include_in_total);
+assert.ok(!scoped.interfaces.find((i) => i.name === 'ether2').include_in_total);
+assert.ok(scoped.totalRxBps > scoped.totalTxBps);
 
 const unique = latestUniqueBy([
   { server: '8.8.8.8', value: 11 },

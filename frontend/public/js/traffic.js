@@ -46,6 +46,7 @@ const TrafficPage = {
     this.buf    = { rx:[], tx:[], ts:[] };
     this.bufPer = {};
     this.lastPush = 0;
+    this._wanTotals = null;
     if (this.apexChart) {
       try { this.apexChart.destroy(); } catch(_) {}
       this.apexChart = null;
@@ -83,6 +84,7 @@ const TrafficPage = {
 
     const statsMap = {};
     data.data.forEach(s => { statsMap[s.name] = s; });
+    this._wanTotals = data.totals || null;
 
     // Sinkronkan rx/tx rate ke objek interface, reset ke 0 jika tidak ada di statsMap
     this.interfaces.forEach(iface => {
@@ -90,10 +92,16 @@ const TrafficPage = {
       if (s) {
         iface._rxBps = s.rxBitsPerSecond;
         iface._txBps = s.txBitsPerSecond;
+        iface.include_in_total = !!s.include_in_total;
       } else {
         iface._rxBps = 0;
         iface._txBps = 0;
+        iface.include_in_total = false;
       }
+    });
+    (data.interfaces || []).forEach((i) => {
+      const local = this.interfaces.find((x) => x.name === i.name);
+      if (local && i.include_in_total) local.include_in_total = true;
     });
 
     this.updateCards(statsMap);
@@ -130,6 +138,7 @@ const TrafficPage = {
             <span class="iface-dot ${up ? 'dot-up' : 'dot-down'}"></span>
             <span class="iface-name" title="${esc(iface.name)}">${esc(iface.name)}</span>
             <span class="iface-type-badge">${esc(iface.type)}</span>
+            ${iface.include_in_total ? '<span class="iface-type-badge" style="background:#dbeafe;color:#1d4ed8;">WAN</span>' : ''}
             <span class="track-tag ${sel ? 'active' : ''}" id="trk-${id}">
               ${sel
                 ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>Tracked'
@@ -141,7 +150,7 @@ const TrafficPage = {
             <div class="rate-cell">
               <div class="rate-head">
                 <span class="rate-arrow arrow-rx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="19 12 12 19 5 12"/><line x1="12" y1="5" x2="12" y2="19"/></svg></span>
-                <span class="rate-lbl">RX</span>
+                <span class="rate-lbl">Download</span>
               </div>
               <div><span class="rate-val rx rx-rate-${id}">0.00</span><span class="rate-unit">Mbps</span></div>
               <div class="rate-spark"><svg viewBox="0 0 100 18" preserveAspectRatio="none">
@@ -152,7 +161,7 @@ const TrafficPage = {
             <div class="rate-cell">
               <div class="rate-head">
                 <span class="rate-arrow arrow-tx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="5 12 12 5 19 12"/><line x1="12" y1="19" x2="12" y2="5"/></svg></span>
-                <span class="rate-lbl">TX</span>
+                <span class="rate-lbl">Upload</span>
               </div>
               <div><span class="rate-val tx tx-rate-${id}">0.00</span><span class="rate-unit">Mbps</span></div>
               <div class="rate-spark"><svg viewBox="0 0 100 18" preserveAspectRatio="none">
@@ -193,6 +202,26 @@ const TrafficPage = {
       // Render sparkline
       this.renderCardSpark(id, 'rx', buf.rx);
       this.renderCardSpark(id, 'tx', buf.tx);
+
+      const card = document.getElementById(`icard-${id}`);
+      if (card) {
+        const iface = this.interfaces.find(x => x.name === name);
+        let badge = card.querySelector('.wan-tag');
+        if (iface && iface.include_in_total) {
+          if (!badge) {
+            const typeBadge = card.querySelector('.iface-type-badge');
+            if (typeBadge) {
+              badge = document.createElement('span');
+              badge.className = 'iface-type-badge wan-tag';
+              badge.style.cssText = 'background:#dbeafe;color:#1d4ed8;';
+              badge.textContent = 'WAN';
+              typeBadge.after(badge);
+            }
+          }
+        } else if (badge) {
+          badge.remove();
+        }
+      }
     });
   },
 
@@ -225,15 +254,29 @@ const TrafficPage = {
   updateSummary() {
     const running = this.interfaces.filter(i => i.running).length;
     const down    = this.interfaces.filter(i => !i.running && !i.disabled).length;
+    const wanIfaces = this.interfaces.filter(i => i.include_in_total);
     let totalRx = 0, totalTx = 0;
-    this.interfaces.forEach(i => {
-      totalRx += (i._rxBps || 0) / 1_000_000;
-      totalTx += (i._txBps || 0) / 1_000_000;
-    });
+    if (this._wanTotals && (this._wanTotals.ifaces || []).length) {
+      totalRx = (this._wanTotals.rxBitsPerSecond || 0) / 1_000_000;
+      totalTx = (this._wanTotals.txBitsPerSecond || 0) / 1_000_000;
+    } else {
+      const src = wanIfaces.length ? wanIfaces : [];
+      src.forEach(i => {
+        totalRx += (i._rxBps || 0) / 1_000_000;
+        totalTx += (i._txBps || 0) / 1_000_000;
+      });
+    }
     document.getElementById('sumRunning').textContent = running;
     document.getElementById('sumDown').textContent    = down;
     document.getElementById('sumRx').textContent      = totalRx.toFixed(1);
     document.getElementById('sumTx').textContent      = totalTx.toFixed(1);
+    const wanLabel = (this._wanTotals && this._wanTotals.scope)
+      || wanIfaces.map(i => i.name).join(', ')
+      || 'WAN saja';
+    const subRx = document.querySelector('#tc-rx .card-sub');
+    const subTx = document.querySelector('#tc-tx .card-sub');
+    if (subRx) subRx.textContent = wanLabel;
+    if (subTx) subTx.textContent = wanLabel;
   },
 
   toggleSelect(name) {

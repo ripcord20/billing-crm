@@ -6,6 +6,24 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
 const { MikrotikApiClient } = require('./MikrotikApiClient');
+const {
+  rosTrue,
+  parseCounter,
+  ifaceRxTxBytes,
+  combineMonitorBits,
+  rateFromDelta
+} = require('../utils/interfaceTrafficRate');
+
+/** Snapshot rx-byte/tx-byte per host+iface. Module-level: instance dibuat ulang tiap request. */
+const _ifaceByteSnap = new Map();
+const SNAP_TTL_MS = 10 * 60 * 1000;
+
+function pruneIfaceSnaps(now) {
+  if (_ifaceByteSnap.size < 400) return;
+  for (const [k, v] of _ifaceByteSnap) {
+    if (!v || now - v.at > SNAP_TTL_MS) _ifaceByteSnap.delete(k);
+  }
+}
 
 /**
  * Port → protokol detection (FALLBACK MODE — dipakai kalau caller tidak
@@ -697,14 +715,17 @@ class MikrotikService {
   // ── INTERFACES ─────────────────────────────────────────────
   async getInterfaces() {
     const ifaces = await this.get('/interface');
-    return (Array.isArray(ifaces) ? ifaces : []).map(i => ({
-      id: i['.id'], name: i.name, type: i.type || 'ether',
-      mtu: i.mtu || 1500, running: i.running === 'true',
-      disabled: i.disabled === 'true', comment: i.comment || '',
-      macAddress: i['mac-address'] || '',
-      txByte: parseInt(i['tx-byte']) || 0, rxByte: parseInt(i['rx-byte']) || 0,
-      txPacket: parseInt(i['tx-packet']) || 0, rxPacket: parseInt(i['rx-packet']) || 0
-    }));
+    return (Array.isArray(ifaces) ? ifaces : []).map(i => {
+      const bytes = ifaceRxTxBytes(i);
+      return {
+        id: i['.id'], name: i.name, type: i.type || 'ether',
+        mtu: i.mtu || 1500, running: rosTrue(i.running),
+        disabled: rosTrue(i.disabled), comment: i.comment || '',
+        macAddress: i['mac-address'] || '',
+        txByte: bytes.tx, rxByte: bytes.rx,
+        txPacket: parseCounter(i['tx-packet']), rxPacket: parseCounter(i['rx-packet'])
+      };
+    });
   }
 
   // ── IP SCAN (Tools > IP Scan) ──────────────────────────────
@@ -778,37 +799,64 @@ class MikrotikService {
       }, { timeout: 8000, retries: 0 });
       const s = Array.isArray(res) ? res[0] : res;
       if (s && typeof s === 'object') {
+        const bits = combineMonitorBits(s);
         return {
           name,
-          rxBitsPerSecond:    parseInt(s['rx-bits-per-second'])    || 0,
-          txBitsPerSecond:    parseInt(s['tx-bits-per-second'])    || 0,
-          rxPacketsPerSecond: parseInt(s['rx-packets-per-second']) || 0,
-          txPacketsPerSecond: parseInt(s['tx-packets-per-second']) || 0,
-          fpRxBitsPerSecond:  parseInt(s['fp-rx-bits-per-second']) || 0,
-          fpTxBitsPerSecond:  parseInt(s['fp-tx-bits-per-second']) || 0,
+          rxBitsPerSecond:    bits.rxBitsPerSecond,
+          txBitsPerSecond:    bits.txBitsPerSecond,
+          rxPacketsPerSecond: parseCounter(s['rx-packets-per-second']) + parseCounter(s['fp-rx-packets-per-second']),
+          txPacketsPerSecond: parseCounter(s['tx-packets-per-second']) + parseCounter(s['fp-tx-packets-per-second']),
+          fpRxBitsPerSecond:  parseCounter(s['fp-rx-bits-per-second']),
+          fpTxBitsPerSecond:  parseCounter(s['fp-tx-bits-per-second']),
         };
       }
     } catch (e) { /* silent */ }
     return { name, rxBitsPerSecond: 0, txBitsPerSecond: 0, rxPacketsPerSecond: 0, txPacketsPerSecond: 0 };
   }
 
+  _snapKey(ifaceName) {
+    return `${this.host}:${this.port}:${ifaceName}`;
+  }
+
+  _ratesFromIfaceList(list, now) {
+    pruneIfaceSnaps(now);
+    return list.map((i) => {
+      const key = this._snapKey(i.name);
+      const prev = _ifaceByteSnap.get(key);
+      const next = { rx: i.rxByte || 0, tx: i.txByte || 0, at: now };
+      const rate = rateFromDelta(prev, next, now);
+      _ifaceByteSnap.set(key, next);
+      return {
+        name: i.name,
+        rxBitsPerSecond: rate.rxBps,
+        txBitsPerSecond: rate.txBps,
+        rxPacketsPerSecond: 0,
+        txPacketsPerSecond: 0,
+        source: rate.ok ? 'bytes' : 'pending'
+      };
+    });
+  }
+
   /**
-   * Monitor traffic banyak interface — parallel POST requests
-   * (bulk comma-separated tidak support di RouterOS ini → parallel individual)
+   * Rate per interface dari selisih rx-byte/tx-byte (asymmetric, cepat).
+   * monitor-traffic once sering simetris/0 karena FastTrack ada di fp-*.
    */
   async getInterfacesBulkStats(names) {
     if (!names || !names.length) return [];
-    // Parallel requests, max 8 sekaligus
-    const chunks = [];
-    for (let i = 0; i < names.length; i += 8) {
-      chunks.push(names.slice(i, i + 8));
-    }
-    const results = [];
-    for (const chunk of chunks) {
-      const stats = await Promise.all(
-        chunk.map(name => this.getInterfaceStats(name))
-      );
-      results.push(...stats);
+    const wanted = new Set(names);
+    let ifaces = (await this.getInterfaces()).filter((i) => wanted.has(i.name));
+    if (!ifaces.length) return names.map((name) => ({
+      name, rxBitsPerSecond: 0, txBitsPerSecond: 0, rxPacketsPerSecond: 0, txPacketsPerSecond: 0
+    }));
+
+    let now = Date.now();
+    let results = this._ratesFromIfaceList(ifaces, now);
+    const allPending = results.every((r) => r.source === 'pending');
+    if (allPending) {
+      await new Promise((r) => setTimeout(r, 800));
+      ifaces = (await this.getInterfaces()).filter((i) => wanted.has(i.name));
+      now = Date.now();
+      results = this._ratesFromIfaceList(ifaces, now);
     }
     return results;
   }

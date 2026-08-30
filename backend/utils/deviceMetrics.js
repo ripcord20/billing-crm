@@ -105,6 +105,17 @@ function pppoeIfaceMatchesUsername(ifaceNameRaw, username) {
   return n === `pppoe-${u}` || n === u || ifaceName(ifaceNameRaw) === `<pppoe-${u}>` || ifaceName(ifaceNameRaw) === `<${u}>`;
 }
 
+function ifaceRateMbps(i) {
+  const rx = Number(i && i.rxMbps);
+  const tx = Number(i && i.txMbps);
+  if (Number.isFinite(rx) || Number.isFinite(tx)) {
+    return (Number.isFinite(rx) ? rx : 0) + (Number.isFinite(tx) ? tx : 0);
+  }
+  const rxBps = Number(i && i.rxBitsPerSecond) || 0;
+  const txBps = Number(i && i.txBitsPerSecond) || 0;
+  return (rxBps + txBps) / 1e6;
+}
+
 function pickTrafficIfaces(interfaces) {
   const list = (interfaces || []).filter((i) => i && i.name);
   const running = list.filter((i) => i.running !== false && i.disabled !== true);
@@ -118,19 +129,58 @@ function pickTrafficIfaces(interfaces) {
   if (namedWan.length) return namedWan;
 
   const phys = running.filter((i) => isUplinkIface(i.name, i.type));
-  if (!phys.length) {
-    return running.filter((i) => !isCustomerTunnelIface(i.name, i.type) && !isVirtualSwitchIface(i.name, i.type));
-  }
+  const pool = phys.length
+    ? phys
+    : running.filter((i) => !isCustomerTunnelIface(i.name, i.type) && !isVirtualSwitchIface(i.name, i.type));
+  if (!pool.length) return [];
 
-  const scored = phys.map((i) => ({
+  const scored = pool.map((i) => ({
     iface: i,
-    rate: (Number(i.rxMbps) || 0) + (Number(i.txMbps) || 0)
+    rate: ifaceRateMbps(i)
   })).sort((a, b) => b.rate - a.rate);
 
   // One busy WAN is typical. Summing every ether (LAN+WAN) or WAN+PPPoE
-  // makes RX/TX look symmetric.
-  if (scored[0] && scored[0].rate > 0) return [scored[0].iface];
-  return phys.slice(0, 2);
+  // makes RX/TX look symmetric on every registered router.
+  if (scored[0] && scored[0].rate > 0) {
+    const top = scored.filter((s) => s.rate >= scored[0].rate * 0.8);
+    if (top.length > 1) {
+      const wanLike = top.find((s) => {
+        const rx = Number(s.iface.rxMbps) || ((Number(s.iface.rxBitsPerSecond) || 0) / 1e6);
+        const tx = Number(s.iface.txMbps) || ((Number(s.iface.txBitsPerSecond) || 0) / 1e6);
+        return rx > tx * 1.3;
+      });
+      if (wanLike) return [wanLike.iface];
+      const ether1 = top.find((s) => /^(ether1|sfp-sfpplus1)$/i.test(s.iface.name));
+      if (ether1) return [ether1.iface];
+    }
+    return [scored[0].iface];
+  }
+
+  const ether1 = pool.find((i) => /^(ether1|sfp-sfpplus1)$/i.test(i.name));
+  return [ether1 || pool[0]];
+}
+
+function bpsToMbps(bps) {
+  return Math.round((Number(bps) || 0) / 1e3) / 1e3;
+}
+
+function mergeIfaceRates(ifaces, stats) {
+  const byName = new Map();
+  for (const s of stats || []) {
+    if (s && s.name) byName.set(s.name, s);
+  }
+  return (ifaces || []).map((i) => {
+    const s = byName.get(i.name);
+    const rxBps = s ? Number(s.rxBitsPerSecond) || 0 : Number(i.rxBitsPerSecond) || 0;
+    const txBps = s ? Number(s.txBitsPerSecond) || 0 : Number(i.txBitsPerSecond) || 0;
+    return {
+      ...i,
+      rxBitsPerSecond: rxBps,
+      txBitsPerSecond: txBps,
+      rxMbps: bpsToMbps(rxBps),
+      txMbps: bpsToMbps(txBps)
+    };
+  });
 }
 
 function aggregateDeviceTraffic(interfaces) {
@@ -146,6 +196,18 @@ function aggregateDeviceTraffic(interfaces) {
     totalTxMbps: Math.round(tx * 1000) / 1000,
     trafficIfaces: use.map((i) => i.name),
     trafficScope: use.length === 1 ? use[0].name : (use.length ? `uplink (${use.length})` : 'none')
+  };
+}
+
+function scopeDeviceTraffic(ifaces, stats) {
+  const merged = mergeIfaceRates(ifaces, stats);
+  const agg = aggregateDeviceTraffic(merged);
+  const pick = new Set(agg.trafficIfaces);
+  return {
+    interfaces: merged.map((i) => ({ ...i, include_in_total: pick.has(i.name) })),
+    totalRxBps: Math.round((agg.totalRxMbps || 0) * 1e6),
+    totalTxBps: Math.round((agg.totalTxMbps || 0) * 1e6),
+    ...agg
   };
 }
 
@@ -186,6 +248,9 @@ module.exports = {
   isDdosWatchIface,
   pppoeIfaceMatchesUsername,
   pickTrafficIfaces,
+  mergeIfaceRates,
+  scopeDeviceTraffic,
+  bpsToMbps,
   aggregateDeviceTraffic,
   latestUniqueBy,
   presentDeviceMetrics
