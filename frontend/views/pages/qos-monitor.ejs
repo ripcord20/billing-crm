@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .qos-page { max-width: 1280px; }
+    .qos-sub { color: var(--text-secondary); font-size: 13px; margin: 4px 0 0; }
+    .qos-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .qos-sla {
+      display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 18px;
+    }
+    .qos-sla span {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+      background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary);
+    }
+    .qos-sla b { color: var(--text-primary); font-weight: 700; }
+    .qos-cards {
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 18px;
+    }
+    .qos-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+      padding: 14px 16px; min-height: 108px;
+    }
+    .qos-card .lbl { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+    .qos-card .val { font-size: 26px; font-weight: 800; letter-spacing: -0.03em; margin: 6px 0 2px; color: var(--text-primary); }
+    .qos-card .hint { font-size: 12px; color: var(--text-secondary); }
+    .qos-card.ok { box-shadow: inset 0 0 0 1px rgba(34,197,94,.18); }
+    .qos-card.warn { box-shadow: inset 0 0 0 1px rgba(245,158,11,.28); }
+    .qos-card.critical { box-shadow: inset 0 0 0 1px rgba(239,68,68,.3); }
+    .qos-card.ok .val { color: var(--success); }
+    .qos-card.warn .val { color: var(--warning); }
+    .qos-card.critical .val { color: var(--danger); }
+    .qos-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 14px; margin-bottom: 14px; }
+    .qos-card-block { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .qos-card-block h3 { margin: 0; padding: 14px 16px 0; font-size: 15px; }
+    .qos-card-block .sub { padding: 4px 16px 12px; font-size: 12px; color: var(--text-secondary); }
+    .qos-filters { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 16px 10px; }
+    .qos-chip {
+      border: 1px solid var(--border); background: transparent; color: var(--text-secondary);
+      border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+    .qos-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .qos-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .qos-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); padding: 8px 16px; border-bottom: 1px solid var(--border); }
+    .qos-table td { padding: 10px 16px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-primary); }
+    .qos-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .qos-badge.tech { background: #eff6ff; color: #1d4ed8; }
+    .qos-badge.sales { background: #fff7ed; color: #c2410c; }
+    .qos-badge.security { background: #fef2f2; color: #b91c1c; }
+    .qos-badge.ok { background: #f0fdf4; color: #15803d; }
+    .qos-badge.warn { background: #fffbeb; color: #b45309; }
+    .qos-badge.critical, .qos-badge.error { background: #fef2f2; color: #b91c1c; }
+    .qos-empty { padding: 24px 16px; color: var(--text-secondary); font-size: 13px; }
+    .qos-settings { display: none; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    .qos-settings.open { display: block; }
+    .qos-form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .qos-form label { display: block; font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; }
+    .qos-form input { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--bg-input); color: var(--text-primary); font-size: 13px; }
+    @media (max-width: 1100px) { .qos-cards { grid-template-columns: repeat(3, 1fr); } .qos-grid, .qos-form { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) { .qos-cards { grid-template-columns: 1fr 1fr; } }
+    [data-theme="dark"] .qos-badge.tech { background: rgba(59,130,246,.16); color: #93c5fd; }
+    [data-theme="dark"] .qos-badge.sales { background: rgba(249,115,22,.16); color: #fdba74; }
+    [data-theme="dark"] .qos-badge.security { background: rgba(239,68,68,.16); color: #fca5a5; }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <%- include('../partials/sidebar') %>
+    <div class="main-content">
+      <%- include('../partials/topbar') %>
+      <main class="page-content qos-page">
+        <div class="page-header">
+          <div class="page-header-left">
+            <h1>Keamanan &amp; QoS / SLA</h1>
+            <p class="qos-sub">Pantau autentikasi gagal, anomali traffic, DNS publik vs ISP, latency, packet loss, jitter, dan utilisasi bandwidth.</p>
+          </div>
+          <div class="page-header-right qos-actions">
+            <button class="btn btn-secondary" type="button" id="qosSettingsBtn">Pengaturan</button>
+            <button class="btn btn-primary" type="button" id="qosRunBtn">Jalankan probe</button>
+          </div>
+        </div>
+
+        <div class="qos-sla" id="qosSlaChips"></div>
+        <div class="qos-settings" id="qosSettings">
+          <div class="qos-form">
+            <div><label>DNS ISP (koma)</label><input id="set-ispDns" placeholder="10.0.0.1, 10.0.0.2"></div>
+            <div><label>DNS publik</label><input id="set-publicDns" placeholder="8.8.8.8, 1.1.1.1"></div>
+            <div><label>Host uji DNS</label><input id="set-dnsProbeHost" placeholder="google.com"></div>
+            <div><label>Target ping ekstra</label><input id="set-pingTargets" placeholder="1.1.1.1, 8.8.8.8"></div>
+            <div><label>Kapasitas uplink (Mbps)</label><input id="set-uplinkMbps" type="number"></div>
+            <div><label>SLA RTT (ms)</label><input id="set-rttMs" type="number"></div>
+            <div><label>SLA packet loss (%)</label><input id="set-lossPct" type="number" step="0.1"></div>
+            <div><label>SLA jitter (ms)</label><input id="set-jitterMs" type="number"></div>
+            <div><label>Peringatan bandwidth (%)</label><input id="set-bandwidthWarnPct" type="number"></div>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button class="btn btn-primary" type="button" id="qosSaveSettings">Simpan ambang</button>
+          </div>
+        </div>
+
+        <div class="qos-cards" id="qosCards"></div>
+
+        <div class="qos-grid">
+          <div class="qos-card-block">
+            <h3>Alert otomatis</h3>
+            <p class="sub">Tipe berbeda: teknis (loss/jitter/latency), keamanan (auth/DDoS), dan up-selling bandwidth.</p>
+            <div class="qos-filters">
+              <button class="qos-chip active" data-aud="" type="button">Semua</button>
+              <button class="qos-chip" data-aud="tech" type="button">Teknis</button>
+              <button class="qos-chip" data-aud="security" type="button">Keamanan</button>
+              <button class="qos-chip" data-aud="sales" type="button">Up-sell</button>
+            </div>
+            <div id="qosAlerts"></div>
+          </div>
+          <div class="qos-card-block">
+            <h3>Resolusi DNS</h3>
+            <p class="sub">Bandingkan DNS publik dan DNS ISP — harus cepat dan akurat.</p>
+            <div id="qosDns"></div>
+          </div>
+        </div>
+
+        <div class="qos-grid">
+          <div class="qos-card-block">
+            <h3>Peluang up-selling</h3>
+            <p class="sub">Pelanggan yang utilisasinya mendekati batas paket.</p>
+            <div id="qosUpsell"></div>
+          </div>
+          <div class="qos-card-block">
+            <h3>Autentikasi gagal</h3>
+            <p class="sub">Portal + log MikroTik (jika tersedia). Lonjakan = indikasi serangan.</p>
+            <div id="qosAuth"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="/js/app.js"></script>
+  <script src="/js/qos-monitor.js"></script>
+</body>
+</html>

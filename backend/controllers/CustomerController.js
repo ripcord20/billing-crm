@@ -4,12 +4,13 @@ const bcrypt = require('bcryptjs');
 const { generateUniqueCustomerId, paginateResponse } = require('../utils/helpers');
 const { getCompanyName } = require('../utils/companyInfo');
 const InfraSync = require('../services/CustomerInfraSyncService');
+const { applyTenantWhere, getTenantId, assertCustomerTenant, isTenantOwner } = require('../utils/tenantScope');
 
 class CustomerController {
   async index(req, res) {
     try {
       const { page = 1, limit = 20, search, status, package_id, province, regency, district } = req.query;
-      const where = {};
+      const where = applyTenantWhere(req, {});
       
       if (search) {
         where[Op.or] = [
@@ -126,6 +127,12 @@ class CustomerController {
       delete data.send_email_welcome;
 
       if (!data.name) return res.status(400).json({ success: false, message: 'Nama customer wajib diisi' });
+      const ownerTid = getTenantId(req);
+      if (isTenantOwner(req) && !ownerTid) {
+        return res.status(400).json({ success: false, message: 'Akun pemilik belum terhubung ke tenant' });
+      }
+      if (ownerTid) data.tenant_id = ownerTid;
+      else if (!req.body.tenant_id) delete data.tenant_id;
 
       // Jika customer_id dikirim manual, validasi uniqueness
       if (data.customer_id) {
@@ -244,6 +251,10 @@ class CustomerController {
     try {
       const customer = await Customer.findByPk(req.params.id);
       if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+      if (!assertCustomerTenant(req, customer)) {
+        return res.status(404).json({ success: false, message: 'Customer not found' });
+      }
+      if (isTenantOwner(req)) delete req.body.tenant_id;
 
       if (req.body.billing_date !== undefined) {
         const bd = parseInt(req.body.billing_date);
@@ -433,6 +444,9 @@ class CustomerController {
         ]
       });
       if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+      if (!assertCustomerTenant(req, customer)) {
+        return res.status(404).json({ success: false, message: 'Customer not found' });
+      }
 
       // Ambil invoice terpisah dengan order & limit yang valid
       const invoices = await Invoice.findAll({

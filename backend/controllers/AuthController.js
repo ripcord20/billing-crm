@@ -13,8 +13,9 @@
  */
 
 const jwt = require('jsonwebtoken');
-const { User, Role, ActivityLog } = require('../models');
+const { User, Role, ActivityLog, Tenant } = require('../models');
 const logger = require('../utils/logger');
+const { homePathForRole } = require('../utils/tenantScope');
 
 const DEMO_JWT_EXPIRY = process.env.DEMO_JWT_EXPIRY || '2h';
 
@@ -30,6 +31,21 @@ function isDemoRole(user) {
   return (user?.role?.name || '').toLowerCase() === 'demo';
 }
 
+function recordPortalAuthFail(req, email, reason) {
+  setImmediate(() => {
+    try {
+      const QosSlaService = require('../services/QosSlaService');
+      QosSlaService.recordAuthFail({
+        source: 'portal',
+        identifier: email ? String(email).slice(0, 120) : null,
+        ip_address: req.ip || req.headers['x-forwarded-for'] || null,
+        user_agent: req.get && req.get('User-Agent'),
+        reason
+      }).catch(() => {});
+    } catch (_) { /* monitoring must never break login */ }
+  });
+}
+
 class AuthController {
   // Login
   async login(req, res) {
@@ -42,10 +58,11 @@ class AuthController {
 
       const user = await User.findOne({
         where: { email },
-        include: [{ model: Role, as: 'role' }]
+        include: [{ model: Role, as: 'role' }, { model: Tenant, as: 'tenant', required: false }]
       });
 
       if (!user || !user.is_active) {
+        recordPortalAuthFail(req, email, !user ? 'unknown_user' : 'inactive');
         return res.status(401).json({ success: false, message: 'Invalid credentials' });
       }
 
@@ -59,6 +76,7 @@ class AuthController {
 
       const isValid = await user.validatePassword(password);
       if (!isValid) {
+        recordPortalAuthFail(req, email, 'bad_password');
         return res.status(401).json({ success: false, message: 'Invalid credentials' });
       }
 
@@ -115,13 +133,7 @@ class AuthController {
         maxAge: cookieMaxAge
       });
 
-      // Tentukan halaman tujuan berdasar role
-      const roleName = (user.role?.name || '').toLowerCase();
-      let redirect = '/dashboard';
-      if (roleName === 'technician') redirect = '/technician';
-      else if (roleName === 'finance')    redirect = '/finance';
-      else if (roleName === 'noc')        redirect = '/noc';
-      // demo → default ke /dashboard (tapi sebagian besar menu akan auto-disabled)
+      const redirect = homePathForRole(user.role?.name);
 
       res.json({
         success: true,
@@ -179,12 +191,7 @@ class AuthController {
         sameSite: 'lax',
         maxAge: cookieMaxAge
       });
-      const roleName = (user.role?.name || '').toLowerCase();
-      let redirect = '/dashboard';
-      if (roleName === 'technician') redirect = '/technician';
-      else if (roleName === 'finance')    redirect = '/finance';
-      else if (roleName === 'noc')        redirect = '/noc';
-      return res.json({ success: true, redirect });
+      return res.json({ success: true, redirect: homePathForRole(user.role?.name) });
     } catch (e) {
       // TokenExpiredError, JsonWebTokenError, dll — semua di-treat invalid
       return res.status(401).json({ success: false, message: 'Token invalid or expired' });

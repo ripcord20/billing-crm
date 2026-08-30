@@ -27,6 +27,8 @@ const { demoGuard } = require('../middleware/demoGuard');
 const { apiBlockFinanceArea } = require('../middleware/financeAccess');
 const { apiBlockNocArea }     = require('../middleware/nocAccess');
 const { apiBlockSalesArea }   = require('../middleware/salesAccess');
+const { apiBlockTenantOwner } = require('../middleware/tenantAccess');
+const TenantController = require('../controllers/TenantController');
 const demoRoutes = require('./demo');
 
 // Controllers (existing)
@@ -84,6 +86,7 @@ const _financeBlockedPrefixes = [
   '/pppoe',
   '/monitoring',
   '/ping-monitor',
+  '/qos',
   '/host-monitor',
   '/isolir',
   '/wa',                // WA send/sessions/templates/reminder/report
@@ -190,6 +193,25 @@ const _salesBlockedPrefixes = [
 for (const p of _salesBlockedPrefixes) {
   router.use(p, authenticate, apiBlockSalesArea);
 }
+
+const _tenantBlockedPrefixes = [
+  '/keuangan', '/finance', '/laporan',
+  '/devices', '/infrastructure', '/monitoring', '/qos', '/mikrotik',
+  '/genieacs', '/olt', '/ont', '/hotspot', '/isolir',
+  '/wa', '/whatsapp', '/broadcast', '/email-broadcast', '/mikrotik-backup', '/message-logs',
+  '/users', '/roles', '/permissions', '/activity-logs', '/system',
+  '/dashboard', '/tenants'
+];
+for (const p of _tenantBlockedPrefixes) {
+  router.use(p, authenticate, apiBlockTenantOwner);
+}
+
+router.get('/tenant/dashboard', authenticate, demoGuard, TenantController.dashboard);
+router.get('/tenants', authenticate, demoGuard, authorize('superadmin', 'admin'), TenantController.list);
+router.post('/tenants', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('create', 'tenant'), TenantController.create);
+router.put('/tenants/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'tenant'), TenantController.update);
+router.post('/tenants/:id/owners', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('create', 'tenant_owner'), TenantController.createOwner);
+router.post('/tenants/:id/assign-customers', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'tenant'), TenantController.assignCustomers);
 
 // ===== DASHBOARD =====
 router.get('/dashboard/overview', authenticate, demoGuard, DashboardController.overview);
@@ -2056,6 +2078,11 @@ router.get('/payments/chart',      authenticate, demoGuard, PaymentController.ch
 router.get('/payments/list',       authenticate, demoGuard, PaymentController.list);
 router.get('/payments/check-paid', authenticate, demoGuard, PaymentController.checkPaid);
 router.post('/payments/record',    authenticate, demoGuard, logActivity('create','payment'), PaymentController.record);
+router.post('/payments/record-bulk', authenticate, demoGuard, logActivity('create','payment'), PaymentController.recordBulk);
+router.get('/payments/unpaid-customers', authenticate, demoGuard, PaymentController.unpaidCustomers);
+router.get('/payments/deferrals',  authenticate, demoGuard, PaymentController.listDeferrals);
+router.post('/payments/defer',     authenticate, demoGuard, logActivity('create','payment_deferral'), PaymentController.defer);
+router.post('/payments/deferrals/:id/cancel', authenticate, demoGuard, logActivity('update','payment_deferral'), PaymentController.cancelDeferral);
 router.delete('/payments/:id',     authenticate, demoGuard, authorize('superadmin','admin'), logActivity('delete','payment'), PaymentController.destroy);
 router.get('/payments/customers',  authenticate, demoGuard, PaymentController.searchCustomers);
 // Public invoice data — TANPA authenticate. Dipakai halaman /pub/invoice/:token
@@ -2232,6 +2259,17 @@ router.get ('/ping-monitor/search-customers',   authenticate, demoGuard, PingMon
 router.get ('/ping-monitor/router-sources',     authenticate, demoGuard, PingMonitorController.getRouterSources);
 router.post('/ping-monitor/assign',             authenticate, demoGuard, PingMonitorController.assignManual);
 router.post('/ping-monitor/delete-ping',        authenticate, demoGuard, PingMonitorController.deletePing);
+
+// ===== QOS / SLA / SECURITY =====
+const QosSlaController = require('../controllers/QosSlaController');
+router.get ('/qos/overview',  authenticate, demoGuard, (r,s) => QosSlaController.overview(r,s));
+router.get ('/qos/alerts',    authenticate, demoGuard, (r,s) => QosSlaController.alerts(r,s));
+router.post('/qos/alerts/:id/ack', authenticate, demoGuard, (r,s) => QosSlaController.ackAlert(r,s));
+router.get ('/qos/metrics',   authenticate, demoGuard, (r,s) => QosSlaController.metrics(r,s));
+router.get ('/qos/auth-fails', authenticate, demoGuard, (r,s) => QosSlaController.authFails(r,s));
+router.get ('/qos/settings',  authenticate, demoGuard, (r,s) => QosSlaController.settings(r,s));
+router.put ('/qos/settings',  authenticate, demoGuard, authorize('superadmin','admin','noc'), (r,s) => QosSlaController.saveSettings(r,s));
+router.post('/qos/run',       authenticate, demoGuard, authorize('superadmin','admin','noc'), (r,s) => QosSlaController.runNow(r,s));
 
 // ===== DATABASE MANAGEMENT (Cleanup + Backup) =====
 const DatabaseCleanupController = require('../controllers/DatabaseCleanupController');

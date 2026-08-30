@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <div class="app-layout">
+    <%- include('../partials/sidebar') %>
+    <div class="main-content">
+      <%- include('../partials/topbar') %>
+      <main class="page-content tod-page">
+        <div class="page-header">
+          <div class="page-header-left">
+            <h1 id="todTitle">Dashboard Tenant</h1>
+            <p class="tod-sub" id="todSub">Ringkasan usaha Anda — pelanggan, tagihan, penerimaan</p>
+          </div>
+          <div class="page-header-right tod-filters">
+            <select id="todMonth" class="tod-select" onchange="TenantDash.load()"></select>
+            <select id="todYear" class="tod-select" onchange="TenantDash.load()"></select>
+            <button class="btn-secondary" type="button" onclick="TenantDash.load()">Refresh</button>
+          </div>
+        </div>
+
+        <div class="tod-kpi-row ui-enter" id="todKpiBiz">
+          <div class="sk-block"><div class="sk-card"></div></div>
+        </div>
+        <div class="tod-kpi-row ui-enter" id="todKpiBill">
+          <div class="sk-block"><div class="sk-card"></div></div>
+        </div>
+
+        <div class="tod-grid">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3>Penerimaan harian</h3>
+              </div>
+              <span class="tod-muted" id="todChartSub">–</span>
+            </div>
+            <div class="card-body">
+              <div id="todChart"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3>Metode bayar</h3>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="todDonut"></div>
+              <div id="todDonutLegend" class="tod-legend"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tod-grid tod-grid-tables">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3>Tagihan belum lunas</h3>
+              </div>
+              <a class="card-link" href="/billing">Lihat semua →</a>
+            </div>
+            <div class="card-body" style="padding:0;">
+              <table class="tod-table">
+                <thead>
+                  <tr><th>Pelanggan</th><th>Invoice</th><th>Jumlah</th><th>Jatuh tempo</th></tr>
+                </thead>
+                <tbody id="todOverdue">
+                  <tr><td colspan="4"><div class="sk-line"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3>Pembayaran terbaru</h3>
+              </div>
+              <a class="card-link" href="/payments">Catat bayar →</a>
+            </div>
+            <div class="card-body" style="padding:0;">
+              <table class="tod-table">
+                <thead>
+                  <tr><th>Pelanggan</th><th>Tanggal</th><th>Metode</th><th>Jumlah</th></tr>
+                </thead>
+                <tbody id="todRecent">
+                  <tr><td colspan="4"><div class="sk-line"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/tenant-dashboard.js"></script>
+</body>
+</html>

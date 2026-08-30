@@ -22,8 +22,9 @@ const sequelize = new Sequelize(
 // Disable ONLY_FULL_GROUP_BY di setiap koneksi baru dari pool
 sequelize.afterConnect(async (connection) => {
   return new Promise((resolve, reject) => {
+    const extra = env === 'development' ? '; SET FOREIGN_KEY_CHECKS=0' : '';
     connection.query(
-      "SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'",
+      "SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'" + extra,
       (err) => { if (err) reject(err); else resolve(); }
     );
   });
@@ -32,6 +33,7 @@ sequelize.afterConnect(async (connection) => {
 // Import Models
 const User = require('./User')(sequelize);
 const Role = require('./Role')(sequelize);
+const Tenant = require('./Tenant')(sequelize);
 const Permission = require('./Permission')(sequelize);
 const RolePermission = require('./RolePermission')(sequelize);
 const Customer = require('./Customer')(sequelize);
@@ -39,6 +41,10 @@ const CustomerPushSubscription = require('./CustomerPushSubscription')(sequelize
 const Package = require('./Package')(sequelize);
 const Invoice = require('./Invoice')(sequelize);
 const Payment = require('./Payment')(sequelize);
+const PaymentDeferral = require('./PaymentDeferral')(sequelize);
+const QosMetric = require('./QosMetric')(sequelize);
+const QosAlert = require('./QosAlert')(sequelize);
+const AuthFailEvent = require('./AuthFailEvent')(sequelize);
 const Device = require('./Device')(sequelize);
 const DeviceLog = require('./DeviceLog')(sequelize);
 const InfrastructurePoint = require('./InfrastructurePoint')(sequelize);
@@ -181,6 +187,12 @@ AssetHistory.belongsTo(User, { foreignKey: 'performed_by', as: 'performer' });
 Role.hasMany(User, { foreignKey: 'role_id', as: 'users' });
 User.belongsTo(Role, { foreignKey: 'role_id', as: 'role' });
 
+// Tenant <-> User / Customer
+Tenant.hasMany(User, { foreignKey: 'tenant_id', as: 'users' });
+User.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+Tenant.hasMany(Customer, { foreignKey: 'tenant_id', as: 'customers' });
+Customer.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+
 // Role <-> Permission (Many-to-Many)
 Role.belongsToMany(Permission, { through: RolePermission, foreignKey: 'role_id', as: 'permissions' });
 Permission.belongsToMany(Role, { through: RolePermission, foreignKey: 'permission_id', as: 'roles' });
@@ -202,6 +214,14 @@ Invoice.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
 // Invoice <-> Payment
 Invoice.hasMany(Payment, { foreignKey: 'invoice_id', as: 'payments' });
 Payment.belongsTo(Invoice, { foreignKey: 'invoice_id', as: 'invoice' });
+
+// PaymentDeferral (hutang / janji bayar)
+Customer.hasMany(PaymentDeferral, { foreignKey: 'customer_id', as: 'deferrals' });
+PaymentDeferral.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
+Invoice.hasMany(PaymentDeferral, { foreignKey: 'invoice_id', as: 'deferrals' });
+PaymentDeferral.belongsTo(Invoice, { foreignKey: 'invoice_id', as: 'invoice' });
+PaymentDeferral.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+PaymentDeferral.belongsTo(Payment, { foreignKey: 'settled_payment_id', as: 'settledPayment' });
 
 // Payment <-> User (recorded by)
 User.hasMany(Payment, { foreignKey: 'recorded_by', as: 'recorded_payments' });
@@ -236,6 +256,7 @@ const db = {
   Sequelize,
   User,
   Role,
+  Tenant,
   Permission,
   RolePermission,
   Customer,
@@ -243,6 +264,10 @@ const db = {
   Package,
   Invoice,
   Payment,
+  PaymentDeferral,
+  QosMetric,
+  QosAlert,
+  AuthFailEvent,
   Device,
   DeviceLog,
   InfrastructurePoint,

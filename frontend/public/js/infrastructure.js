@@ -52,9 +52,20 @@ let drawTempLine  = null;       // preview polyline (full path)
 let drawSegLines  = [];         // committed segment polylines
 
 const COLORS = {
-  odc: '#1d4ed8', odp: '#1d4ed8', tower: '#475569',
+  odc: '#1d4ed8', odp: '#1d4ed8', jb: '#0d9488', tower: '#475569',
   customer: '#f97316', pop: '#ef4444', ont: '#22c55e'
 };
+
+function jbKind(pt) {
+  let meta = pt && pt.metadata;
+  if (typeof meta === 'string') {
+    try { meta = JSON.parse(meta); } catch (_) { meta = null; }
+  }
+  return (meta && meta.kind) || 'joint_box';
+}
+function jbLabel(pt) {
+  return jbKind(pt) === 'joint_closure' ? 'Joint Closure' : 'Joint Box';
+}
 
 const TILES = {
   streets:   { url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', attr:'&copy; OpenStreetMap contributors &copy; CARTO' },
@@ -592,7 +603,7 @@ function _waitForOnline(maxMs) {
 
 async function _loadInfraInternal(type, opts) {
   const preserveView = !!opts.preserveView;
-  const stats = { odc:0, odp:0, tower:0, customer:0, pop:0 };
+  const stats = { odc:0, odp:0, jb:0, tower:0, customer:0, pop:0 };
 
   // Paralelisasi semua fetch supaya tidak serial. Sebelumnya:
   //   - 2x panggilan ke /infrastructure/map (redundan)
@@ -651,6 +662,7 @@ async function _loadInfraInternal(type, opts) {
 
   document.getElementById('st-odc').textContent   = stats.odc;
   document.getElementById('st-odp').textContent   = stats.odp;
+  const stJb = document.getElementById('st-jb'); if (stJb) stJb.textContent = stats.jb;
   document.getElementById('st-tower').textContent = stats.tower;
   document.getElementById('st-cust').textContent  = stats.customer;
   document.getElementById('st-pop').textContent   = stats.pop;
@@ -714,7 +726,7 @@ function drawParentConnections(filter) {
   // 2 polyline overlap (link manual + auto parent_id).
   const linkedPairs = window._linkedPairs || new Set();
   Object.values(allInfraPoints).forEach(pt => {
-    if (pt.type !== 'odp' || !pt.parent_id) return;
+    if ((pt.type !== 'odp' && pt.type !== 'jb') || !pt.parent_id) return;
     const parent = allInfraPoints[pt.parent_id];
     if (!parent) return;
     const pairKey = pt.id < parent.id ? `${pt.id}-${parent.id}` : `${parent.id}-${pt.id}`;
@@ -1179,7 +1191,7 @@ async function deleteLink(id) {
 // ─── Infra marker ─────────────────────────────────────
 function addInfraMarker(pt) {
   const color  = COLORS[pt.type] || '#64748b';
-  const lbl    = pt.type==='tower' ? 'Tiang' : pt.type.toUpperCase();
+  const lbl    = pt.type==='tower' ? 'Tiang' : pt.type==='jb' ? jbLabel(pt) : pt.type.toUpperCase();
   const status = pt.status || 'active';
   const stColor= status==='active'?'#22c55e':status==='maintenance'?'#f59e0b':'#dc2626';
 
@@ -1232,6 +1244,20 @@ function addInfraMarker(pt) {
           </svg>
         </div>`,
         iconSize:[32,38], iconAnchor:[16,38], popupAnchor:[0,-40]
+      });
+    }
+    if (pt.type === 'jb') {
+      return L.divIcon({
+        className:'',
+        html:`<div style="position:relative;width:36px;height:42px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.3))">
+          <svg width="36" height="42" viewBox="0 0 36 42" fill="none">
+            <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 24 18 24S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}"/>
+            <rect x="10" y="12" width="16" height="12" rx="2" fill="none" stroke="white" stroke-width="1.8"/>
+            <line x1="14" y1="18" x2="22" y2="18" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="18" y1="14" x2="18" y2="22" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>`,
+        iconSize:[36,42], iconAnchor:[18,42], popupAnchor:[0,-44]
       });
     }
     if (pt.type === 'pop') {
@@ -1333,7 +1359,8 @@ function addInfraMarker(pt) {
       odp:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M8 9.5a5 5 0 018 0"/><path d="M5 7a9 9 0 0114 0"/></svg>`,
       odc:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="5" rx="1"/><rect x="2" y="10" width="20" height="5" rx="1"/></svg>`,
       tower:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="22"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="6" y1="14" x2="18" y2="14"/></svg>`,
-      pop:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2" fill="white" stroke="none"/></svg>`
+      pop:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2" fill="white" stroke="none"/></svg>`,
+      jb:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M8 13h8M12 9v8"/></svg>`
     };
 
     return `<div style="font-family:'DM Sans',sans-serif;min-width:230px;border-radius:14px;overflow:hidden">
@@ -1357,12 +1384,12 @@ function addInfraMarker(pt) {
           // yang terhubung ke titik induk ini. Klik anak → pan + zoom + open popup.
           const kids = allInfraPoints[pt.id]?._children;
           if (!kids || kids.length === 0) return '';
-          if (pt.type !== 'odc' && pt.type !== 'pop' && pt.type !== 'odp') return '';
+          if (pt.type !== 'odc' && pt.type !== 'pop' && pt.type !== 'odp' && pt.type !== 'jb') return '';
 
           // Sort by type then name (ODP dulu, lalu ODC, lalu Tiang, lalu Customer)
-          const TYPE_ORDER = { odp: 1, odc: 2, tower: 3, pop: 4, customer: 5 };
-          const TYPE_LABEL = { odp: 'ODP', odc: 'ODC', tower: 'Tiang', pop: 'POP', customer: 'Pelanggan' };
-          const TYPE_COLOR = { odp: '#3b82f6', odc: '#1d4ed8', tower: '#475569', pop: '#ef4444', customer: '#f97316' };
+          const TYPE_ORDER = { odp: 1, jb: 2, odc: 3, tower: 4, pop: 5, customer: 6 };
+          const TYPE_LABEL = { odp: 'ODP', jb: 'JB', odc: 'ODC', tower: 'Tiang', pop: 'POP', customer: 'Pelanggan' };
+          const TYPE_COLOR = { odp: '#3b82f6', jb: '#0d9488', odc: '#1d4ed8', tower: '#475569', pop: '#ef4444', customer: '#f97316' };
           const sorted = kids.slice().sort((a, b) => {
             const oa = TYPE_ORDER[a.type] || 99;
             const ob = TYPE_ORDER[b.type] || 99;
@@ -1892,7 +1919,7 @@ async function saveLink() {
       // unchanged (sudah sama — tidak perlu kasih tahu).
       const ap = res.auto_parent;
       if (ap) {
-        const typeLbl = { pop: 'POP', odc: 'ODC', odp: 'ODP', tower: 'Tiang', customer: 'Pelanggan' };
+        const typeLbl = { pop: 'POP', odc: 'ODC', odp: 'ODP', jb: 'JB', tower: 'Tiang', customer: 'Pelanggan' };
         const childLbl = typeLbl[ap.child_type] || ap.child_type;
         const parentLbl = typeLbl[ap.parent_type] || ap.parent_type;
         if (ap.was_changed) {
@@ -2512,7 +2539,7 @@ function _openModalAfterPick() {
 function enterPlaceMode(type) {
   placeMode=true; placeType=type;
   document.getElementById('infraMap').classList.add('place-mode');
-  const names={odc:'ODC',odp:'ODP',tower:'Tiang',pop:'POP',customer:'Pelanggan'};
+  const names={odc:'ODC',odp:'ODP',jb:'JB / Joint Box',tower:'Tiang',pop:'POP',customer:'Pelanggan'};
   document.getElementById('placeModeText').textContent=`Klik peta untuk menempatkan ${names[type]||type}`;
   document.getElementById('placeModeBar').classList.add('active');
 }
@@ -2560,7 +2587,7 @@ function switchTab(tab, btn) {
   const tp = document.getElementById('tab-'+tab); if(tp) tp.classList.add('active');
   // Update placeType when tab changes
   placeType = tab;
-  const names = {odc:'ODC',odp:'ODP',tower:'Tiang',customer:'Pelanggan'};
+  const names = {odc:'ODC',odp:'ODP',jb:'JB / Joint Box',tower:'Tiang',pop:'POP',customer:'Pelanggan'};
   const bar = document.getElementById('placeModeText');
   if(bar) bar.textContent = 'Klik peta untuk menempatkan '+(names[tab]||tab);
   // If modal is open for new point, allow re-picking location
@@ -2572,18 +2599,20 @@ function switchTab(tab, btn) {
 
 function resetForm() {
   ['odc-name','odc-address','odc-notes','odp-name','odp-address','odp-notes',
+   'jb-name','jb-address','jb-notes',
    'tower-name','tower-address','tower-notes',
    'pop-name','pop-address','pop-notes',
    'cust-address','cust-notes'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
-  ['odc-capacity','odc-used','odp-capacity','odp-used','pop-capacity','pop-used'].forEach(id=>{
+  ['odc-capacity','odc-used','odp-capacity','odp-used','jb-capacity','jb-used','pop-capacity','pop-used'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
-  ['odc-status','odp-status','tower-status','pop-status'].forEach(id=>{
+  ['odc-status','odp-status','jb-status','tower-status','pop-status'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='active';
   });
   const popType=document.getElementById('pop-pop-type'); if(popType) popType.value='olt';
+  const jbKindEl=document.getElementById('jb-kind'); if(jbKindEl) jbKindEl.value='joint_box';
   const cs=document.getElementById('cust-search'); if(cs) cs.value='';
   // Reset manual coord panel
   const manualWrap = document.getElementById('coordManualWrap');
@@ -2698,22 +2727,30 @@ async function loadParentSelects() {
   //   - odp-parent  → ODC (induk ODP)
   //   - odc-parent  → ODC + POP (induk ODC bisa ODC lain dlm chain, atau langsung POP)
   //   - cust-parent → ODP (induk customer)
-  const [odcRes, odpRes, popRes] = await Promise.all([
+  const [odcRes, odpRes, popRes, jbRes] = await Promise.all([
     App.api('/infrastructure?type=odc'),
     App.api('/infrastructure?type=odp'),
     App.api('/infrastructure?type=pop'),
+    App.api('/infrastructure?type=jb'),
   ]);
   const odcList = odcRes?.success ? odcRes.data : [];
   const odpList = odpRes?.success ? odpRes.data : [];
   const popList = popRes?.success ? popRes.data : [];
+  const jbList  = jbRes?.success ? jbRes.data : [];
 
   const odpSel  = document.getElementById('odp-parent');
   const custSel = document.getElementById('cust-parent');
   const odcSel  = document.getElementById('odc-parent');
+  const jbSel   = document.getElementById('jb-parent');
 
   if (odpSel) {
     odpSel.innerHTML = '<option value="">-- Tidak ada --</option>';
     odcList.forEach(o => odpSel.innerHTML += `<option value="${o.id}">${o.name}</option>`);
+    if (jbList.length) {
+      odpSel.innerHTML += '<optgroup label="JB / Joint Box">';
+      jbList.forEach(o => odpSel.innerHTML += `<option value="${o.id}">${o.name}</option>`);
+      odpSel.innerHTML += '</optgroup>';
+    }
   }
   if (custSel) {
     custSel.innerHTML = '<option value="">-- Tidak ada --</option>';
@@ -2736,6 +2773,28 @@ async function loadParentSelects() {
         odcSel.innerHTML += `<option value="${o.id}">${o.name}</option>`;
       });
       odcSel.innerHTML += '</optgroup>';
+    }
+  }
+  if (jbSel) {
+    jbSel.innerHTML = '<option value="">-- Tidak ada --</option>';
+    const selfId = window._editingPointId;
+    if (popList.length) {
+      jbSel.innerHTML += '<optgroup label="POP">';
+      popList.forEach(o => jbSel.innerHTML += `<option value="${o.id}">${o.name}</option>`);
+      jbSel.innerHTML += '</optgroup>';
+    }
+    if (odcList.length) {
+      jbSel.innerHTML += '<optgroup label="ODC">';
+      odcList.forEach(o => jbSel.innerHTML += `<option value="${o.id}">${o.name}</option>`);
+      jbSel.innerHTML += '</optgroup>';
+    }
+    if (jbList.length) {
+      jbSel.innerHTML += '<optgroup label="JB">';
+      jbList.forEach(o => {
+        if (selfId && Number(o.id) === Number(selfId)) return;
+        jbSel.innerHTML += `<option value="${o.id}">${o.name}</option>`;
+      });
+      jbSel.innerHTML += '</optgroup>';
     }
   }
 }
@@ -2802,7 +2861,7 @@ async function savePoint() {
   const activeTabBtn = infraModal.querySelector('.modal-tab.active');
   const tab = activeTabBtn?.dataset.tab;
 
-  if(!tab){ alert('Pilih tipe titik (ODC/ODP/Tiang/POP/Pelanggan)'); return; }
+  if(!tab){ alert('Pilih tipe titik (ODC/ODP/JB/Tiang/POP/Pelanggan)'); return; }
 
   let payload={latitude:pendingLat,longitude:pendingLng};
   if(tab==='odc'){
@@ -2828,6 +2887,18 @@ async function savePoint() {
     const newMeta=finalPhotoUrl?{...existMeta,photo_url:finalPhotoUrl}:(photoUrl===''&&!finalPhotoUrl?{...existMeta,photo_url:undefined}:existMeta);
     if(newMeta.photo_url===undefined) delete newMeta.photo_url;
     payload={...payload,type:'odp',name,capacity:parseInt(document.getElementById('odp-capacity').value)||null,used_ports:parseInt(document.getElementById('odp-used').value)||0,parent_id:pid?parseInt(pid):null,address:document.getElementById('odp-address').value,status:document.getElementById('odp-status').value,notes:document.getElementById('odp-notes').value,metadata:Object.keys(newMeta).length?newMeta:null};
+  } else if(tab==='jb'){
+    const name=document.getElementById('jb-name').value.trim(); if(!name) return alert('Nama JB wajib');
+    const pid=document.getElementById('jb-parent')?.value;
+    const kind=document.getElementById('jb-kind')?.value||'joint_box';
+    payload={...payload,type:'jb',name,
+      capacity:parseInt(document.getElementById('jb-capacity').value)||null,
+      used_ports:parseInt(document.getElementById('jb-used').value)||0,
+      parent_id:pid?parseInt(pid):null,
+      address:document.getElementById('jb-address').value,
+      status:document.getElementById('jb-status').value,
+      notes:document.getElementById('jb-notes').value,
+      metadata:{kind}};
   } else if(tab==='tower'){
     const name=document.getElementById('tower-name').value.trim(); if(!name) return alert('Nama Tiang wajib');
     const towerPhotoUrl=document.getElementById('tower-photo-url')?.value||'';
@@ -2919,8 +2990,8 @@ async function editPoint(id) {
 
   const pt=res.data; editId=id;
   pendingLat=+pt.latitude; pendingLng=+pt.longitude;
-  const tab={odc:'odc',odp:'odp',tower:'tower',pop:'pop',customer:'customer'}[pt.type]||'odc';
-  const titleLabel = pt.type==='tower' ? 'Tiang' : pt.type==='pop' ? 'POP' : pt.type==='customer' ? 'Pelanggan' : pt.type.toUpperCase();
+  const tab={odc:'odc',odp:'odp',jb:'jb',tower:'tower',pop:'pop',customer:'customer'}[pt.type]||'odc';
+  const titleLabel = pt.type==='tower' ? 'Tiang' : pt.type==='pop' ? 'POP' : pt.type==='customer' ? 'Pelanggan' : pt.type==='jb' ? jbLabel(pt) : pt.type.toUpperCase();
   document.getElementById('modalTitle').textContent=`Edit ${titleLabel}`;
   resetForm();
   // Saat edit, hanya tab tipe titik yang sedang di-edit yang ditampilkan.
@@ -2978,6 +3049,22 @@ async function editPoint(id) {
       if(meta.photo_url){ prev.src=meta.photo_url; prev.style.display='block'; if(remBtn) remBtn.style.display='inline-block'; }
       else { if(prev) prev.style.display='none'; if(remBtn) remBtn.style.display='none'; }
     } catch(e){}
+  } else if(tab==='jb'){
+    document.getElementById('jb-name').value=pt.name;
+    document.getElementById('jb-capacity').value=pt.capacity||'';
+    document.getElementById('jb-used').value=actualUsed;
+    document.getElementById('jb-address').value=pt.address||'';
+    document.getElementById('jb-status').value=pt.status;
+    document.getElementById('jb-notes').value=pt.notes||'';
+    try {
+      const meta=typeof pt.metadata==='string'?JSON.parse(pt.metadata||'{}'):pt.metadata||{};
+      const kindEl=document.getElementById('jb-kind');
+      if (kindEl) kindEl.value = meta.kind || 'joint_box';
+    } catch(e){}
+    if(pt.parent_id) parentSelectsPromise.then(() => {
+      const sel=document.getElementById('jb-parent');
+      if (sel) sel.value=pt.parent_id;
+    });
   } else if(tab==='tower'){
     document.getElementById('tower-name').value=pt.name; document.getElementById('tower-address').value=pt.address||'';
     document.getElementById('tower-status').value=pt.status; document.getElementById('tower-notes').value=pt.notes||'';

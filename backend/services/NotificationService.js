@@ -24,6 +24,28 @@ async function push(userId, { type, title, message, severity = 'info', action_ur
 // `dedupeDaily`: untuk notif harian (overdue/due_today/due_soon) — jangan buat
 // duplikat untuk user+type yang sama pada hari yang sama (mencegah banjir notif
 // kalau cron/daily-alert terpicu lebih dari sekali).
+async function pushByRoles(roles, { type, title, message, severity = 'info', action_url = null, metadata = null }) {
+  try {
+    const { User, Role } = require('../models');
+    const list = Array.isArray(roles) && roles.length ? roles : ['admin', 'superadmin'];
+    const users = await User.findAll({
+      attributes: ['id'],
+      include: [{ model: Role, as: 'role', attributes: ['name'], required: true, where: { name: list } }]
+    });
+    const ids = users.length ? users.map((u) => u.id) : null;
+    if (!ids) {
+      await pushAll({ type, title, message, severity, action_url, metadata });
+      return;
+    }
+    for (const id of ids) {
+      await push(id, { type, title, message, severity, action_url, metadata });
+    }
+  } catch (e) {
+    console.error('[NotifService] pushByRoles error:', e.message);
+    await pushAll({ type, title, message, severity, action_url, metadata });
+  }
+}
+
 async function pushAll({ type, title, message, severity = 'info', action_url = null, metadata = null, dedupeDaily = false }) {
   try {
     const { User } = require('../models');
@@ -154,4 +176,4 @@ async function checkDailyAlerts() {
   } catch(e) { console.error('[NotifService] checkDailyAlerts error:', e.message); }
 }
 
-module.exports = { setIO, push, pushAll, notifyWaIncoming, checkDailyAlerts };
+module.exports = { setIO, push, pushAll, pushByRoles, notifyWaIncoming, checkDailyAlerts };

@@ -4,7 +4,7 @@ module.exports = (sequelize) => {
   const TicketTimeline = sequelize.define('TicketTimeline', {
     id:          { type: DataTypes.INTEGER.UNSIGNED, primaryKey: true, autoIncrement: true },
     ticket_id:   { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
-    user_id:     { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+    user_id:     { type: DataTypes.INTEGER, allowNull: true },
     type: {
       type: DataTypes.ENUM('comment','status_change','assignment','photo','system'),
       defaultValue: 'comment'

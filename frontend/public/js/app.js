@@ -8,12 +8,49 @@ const App = {
   socket: null,
 
   init() {
+    this.initTheme();
     this.setDate();
     this.initSidebar();
     this.initNotifications();
     this.initLogout();
     this.initSocket();
     this.initSearch();
+  },
+
+  initTheme() {
+    try {
+      const saved = localStorage.getItem('ui-theme');
+      const theme = saved === 'dark' || saved === 'light' ? saved : (document.documentElement.getAttribute('data-theme') || 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch (_) {}
+  },
+
+  toggleTheme() {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('ui-theme', next); } catch (_) {}
+    window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: next } }));
+  },
+
+  chartTheme() {
+    const s = getComputedStyle(document.documentElement);
+    const v = (n, fb) => (s.getPropertyValue(n) || '').trim() || fb;
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    return {
+      isDark,
+      foreColor: v('--text-muted', '#94a3b8'),
+      gridColor: v('--chart-grid', isDark ? '#243049' : '#e8eef7'),
+      primary: v('--primary', '#3b82f6'),
+      accent: v('--accent', '#38bdf8'),
+      orange: v('--orange', '#f97316'),
+      success: v('--success', '#22c55e'),
+      warning: v('--warning', '#f59e0b'),
+      card: v('--bg-card', '#fff'),
+      text: v('--text', '#1e293b'),
+      rx: v('--chart-rx', '#1e78ff'),
+      tx: v('--chart-tx', '#f97316'),
+      tooltipTheme: isDark ? 'dark' : 'light'
+    };
   },
 
   async api(url, options = {}) {
