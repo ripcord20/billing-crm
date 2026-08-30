@@ -73,6 +73,25 @@ class RadiusController {
     }
   }
 
+  async deleteServer(req, res) {
+    try {
+      const row = await RadiusServer.findByPk(req.params.id);
+      if (!row) return res.status(404).json({ success: false, message: 'Server tidak ditemukan' });
+      const total = await RadiusServer.count();
+      if (total <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Tidak bisa hapus server terakhir. Edit saja baris ini, atau tambah server lain dulu.'
+        });
+      }
+      RadiusSQL.invalidatePool(row);
+      await row.destroy();
+      res.json({ success: true, message: 'Server RADIUS dihapus dari daftar (FreeRADIUS di LAN tidak diubah)' });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
   async ensureLocal(req, res) {
     try {
       const db = require('../models');

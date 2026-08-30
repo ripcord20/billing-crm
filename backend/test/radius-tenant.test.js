@@ -104,4 +104,15 @@ assert.ok(ros.port_forward_example.nft_example.includes('10.10.0.2:8728'));
 assert.ok(ros.port_forward_example.rules[0].public.startsWith('vpn.example.com:'));
 assert.ok(radiusAllowedIps('10.10.0.1', '192.168.22.9').includes('192.168.22.9/32'));
 
+const { pickExistingRadiusServer, duplicateServerIds } = require('../services/RadiusTenantMigration');
+const rows = [
+  { id: 1, host: '192.168.22.9', mysql_host: '127.0.0.1', mysql_database: 'radius' },
+  { id: 2, host: '192.168.22.9', mysql_host: '127.0.0.1', mysql_database: 'radius' },
+  { id: 6, host: '192.168.22.9', mysql_host: '127.0.0.1', mysql_database: 'radius' }
+];
+assert.strictEqual(pickExistingRadiusServer(rows, '192.168.22.9').id, 1);
+assert.deepStrictEqual(duplicateServerIds(rows), [2, 6]);
+assert.strictEqual(pickExistingRadiusServer([], '192.168.22.9'), null);
+assert.strictEqual(pickExistingRadiusServer(rows, '10.0.0.1').id, 1);
+
 console.log('radius-tenant.test.js OK');

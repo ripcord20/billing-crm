@@ -85,6 +85,7 @@ async function loadServers(){
     <td style="white-space:nowrap;">
       <button class="btn btn-sm btn-secondary" onclick="editSrv(${s.id})">Edit</button>
       <button class="btn btn-sm btn-secondary" onclick="testSrv(${s.id})">Tes MySQL</button>
+      <button class="btn btn-sm btn-secondary" onclick="delSrv(${s.id})">Hapus</button>
     </td>
   </tr>`).join('');
 }
@@ -132,6 +133,14 @@ window.ensureLocal=async()=>{
   const r=await App.api('/radius/ensure-local',{method:'POST',body:JSON.stringify({})});
   App.showToast(r?.message||(r?.success?'OK':'Gagal'), r?.success?'success':'error');
   if(r?.success){ loadServers(); loadSessions(); loadUsers(); }
+};
+window.delSrv=async(id)=>{
+  const row=(window.__radiusServers||[]).find(s=>s.id===id);
+  const name=row&&row.name?row.name:('#'+id);
+  if(!confirm('Hapus server "'+name+'" dari daftar Fiberix? Daemon FreeRADIUS di LAN tidak dihapus.')) return;
+  const r=await App.api('/radius/servers/'+id,{method:'DELETE'});
+  App.showToast(r?.message||(r?.success?'Terhapus':'Gagal'), r?.success?'success':'error');
+  if(r?.success) loadServers();
 };
 window.testSrv=async(id)=>{
   const r=await App.api('/radius/servers/'+id+'/test',{method:'POST'});
