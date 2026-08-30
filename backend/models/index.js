@@ -46,6 +46,9 @@ const QosMetric = require('./QosMetric')(sequelize);
 const QosAlert = require('./QosAlert')(sequelize);
 const AuthFailEvent = require('./AuthFailEvent')(sequelize);
 const Device = require('./Device')(sequelize);
+const NasDevice = require('./NasDevice')(sequelize);
+const RadiusServer = require('./RadiusServer')(sequelize);
+const RadiusAccount = require('./RadiusAccount')(sequelize);
 const DeviceLog = require('./DeviceLog')(sequelize);
 const InfrastructurePoint = require('./InfrastructurePoint')(sequelize);
 const InfrastructureLink  = require('./InfrastructureLink')(sequelize);
@@ -192,6 +195,26 @@ Tenant.hasMany(User, { foreignKey: 'tenant_id', as: 'users' });
 User.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
 Tenant.hasMany(Customer, { foreignKey: 'tenant_id', as: 'customers' });
 Customer.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+Tenant.belongsTo(User, { foreignKey: 'owner_user_id', as: 'owner' });
+Tenant.belongsTo(RadiusServer, { foreignKey: 'radius_server_id', as: 'radius_server' });
+Package.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+
+RadiusServer.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+NasDevice.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+NasDevice.belongsTo(RadiusServer, { foreignKey: 'radius_server_id', as: 'radius_server' });
+NasDevice.belongsTo(Device, { foreignKey: 'device_id', as: 'device' });
+RadiusServer.hasMany(NasDevice, { foreignKey: 'radius_server_id', as: 'nas_devices' });
+
+RadiusAccount.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+RadiusAccount.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
+RadiusAccount.belongsTo(RadiusServer, { foreignKey: 'radius_server_id', as: 'radius_server' });
+RadiusAccount.belongsTo(NasDevice, { foreignKey: 'nas_id', as: 'nas' });
+Customer.hasMany(RadiusAccount, { foreignKey: 'customer_id', as: 'radius_accounts' });
+
+const { attachTenantHooks } = require('../middleware/tenantContext');
+attachTenantHooks(NasDevice);
+attachTenantHooks(RadiusServer);
+attachTenantHooks(RadiusAccount);
 
 // Role <-> Permission (Many-to-Many)
 Role.belongsToMany(Permission, { through: RolePermission, foreignKey: 'role_id', as: 'permissions' });
@@ -269,6 +292,9 @@ const db = {
   QosAlert,
   AuthFailEvent,
   Device,
+  NasDevice,
+  RadiusServer,
+  RadiusAccount,
   DeviceLog,
   InfrastructurePoint,
   InfrastructureLink,

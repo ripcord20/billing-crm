@@ -482,8 +482,9 @@ const startServer = async () => {
       if (db.QosMetric) await db.QosMetric.sync();
       if (db.QosAlert) await db.QosAlert.sync();
       if (db.AuthFailEvent) await db.AuthFailEvent.sync();
+      if (db.PaymentDeferral) await db.PaymentDeferral.sync();
     } catch (e) {
-      logger.warn('Failed to sync qos tables: ' + (e.message || e));
+      logger.warn('Failed to sync qos/payment tables: ' + (e.message || e));
     }
 
     try {
@@ -1071,6 +1072,12 @@ const startServer = async () => {
       logger.info('Reseller voucher feature migration OK');
     } catch (e) {
       logger.warn('Failed reseller voucher migration: ' + (e.message || e));
+    }
+
+    try {
+      await require('./services/RadiusTenantMigration').run(db);
+    } catch (e) {
+      logger.warn('Failed radius/NAS migration: ' + (e.message || e));
     }
 
     // Start SNMP monitoring
