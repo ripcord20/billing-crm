@@ -6,6 +6,8 @@ const RadiusProv = require('../services/RadiusProvisionService');
 const Wireguard = require('../services/WireguardService');
 const VpnProvision = require('../services/VpnProvisionService');
 const { getTenantId } = require('../middleware/tenantContext');
+const { decryptSecret } = require('../utils/secretBox');
+const { buildNasRouterOsScript, radiusAllowedIps } = require('../utils/nasRouterOsScript');
 
 // Push konfigurasi NAS ke server FreeRADIUS (tabel `nas`). Fungsi modul-level
 // supaya tidak bergantung pada `this` (handler dipasang unbound di router).
@@ -199,6 +201,74 @@ class NasController {
         allowedIps: req.body && req.body.allowed_ips
       });
       res.json({ success: true, data: { vpn_type: 'wireguard', ...out } });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  async routerosScript(req, res) {
+    try {
+      const row = await NasDevice.findByPk(req.params.id);
+      if (!row) return res.status(404).json({ success: false, message: 'NAS tidak ditemukan' });
+      const server = await RadiusProv.resolveServer(row.radius_server_id);
+      const radiusHost = (server && server.host) || process.env.RADIUS_HOST || '192.168.22.9';
+      const wgCfg = await Wireguard.getServerConfig();
+      const generateMissing = !(req.body && req.body.generate === false);
+      let generated = false;
+      const vpnType = (row.vpn_type || (row.conn_mode === 'vpn' ? 'wireguard' : '')).toLowerCase();
+
+      if (row.conn_mode === 'vpn' && vpnType === 'wireguard' && generateMissing) {
+        if (!row.wg_private_key || !row.wg_public_key) {
+          if (!wgCfg.endpointHost) {
+            return res.status(400).json({ success: false, message: 'Isi dulu endpoint WireGuard (tombol ⚙) sebelum generate script VPN.' });
+          }
+          await Wireguard.generatePeerForNas(row, {
+            allowedIps: radiusAllowedIps(wgCfg.serverAddress, radiusHost)
+          });
+          await row.reload();
+          generated = true;
+        }
+      }
+
+      let wireguard = null;
+      if (vpnType === 'wireguard' && row.wg_private_key) {
+        const endpoint = row.wg_endpoint || `${wgCfg.endpointHost}:${wgCfg.listenPort}`;
+        const [endpointHost, endpointPort] = String(endpoint).split(':');
+        wireguard = {
+          privateKey: decryptSecret(row.wg_private_key),
+          serverPublicKey: wgCfg.serverPublicKey,
+          presharedKey: row.wg_preshared_key ? decryptSecret(row.wg_preshared_key) : '',
+          tunnelAddress: row.tunnel_address,
+          endpointHost,
+          endpointPort: endpointPort || wgCfg.listenPort || 51820,
+          allowedIps: row.wg_allowed_ips || radiusAllowedIps(wgCfg.serverAddress, radiusHost),
+          keepalive: row.wg_keepalive || 25
+        };
+      }
+
+      let l2tp = null;
+      if (vpnType === 'l2tp' && row.vpn_username) {
+        l2tp = {
+          host: (row.wg_endpoint || '').split(':')[0] || wgCfg.endpointHost,
+          username: row.vpn_username,
+          password: decryptSecret(row.vpn_password || ''),
+          psk: row.vpn_psk ? decryptSecret(row.vpn_psk) : ''
+        };
+      }
+
+      const data = buildNasRouterOsScript({
+        nasId: row.id,
+        nasname: row.nasname,
+        shortname: row.shortname,
+        secret: row.secret,
+        radiusHost,
+        tunnelAddress: row.tunnel_address,
+        vpnType,
+        vpsHost: wgCfg.endpointHost,
+        wireguard,
+        l2tp
+      });
+      res.json({ success: true, data: { ...data, generated, vpn_type: vpnType || null } });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }

@@ -23,7 +23,8 @@ async function loadNas(){
     <td>${modeBadge(n)}</td>
     <td>${n.last_error?`<span style="color:#dc2626;">${esc(n.last_error)}</span>`:(n.last_sync_at?esc(n.last_sync_at):'belum')}</td>
     <td style="white-space:nowrap;">
-      ${n.conn_mode==='vpn'?`<button class="btn btn-sm btn-primary" onclick="wgGen(${n.id},'${esc(n.shortname||n.nasname)}')" title="Generate/regenerate config VPN">VPN</button>`:''}
+      <button class="btn btn-sm btn-primary" onclick="openRosScript(${n.id},'${esc(n.shortname||n.nasname)}')" title="Script RouterOS: VPN + RADIUS + isolir">Script</button>
+      ${n.conn_mode==='vpn'?`<button class="btn btn-sm btn-secondary" onclick="wgGen(${n.id},'${esc(n.shortname||n.nasname)}')" title="Generate/regenerate config VPN saja">VPN</button>`:''}
       <button class="btn btn-sm btn-secondary" onclick="syncNas(${n.id})">Sync</button>
       <button class="btn btn-sm btn-danger" onclick="delNas(${n.id})">Hapus</button>
     </td>
@@ -185,6 +186,61 @@ window.wgDownload=()=>{
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download=__wgLastConfig.filename;
+  document.body.appendChild(a);a.click();a.remove();
+  URL.revokeObjectURL(a.href);
+};
+
+let __rosLast=null;
+let __rosTab='v7';
+window.openRosScript=async(id,label)=>{
+  const r=await App.api('/nas/'+id+'/routeros-script',{method:'POST',body:JSON.stringify({})});
+  if(!r?.success) return App.showToast(r?.message||'Gagal membuat script','error');
+  __rosLast={id,label,data:r.data};
+  __rosTab='v7';
+  document.getElementById('rosNas').textContent=label||('#'+id);
+  const apiHost=r.data.recommended_api_host||'—';
+  document.getElementById('rosHint').textContent='API/sync MikroTik: '+apiHost+':8728 (IP tunnel WireGuard). Bukan sewa VPN cloud. Radius: '+(r.data.radius_host||'192.168.22.9')+'.';
+  document.getElementById('rosNotes').textContent=(r.data.notes||[]).join(' ');
+  const pf=r.data.port_forward_example||{};
+  document.getElementById('rosPfNote').textContent=pf.note||'';
+  document.getElementById('rosPfTable').innerHTML=(pf.rules||[]).map(x=>`<tr><td>${esc(x.use)}</td><td class="mono">${esc(x.public)}</td><td class="mono">${esc(x.internal)}</td></tr>`).join('');
+  document.getElementById('rosPfNft').textContent=pf.nft_example||'';
+  showRosTab('v7');
+  document.getElementById('rosModal').style.display='flex';
+  if(r.data.generated) App.showToast('Peer WireGuard baru digenerate untuk script ini','success');
+  loadNas();
+};
+window.showRosTab=(tab)=>{
+  __rosTab=tab;
+  const d=__rosLast&&__rosLast.data;
+  if(!d) return;
+  document.getElementById('rosScript').textContent=tab==='v6'?d.v6:d.v7;
+  document.getElementById('rosTabV7').className='btn btn-sm '+(tab==='v7'?'btn-primary':'btn-secondary');
+  document.getElementById('rosTabV6').className='btn btn-sm '+(tab==='v6'?'btn-primary':'btn-secondary');
+};
+function copyText(t){
+  const text=String(t||'');
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    return navigator.clipboard.writeText(text).then(()=>App.showToast('Disalin','success'),()=>App.showToast('Gagal menyalin','error'));
+  }
+  const ta=document.createElement('textarea');
+  ta.value=text; document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); App.showToast('Disalin','success'); }
+  catch(_){ App.showToast('Gagal menyalin','error'); }
+  document.body.removeChild(ta);
+}
+window.copyRos=()=>{
+  const el=document.getElementById('rosScript');
+  copyText(el&&el.textContent);
+};
+window.downloadRos=()=>{
+  if(!__rosLast) return;
+  const d=__rosLast.data;
+  const body=__rosTab==='v6'?d.v6:d.v7;
+  const blob=new Blob([body],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='fiberix-'+(__rosLast.label||'nas')+'-'+__rosTab+'.rsc';
   document.body.appendChild(a);a.click();a.remove();
   URL.revokeObjectURL(a.href);
 };
