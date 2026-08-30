@@ -1,0 +1,5 @@
+Contact: https://fiberix.my.id/kebijakan-privasi
+Expires: 2027-08-30T00:00:00.000Z
+Canonical: https://fiberix.my.id/.well-known/security.txt
+Preferred-Languages: id, en
+Policy: https://fiberix.my.id/kebijakan-privasi

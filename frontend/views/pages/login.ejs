@@ -1,9 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= typeof title !== 'undefined' ? title : 'Login' %> - <%= appName %></title>
+  <title>Masuk resmi <%= typeof appName !== 'undefined' ? appName : 'Fiberix' %> — fiberix.my.id</title>
+  <meta name="description" content="Halaman masuk resmi billing Fiberix di fiberix.my.id untuk staf dan mitra ISP. Bukan unduhan software, bukan halaman pihak ketiga.">
+  <meta name="application-name" content="Fiberix">
+  <link rel="canonical" href="https://fiberix.my.id/login">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Fiberix",
+    "url": "https://fiberix.my.id",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "description": "Aplikasi billing dan operasional ISP. Halaman masuk resmi di https://fiberix.my.id/login."
+  }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -620,14 +634,14 @@
       <div class="login-box">
         <!-- Logo -->
         <div class="logo">
-           <!--<div class="logo-icon">D</div>-->
-          <!--<span class="logo-text">DIGSnet</span>-->
+          <div class="logo-icon">F</div>
+          <span class="logo-text"><%= typeof appName !== 'undefined' ? appName : 'Fiberix' %></span>
         </div>
 
         <!-- Header -->
         <div class="login-header">
-          <h1>Sign in</h1>
-          <p>Login to your dashboard all-in-one solution</p>
+          <h1>Masuk Fiberix</h1>
+          <p>Halaman resmi <strong>fiberix.my.id</strong> untuk staf dan mitra ISP. Kami tidak meminta unduh aplikasi atau isi data di situs lain.</p>
         </div>
 
         <!-- Error Message -->
@@ -670,96 +684,19 @@
           <div class="form-footer">
             <div class="remember-me">
               <input type="checkbox" id="remember">
-              <label for="remember">Remember me</label>
+              <label for="remember">Ingat saya</label>
             </div>
-            <a href="#" class="forgot-link">Forgot Password?</a>
+            <a href="/kebijakan-privasi" class="forgot-link">Kebijakan privasi</a>
           </div>
 
           <button type="submit" class="login-btn" id="loginBtn">
-            Sign in
+            Masuk
           </button>
           <p class="saas-login-links">
-            Mitra ISP sewa billing? <a href="https://app.fiberix.my.id/daftar">Daftar</a>, lalu login di sini untuk buka <a href="/dashboard">/dashboard</a>
-            · Owner: <a href="https://app.fiberix.my.id/login">app.fiberix.my.id</a>
-            · <a href="/">Lihat fitur</a>
+            Mitra ISP sewa billing? <a href="https://app.fiberix.my.id/daftar">Daftar</a>, lalu masuk di sini.
+            · <a href="/">Beranda Fiberix</a>
+            · <a href="/kebijakan-privasi">Privasi</a>
           </p>
-          <style>
-            @keyframes demoSpin { to { transform: rotate(360deg); } }
-            #demoQuickStart:hover, #demoSharedFill:hover { transform: translateY(-1px); }
-            #demoQuickStart:disabled, #demoSharedFill:disabled { opacity: .5; cursor: wait; transform: none; }
-          </style>
-          <script>
-            (function() {
-              const quickBtn = document.getElementById('demoQuickStart');
-              const sharedBtn = document.getElementById('demoSharedFill');
-              const loadingEl = document.getElementById('demoLoadingMsg');
-              const errorEl = document.getElementById('demoErrorMsg');
-              const emailInput = document.getElementById('email');
-              const passInput = document.getElementById('password');
-
-              if (!quickBtn || !sharedBtn) return;
-
-              function showError(msg) {
-                errorEl.textContent = msg;
-                errorEl.style.display = 'block';
-                loadingEl.style.display = 'none';
-                quickBtn.disabled = false;
-                sharedBtn.disabled = false;
-              }
-
-              // Mode B: Provisioning akun ephemeral
-              quickBtn.addEventListener('click', async function() {
-                errorEl.style.display = 'none';
-                loadingEl.style.display = 'block';
-                quickBtn.disabled = true;
-                sharedBtn.disabled = true;
-
-                try {
-                  const res = await fetch('/api/demo/provision', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                  });
-                  const data = await res.json().catch(() => ({}));
-
-                  // Kalau Mode B belum dikonfigurasi → auto-fallback ke Mode A
-                  if (data.code === 'DEMO_MIGRATION_NEEDED') {
-                    loadingEl.style.display = 'none';
-                    quickBtn.disabled = false;
-                    sharedBtn.disabled = false;
-                    showError(data.message);
-                    // Auto-fill kredensial bersama setelah 1.5 detik
-                    setTimeout(() => {
-                      if (emailInput) emailInput.value = 'demo@ispnetops.com';
-                      if (passInput) passInput.value = 'demo12345';
-                      errorEl.textContent = errorEl.textContent + ' (Kredensial sudah diisi otomatis)';
-                    }, 1500);
-                    return;
-                  }
-
-                  if (!res.ok || !data.success) {
-                    showError(data.message || 'Gagal membuat akun demo. Coba lagi atau pakai akun bersama.');
-                    return;
-                  }
-
-                  // Token sudah di-set sebagai cookie oleh server. Redirect ke dashboard.
-                  if (data.data && data.data.token) {
-                    try { localStorage.setItem('token', data.data.token); } catch(_) {}
-                  }
-                  window.location.href = window.flynDest(data.data && data.data.redirect);
-                } catch (e) {
-                  showError('Tidak bisa terhubung ke server. Coba lagi.');
-                }
-              });
-
-              // Mode A: Auto-fill kredensial bersama
-              sharedBtn.addEventListener('click', function() {
-                if (emailInput) emailInput.value = 'demo@ispnetops.com';
-                if (passInput) passInput.value = 'demo12345';
-                if (emailInput) emailInput.focus();
-              });
-            })();
-          </script>
         </form>
       </div>
     </div>
@@ -781,20 +718,19 @@
           <div class="info-card-header">
           
           </div>
-          <h2>Manage your network efficiently</h2>
-          <p>Monitor network performance, track customer activities, and manage billing seamlessly with our comprehensive ISP management platform.</p>
+          <h2>Aplikasi resmi Fiberix</h2>
+          <p>Billing, pelanggan, dan operasional ISP di domain resmi <strong>fiberix.my.id</strong>. Tidak ada unduhan software di halaman ini.</p>
           
           <ul class="feature-list">
-            <li>Real-time network monitoring</li>
-            <li>Automated billing system</li>
-            <li>Customer relationship management</li>
-            <li>Advanced analytics & reports</li>
+            <li>Masuk hanya dengan akun staf atau mitra yang sudah didaftarkan</li>
+            <li>Data pelanggan mitra terisolasi per tenant</li>
+            <li>Bukan halaman bank, Google, atau toko aplikasi</li>
+            <li>Lupa sandi? Hubungi owner platform</li>
           </ul>
         </div>
 
         <div class="info-footer">
-          
-          <p>Developed by DIGS.co.id</p>
+          <p>Fiberix · <a href="https://fiberix.my.id" style="color:inherit">fiberix.my.id</a> · <a href="/kebijakan-privasi" style="color:inherit">Kebijakan privasi</a></p>
         </div>
       </div>
     </div>
@@ -817,7 +753,7 @@
       
       // Disable button and show loading
       btn.disabled = true;
-      btn.innerHTML = '<span class="loading-spinner"></span>Signing in...';
+      btn.innerHTML = '<span class="loading-spinner"></span>Memeriksa akun…';
       errEl.style.display = 'none';
 
       try {
@@ -844,29 +780,30 @@
           window.location.href = window.flynDest(data.data.redirect);
         } else {
           // Show error message
-          errEl.textContent = data.message || 'Login failed. Please check your credentials.';
+          errEl.textContent = data.message || 'Email atau password salah.';
           errEl.style.display = 'block';
         }
       } catch (error) {
         console.error('Login error:', error);
-        errEl.textContent = 'Connection error. Please try again later.';
+        errEl.textContent = 'Tidak bisa terhubung. Coba lagi.';
         errEl.style.display = 'block';
       } finally {
         // Re-enable button
         btn.disabled = false;
-        btn.innerHTML = 'Sign in';
+        btn.innerHTML = 'Masuk';
       }
     });
 
     // Carousel dots animation (optional)
     const dots = document.querySelectorAll('.dot');
-    let currentDot = 0;
-
-    setInterval(() => {
-      dots[currentDot].classList.remove('active');
-      currentDot = (currentDot + 1) % dots.length;
-      dots[currentDot].classList.add('active');
-    }, 5000);
+    if (dots.length) {
+      let currentDot = 0;
+      setInterval(() => {
+        dots[currentDot].classList.remove('active');
+        currentDot = (currentDot + 1) % dots.length;
+        dots[currentDot].classList.add('active');
+      }, 5000);
+    }
   </script>
 </body>
 </html>

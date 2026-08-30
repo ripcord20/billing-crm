@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /kebijakan-privasi
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /nms
+Disallow: /tenants
+Disallow: /portal
+Disallow: /reseller
+
+Sitemap: https://fiberix.my.id/sitemap.xml
