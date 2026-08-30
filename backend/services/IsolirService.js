@@ -48,7 +48,9 @@ class MikroTikNativeAPI {
     return new Promise((resolve, reject) => {
       const onConnect = async () => {
         try {
+          if (this.sock) this.sock.setTimeout(0);
           await this._login();
+          if (this.sock) this.sock.setTimeout(0);
           resolve(this);
         } catch(e) { reject(e); }
       };

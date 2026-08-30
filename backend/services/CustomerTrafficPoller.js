@@ -27,6 +27,7 @@
  */
 
 const logger = require('../utils/logger');
+const { shouldApiPollDevice, binaryApiMinPollMs, isBinaryInstance } = require('../utils/mikrotikApiSession');
 
 // ── Konfigurasi ────────────────────────────────────────────────────────
 const POLL_INTERVAL_MS = 2000; // selaras dengan kebutuhan real-time frontend
@@ -70,6 +71,7 @@ let _running       = false;  // true jika poll() sedang berjalan (re-entrancy lo
 let _subscribers   = 0;      // jumlah admin yang sedang subscribe
 let _lastSnapshot  = null;   // { data, meta } hasil poll terakhir
 let _lastError     = null;
+const _routerSnap  = new Map(); // deviceId → { queues, sessions, arp, dhcp, errs, host, ts }
 
 /**
  * computeSnapshot(opts) — query MikroTik & susun status semua customer.
@@ -109,20 +111,28 @@ async function computeSnapshot(opts = {}) {
         const { Device } = require('../models');
         const routers = await Device.findAll({
           where: { type: 'router', is_active: true },
-          attributes: ['id'],
+          attributes: ['id', 'monitoring_type', 'api_username', 'api_protocol', 'poll_interval'],
           order: [['id', 'ASC']],
           raw: true
         });
-        deviceIds = routers.map(r => r.id);
+        // SNMP-only: jangan buka API (v6 log login/logout tiap poll).
+        deviceIds = routers.filter(shouldApiPollDevice).map(r => r.id);
       } catch (_) { /* skema lama / tabel tidak ada */ }
     }
-    // Fallback: kalau tidak ada device terdaftar, pakai resolver default (null → .env).
-    if (!deviceIds.length) deviceIds = [null];
+    // Jangan fallback ke .env bila semua router SNMP-only — itu yang
+    // bikin NAGA "dial terus" walau monitoring_type=snmp.
 
     // Ambil + index data dari SATU router. Mengembalikan instance (untuk ping)
     // beserta map lookup. Dipakai berulang per-router lalu hasilnya digabung.
     const fetchRouter = async (devId) => {
       const inst = await getMikrotikInstanceByDevice(devId);
+      const minMs = isBinaryInstance(inst)
+        ? binaryApiMinPollMs(inst._pollIntervalSec)
+        : POLL_INTERVAL_MS;
+      const prev = _routerSnap.get(devId);
+      if (prev && (Date.now() - prev.ts) < minMs) {
+        return { ...prev, inst, fromCache: true };
+      }
       const [q, s, a, d] = await Promise.allSettled([
         inst.getQueues(),
         inst.getPPPoESessions(),
@@ -134,22 +144,25 @@ async function computeSnapshot(opts = {}) {
       if (s.status === 'rejected') errs.sessions = s.reason?.message || String(s.reason);
       if (a.status === 'rejected') errs.arp      = a.reason?.message || String(a.reason);
       if (d.status === 'rejected') errs.dhcp     = d.reason?.message || String(d.reason);
-      return {
+      const snap = {
         inst,
         host: inst.host,
         queues:   q.status === 'fulfilled' ? (q.value || []) : [],
         sessions: s.status === 'fulfilled' ? (s.value || []) : [],
         arp:      a.status === 'fulfilled' ? (Array.isArray(a.value) ? a.value : []) : [],
         dhcp:     d.status === 'fulfilled' ? (Array.isArray(d.value) ? d.value : []) : [],
-        errs
+        errs,
+        ts: Date.now()
       };
+      _routerSnap.set(devId, snap);
+      return snap;
     };
 
-    const routerResults = await Promise.allSettled(deviceIds.map(fetchRouter));
+    const routerResults = deviceIds.length
+      ? await Promise.allSettled(deviceIds.map(fetchRouter))
+      : [];
     const routers = routerResults.filter(r => r.status === 'fulfilled').map(r => r.value);
-    // Instance untuk ping: pakai router pertama yang sukses (cukup untuk fallback).
-    const mt = routers[0]?.inst || await getMikrotikInstanceByDevice(explicitDeviceId);
-    // Daftar instance untuk ping multi-router (static IP bisa di router mana saja).
+    const mt = routers[0]?.inst || null;
     const pingInstances = routers.map(r => r.inst).filter(Boolean);
 
     // Gabungkan semua data dari seluruh router.
@@ -436,7 +449,7 @@ async function computeSnapshot(opts = {}) {
           const chunk = toPing.slice(i, i + CHUNK);
           await Promise.allSettled(chunk.map(async (r) => {
             let gotReply = false;
-            for (const inst of (pingInstances.length ? pingInstances : [mt])) {
+            for (const inst of (pingInstances.length ? pingInstances : (mt ? [mt] : []))) {
               try {
                 // count:2 → tahan packet loss: 1 dari 2 balas = online.
                 const pr = await inst.ping(r.ip, { count: 2, interval: '0.2', timeout: 1000 });
@@ -539,7 +552,7 @@ async function computeSnapshot(opts = {}) {
       // tidak match. Tidak expose data sensitif (password dsb).
       ...(opts.debug === true ? {
         debug: {
-          mtHost: mt.host, mtPort: mt.port,
+          mtHost: mt?.host, mtPort: mt?.port,
           routersQueried: routers.map(r => r.host),
           queueCount: queueData.length,
           dynamicQueueCount: queueData.filter(q => q.dynamic).length,

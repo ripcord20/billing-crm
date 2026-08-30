@@ -6,6 +6,8 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
 const { MikrotikApiClient } = require('./MikrotikApiClient');
+const { explainRestFailure, explainApiConnectRefused } = require('../utils/mikrotikRestErrors');
+const { startBinaryKeepalive, stopBinaryKeepalive } = require('../utils/mikrotikApiSession');
 
 /**
  * Port → protokol detection (FALLBACK MODE — dipakai kalau caller tidak
@@ -223,7 +225,7 @@ class MikrotikService {
         await new Promise(r => setTimeout(r, 500));
         return this.request(method, endpoint, data, { ...opts, retries: retries - 1 });
       }
-      if (err.code === 'ECONNREFUSED') throw new Error(`Cannot connect to MikroTik at ${this.host}:${this.port}`);
+      if (err.code === 'ECONNREFUSED') throw new Error(explainApiConnectRefused(this.host, this.port));
       if (err.code === 'ETIMEDOUT' || err.code === 'ECONNABORTED') throw new Error('Connection timeout');
       if (err.code === 'ECONNRESET') throw new Error('Koneksi ke MikroTik terputus');
       // SSL/TLS handshake gagal: ini umum kalau user pilih port 443 + SSL tapi MikroTik
@@ -244,13 +246,13 @@ class MikrotikService {
       }
       if (err.response) {
         const body = err.response.data;
-        const detail = (body && body.detail) ? body.detail
-                     : (body && body.message) ? body.message
-                     : redactSecrets(body);
         if (debug) {
           logger.error(`[MT] ← ${method} ${endpoint} status=${err.response.status} body=${redactSecrets(body)}`);
         }
-        throw new Error(`MikroTik: ${detail}`);
+        throw new Error(explainRestFailure(err.response.status, body, {
+          host: this.host,
+          port: this.port
+        }));
       }
       throw err;
     }
@@ -1021,6 +1023,7 @@ function setMikrotikInstance(config) {
  */
 function resetInstance(deviceId = null) {
   const closeIfBinary = (inst) => {
+    stopBinaryKeepalive(inst);
     if (inst && inst._apiClient) {
       try { inst._apiClient.close(); } catch (_) {}
     }
@@ -1064,12 +1067,17 @@ async function getMikrotikInstanceByDevice(deviceId = null) {
           cached.host === device.ip_address &&
           String(cached.port) === String(device.api_port || 80) &&
           cached.username === (device.api_username || 'admin') &&
+          cached._apiPassword === (device.api_password || '') &&
           cached._apiProtocol === (device.api_protocol || null)) {
+        cached._pollIntervalSec = device.poll_interval || 60;
+        cached._monitoringType = device.monitoring_type || 'snmp';
+        startBinaryKeepalive(cached);
         logger.debug(`[MT] cache hit device_id=${deviceId} host=${device.ip_address}`);
         return cached;
       }
       // Cache stale → invalidate (& close binary socket kalau ada)
       if (cached) {
+        stopBinaryKeepalive(cached);
         if (cached._apiClient) { try { cached._apiClient.close(); } catch (_) {} }
         _deviceInstances.delete(Number(deviceId));
       }
@@ -1114,6 +1122,10 @@ async function getMikrotikInstanceByDevice(deviceId = null) {
   const inst = new MikrotikService(cfg);
   // Tag biar cache invalidation bisa cek perubahan api_protocol
   inst._apiProtocol = device.api_protocol || null;
+  inst._apiPassword = device.api_password || '';
+  inst._pollIntervalSec = device.poll_interval || 60;
+  inst._monitoringType = device.monitoring_type || 'snmp';
+  startBinaryKeepalive(inst);
   _deviceInstances.set(Number(device.id), inst);
   return inst;
 }
@@ -1133,5 +1145,7 @@ module.exports = {
   getMikrotikInstance,
   setMikrotikInstance,
   resetInstance,
-  getMikrotikInstanceByDevice
+  getMikrotikInstanceByDevice,
+  explainRestFailure,
+  explainApiConnectRefused
 };
