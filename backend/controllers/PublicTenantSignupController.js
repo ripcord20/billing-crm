@@ -19,7 +19,7 @@ class PublicTenantSignupController {
       if (!publicSignupEnabled()) {
         return res.status(403).json({
           success: false,
-          message: 'Pendaftaran mitra di Fiberix ditutup. Daftar di https://app.fiberix.my.id/register'
+          message: 'Pendaftaran mitra di Fiberix ditutup. Daftar di https://app.fiberix.my.id/daftar'
         });
       }
 
