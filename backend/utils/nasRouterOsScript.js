@@ -114,9 +114,19 @@ function buildRadiusAndIsolir(version, radiusHost, secret) {
   ];
 }
 
+function isPrivateHost(host) {
+  const h = String(host || '');
+  if (!h) return true;
+  const m = h.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (!m) return false;
+  const a = +m[1], b = +m[2];
+  return a === 10 || a === 127 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31);
+}
+
 function buildPortForwardExample(opts) {
-  const vps = opts.vpsHost || opts.wgEndpointHost || 'IP_PUBLIK_VPS';
-  const tunnel = stripCidr(opts.tunnelAddress || '10.10.0.2');
+  const rawVps = opts.vpsHost || opts.wgEndpointHost || '';
+  const vps = isPrivateHost(rawVps) ? 'IP_PUBLIK_VPS' : rawVps;
+  const tunnel = stripCidr(opts.tunnelAddress || opts.nasname || '10.10.0.2');
   const id = parseInt(opts.nasId, 10) || 1;
   const apiPub = 28000 + (id % 1000);
   const winboxPub = 29000 + (id % 1000);
@@ -197,6 +207,7 @@ function buildNasRouterOsScript(opts) {
       vpsHost: opts.vpsHost,
       wgEndpointHost: opts.wireguard && opts.wireguard.endpointHost,
       tunnelAddress: opts.tunnelAddress,
+      nasname: opts.nasname,
       nasId: opts.nasId
     })
   };

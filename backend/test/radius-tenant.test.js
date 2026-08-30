@@ -101,6 +101,7 @@ assert.ok(ros.v6.includes('/radius add'));
 assert.strictEqual(ros.recommended_api_host, '10.10.0.2');
 assert.strictEqual(ros.port_forward_example.applied, false);
 assert.ok(ros.port_forward_example.nft_example.includes('10.10.0.2:8728'));
+assert.ok(ros.port_forward_example.rules[0].public.startsWith('vpn.example.com:'));
 assert.ok(radiusAllowedIps('10.10.0.1', '192.168.22.9').includes('192.168.22.9/32'));
 
 console.log('radius-tenant.test.js OK');
