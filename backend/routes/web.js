@@ -232,6 +232,10 @@ router.get('/monitoring/ping', authenticate, blockFinanceArea, (req, res) => {
   res.render('pages/ping-monitor', { title: 'Ping Monitor', user: req.user, active: 'ping-monitor' });
 });
 
+router.get('/monitoring/qos', authenticate, blockFinanceArea, (req, res) => {
+  res.render('pages/qos-monitor', { title: 'QoS & SLA', user: req.user, active: 'qos-monitor' });
+});
+
 router.get('/monitoring/hotspot', authenticate, blockFinanceArea, (req, res) => {
   res.render('pages/hotspot', { title: 'Hotspot Management', user: req.user, active: 'hotspot' });
 });

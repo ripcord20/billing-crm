@@ -478,6 +478,32 @@ const startServer = async () => {
       logger.warn('Failed to ensure tenant schema: ' + (e.message || e));
     }
 
+    try {
+      if (db.QosMetric) await db.QosMetric.sync();
+      if (db.QosAlert) await db.QosAlert.sync();
+      if (db.AuthFailEvent) await db.AuthFailEvent.sync();
+    } catch (e) {
+      logger.warn('Failed to sync qos tables: ' + (e.message || e));
+    }
+
+    try {
+      const [enumRow] = await db.sequelize.query(
+        `SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'infrastructure_points' AND COLUMN_NAME = 'type'`,
+        { type: db.sequelize.QueryTypes.SELECT }
+      );
+      const colType = String(enumRow?.COLUMN_TYPE || enumRow?.column_type || '');
+      if (colType && !colType.includes("'jb'")) {
+        await db.sequelize.query(
+          `ALTER TABLE infrastructure_points MODIFY COLUMN type
+           ENUM('odp','odc','ont','customer','pop','tower','jb') NOT NULL`
+        );
+        logger.info("Migrated: infrastructure_points.type ENUM expanded with 'jb'");
+      }
+    } catch (e) {
+      logger.warn('Failed to expand infrastructure_points.type ENUM: ' + (e.message || e));
+    }
+
     // Idempotent ALTER untuk kolom tracking reminder WA — aman dipanggil
     // setiap server start. MySQL: cek dulu lewat information_schema agar
     // tidak throw "duplicate column" di restart kedua.

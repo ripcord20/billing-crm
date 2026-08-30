@@ -86,6 +86,7 @@ const _financeBlockedPrefixes = [
   '/pppoe',
   '/monitoring',
   '/ping-monitor',
+  '/qos',
   '/host-monitor',
   '/isolir',
   '/wa',                // WA send/sessions/templates/reminder/report
@@ -195,7 +196,7 @@ for (const p of _salesBlockedPrefixes) {
 
 const _tenantBlockedPrefixes = [
   '/keuangan', '/finance', '/laporan',
-  '/devices', '/infrastructure', '/monitoring', '/mikrotik',
+  '/devices', '/infrastructure', '/monitoring', '/qos', '/mikrotik',
   '/genieacs', '/olt', '/ont', '/hotspot', '/isolir',
   '/wa', '/whatsapp', '/broadcast', '/email-broadcast', '/mikrotik-backup', '/message-logs',
   '/users', '/roles', '/permissions', '/activity-logs', '/system',
@@ -2258,6 +2259,17 @@ router.get ('/ping-monitor/search-customers',   authenticate, demoGuard, PingMon
 router.get ('/ping-monitor/router-sources',     authenticate, demoGuard, PingMonitorController.getRouterSources);
 router.post('/ping-monitor/assign',             authenticate, demoGuard, PingMonitorController.assignManual);
 router.post('/ping-monitor/delete-ping',        authenticate, demoGuard, PingMonitorController.deletePing);
+
+// ===== QOS / SLA / SECURITY =====
+const QosSlaController = require('../controllers/QosSlaController');
+router.get ('/qos/overview',  authenticate, demoGuard, (r,s) => QosSlaController.overview(r,s));
+router.get ('/qos/alerts',    authenticate, demoGuard, (r,s) => QosSlaController.alerts(r,s));
+router.post('/qos/alerts/:id/ack', authenticate, demoGuard, (r,s) => QosSlaController.ackAlert(r,s));
+router.get ('/qos/metrics',   authenticate, demoGuard, (r,s) => QosSlaController.metrics(r,s));
+router.get ('/qos/auth-fails', authenticate, demoGuard, (r,s) => QosSlaController.authFails(r,s));
+router.get ('/qos/settings',  authenticate, demoGuard, (r,s) => QosSlaController.settings(r,s));
+router.put ('/qos/settings',  authenticate, demoGuard, authorize('superadmin','admin','noc'), (r,s) => QosSlaController.saveSettings(r,s));
+router.post('/qos/run',       authenticate, demoGuard, authorize('superadmin','admin','noc'), (r,s) => QosSlaController.runNow(r,s));
 
 // ===== DATABASE MANAGEMENT (Cleanup + Backup) =====
 const DatabaseCleanupController = require('../controllers/DatabaseCleanupController');

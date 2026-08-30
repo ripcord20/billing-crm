@@ -89,6 +89,12 @@ class CronService {
       setTimeout(() => TrafficHistory.sample().catch(() => {}), 8000);             // sampel awal
     } catch (e) { console.error('[Cron] traffic sampler:', e.message); }
 
+    try {
+      const QosSla = require('./QosSlaService');
+      cron.schedule('*/5 * * * *', () => QosSla.runCycle().catch((e) => console.error('[Cron] qos sla:', e.message)));
+      setTimeout(() => QosSla.runCycle().catch(() => {}), 18000);
+    } catch (e) { console.error('[Cron] qos sla schedule:', e.message); }
+
     // Pengeluaran berulang — cek tiap hari jam 02:00; entri dibuat saat
     // tanggal hari ini mencapai day_of_month tiap template (idempotent).
     try {

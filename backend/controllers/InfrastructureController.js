@@ -219,7 +219,7 @@ class InfrastructureController {
   async parentOptions(req, res) {
     try {
       const points = await InfrastructurePoint.findAll({
-        where: { type: ['odp', 'odc', 'pop'] },
+        where: { type: ['odp', 'odc', 'pop', 'jb'] },
         attributes: ['id', 'name', 'type', 'address'],
         order: [['type', 'ASC'], ['name', 'ASC']],
       });

@@ -7,10 +7,11 @@ const pointAttrs = ['id','name','type','latitude','longitude','status','parent_i
 // Saat link dibuat antara 2 titik, yang rank lebih kecil = parent.
 //   POP   → root (paling atas)
 //   ODC   → di bawah POP, bisa chain ke ODC lain
-//   ODP   → di bawah ODC
+//   JB    → Joint Box / Joint Closure di jalur fiber
+//   ODP   → di bawah ODC/JB
 //   Tower → support fisik (tidak hierarkis untuk customer)
 //   Customer → leaf (paling bawah)
-const TYPE_RANK = { pop: 1, odc: 2, odp: 3, tower: 4, customer: 5 };
+const TYPE_RANK = { pop: 1, odc: 2, jb: 3, odp: 4, tower: 5, customer: 6 };
 
 /**
  * Tentukan pasangan (parent, child) dari 2 titik berdasarkan tipe.

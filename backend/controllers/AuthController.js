@@ -31,6 +31,21 @@ function isDemoRole(user) {
   return (user?.role?.name || '').toLowerCase() === 'demo';
 }
 
+function recordPortalAuthFail(req, email, reason) {
+  setImmediate(() => {
+    try {
+      const QosSlaService = require('../services/QosSlaService');
+      QosSlaService.recordAuthFail({
+        source: 'portal',
+        identifier: email ? String(email).slice(0, 120) : null,
+        ip_address: req.ip || req.headers['x-forwarded-for'] || null,
+        user_agent: req.get && req.get('User-Agent'),
+        reason
+      }).catch(() => {});
+    } catch (_) { /* monitoring must never break login */ }
+  });
+}
+
 class AuthController {
   // Login
   async login(req, res) {
@@ -47,6 +62,7 @@ class AuthController {
       });
 
       if (!user || !user.is_active) {
+        recordPortalAuthFail(req, email, !user ? 'unknown_user' : 'inactive');
         return res.status(401).json({ success: false, message: 'Invalid credentials' });
       }
 
@@ -60,6 +76,7 @@ class AuthController {
 
       const isValid = await user.validatePassword(password);
       if (!isValid) {
+        recordPortalAuthFail(req, email, 'bad_password');
         return res.status(401).json({ success: false, message: 'Invalid credentials' });
       }
 

@@ -42,6 +42,9 @@ const Package = require('./Package')(sequelize);
 const Invoice = require('./Invoice')(sequelize);
 const Payment = require('./Payment')(sequelize);
 const PaymentDeferral = require('./PaymentDeferral')(sequelize);
+const QosMetric = require('./QosMetric')(sequelize);
+const QosAlert = require('./QosAlert')(sequelize);
+const AuthFailEvent = require('./AuthFailEvent')(sequelize);
 const Device = require('./Device')(sequelize);
 const DeviceLog = require('./DeviceLog')(sequelize);
 const InfrastructurePoint = require('./InfrastructurePoint')(sequelize);
@@ -262,6 +265,9 @@ const db = {
   Invoice,
   Payment,
   PaymentDeferral,
+  QosMetric,
+  QosAlert,
+  AuthFailEvent,
   Device,
   DeviceLog,
   InfrastructurePoint,

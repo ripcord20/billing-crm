@@ -83,6 +83,8 @@
     .chip-customer.active{ background:#f97316; color:#fff; }
     .chip-pop     { border-color:#ef4444; color:#ef4444; background:transparent; }
     .chip-pop.active     { background:#ef4444; color:#fff; }
+    .chip-jb      { border-color:#0d9488; color:#0d9488; background:transparent; }
+    .chip-jb.active      { background:#0d9488; color:#fff; }
 
     /* ── Responsive mobile ── */
     @media (max-width: 768px) {
@@ -882,6 +884,7 @@
               <div class="chip chip-all active" data-type="" onclick="setFilter('',this)"><span class="chip-dot" style="background:#64748b"></span>Semua</div>
               <div class="chip chip-odc" data-type="odc" onclick="setFilter('odc',this)"><span class="chip-dot" style="background:#1d4ed8"></span>ODC</div>
               <div class="chip chip-odp" data-type="odp" onclick="setFilter('odp',this)"><span class="chip-dot" style="background:#3b82f6"></span>ODP</div>
+              <div class="chip chip-jb" data-type="jb" onclick="setFilter('jb',this)"><span class="chip-dot" style="background:#0d9488"></span>JB</div>
               <div class="chip chip-tower" data-type="tower" onclick="setFilter('tower',this)"><span class="chip-dot" style="background:#475569"></span>Tiang</div>
               <div class="chip chip-customer" data-type="customer" onclick="setFilter('customer',this)"><span class="chip-dot" style="background:#f97316"></span>Pelanggan</div>
               <div class="chip chip-pop" data-type="pop" onclick="setFilter('pop',this)"><span class="chip-dot" style="background:#ef4444"></span>POP</div>
@@ -893,6 +896,7 @@
             <div class="chip chip-all active" data-type="" onclick="setFilter('',this)"><span class="chip-dot" style="background:#64748b"></span>Semua</div>
             <div class="chip chip-odc" data-type="odc" onclick="setFilter('odc',this)"><span class="chip-dot" style="background:#1d4ed8"></span>ODC</div>
             <div class="chip chip-odp" data-type="odp" onclick="setFilter('odp',this)"><span class="chip-dot" style="background:#3b82f6"></span>ODP</div>
+            <div class="chip chip-jb" data-type="jb" onclick="setFilter('jb',this)"><span class="chip-dot" style="background:#0d9488"></span>JB</div>
             <div class="chip chip-tower" data-type="tower" onclick="setFilter('tower',this)"><span class="chip-dot" style="background:#475569"></span>Tiang</div>
             <div class="chip chip-customer" data-type="customer" onclick="setFilter('customer',this)"><span class="chip-dot" style="background:#f97316"></span>Pelanggan</div>
             <div class="chip chip-pop" data-type="pop" onclick="setFilter('pop',this)"><span class="chip-dot" style="background:#ef4444"></span>POP</div>
@@ -908,7 +912,7 @@
               <line x1="20" y1="20" x2="16.5" y2="16.5"/>
             </svg>
             <input type="text" class="map-search-input" id="mapSearchInput"
-                   placeholder="Cari customer, ODP, ODC, POP, tiang…"
+                   placeholder="Cari customer, ODP, ODC, JB, POP, tiang…"
                    autocomplete="off" spellcheck="false">
             <button type="button" class="map-search-clear" id="mapSearchClear" onclick="clearMapSearch()" aria-label="Bersihkan">✕</button>
           </div>
@@ -934,6 +938,7 @@
           <div class="stat-item"><div class="stat-dot" style="background:#22c55e;box-shadow:0 0 5px rgba(34,197,94,.6)"></div><span class="stat-val" id="st-online" style="color:#22c55e">0</span><span class="stat-lbl">Online</span></div>
           <div class="stat-item"><div class="stat-dot" style="background:#1d4ed8"></div><span class="stat-val" id="st-odc">0</span><span class="stat-lbl">ODC</span></div>
           <div class="stat-item"><div class="stat-dot" style="background:#3b82f6"></div><span class="stat-val" id="st-odp">0</span><span class="stat-lbl">ODP</span></div>
+          <div class="stat-item"><div class="stat-dot" style="background:#0d9488"></div><span class="stat-val" id="st-jb">0</span><span class="stat-lbl">JB</span></div>
           <div class="stat-item"><div class="stat-dot" style="background:#475569"></div><span class="stat-val" id="st-tower">0</span><span class="stat-lbl">Tiang</span></div>
           <div class="stat-item"><div class="stat-dot" style="background:#f97316"></div><span class="stat-val" id="st-cust">0</span><span class="stat-lbl">Pelanggan</span></div>
           <div class="stat-item"><div class="stat-dot" style="background:#ef4444"></div><span class="stat-val" id="st-pop">0</span><span class="stat-lbl">POP</span></div>
@@ -955,6 +960,7 @@
     <div class="modal-tabs" id="modalTabs">
       <button class="modal-tab active" data-tab="odc" onclick="switchTab('odc',this)">ODC</button>
       <button class="modal-tab" data-tab="odp" onclick="switchTab('odp',this)">ODP</button>
+      <button class="modal-tab" data-tab="jb" onclick="switchTab('jb',this)">JB</button>
       <button class="modal-tab" data-tab="tower" onclick="switchTab('tower',this)">Tiang</button>
       <button class="modal-tab" data-tab="pop" onclick="switchTab('pop',this)">POP</button>
       <button class="modal-tab" data-tab="customer" onclick="switchTab('customer',this)">Pelanggan</button>
@@ -1082,6 +1088,29 @@
           </div>
           <input type="hidden" id="odp-photo-url" value="">
         </div>
+      </div>
+
+      <!-- Joint Box / Joint Closure -->
+      <div class="tab-panel" id="tab-jb">
+        <div class="form-group"><label class="form-label">Nama JB *</label><input type="text" class="form-control" id="jb-name" placeholder="mis. JB-BGR-001 atau JC-FO-12"></div>
+        <div class="form-group">
+          <label class="form-label">Jenis</label>
+          <select class="form-control" id="jb-kind">
+            <option value="joint_box">Joint Box</option>
+            <option value="joint_closure">Joint Closure</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Kapasitas Core / Tray</label><input type="number" class="form-control" id="jb-capacity" placeholder="48" min="1"></div>
+          <div class="form-group"><label class="form-label">Terpakai</label><input type="number" class="form-control" id="jb-used" placeholder="0" min="0"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Parent (ODC / POP / JB) <span style="color:#94a3b8;text-transform:none;letter-spacing:0;font-weight:500;font-size:11px">— opsional, otomatis terisi saat Draw Link</span></label>
+          <select class="form-control" id="jb-parent"><option value="">-- Tidak ada --</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Alamat</label><input type="text" class="form-control" id="jb-address" placeholder="Lokasi joint box / closure"></div>
+        <div class="form-group"><label class="form-label">Status</label><select class="form-control" id="jb-status"><option value="active">Active</option><option value="inactive">Inactive</option><option value="maintenance">Maintenance</option></select></div>
+        <div class="form-group"><label class="form-label">Catatan</label><textarea class="form-control" id="jb-notes" rows="2" placeholder="Catatan splice, core, atau akses..."></textarea></div>
       </div>
 
       <!-- Tiang -->
@@ -1341,8 +1370,9 @@ window.customConfirm = function(opts) {
     customer: { label: 'Pelanggan', color: '#f97316', order: 1 },
     odp:      { label: 'ODP',       color: '#3b82f6', order: 2 },
     odc:      { label: 'ODC',       color: '#1d4ed8', order: 3 },
-    pop:      { label: 'POP',       color: '#ef4444', order: 4 },
-    tower:    { label: 'Tiang',     color: '#475569', order: 5 },
+    jb:       { label: 'JB',        color: '#0d9488', order: 4 },
+    pop:      { label: 'POP',       color: '#ef4444', order: 5 },
+    tower:    { label: 'Tiang',     color: '#475569', order: 6 },
   };
 
   // Bangun index dari marker yang BENAR-BENAR sedang ada di peta.
@@ -1525,6 +1555,7 @@ window.customConfirm = function(opts) {
     if (t === 'odc')      return '<svg ' + common + '><rect x="4" y="5" width="16" height="14" rx="2"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>';
     if (t === 'pop')      return '<svg ' + common + '><path d="M12 2L2 7l10 5 10-5-10-5z"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>';
     if (t === 'tower')    return '<svg ' + common + '><line x1="12" y1="3" x2="12" y2="21"/><path d="M5 10c0-4 3-7 7-7s7 3 7 7"/><path d="M8 13c0-2 2-4 4-4s4 2 4 4"/></svg>';
+    if (t === 'jb')       return '<svg ' + common + '><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M8 12h8M12 9v6"/></svg>';
     return '<svg ' + common + '><circle cx="12" cy="12" r="9"/></svg>';
   }
 
@@ -1549,6 +1580,7 @@ window.customConfirm = function(opts) {
   const ZOOM_BY_TYPE = {
     customer: 19,
     odp:      19,
+    jb:       18,
     tower:    18,
     odc:      18,
     pop:      17,
