@@ -29,6 +29,11 @@ assert.strictEqual(bw.isCustomerInterface({ type: 'bridge', name: 'bridge' }), f
 assert.strictEqual(bw.isCustomerInterface({ type: 'vlan', name: 'vlan100' }), false);
 assert.strictEqual(bw.isCustomerInterface({ type: '', name: 'pppoe-out1' }), false);
 
+assert.strictEqual(bw.parseUptimeSeconds('1d2h3m4s'), 93784);
+assert.strictEqual(bw.parseUptimeSeconds('4h12m'), 15120);
+assert.strictEqual(bw.parseUptimeSeconds('27m13s'), 1633);
+assert.strictEqual(bw.parseUptimeSeconds(''), 0);
+
 assert.strictEqual(bw.matchCustomer(index, { name: '<pppoe-andi>' }).id, 1);
 assert.strictEqual(bw.matchCustomer(index, { name: 'Q-NIA', target: '10.10.10.20/32' }).id, 2);
 assert.strictEqual(bw.matchCustomer(index, { name: '<43. WARUNG NIA>' }).id, 2);
@@ -162,7 +167,41 @@ assert.strictEqual(bw.matchCustomer(index, { name: '<43. WARUNG NIA>' }).id, 2);
   const rows = bw.formatRows(acc, { limit: 10 });
   const sendy = rows.find(r => r.pppoe_username === 'sendy');
   assert.ok(sendy.unmatched);
+  assert.strictEqual(sendy.download_gb, (7).toFixed(2));
+  assert.strictEqual(sendy.upload_gb, (1).toFixed(2));
   assert.strictEqual(sendy.total_gb, (8).toFixed(2));
+}
+
+// ── download/upload MAX terpisah, formatRows pecah GB ───────
+{
+  const acc = bw.mergeSnapshot(index, {
+    queues: [{ name: 'andi', bytesIn: String(10 * GB), bytesOut: String(1 * GB), rateIn: '0', rateOut: '0' }],
+    interfaces: [{ name: '<pppoe-andi>', type: 'pppoe-in', txByte: 4 * GB, rxByte: 3 * GB }]
+  });
+  assert.strictEqual(acc.get(1).download, 10 * GB);
+  assert.strictEqual(acc.get(1).upload, 3 * GB);
+  const rows = bw.formatRows(acc, { limit: 5 });
+  assert.strictEqual(rows[0].download_gb, (10).toFixed(2));
+  assert.strictEqual(rows[0].upload_gb, (3).toFixed(2));
+}
+
+// ── Mbps dari byte / uptime sesi kalau rate live 0 ──────────
+{
+  const acc = bw.mergeSnapshot(index, {
+    sessions: [{
+      name: 'nia',
+      bytesIn: GB,
+      bytesOut: 2 * GB,
+      service: 'pppoe',
+      uptime: '2h13m20s' // 8000s
+    }]
+  });
+  const rows = bw.formatRows(acc, { limit: 1 });
+  assert.strictEqual(rows[0].download_gb, (2).toFixed(2));
+  assert.strictEqual(rows[0].upload_gb, (1).toFixed(2));
+  assert.ok(parseFloat(rows[0].avg_download_mbps) > 2);
+  assert.ok(parseFloat(rows[0].avg_upload_mbps) > 1);
+  assert.strictEqual(rows[0].rate_source, 'session');
 }
 
 // ── CRM match menang dari synthetic untuk username yang sama ──

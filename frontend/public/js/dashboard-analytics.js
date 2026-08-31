@@ -174,15 +174,16 @@ async function loadTopCustomers() {
           </div>
         </div>
         <div class="customer-usage">
-          <div class="usage-gb">${customer.total_gb} GB</div>
+          <div class="usage-gb-split">
+            <span class="dl">↓${escHtml(customer.download_gb || customer.total_gb)} GB</span>
+            <span class="ul">↑${escHtml(customer.upload_gb != null ? customer.upload_gb : '0.00')} GB</span>
+          </div>
           <div class="usage-speed">
-            <span style="color:#3b82f6;">↓${customer.avg_download_mbps} Mbps</span>
-            <span style="color:#f97316;">↑${customer.avg_upload_mbps} Mbps</span>
+            <span style="color:#3b82f6;">↓${escHtml(customer.avg_download_mbps)} Mbps</span>
+            <span style="color:#f97316;">↑${escHtml(customer.avg_upload_mbps)} Mbps</span>
           </div>
         </div>
-        <div class="usage-bar">
-          <div class="usage-fill" style="width: ${Math.min(customer.usage_percent, 100)}%"></div>
-        </div>
+        ${Number(customer.usage_percent) > 0 ? `<div class="usage-bar"><div class="usage-fill" style="width: ${Math.min(customer.usage_percent, 100)}%"></div></div>` : ''}
       </div>
     `).join('');
   } catch (err) {

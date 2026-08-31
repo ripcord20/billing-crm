@@ -825,6 +825,19 @@ input, select, textarea { font-family: inherit; }
   color: var(--text);
 }
 
+.usage-gb-split {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.usage-gb-split .dl { color: #3b82f6; }
+.usage-gb-split .ul { color: #f97316; }
+
 .usage-speed {
   display: flex;
   gap: 8px;

@@ -186,7 +186,9 @@ class DashboardController {
             p.name as package_name,
             p.speed_down,
             p.speed_up,
-            COALESCE(SUM(qh.rx_bytes + qh.tx_bytes) / 1073741824, 0) as total_gb,
+            COALESCE(MAX(qh.rx_bytes) / 1073741824, 0) as download_gb,
+            COALESCE(MAX(qh.tx_bytes) / 1073741824, 0) as upload_gb,
+            COALESCE((MAX(qh.rx_bytes) + MAX(qh.tx_bytes)) / 1073741824, 0) as total_gb,
             COALESCE(AVG(qh.rx_rate) / 1000000, 0) as avg_download_mbps,
             COALESCE(AVG(qh.tx_rate) / 1000000, 0) as avg_upload_mbps,
             COALESCE(MAX(qh.rx_rate) / 1000000, 0) as peak_download_mbps
@@ -212,6 +214,8 @@ class DashboardController {
         });
         return rows.map(c => ({
           ...c,
+          download_gb: parseFloat(c.download_gb).toFixed(2),
+          upload_gb: parseFloat(c.upload_gb).toFixed(2),
           total_gb: parseFloat(c.total_gb).toFixed(2),
           avg_download_mbps: parseFloat(c.avg_download_mbps).toFixed(2),
           avg_upload_mbps: parseFloat(c.avg_upload_mbps).toFixed(2),

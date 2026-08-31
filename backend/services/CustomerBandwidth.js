@@ -69,6 +69,30 @@ function num(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** RouterOS uptime: "1w2d3h4m5s" / "4h12m" → detik. */
+function parseUptimeSeconds(raw) {
+  const s = String(raw || '').trim().toLowerCase();
+  if (!s || s === 'never') return 0;
+  const take = (re, mul) => {
+    const m = s.match(re);
+    return m ? parseInt(m[1], 10) * mul : 0;
+  };
+  return take(/(\d+)\s*w/, 604800)
+    + take(/(\d+)\s*d/, 86400)
+    + take(/(\d+)\s*h/, 3600)
+    + take(/(\d+)\s*m/, 60)
+    + take(/(\d+)\s*s/, 1);
+}
+
+function gb(bytes) {
+  return (num(bytes) / 1073741824).toFixed(2);
+}
+
+function mbpsFromBytes(bytes, uptimeSec) {
+  if (!uptimeSec || uptimeSec <= 0) return 0;
+  return (num(bytes) * 8) / uptimeSec / 1e6;
+}
+
 function buildIndex(customers) {
   const byPppoe = new Map();
   const byIp = new Map();
@@ -157,6 +181,7 @@ function emptyRow(customer) {
     upload: 0,
     rateIn: 0,
     rateOut: 0,
+    uptimeSec: 0,
     sources: new Set()
   };
 }
@@ -168,20 +193,19 @@ function addUsage(byId, customer, usage) {
     prev = emptyRow(customer);
     byId.set(customer.id, prev);
   }
-  const bytes = num(usage.bytes);
   const download = num(usage.download);
   const upload = num(usage.upload);
   const rateIn = num(usage.rateIn);
   const rateOut = num(usage.rateOut);
+  const uptimeSec = num(usage.uptimeSec);
   if (usage.source) prev.sources.add(usage.source);
-  // MAX di satu router — jangan jumlahkan queue + interface
-  if (bytes > prev.bytes) {
-    prev.bytes = bytes;
-    prev.download = download;
-    prev.upload = upload;
-  }
+  // Download dan upload di-MAX terpisah — jangan gabung jadi satu angka.
+  if (download > prev.download) prev.download = download;
+  if (upload > prev.upload) prev.upload = upload;
+  prev.bytes = prev.download + prev.upload;
   if (rateIn > prev.rateIn) prev.rateIn = rateIn;
   if (rateOut > prev.rateOut) prev.rateOut = rateOut;
+  if (uptimeSec > prev.uptimeSec) prev.uptimeSec = uptimeSec;
 }
 
 function mergeAcrossRouters(acc, perRouter) {
@@ -195,15 +219,17 @@ function mergeAcrossRouters(acc, perRouter) {
         upload: row.upload,
         rateIn: row.rateIn,
         rateOut: row.rateOut,
+        uptimeSec: row.uptimeSec || 0,
         sources: new Set(row.sources)
       });
       continue;
     }
-    prev.bytes += row.bytes;
     prev.download += row.download;
     prev.upload += row.upload;
+    prev.bytes = prev.download + prev.upload;
     prev.rateIn += row.rateIn;
     prev.rateOut += row.rateOut;
+    if ((row.uptimeSec || 0) > prev.uptimeSec) prev.uptimeSec = row.uptimeSec;
     row.sources.forEach((s) => prev.sources.add(s));
   }
   return acc;
@@ -271,6 +297,7 @@ function mergeSnapshot(index, snap = {}) {
       upload,
       rateIn: 0,
       rateOut: 0,
+      uptimeSec: parseUptimeSeconds(sess.uptime),
       source: svc === 'pppoe' ? 'pppoe' : svc
     });
   }
@@ -292,6 +319,7 @@ function mergeSnapshot(index, snap = {}) {
       upload,
       rateIn: 0,
       rateOut: 0,
+      uptimeSec: parseUptimeSeconds(hs.uptime),
       source: 'hotspot'
     });
   }
@@ -346,8 +374,13 @@ async function collectFromDevices(index, deviceIds, getMt) {
 function formatRows(acc, { limit = 10, sortBy = 'bytes' } = {}) {
   const rows = Array.from(acc.values()).map((row) => {
     const speedDown = num(row.customer.package?.speed_down);
-    const rxMbps = row.rateIn / 1e6;
-    const txMbps = row.rateOut / 1e6;
+    const liveDown = row.rateIn / 1e6;
+    const liveUp = row.rateOut / 1e6;
+    const avgDown = mbpsFromBytes(row.download, row.uptimeSec);
+    const avgUp = mbpsFromBytes(row.upload, row.uptimeSec);
+    const downMbps = liveDown > 0 ? liveDown : avgDown;
+    const upMbps = liveUp > 0 ? liveUp : avgUp;
+    const rateSource = (liveDown > 0 || liveUp > 0) ? 'live' : (row.uptimeSec > 0 ? 'session' : 'none');
     return {
       id: row.customer.id,
       customer_id: row.customer.customer_id,
@@ -356,16 +389,20 @@ function formatRows(acc, { limit = 10, sortBy = 'bytes' } = {}) {
       package_name: row.customer.package?.name || '-',
       speed_down: speedDown,
       speed_up: num(row.customer.package?.speed_up),
-      total_gb: (row.bytes / 1073741824).toFixed(2),
-      avg_download_mbps: rxMbps.toFixed(2),
-      avg_upload_mbps: txMbps.toFixed(2),
-      peak_download_mbps: rxMbps.toFixed(2),
-      usage_percent: speedDown ? ((rxMbps / speedDown) * 100).toFixed(1) : 0,
+      download_gb: gb(row.download),
+      upload_gb: gb(row.upload),
+      total_gb: gb(row.download + row.upload),
+      avg_download_mbps: downMbps.toFixed(2),
+      avg_upload_mbps: upMbps.toFixed(2),
+      peak_download_mbps: downMbps.toFixed(2),
+      rate_source: rateSource,
+      usage_percent: speedDown ? ((downMbps / speedDown) * 100).toFixed(1) : 0,
       sources: Array.from(row.sources),
       unmatched: !!row.customer.unmatched
     };
   }).filter((r) => (
-    parseFloat(r.total_gb) > 0
+    parseFloat(r.download_gb) > 0
+    || parseFloat(r.upload_gb) > 0
     || parseFloat(r.avg_download_mbps) > 0
     || parseFloat(r.avg_upload_mbps) > 0
   ));
@@ -394,5 +431,7 @@ module.exports = {
   formatRows,
   looksLikeSessionName,
   syntheticCustomer,
-  resolveCustomer
+  resolveCustomer,
+  parseUptimeSeconds,
+  mbpsFromBytes
 };
