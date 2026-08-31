@@ -93,6 +93,10 @@
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
         <span>Traffic Interface</span>
       </a>
+      <a href="/monitoring/content" class="nav-item <%= active === 'content-monitoring' ? 'active' : '' %>">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Content Monitoring</span>
+      </a>
       <a href="/monitoring/pppoe" class="nav-item <%= active === 'pppoe' ? 'active' : '' %>">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
         <span>PPPoE Sessions</span>
@@ -138,6 +142,7 @@
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>
         <span>Modul NAS</span>
       </a>
+      <a href="/monitoring/device-monitor" class="nav-item <%= active === 'device-monitor' ? 'active' : '' %>">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
         <span>Device Monitor</span>
       </a>
@@ -410,6 +415,10 @@
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01M12 6h6M12 18h6"/></svg>
         <span>Hubungkan MikroTik</span>
       </a>
+      <a href="/monitoring/content" class="nav-item <%= active === 'content-monitoring' ? 'active' : '' %>">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Content Monitoring</span>
+      </a>
     </div>
 
   <% } else { %>
@@ -447,6 +456,10 @@
       <a href="/monitoring/traffic" class="nav-item <%= active === 'traffic' ? 'active' : '' %>">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
         <span>Traffic Interface</span>
+      </a>
+      <a href="/monitoring/content" class="nav-item <%= active === 'content-monitoring' ? 'active' : '' %>">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Content Monitoring</span>
       </a>
       <a href="/monitoring/pppoe" class="nav-item <%= active === 'pppoe' ? 'active' : '' %>">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
@@ -495,6 +508,7 @@
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>
         <span>Modul NAS</span>
       </a>
+      <a href="/monitoring/device-monitor" class="nav-item <%= active === 'device-monitor' ? 'active' : '' %>">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 8h.01M10 8h4"/></svg>
         <span>Device Monitor</span>
       </a>

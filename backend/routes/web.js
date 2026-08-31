@@ -269,6 +269,10 @@ router.get('/monitoring/traffic', authenticate, blockFinanceArea, (req, res) => 
   res.render('pages/traffic', { title: 'Traffic Interface', user: req.user, active: 'traffic' });
 });
 
+router.get('/monitoring/content', authenticate, blockFinanceArea, (req, res) => {
+  res.render('pages/content-monitoring', { title: 'Content Monitoring', user: req.user, active: 'content-monitoring' });
+});
+
 router.get('/nms', authenticate, blockFinanceArea, (req, res) => {
   res.render('pages/nms', { title: 'NMS · Interface Monitor', user: req.user, active: 'nms' });
 });
@@ -405,6 +409,7 @@ router.get('/mobile/payment-new',authenticate, renderMobile('payment-new','Catat
 router.get('/mobile/finance',    authenticate, renderMobile('finance',    'Laporan Keuangan', 'm-finance'));
 router.get('/mobile/keuangan',   authenticate, renderMobile('keuangan',   'Keuangan',         'm-keuangan'));
 router.get('/mobile/monitoring', authenticate, renderMobile('monitoring', 'Monitoring',       'm-monitoring'));
+router.get('/mobile/content',    authenticate, renderMobile('content',    'Content Monitoring','m-content'));
 router.get('/mobile/queue',      authenticate, renderMobile('queue',      'Simple Queue',     'm-queue'));
 router.get('/mobile/isolir',     authenticate, renderMobile('isolir',     'Isolir',           'm-isolir'));
 router.get('/mobile/noc',        authenticate, renderMobile('noc',        'NOC / Jaringan',   'm-noc'));
