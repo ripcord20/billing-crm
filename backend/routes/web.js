@@ -209,8 +209,7 @@ router.get('/panduan/mikrotik', authenticate, allowMitraGuidePage, async (req, r
 router.get('/radius', authenticate, (req, res) => {
   const r = (req.user?.role?.name || '').toLowerCase();
   if (r === 'tenant_owner') return res.redirect('/panduan/mikrotik');
-  if (!['superadmin', 'admin', 'finance', 'noc'].includes(r)) return res.redirect('/dashboard');
-  res.render('pages/radius', { title: 'RADIUS', user: req.user, active: 'radius' });
+  return res.redirect('/dashboard');
 });
 
 // ═══════════════════════════════════════════════════════════════════

@@ -162,11 +162,9 @@
           <div class="card-header"><h3>Hanya owner / staf Fiberix</h3></div>
           <div class="card-body">
             <ol class="mk-steps">
-              <li>Jangan minta mitra buka Modul RADIUS. Sembunyikan menu itu dari tenant.</li>
-              <li>ROS 7: Modul NAS → VPN → WireGuard → Script, kirim ke mitra.</li>
-              <li>ROS 6: Modul NAS → VPN → <strong>L2TP / IPsec</strong> → VPN, kirim user/password/PSK. Pasang PPP secret di server L2TP Fiberix.</li>
-              <li>Host VPN harus IP/DNS yang tembus internet (bukan hanya 192.168.x) jika mitra di luar LAN.</li>
-              <li>Modul RADIUS hanya untuk mengarahkan FreeRADIUS ke MySQL billing — dikerjakan sekali, bukan alur mitra.</li>
+              <li>Kalau FreeRADIUS sudah jalan di server terpisah, <strong>jangan pakai Modul RADIUS di billing</strong>. MikroTik tetap mengarah ke server RADIUS yang ada.</li>
+              <li>ROS 7: tunnel WireGuard. ROS 6: L2TP/IPsec. Script dari Modul NAS (staf), bukan dari Modul RADIUS.</li>
+              <li>Host VPN harus IP/DNS publik jika mitra di luar LAN.</li>
             </ol>
             <p style="margin:12px 0 0;font-size:13px;">
               <a href="/nas">Modul NAS</a>
