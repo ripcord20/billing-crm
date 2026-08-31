@@ -5,6 +5,7 @@ const {
   applyTenantWhere,
   applyTenantSql,
   assertCustomerTenant,
+  stampTenant,
   slugify,
   homePathForRole,
   isTenantOwner
@@ -31,5 +32,9 @@ assert.strictEqual(getTenantId({ user: { role: { name: 'finance' } }, query: { t
 
 const ownerNoTenant = { user: { role: { name: 'tenant_owner' } } };
 assert.strictEqual(getTenantId(ownerNoTenant), null);
+
+assert.deepStrictEqual(stampTenant(ownerReq, { name: 'a' }), { name: 'a', tenant_id: 7 });
+assert.deepStrictEqual(stampTenant(ownerReq, { name: 'a', tenant_id: 9 }), { name: 'a', tenant_id: 9 });
+assert.deepStrictEqual(stampTenant({ user: { role: { name: 'admin' } }, query: {}, body: {} }, { name: 'a' }), { name: 'a' });
 
 console.log('tenantScope.test.js OK');

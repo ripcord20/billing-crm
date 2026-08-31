@@ -65,7 +65,8 @@ module.exports = (sequelize) => {
     photos: { type: DataTypes.JSON, defaultValue: [] },
 
     // Siapa yang buat
-    created_by: { type: DataTypes.INTEGER, allowNull: true }
+    created_by: { type: DataTypes.INTEGER, allowNull: true },
+    tenant_id:  { type: DataTypes.INTEGER, allowNull: true }
 
   }, {
     tableName: 'work_orders',

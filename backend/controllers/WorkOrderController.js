@@ -3,6 +3,7 @@ const path = require('path');
 const fs   = require('fs');
 const multer = require('multer');
 const { WorkOrder, Customer, Ticket, User, WaSession } = require('../models');
+const { applyTenantWhere, stampTenant } = require('../utils/tenantScope');
 const { Op } = require('sequelize');
 
 // ── Upload storage ────────────────────────────────────────────
@@ -84,7 +85,7 @@ Terima kasih! 🙏`;
 // ── Index ─────────────────────────────────────────────────────
 exports.index = async (req, res) => {
   try {
-    const where = {};
+    const where = applyTenantWhere(req, {});
     if (req.query.status)   where.status   = req.query.status;
     if (req.query.type)     where.type     = req.query.type;
     if (req.query.priority) where.priority = req.query.priority;
@@ -104,12 +105,13 @@ exports.index = async (req, res) => {
 exports.stats = async (req, res) => {
   try {
     const today = new Date().toISOString().slice(0,10);
+    const base = applyTenantWhere(req, {});
     const [total, pending, inProgress, done, overdue] = await Promise.all([
-      WorkOrder.count(),
-      WorkOrder.count({ where: { status: 'pending' } }),
-      WorkOrder.count({ where: { status: 'in_progress' } }),
-      WorkOrder.count({ where: { status: 'done' } }),
-      WorkOrder.count({ where: { status: { [Op.in]:['pending','assigned','in_progress'] }, due_date: { [Op.lt]: today } } })
+      WorkOrder.count({ where: { ...base } }),
+      WorkOrder.count({ where: { ...base, status: 'pending' } }),
+      WorkOrder.count({ where: { ...base, status: 'in_progress' } }),
+      WorkOrder.count({ where: { ...base, status: 'done' } }),
+      WorkOrder.count({ where: { ...base, status: { [Op.in]:['pending','assigned','in_progress'] }, due_date: { [Op.lt]: today } } })
     ]);
     res.json({ success: true, data: { total, pending, inProgress, done, overdue } });
   } catch(e) { res.status(500).json({ success: false, message: e.message }); }
@@ -138,7 +140,7 @@ exports.create = async (req, res) => {
 
     if (!title) return res.status(400).json({ success: false, message: 'Judul WO wajib diisi' });
 
-    const wo = await WorkOrder.create({
+    const wo = await WorkOrder.create(stampTenant(req, {
       title, description,
       type: type || 'installation', status: status || 'pending', priority: priority || 'medium',
       customer_id: customer_id || null, ticket_id: ticket_id || null,
@@ -151,7 +153,7 @@ exports.create = async (req, res) => {
       notes: notes || null,
       created_by: req.user?.id || null,
       photos: []
-    });
+    }));
 
     const result = await WorkOrder.findByPk(wo.id, { include: INC });
 

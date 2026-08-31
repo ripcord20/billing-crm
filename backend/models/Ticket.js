@@ -29,7 +29,8 @@ module.exports = (sequelize) => {
     resolved_at:    { type: DataTypes.DATE, allowNull: true },
     closed_at:      { type: DataTypes.DATE, allowNull: true },
     due_at:         { type: DataTypes.DATE, allowNull: true },
-    tags:           { type: DataTypes.JSON, allowNull: true }
+    tags:           { type: DataTypes.JSON, allowNull: true },
+    tenant_id:      { type: DataTypes.INTEGER, allowNull: true }
   }, {
     tableName: 'tickets',
     timestamps: true,

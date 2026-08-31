@@ -143,9 +143,16 @@ router.use((req, res, next) => {
 const _tenantAllowedPaths = new Set([
   '/dashboard', '/tenant', '/customers', '/billing', '/payments', '/packages',
   '/login', '/logout', '/', '/mitra', '/mitra/daftar', '/kebijakan-privasi',
-  '/panduan/mikrotik', '/radius'
+  '/panduan/mikrotik', '/radius',
+  '/infrastructure', '/isolir', '/tickets', '/work-orders', '/devices',
+  '/wa/reminder', '/psb', '/gudang',
+  '/genieacs', '/monitoring/ont-redaman', '/monitoring/content'
 ]);
-const _tenantAllowedPrefixes = ['/customers/', '/billing/', '/payments/', '/packages/'];
+const _tenantAllowedPrefixes = [
+  '/customers/', '/billing/', '/payments/', '/packages/',
+  '/tickets/', '/work-orders/', '/devices/', '/psb/', '/gudang/',
+  '/infrastructure/', '/isolir/', '/genieacs/', '/monitoring/', '/wa/'
+];
 router.use((req, res, next) => {
   if (req.method !== 'GET') return next();
   const token = req.cookies && req.cookies.token;
@@ -350,6 +357,14 @@ router.get('/genieacs', authenticate, blockFinanceArea, async (req, res) => {
 
 router.get('/work-orders', authenticate, blockFinanceArea, (req, res) => {
   res.render('pages/work-orders', { title: 'Work Order', user: req.user, active: 'work-orders' });
+});
+
+router.get('/psb', authenticate, blockFinanceArea, (req, res) => {
+  res.render('pages/psb', { title: 'Pasang Baru', user: req.user, active: 'psb' });
+});
+
+router.get('/gudang', authenticate, blockFinanceArea, (req, res) => {
+  res.render('pages/gudang', { title: 'Gudang SN', user: req.user, active: 'gudang' });
 });
 
 router.get('/todos', authenticate, blockFinanceArea, (req, res) => {

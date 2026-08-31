@@ -220,9 +220,9 @@ for (const p of _salesBlockedPrefixes) {
 
 const _tenantBlockedPrefixes = [
   '/keuangan', '/finance', '/laporan',
-  '/devices', '/infrastructure', '/monitoring', '/qos', '/mikrotik',
-  '/genieacs', '/olt', '/ont', '/hotspot', '/isolir',
-  '/wa', '/whatsapp', '/broadcast', '/email-broadcast', '/mikrotik-backup', '/message-logs',
+  '/qos', '/mikrotik',
+  '/olt', '/ont', '/hotspot',
+  '/broadcast', '/email-broadcast', '/mikrotik-backup', '/message-logs',
   '/users', '/roles', '/permissions', '/activity-logs', '/system',
   '/dashboard', '/tenants'
 ];
@@ -2150,6 +2150,7 @@ router.post('/infrastructure', authenticate, demoGuard, hasPermission('infra_cre
 router.get('/infrastructure/map', authenticate, demoGuard, (r,s) => InfrastructureController.mapData(r,s));
 router.get('/infrastructure/stats', authenticate, demoGuard, (r,s) => InfrastructureController.stats(r,s));
 router.get('/infrastructure/parent-options', authenticate, demoGuard, (r,s) => InfrastructureController.parentOptions(r,s));
+router.get('/infrastructure/odp-occupancy', authenticate, demoGuard, (r,s) => InfrastructureController.odpOccupancy(r,s));
 router.get('/infrastructure/customer/:id/rx-power', authenticate, demoGuard, (r,s) => InfrastructureController.getCustomerRxPower(r,s));
 router.get('/infrastructure/pop/:id/devices',       authenticate, demoGuard, (r,s) => InfrastructureController.getPopDevices(r,s));
 router.get('/infrastructure/:id', authenticate, demoGuard, (r,s) => InfrastructureController.show(r,s));
@@ -2476,6 +2477,23 @@ router.put   ('/work-orders/:id',                authenticate, demoGuard, WOCtrl
 router.post  ('/work-orders/:id/photos',         authenticate, demoGuard, WOCtrl.uploadMiddleware, WOCtrl.uploadPhotos);
 router.delete('/work-orders/:id/photos/:photoIndex', authenticate, demoGuard, WOCtrl.deletePhoto);
 router.delete('/work-orders/:id',                authenticate, demoGuard, WOCtrl.destroy);
+
+const PsbCtrl = require('../controllers/PsbController');
+router.get   ('/psb',           authenticate, demoGuard, PsbCtrl.index);
+router.post  ('/psb',           authenticate, demoGuard, PsbCtrl.create);
+router.get   ('/psb/:id',       authenticate, demoGuard, PsbCtrl.show);
+router.post  ('/psb/:id/advance', authenticate, demoGuard, PsbCtrl.advance);
+router.post  ('/psb/:id/cancel',  authenticate, demoGuard, PsbCtrl.cancel);
+
+const GudangCtrl = require('../controllers/WarehouseController');
+router.get   ('/gudang',          authenticate, demoGuard, GudangCtrl.index);
+router.post  ('/gudang',          authenticate, demoGuard, GudangCtrl.create);
+router.get   ('/gudang/:id',      authenticate, demoGuard, GudangCtrl.show);
+router.post  ('/gudang/:id/move', authenticate, demoGuard, GudangCtrl.move);
+
+const AlarmCtrl = require('../controllers/AlarmController');
+router.get ('/alarms/open', authenticate, demoGuard, AlarmCtrl.open);
+router.post('/alarms/scan', authenticate, demoGuard, AlarmCtrl.scan);
 
 // ===== ANNOUNCEMENTS (Pengumuman Portal) =====
 const AnnCtrl = require('../controllers/AnnouncementController');

@@ -137,6 +137,18 @@
 
     /* Alert */
     .alert-area-top { margin-bottom:16px; }
+    .alarm-banner {
+      display:none; background:#fff7ed; border:1px solid #fdba74; border-radius:14px;
+      padding:12px 14px; margin-bottom:16px;
+    }
+    .alarm-banner.show { display:block; }
+    .alarm-banner-hdr { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
+    .alarm-banner-hdr h3 { margin:0; font-size:13px; font-weight:800; color:#9a3412; }
+    .alarm-row {
+      display:flex; justify-content:space-between; align-items:center; gap:8px;
+      padding:7px 0; border-top:1px solid #fed7aa; font-size:13px;
+    }
+    .alarm-row a { color:#9a3412; font-weight:700; text-decoration:none; }
     .alert { background:#fff; border-radius:12px; padding:14px 18px; box-shadow:0 8px 24px rgba(0,0,0,.15); border-left:4px solid; display:flex; align-items:center; gap:10px; margin-bottom:12px; }
     .alert.success { border-left-color:#16a34a; background:#f0fdf4; }
     .alert.error { border-left-color:#dc2626; background:#fef2f2; }
@@ -707,6 +719,13 @@
 
       <!-- Alert Area -->
       <div class="alert-area-top" id="alertAreaTop"></div>
+      <div class="alarm-banner" id="alarmBanner">
+        <div class="alarm-banner-hdr">
+          <h3>Alarm terbuka</h3>
+          <span id="alarmBannerCount" style="font-size:12px;color:#9a3412;font-weight:700"></span>
+        </div>
+        <div id="alarmBannerList"></div>
+      </div>
 
       <!-- Header -->
       <div class="ot-hdr">
@@ -715,7 +734,9 @@
           <p>Manajemen ticket support dan gangguan</p>
         </div>
         <div class="ot-hdr-r">
-          
+          <button class="btn btn-outline" id="scanAlarmBtn" onclick="scanAlarms()">
+            Scan alarm
+          </button>
           <button class="btn btn-blue" onclick="showCreateModal()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="12" y1="5" x2="12" y2="19"/>
@@ -1190,6 +1211,7 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch(_) { /* abaikan */ }
 
   loadTickets();
+  loadAlarms();
 });
 
 // ═══════════════════════════════════════════════════════
@@ -1552,6 +1574,61 @@ function typeLabel(type) {
     'maintenance': 'Maintenance'
   };
   return labels[type] || type;
+}
+
+async function ticketApi(url, opts) {
+  const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
+  const res = await fetch('/api' + url, Object.assign({ credentials: 'include', headers }, opts || {}));
+  return res.json();
+}
+
+async function loadAlarms() {
+  const banner = document.getElementById('alarmBanner');
+  const list = document.getElementById('alarmBannerList');
+  const countEl = document.getElementById('alarmBannerCount');
+  if (!banner || !list) return;
+  try {
+    const result = await ticketApi('/alarms/open');
+    const rows = result.data || [];
+    if (!rows.length) {
+      banner.classList.remove('show');
+      list.innerHTML = '';
+      if (countEl) countEl.textContent = '';
+      return;
+    }
+    banner.classList.add('show');
+    if (countEl) countEl.textContent = rows.length + ' tiket';
+    list.innerHTML = rows.slice(0, 8).map((a) => {
+      const kind = a.kind === 'ont_offline' ? 'ONT offline' : a.kind === 'ont_critical' ? 'Redaman kritis' : a.kind === 'pppoe_drop' ? 'PPPoE putus' : (a.kind || 'alarm');
+      return `<div class="alarm-row">
+        <span><b>${kind}</b> · ${a.key || ''} ${a.customer && a.customer.name ? '· ' + a.customer.name : ''}</span>
+        <a href="/tickets/${a.id}">${a.ticket_number || ('#' + a.id)}</a>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    banner.classList.remove('show');
+  }
+}
+
+async function scanAlarms() {
+  const btn = document.getElementById('scanAlarmBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Memindai…'; }
+  try {
+    const result = await ticketApi('/alarms/scan', { method: 'POST', body: '{}' });
+    const n = (result.data && result.data.created && result.data.created.length) || 0;
+    const area = document.getElementById('alertAreaTop');
+    if (area) {
+      area.innerHTML = `<div style="background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600">${n ? n + ' tiket alarm baru dibuat' : 'Tidak ada alarm baru'}</div>`;
+      setTimeout(() => { area.innerHTML = ''; }, 4000);
+    }
+    await loadAlarms();
+    await loadTickets();
+    if (typeof loadStatistics === 'function') loadStatistics();
+  } catch (e) {
+    alert(e.message || 'Gagal scan alarm');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Scan alarm'; }
+  }
 }
 </script>
 

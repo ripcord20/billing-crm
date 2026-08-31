@@ -475,7 +475,11 @@ const startServer = async () => {
       await Tenant.sync();
       const adds = [
         ['users', 'tenant_id', 'INT NULL'],
-        ['customers', 'tenant_id', 'INT NULL']
+        ['customers', 'tenant_id', 'INT NULL'],
+        ['tickets', 'tenant_id', 'INT NULL'],
+        ['work_orders', 'tenant_id', 'INT NULL'],
+        ['infrastructure_points', 'tenant_id', 'INT NULL'],
+        ['devices', 'tenant_id', 'INT NULL']
       ];
       for (const [table, col, ddl] of adds) {
         const [rows] = await db.sequelize.query(
@@ -499,6 +503,14 @@ const startServer = async () => {
       if (db.AuthFailEvent) await db.AuthFailEvent.sync();
     } catch (e) {
       logger.warn('Failed to sync qos tables: ' + (e.message || e));
+    }
+
+    try {
+      if (db.PsbJob) await db.PsbJob.sync();
+      if (db.WarehouseItem) await db.WarehouseItem.sync();
+      if (db.WarehouseMovement) await db.WarehouseMovement.sync();
+    } catch (e) {
+      logger.warn('Failed to sync PSB/warehouse tables: ' + (e.message || e));
     }
 
     try {

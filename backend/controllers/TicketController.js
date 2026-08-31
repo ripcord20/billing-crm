@@ -4,6 +4,7 @@ const fs      = require('fs');
 const multer  = require('multer');
 const { Op }  = require('sequelize');
 const { Ticket, TicketTimeline, Customer, User, InfrastructurePoint } = require('../models');
+const { applyTenantWhere, stampTenant } = require('../utils/tenantScope');
 const PushService = require('../services/PushService');
 const logger = require('../utils/logger');
 
@@ -109,7 +110,7 @@ function includeBase() {
 exports.index = async (req, res) => {
   try {
     const { status, type, priority, assigned_to, search, page = 1, limit = 20 } = req.query;
-    const where = {};
+    const where = applyTenantWhere(req, {});
     if (status)      where.status      = status;
     if (type)        where.type        = type;
     if (priority)    where.priority    = priority;
@@ -143,13 +144,14 @@ exports.index = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 exports.stats = async (req, res) => {
   try {
+    const base = applyTenantWhere(req, {});
     const [total, open, in_progress, pending, resolved, overdue] = await Promise.all([
-      Ticket.count(),
-      Ticket.count({ where: { status: 'open' } }),
-      Ticket.count({ where: { status: 'in_progress' } }),
-      Ticket.count({ where: { status: 'pending' } }),
-      Ticket.count({ where: { status: 'resolved' } }),
-      Ticket.count({ where: { status: ['open','in_progress','pending'], due_at: { [Op.lt]: new Date() } } })
+      Ticket.count({ where: { ...base } }),
+      Ticket.count({ where: { ...base, status: 'open' } }),
+      Ticket.count({ where: { ...base, status: 'in_progress' } }),
+      Ticket.count({ where: { ...base, status: 'pending' } }),
+      Ticket.count({ where: { ...base, status: 'resolved' } }),
+      Ticket.count({ where: { ...base, status: ['open','in_progress','pending'], due_at: { [Op.lt]: new Date() } } })
     ]);
     res.json({ success: true, data: { total, open, in_progress, pending, resolved, overdue } });
   } catch(e) { res.status(500).json({ success: false, message: e.message }); }
@@ -193,7 +195,7 @@ exports.create = async (req, res) => {
 
     if (!title) return res.status(400).json({ success: false, message: 'Judul wajib diisi' });
 
-    const ticket = await Ticket.create({
+    const ticket = await Ticket.create(stampTenant(req, {
       title, type: type || 'gangguan',
       priority: priority || 'medium',
       description, customer_id: customer_id || null,
@@ -205,7 +207,7 @@ exports.create = async (req, res) => {
       created_by: req.user?.id || null,
       sla_hours: PRIO_SLA[priority || 'medium'],
       tags: tags ? JSON.parse(tags) : null
-    });
+    }));
 
     // System timeline: ticket created
     await TicketTimeline.create({

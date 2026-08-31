@@ -400,6 +400,15 @@ class CronService {
       await this._pollGenieACS();
     }));
 
+    // ── 7b. Alarm ONT/PPPoE → tiket + WO (setiap 5 menit) ────────────
+    this.jobs.push(cron.schedule('*/5 * * * *', async () => {
+      try {
+        await require('./NocAlarmService').cronTick();
+      } catch (err) {
+        logger.error('[Cron] NocAlarm: ' + (err.message || err));
+      }
+    }));
+
     // ── 8. OLT SNMP poll (setiap 5 menit) — BARU ─────────────────────
     // Berjalan bersamaan dengan GenieACS, tidak saling mengganggu.
     // ONT dari OLT SNMP masuk ke tabel yang sama (ont_devices),
@@ -623,7 +632,7 @@ class CronService {
       });
     }, 8000); // delay 8 detik agar models & DB sudah siap
 
-    logger.info('[CronService] Started: overdue, isolir, db-cleanup, db-backup, queue-history, genieacs, olt-snmp, signal-cleanup, wa-reminder, wa-report, broadcast, push-reminder, push-scheduler, device-traffic, auto-gen-invoice');
+    logger.info('[CronService] Started: overdue, isolir, db-cleanup, db-backup, queue-history, genieacs, noc-alarm, olt-snmp, signal-cleanup, wa-reminder, wa-report, broadcast, push-reminder, push-scheduler, device-traffic, auto-gen-invoice');
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -1795,7 +1804,9 @@ class CronService {
 
   // ── Stop semua jobs ─────────────────────────────────────────────────
   stop() {
-    this.jobs.forEach(job => job.stop());
+    this.jobs.forEach(job => {
+      if (job && typeof job.stop === 'function') job.stop();
+    });
     this.jobs = [];
     logger.info('[CronService] All jobs stopped');
   }

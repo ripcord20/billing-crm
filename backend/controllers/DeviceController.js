@@ -1,6 +1,7 @@
 const { Device, DeviceLog, TrafficData, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const { paginateResponse } = require('../utils/helpers');
+const { applyTenantWhere, stampTenant } = require('../utils/tenantScope');
 const net = require('net');
 const logger = require('../utils/logger');
 
@@ -8,7 +9,7 @@ class DeviceController {
   async index(req, res) {
     try {
       const { page = 1, limit = 20, search, status, type } = req.query;
-      const where = {};
+      const where = applyTenantWhere(req, {});
       if (search) {
         where[Op.or] = [
           { name: { [Op.like]: `%${search}%` } },
@@ -41,13 +42,13 @@ class DeviceController {
       let rows = [];
       try {
         rows = await Device.findAll({
-          where: { type: 'router', is_active: true },
+          where: applyTenantWhere(req, { type: 'router', is_active: true }),
           attributes: attrs,
           order: [['name', 'ASC']]
         });
       } catch (_) {
         rows = await Device.findAll({
-          where: { is_active: true },
+          where: applyTenantWhere(req, { is_active: true }),
           attributes: attrs,
           order: [['name', 'ASC']]
         });
@@ -57,7 +58,7 @@ class DeviceController {
       if (!rows.length) {
         try {
           rows = await Device.findAll({
-            where: { is_active: true, api_username: { [Op.ne]: null } },
+            where: applyTenantWhere(req, { is_active: true, api_username: { [Op.ne]: null } }),
             attributes: attrs,
             order: [['name', 'ASC']]
           });
@@ -123,7 +124,7 @@ class DeviceController {
 
   async create(req, res) {
     try {
-      const device = await Device.create(req.body);
+      const device = await Device.create(stampTenant(req, req.body));
       res.status(201).json({ success: true, data: device });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });

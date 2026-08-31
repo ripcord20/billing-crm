@@ -36,6 +36,13 @@ function applyTenantWhere(req, where) {
   return next;
 }
 
+function stampTenant(req, data) {
+  const next = data && typeof data === 'object' ? data : {};
+  const tid = getTenantId(req);
+  if (tid && next.tenant_id == null) next.tenant_id = tid;
+  return next;
+}
+
 function applyTenantSql(req, alias) {
   const col = (alias ? alias + '.' : '') + 'tenant_id';
   const tid = getTenantId(req);
@@ -78,6 +85,7 @@ module.exports = {
   isPlatformAdmin,
   getTenantId,
   applyTenantWhere,
+  stampTenant,
   applyTenantSql,
   assertCustomerTenant,
   slugify,

@@ -616,16 +616,17 @@ async function _loadInfraInternal(type, opts) {
   //   - lalu /infrastructure-links
   // Total bisa 4 round-trip serial. Sekarang 1 batch paralel.
   const wantCustomer = !type || type === 'customer';
-  let allRes, custRes, linksRes;
+  let allRes, custRes, linksRes, occRes;
   try {
     // Pakai apiWithRetry agar network glitch (NETWORK_CHANGED, CONNECTION_REFUSED)
     // tidak langsung membuat marker hilang — retry 2x dengan backoff.
     const requests = [
       apiWithRetry('/infrastructure/map'),
       wantCustomer ? apiWithRetry('/customers/map' + (VIEWPORT_MODE && _currentBoundsParam() ? '?bounds=' + _currentBoundsParam() : '')) : Promise.resolve(null),
-      apiWithRetry('/infrastructure-links')
+      apiWithRetry('/infrastructure-links'),
+      apiWithRetry('/infrastructure/odp-occupancy').catch(() => ({ success: false, data: [] }))
     ];
-    [allRes, custRes, linksRes] = await Promise.all(requests);
+    [allRes, custRes, linksRes, occRes] = await Promise.all(requests);
   } catch (fetchErr) {
     console.warn('[loadInfraData] fetch gagal:', fetchErr.message);
     // Jangan clearAll — biarkan marker lama tetap terlihat agar user tidak
@@ -636,6 +637,19 @@ async function _loadInfraInternal(type, opts) {
   // CLEAR-AND-RENDER baru jalan setelah fetch SUKSES. Kalau fetch gagal di atas,
   // marker lama tetap di peta — tidak ada "marker hilang lalu muncul lagi".
   clearAll();
+
+  // Occupancy server (pelanggan/ONT di ODP) menimpa used_ports manual.
+  window._odpOccupancy = { data: occRes?.data || [], summary: occRes?.summary || {} };
+  if (allRes?.success && Array.isArray(occRes?.data)) {
+    const byId = {};
+    occRes.data.forEach(o => { byId[o.id] = o; });
+    allRes.data.forEach(pt => {
+      if (byId[pt.id]) {
+        pt._occ = byId[pt.id];
+        pt.used_ports = byId[pt.id].used;
+      }
+    });
+  }
 
   // Build allInfraPoints lookup
   if (allRes?.success) allRes.data.forEach(pt => { allInfraPoints[pt.id] = pt; });
@@ -671,6 +685,7 @@ async function _loadInfraInternal(type, opts) {
   document.getElementById('st-tower').textContent = stats.tower;
   document.getElementById('st-cust').textContent  = stats.customer;
   document.getElementById('st-pop').textContent   = stats.pop;
+  renderOdpOccupancyPanel(window._odpOccupancy);
 
   // Auto-fit hanya saat first load atau ganti filter — saat edit/draw kita
   // pertahankan view agar tidak zoom-out mendadak dan bikin user kehilangan
@@ -718,6 +733,66 @@ window.flyToInfraPoint = function(id) {
     if (marker.openPopup) marker.openPopup();
   }, 1050);
 };
+
+function odpOccColor(level) {
+  return { full: '#ef4444', warning: '#f59e0b', ok: '#22c55e', unknown: '#94a3b8' }[level] || '#94a3b8';
+}
+
+function occupancyOf(pt) {
+  const occ = pt._occ || (allInfraPoints[pt.id] && allInfraPoints[pt.id]._occ);
+  if (occ) return occ;
+  const used = (allInfraPoints[pt.id] && allInfraPoints[pt.id]._connCount != null)
+    ? allInfraPoints[pt.id]._connCount
+    : (pt.used_ports || 0);
+  const cap = pt.capacity != null ? Number(pt.capacity) : null;
+  let level = 'unknown';
+  if (cap > 0) {
+    const pct = used / cap;
+    level = pct >= 1 ? 'full' : pct >= 0.8 ? 'warning' : 'ok';
+  }
+  return {
+    used,
+    capacity: cap,
+    level,
+    pct: cap ? Math.min(100, Math.round((used / cap) * 100)) : null
+  };
+}
+
+function renderOdpOccupancyPanel(bundle) {
+  const summaryEl = document.getElementById('odpOccSummary');
+  const body = document.getElementById('odpOccBody');
+  const fullEl = document.getElementById('st-occ-full');
+  const warnEl = document.getElementById('st-occ-warn');
+  const data = (bundle && bundle.data) || [];
+  const summary = (bundle && bundle.summary) || {};
+  const full = summary.full != null ? summary.full : data.filter(d => d.level === 'full').length;
+  const warning = summary.warning != null ? summary.warning : data.filter(d => d.level === 'warning').length;
+  if (fullEl) fullEl.textContent = full;
+  if (warnEl) warnEl.textContent = warning;
+  if (summaryEl) summaryEl.textContent = full + ' penuh · ' + warning + ' hampir';
+  if (!body) return;
+  const hot = data.filter(d => d.level === 'full' || d.level === 'warning');
+  if (!hot.length) {
+    body.innerHTML = '<div class="odp-occ-empty">Tidak ada ODP penuh / hampir penuh</div>';
+    return;
+  }
+  body.innerHTML = hot.map(o => {
+    const color = odpOccColor(o.level);
+    const label = o.level === 'full' ? 'Penuh' : 'Hampir';
+    return `<div class="odp-occ-row" onclick="flyToInfraPoint(${Number(o.id)})">
+      <span><b>${escHtml(o.name)}</b><br><small>${o.used}/${o.capacity == null ? '—' : o.capacity} port</small></span>
+      <span class="lvl" style="color:${color}">${label}</span>
+    </div>`;
+  }).join('');
+}
+
+function toggleOdpOccPanel() {
+  const panel = document.getElementById('odpOccPanel');
+  const chev = document.getElementById('odpOccChevron');
+  if (!panel) return;
+  panel.classList.toggle('collapsed');
+  if (chev) chev.textContent = panel.classList.contains('collapsed') ? '▸' : '▾';
+}
 
 // ─── Parent-based auto connections ───────────────────
 // Gambar garis fiber otomatis berdasarkan parent_id di tabel infrastructure_points
@@ -1206,10 +1281,11 @@ function addInfraMarker(pt) {
   // ── Icon per type ──
   function makeIcon() {
     if (pt.type === 'odp') {
-      // Pin style like customer, wifi signal icon, port utilization dot
-      const _used = (allInfraPoints[pt.id]?._connCount) ?? (pt.used_ports||0);
-    const portPct = pt.capacity ? Math.min(100,Math.round(_used/pt.capacity*100)) : 0;
-      const dotColor= portPct>80?'#ef4444':portPct>60?'#f59e0b':'#22c55e';
+      // Pin style like customer, wifi signal icon, occupancy dot
+      const occ = occupancyOf(pt);
+      const _used = occ.used;
+    const portPct = occ.pct != null ? occ.pct : (pt.capacity ? Math.min(100,Math.round(_used/pt.capacity*100)) : 0);
+      const dotColor= odpOccColor(occ.level) || (portPct>=100?'#ef4444':portPct>=80?'#f59e0b':'#22c55e');
       return L.divIcon({
         className:'',
         html:`<div style="position:relative;width:36px;height:42px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.3))">
@@ -1344,16 +1420,19 @@ function addInfraMarker(pt) {
 
   // ── Popup builder ──
   function buildInfraPopup() {
-    // Auto usage: dari jumlah link aktual (lebih akurat dari used_ports manual)
-    const autoUsed = (allInfraPoints[pt.id]?._connCount) ?? (pt.used_ports || 0);
-    const portBar = pt.capacity ? (() => {
-      const pct = Math.min(100, Math.round(autoUsed / pt.capacity * 100));
-      const bc  = pct > 80 ? '#ef4444' : pct > 60 ? '#f59e0b' : '#22c55e';
+    // Occupancy pelanggan/ONT (server) lebih akurat dari jumlah kabel di peta
+    const occ = occupancyOf(pt);
+    const autoUsed = occ.used;
+    const cap = occ.capacity != null ? occ.capacity : pt.capacity;
+    const portBar = cap ? (() => {
+      const pct = occ.pct != null ? occ.pct : Math.min(100, Math.round(autoUsed / cap * 100));
+      const bc  = odpOccColor(occ.level);
+      const lvl = occ.level === 'full' ? 'penuh' : occ.level === 'warning' ? 'hampir penuh' : 'tersedia';
       return `<div style="margin:10px 0 4px">
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
-          <span style="color:#8899b0">Port Usage</span>
-          <span style="font-weight:700;color:${bc}">${autoUsed} / ${pt.capacity}
-            <span style="font-size:10px;font-weight:500;color:#8899b0;margin-left:3px">terhubung</span>
+          <span style="color:#8899b0">Isi port</span>
+          <span style="font-weight:700;color:${bc}">${autoUsed} / ${cap}
+            <span style="font-size:10px;font-weight:500;color:#8899b0;margin-left:3px">${lvl}</span>
           </span>
         </div>
         <div style="height:5px;background:#eef2f9;border-radius:3px;overflow:hidden">

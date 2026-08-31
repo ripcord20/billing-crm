@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    :root { --rd-blue:#2563eb; --border:#e2e8f0; --text:#0f172a; --muted:#64748b; }
+    .rd { font-family:'Plus Jakarta Sans',sans-serif; }
+    .rd-hdr { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+    .rd-hdr h1 { font-size:22px; font-weight:800; margin:0 0 4px; }
+    .rd-hdr p { font-size:13px; color:var(--muted); margin:0; }
+    .rd-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:10px; font-size:12.5px; font-weight:600; cursor:pointer; border:1.5px solid var(--border); background:#fff; font-family:inherit; }
+    .rd-btn.pri { background:var(--rd-blue); color:#fff; border-color:var(--rd-blue); }
+    .psb-cols { display:grid; grid-template-columns:repeat(5,minmax(180px,1fr)); gap:10px; overflow-x:auto; padding-bottom:8px; }
+    .psb-col { background:#fff; border:1px solid var(--border); border-radius:14px; min-height:280px; display:flex; flex-direction:column; }
+    .psb-col h3 { font-size:12px; font-weight:800; margin:0; padding:12px 12px 8px; display:flex; justify-content:space-between; }
+    .psb-col h3 span { background:#f1f5f9; border-radius:999px; padding:1px 8px; font-size:11px; }
+    .psb-list { padding:0 8px 10px; display:flex; flex-direction:column; gap:8px; flex:1; }
+    .psb-card { border:1px solid #e2e8f0; border-radius:12px; padding:10px; cursor:pointer; background:#f8fafc; }
+    .psb-card:hover { border-color:#93c5fd; background:#eff6ff; }
+    .psb-card b { font-size:13px; display:block; }
+    .psb-card small { color:var(--muted); font-size:11px; }
+    .psb-drawer { position:fixed; right:0; top:0; bottom:0; width:min(420px,100%); background:#fff; z-index:1200; box-shadow:-8px 0 30px rgba(15,23,42,.12); padding:20px; overflow:auto; display:none; }
+    .psb-drawer.open { display:block; }
+    .psb-mask { position:fixed; inset:0; background:rgba(15,23,42,.35); z-index:1190; display:none; }
+    .psb-mask.open { display:block; }
+    .fld { margin-bottom:10px; }
+    .fld label { display:block; font-size:11px; font-weight:700; color:var(--muted); margin-bottom:4px; }
+    .fld input, .fld textarea, .fld select { width:100%; padding:8px 10px; border:1.5px solid var(--border); border-radius:10px; font-family:inherit; font-size:13px; }
+    .steps { display:flex; flex-wrap:wrap; gap:4px; margin:10px 0 14px; }
+    .steps i { font-style:normal; font-size:10px; padding:3px 8px; border-radius:999px; background:#f1f5f9; color:#64748b; font-weight:700; }
+    .steps i.on { background:#dbeafe; color:#1d4ed8; }
+    .steps i.done { background:#dcfce7; color:#15803d; }
+    @media (max-width:1100px) { .psb-cols { grid-template-columns:repeat(2,minmax(200px,1fr)); } }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <%- include('../partials/sidebar') %>
+    <div class="main-content">
+      <%- include('../partials/topbar') %>
+      <main class="page-content rd">
+        <div class="rd-hdr">
+          <div>
+            <h1>Pasang Baru</h1>
+            <p>Satu aliran: daftar → survey → jadwal → stok → pasang → bind ONT → redaman → PPPoE → tagihan</p>
+          </div>
+          <button class="rd-btn pri" type="button" onclick="Psb.openCreate()">+ PSB baru</button>
+        </div>
+        <div class="psb-cols" id="psbCols"></div>
+      </main>
+    </div>
+  </div>
+  <div class="psb-mask" id="psbMask" onclick="Psb.close()"></div>
+  <aside class="psb-drawer" id="psbDrawer"></aside>
+  <script src="/js/app.js"></script>
+  <script src="/js/psb.js?v=ops-2"></script>
+</body>
+</html>
