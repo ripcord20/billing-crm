@@ -806,6 +806,12 @@ input, select, textarea { font-family: inherit; }
   color: #a5f3fc;
 }
 
+.customer-source-unmatched {
+  background: #f1f5f9;
+  color: #64748b;
+  text-transform: none;
+}
+
 .customer-usage {
   display: flex;
   flex-direction: column;

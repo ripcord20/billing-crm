@@ -112,6 +112,43 @@ function matchCustomer(index, hints = {}) {
   return null;
 }
 
+function looksLikeSessionName(name) {
+  return SESSION_NAME_RE.test(String(name || ''));
+}
+
+/** Pelanggan sintetis dari username sesi/queue, dipakai kalau belum ada di CRM. */
+function syntheticCustomer(username, extra = {}) {
+  const user = String(username || '').trim();
+  if (!user) return null;
+  const key = user.toLowerCase();
+  return {
+    id: 'u:' + key,
+    customer_id: extra.customer_id || user,
+    name: extra.name || user,
+    pppoe_username: user,
+    static_ip: extra.static_ip || extra.address || null,
+    package: null,
+    unmatched: true
+  };
+}
+
+function resolveCustomer(index, hints = {}, { allowSynthetic = false } = {}) {
+  const matched = matchCustomer(index, hints);
+  if (matched) return matched;
+  if (!allowSynthetic) return null;
+  const parsed = parseSessionUsername(hints.username || hints.name || hints.user || '');
+  if (!parsed) return null;
+  if (!looksLikeSessionName(hints.name || hints.username) && !hints.forceSynthetic) return null;
+  const display = String(hints.username || hints.name || hints.user || parsed)
+    .replace(/^<|>$/g, '')
+    .replace(/^(pppoe|l2tp|sstp|pptp|ovpn)-/i, '');
+  return syntheticCustomer(parsed, {
+    name: display || parsed,
+    customer_id: display || parsed,
+    address: firstIp(hints.address || hints.target)
+  });
+}
+
 function emptyRow(customer) {
   return {
     customer,
@@ -176,12 +213,12 @@ function mergeSnapshot(index, snap = {}) {
   const byId = new Map();
 
   for (const q of snap.queues || []) {
-    const customer = matchCustomer(index, {
+    const customer = resolveCustomer(index, {
       name: q.name,
       username: q.name,
       target: q.target,
       allowFuzzyName: true
-    });
+    }, { allowSynthetic: looksLikeSessionName(q.name) });
     if (!customer) continue;
     const download = num(q.bytesIn);
     const upload = num(q.bytesOut);
@@ -198,11 +235,11 @@ function mergeSnapshot(index, snap = {}) {
   for (const iface of snap.interfaces || []) {
     if (iface.disabled === true || iface.disabled === 'true') continue;
     if (!isCustomerInterface(iface)) continue;
-    const customer = matchCustomer(index, {
+    const customer = resolveCustomer(index, {
       name: iface.name,
       username: parseSessionUsername(iface.name),
       allowFuzzyName: false
-    });
+    }, { allowSynthetic: true });
     if (!customer) continue;
     const download = num(iface.txByte);
     const upload = num(iface.rxByte);
@@ -217,12 +254,13 @@ function mergeSnapshot(index, snap = {}) {
   }
 
   for (const sess of snap.sessions || []) {
-    const customer = matchCustomer(index, {
+    const customer = resolveCustomer(index, {
       name: sess.name,
       username: sess.name,
       address: sess.address,
-      allowFuzzyName: false
-    });
+      allowFuzzyName: false,
+      forceSynthetic: true
+    }, { allowSynthetic: true });
     if (!customer) continue;
     const upload = num(sess.bytesIn);
     const download = num(sess.bytesOut);
@@ -238,12 +276,13 @@ function mergeSnapshot(index, snap = {}) {
   }
 
   for (const hs of snap.hotspot || []) {
-    const customer = matchCustomer(index, {
+    const customer = resolveCustomer(index, {
       name: hs.user,
       username: hs.user,
       address: hs.address,
-      allowFuzzyName: false
-    });
+      allowFuzzyName: false,
+      forceSynthetic: true
+    }, { allowSynthetic: true });
     if (!customer) continue;
     const upload = num(hs.bytesIn);
     const download = num(hs.bytesOut);
@@ -322,7 +361,8 @@ function formatRows(acc, { limit = 10, sortBy = 'bytes' } = {}) {
       avg_upload_mbps: txMbps.toFixed(2),
       peak_download_mbps: rxMbps.toFixed(2),
       usage_percent: speedDown ? ((rxMbps / speedDown) * 100).toFixed(1) : 0,
-      sources: Array.from(row.sources)
+      sources: Array.from(row.sources),
+      unmatched: !!row.customer.unmatched
     };
   }).filter((r) => (
     parseFloat(r.total_gb) > 0
@@ -351,5 +391,8 @@ module.exports = {
   mergeAcrossRouters,
   collectLiveSnapshot,
   collectFromDevices,
-  formatRows
+  formatRows,
+  looksLikeSessionName,
+  syntheticCustomer,
+  resolveCustomer
 };

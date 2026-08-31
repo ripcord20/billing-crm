@@ -143,6 +143,37 @@ assert.strictEqual(bw.matchCustomer(index, { name: '<43. WARUNG NIA>' }).id, 2);
   assert.ok(rows[0].sources.includes('queue'));
 }
 
+// ── unmatched PPPoE queue/session tetap muncul (tanpa CRM) ──
+{
+  const emptyIdx = bw.buildIndex([]);
+  const acc = bw.mergeSnapshot(emptyIdx, {
+    queues: [
+      { name: '<pppoe-SENDY>', bytesIn: String(7 * GB), bytesOut: String(1 * GB), rateIn: '0', rateOut: '0' },
+      { name: '2. Social Media', bytesIn: String(90 * GB), bytesOut: '0', rateIn: '0', rateOut: '0' }
+    ],
+    interfaces: [
+      { name: 'ether1', type: 'ether', txByte: 80 * GB, rxByte: 80 * GB }
+    ],
+    sessions: [{ name: 'PONIAH', bytesIn: 0.5 * GB, bytesOut: 2 * GB, service: 'pppoe' }]
+  });
+  assert.ok(acc.has('u:sendy'), 'queue <pppoe-USER> tanpa CRM harus tetap terhitung');
+  assert.ok(acc.has('u:poniah'), 'sesi PPP tanpa CRM harus tetap terhitung');
+  assert.ok(![...acc.keys()].some(k => String(k).includes('social')), 'parent queue bukan pelanggan');
+  const rows = bw.formatRows(acc, { limit: 10 });
+  const sendy = rows.find(r => r.pppoe_username === 'sendy');
+  assert.ok(sendy.unmatched);
+  assert.strictEqual(sendy.total_gb, (8).toFixed(2));
+}
+
+// ── CRM match menang dari synthetic untuk username yang sama ──
+{
+  const acc = bw.mergeSnapshot(index, {
+    queues: [{ name: '<pppoe-andi>', bytesIn: String(2 * GB), bytesOut: '0', rateIn: '0', rateOut: '0' }]
+  });
+  assert.ok(acc.has(1));
+  assert.ok(!acc.has('u:andi'));
+}
+
 // ── collectLiveSnapshot tahan endpoint yang gagal ───────────
 (async () => {
   const snap = await bw.collectLiveSnapshot({

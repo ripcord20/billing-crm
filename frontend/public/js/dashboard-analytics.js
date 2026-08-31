@@ -170,7 +170,7 @@ async function loadTopCustomers() {
           <div class="customer-meta">
             <span class="customer-id">${escHtml(customer.customer_id)}</span>
             <span class="customer-package">${escHtml(customer.package_name || '-')}</span>
-            ${sourceBadges(customer.sources)}
+            ${sourceBadges(customer)}
           </div>
         </div>
         <div class="customer-usage">
@@ -662,12 +662,19 @@ const SOURCE_LABELS = {
   ovpn: 'OVPN'
 };
 
-function sourceBadges(sources) {
-  if (!Array.isArray(sources) || !sources.length) return '';
-  return sources.map((src) => {
-    const label = SOURCE_LABELS[src] || src;
-    return `<span class="customer-source">${escHtml(label)}</span>`;
-  }).join('');
+function sourceBadges(customer) {
+  const sources = customer && customer.sources;
+  const parts = [];
+  if (Array.isArray(sources)) {
+    sources.forEach((src) => {
+      const label = SOURCE_LABELS[src] || src;
+      parts.push(`<span class="customer-source">${escHtml(label)}</span>`);
+    });
+  }
+  if (customer && customer.unmatched) {
+    parts.push('<span class="customer-source customer-source-unmatched">MikroTik</span>');
+  }
+  return parts.join('');
 }
 // ═══════════════════════════════════════════════════════════════
 // PETA SEBARAN PELANGGAN + STATUS UP/DOWN (dashboard)
