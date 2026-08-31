@@ -143,7 +143,7 @@ router.use((req, res, next) => {
 const _tenantAllowedPaths = new Set([
   '/dashboard', '/tenant', '/customers', '/billing', '/payments', '/packages',
   '/login', '/logout', '/', '/mitra', '/mitra/daftar', '/kebijakan-privasi',
-  '/panduan/mikrotik'
+  '/panduan/mikrotik', '/radius'
 ]);
 const _tenantAllowedPrefixes = ['/customers/', '/billing/', '/payments/', '/packages/'];
 router.use((req, res, next) => {
@@ -204,6 +204,13 @@ router.get('/panduan/mikrotik', authenticate, allowMitraGuidePage, async (req, r
     guide,
     isStaff: ['superadmin', 'admin', 'finance', 'noc'].includes(role)
   });
+});
+
+router.get('/radius', authenticate, (req, res) => {
+  const r = (req.user?.role?.name || '').toLowerCase();
+  if (r === 'tenant_owner') return res.redirect('/panduan/mikrotik');
+  if (!['superadmin', 'admin', 'finance', 'noc'].includes(r)) return res.redirect('/dashboard');
+  res.render('pages/radius', { title: 'RADIUS', user: req.user, active: 'radius' });
 });
 
 // ═══════════════════════════════════════════════════════════════════
