@@ -157,7 +157,8 @@
               <tbody>
                 <tr><td>ROS 6 tidak ada menu WireGuard</td><td>Benar — jangan pasang paket. Pakai tab <strong>L2TP/IPsec</strong>.</td></tr>
                 <tr><td>L2TP tidak connect</td><td>Owner buka UDP 1701 + IPsec (500/4500) di IP publik. Host jangan 192.168.x untuk mitra remote.</td></tr>
-                <tr><td>WG handshake 0s</td><td>Owner buka UDP 51820 di IP publik, peer sudah dipasang di server.</td></tr>
+                <tr><td>WG handshake 0s</td><td>Endpoint harus IP/DNS publik Fiberix, peer sudah di concentrator. Bukan IP LAN MikroTik reseller.</td></tr>
+                <tr><td>Host VPN = 192.168.x MikroTik reseller</td><td>Salah peran. MikroTik itu peer (satu script). Concentrator = server Fiberix, bukan router reseller.</td></tr>
                 <tr><td>Tunnel hidup, PPPoE timeout</td><td>Secret RADIUS / nasname harus IP tunnel, bukan IP LAN rumah.</td></tr>
                 <tr><td>Isolir tidak jalan</td><td>Di Device Management, host = IP tunnel, port 8728.</td></tr>
               </tbody>
@@ -173,7 +174,7 @@
               <li>Kalau FreeRADIUS sudah jalan di server terpisah, <strong>jangan pakai Modul RADIUS di billing</strong>. MikroTik tetap mengarah ke server RADIUS yang ada.</li>
               <li>ROS 7: tunnel WireGuard. ROS 6: L2TP/IPsec. Script dari Modul NAS (staf), bukan dari Modul RADIUS.</li>
               <li>Jangan suruh mitra install Tailscale/ZeroTier. Itu bukan jalur Fiberix.</li>
-              <li>Host VPN harus IP/DNS publik jika mitra di luar LAN.</li>
+              <li>Jangan isi endpoint dengan IP LAN MikroTik reseller/mitra. Router itu <strong>peer</strong>. Host VPN = concentrator Fiberix (IP/DNS publik).</li>
             </ol>
             <p style="margin:12px 0 0;font-size:13px;">
               <a href="/nas">Modul NAS</a>

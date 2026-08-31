@@ -35,6 +35,9 @@ assert.ok(lan.scripts.v6.includes('use-ipsec=yes'));
 assert.ok(lan.scripts.v6.includes('connect-to=192.168.61.2'));
 assert.ok(lan.verify_v6.some((c) => c.includes('l2tp-client')));
 assert.ok(!lan.verify_v6.some((c) => c.includes('wireguard')));
+assert.ok(lan.endpoint_warning.includes('klien/peer'));
+assert.ok(lan.endpoint_warning.includes('bukan server VPN'));
+assert.ok(!lan.endpoint_warning.includes('hanya tembus dari jaringan Fiberix'));
 
 const pub = buildMitraMikrotikGuide({
   wg_endpoint_host: '103.153.62.130',

@@ -149,7 +149,10 @@ function buildMitraMikrotikGuide(settings) {
     guide.endpoint_warning = 'Owner belum mengisi host VPN publik. Mitra di internet belum bisa nyambung.';
   } else if (endpointIsPrivate && l2tpIsPrivate) {
     guide.endpoint_warning =
-      `Host VPN sekarang masih LAN (${guide.l2tp_display} / ${guide.endpoint_display}). Itu hanya tembus dari jaringan Fiberix. Mitra remote butuh IP/DNS publik + port UDP 51820 (ROS7) atau UDP 1701 + IPsec (ROS6).`;
+      `Host VPN masih IP LAN (${guide.l2tp_display} / ${guide.endpoint_display}). ` +
+      'Itu alamat MikroTik di jaringan Fiberix (reseller/mitra) — dia jadi klien/peer, bukan server VPN. ' +
+      'Jangan suruh mitra lain connect ke IP itu. ' +
+      'Host VPN = mesin Fiberix yang listen UDP 51820 (ROS7) atau UDP 1701+IPsec (ROS6) di IP/DNS publik.';
   } else {
     guide.endpoint_warning = null;
   }
