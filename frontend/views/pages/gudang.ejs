@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    :root { --rd-blue:#2563eb; --border:#e2e8f0; --text:#0f172a; --muted:#64748b; }
+    .rd { font-family:'Plus Jakarta Sans',sans-serif; }
+    .rd-hdr { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+    .rd-hdr h1 { font-size:22px; font-weight:800; margin:0 0 4px; }
+    .rd-hdr p { font-size:13px; color:var(--muted); margin:0; }
+    .rd-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:10px; font-size:12.5px; font-weight:600; cursor:pointer; border:1.5px solid var(--border); background:#fff; font-family:inherit; }
+    .rd-btn.pri { background:var(--rd-blue); color:#fff; border-color:var(--rd-blue); }
+    .rd-cards { display:grid; grid-template-columns:repeat(5,1fr); background:#fff; border:1px solid var(--border); border-radius:16px; overflow:hidden; margin-bottom:14px; }
+    .rd-card { padding:14px 16px; border-right:1px solid var(--border); }
+    .rd-card:last-child { border-right:none; }
+    .rd-lbl { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; }
+    .rd-val { font-size:22px; font-weight:800; margin-top:4px; }
+    .gd-table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+    .gd-table th { text-align:left; font-size:11px; color:var(--muted); padding:10px 12px; background:#f8fafc; }
+    .gd-table td { padding:10px 12px; border-top:1px solid #f1f5f9; font-size:13px; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+    .in_stock { background:#dcfce7; color:#15803d; }
+    .checked_out { background:#ffedd5; color:#c2410c; }
+    .installed { background:#dbeafe; color:#1d4ed8; }
+    .damaged { background:#fee2e2; color:#b91c1c; }
+    .modal { display:none; position:fixed; inset:0; background:rgba(15,23,42,.4); z-index:80; align-items:center; justify-content:center; }
+    .modal.open { display:flex; }
+    .modal box, .mbox { background:#fff; border-radius:16px; padding:18px; width:min(420px,92vw); }
+    .fld { margin-bottom:10px; }
+    .fld label { display:block; font-size:11px; font-weight:700; color:var(--muted); margin-bottom:4px; }
+    .fld input, .fld select { width:100%; padding:8px 10px; border:1.5px solid var(--border); border-radius:10px; font-family:inherit; }
+    @media (max-width:800px) { .rd-cards { grid-template-columns:repeat(2,1fr); } }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <%- include('../partials/sidebar') %>
+    <div class="main-content">
+      <%- include('../partials/topbar') %>
+      <main class="page-content rd">
+        <div class="rd-hdr">
+          <div>
+            <h1>Gudang SN</h1>
+            <p>ONT / adaptor / kabel: masuk → checkout teknisi → terpasang di pelanggan</p>
+          </div>
+          <button class="rd-btn pri" type="button" onclick="Gudang.openIn()">+ Masuk gudang</button>
+        </div>
+        <div class="rd-cards" id="gdStats"></div>
+        <table class="gd-table">
+          <thead><tr><th>Serial / Nama</th><th>Tipe</th><th>Status</th><th>Teknisi</th><th>Pelanggan</th><th></th></tr></thead>
+          <tbody id="gdBody"></tbody>
+        </table>
+      </main>
+    </div>
+  </div>
+  <div class="modal" id="gdModal"><div class="mbox" id="gdBox"></div></div>
+  <script src="/js/app.js"></script>
+  <script src="/js/gudang.js?v=ops-2"></script>
+</body>
+</html>

@@ -117,6 +117,10 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       allowNull: true,
       references: { model: 'infrastructure_points', key: 'id' }
+    },
+    tenant_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
     }
   }, {
     tableName: 'devices',

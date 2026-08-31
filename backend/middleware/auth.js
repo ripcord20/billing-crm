@@ -124,7 +124,11 @@ const hasPermission = (...permissions) => {
     const roleName = (req.user.role?.name || '').toLowerCase();
     const ROLE_GRANTS = {
       finance: ['customer_view', 'customer_create', 'customer_update', 'customer_delete'],
-      tenant_owner: ['customer_view', 'customer_create', 'customer_update'],
+      tenant_owner: [
+        'customer_view', 'customer_create', 'customer_update',
+        'device_create', 'device_update', 'device_delete',
+        'infra_create', 'infra_update', 'infra_delete'
+      ],
     };
     const granted = ROLE_GRANTS[roleName] || [];
     if (granted.length && permissions.some(p => granted.includes(p))) {

@@ -189,5 +189,20 @@
   window.addEventListener('resize', () => { if (chartPoints.length) drawChart(chartPoints); });
   document.addEventListener('DOMContentLoaded', refresh);
 
-  window.OntRedaman = { refresh, setSeverity, debounceSearch, select };
+  window.OntRedaman = { refresh, setSeverity, debounceSearch, select, scanAlarms };
+
+  async function scanAlarms() {
+    const btn = $('rdScanAlarmBtn');
+    if (btn) { btn.disabled = true; btn.classList.add('spin'); }
+    try {
+      const r = await App.api('/alarms/scan', { method: 'POST', body: '{}' });
+      const n = (r.data && r.data.created && r.data.created.length) || 0;
+      alert(n ? (n + ' tiket alarm dibuat') : (r.message || 'Tidak ada alarm baru'));
+      if (n) window.location.href = '/tickets';
+    } catch (e) {
+      alert(e.message || 'Gagal scan alarm');
+    } finally {
+      if (btn) { btn.disabled = false; btn.classList.remove('spin'); }
+    }
+  }
 })();

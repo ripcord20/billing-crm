@@ -2,6 +2,7 @@
 
 const { InfrastructurePoint, Customer } = require('../models');
 const { Op } = require('sequelize');
+const { applyTenantWhere, stampTenant } = require('../utils/tenantScope');
 
 class InfrastructureController {
 
@@ -9,7 +10,7 @@ class InfrastructureController {
   async index(req, res) {
     try {
       const { type, status, search } = req.query;
-      const where = {};
+      const where = applyTenantWhere(req, {});
       if (type)   where.type   = type;
       if (status) where.status = status;
       if (search) where.name   = { [Op.like]: `%${search}%` };
@@ -28,7 +29,7 @@ class InfrastructureController {
   async mapData(req, res) {
     try {
       const points = await InfrastructurePoint.findAll({
-        where: { status: { [Op.ne]: 'inactive' } },
+        where: applyTenantWhere(req, { status: { [Op.ne]: 'inactive' } }),
         attributes: ['id','name','type','latitude','longitude','status',
                      'capacity','used_ports','parent_id','metadata','notes'],
         order: [['type', 'ASC'], ['name', 'ASC']],
@@ -73,7 +74,7 @@ class InfrastructureController {
       if (!name || !type || latitude == null || longitude == null)
         return res.status(400).json({ success: false, message: 'name, type, latitude, longitude wajib diisi' });
 
-      const point = await InfrastructurePoint.create({
+      const point = await InfrastructurePoint.create(stampTenant(req, {
         name, type, latitude, longitude,
         address:    address    || null,
         status:     status     || 'active',
@@ -82,7 +83,7 @@ class InfrastructureController {
         parent_id:  parent_id  || null,
         metadata:   metadata   || null,
         notes:      notes      || null,
-      });
+      }));
 
       // Reverse-sync: kalau ini titik customer (type='customer' dgn metadata.customer_id),
       // update juga Customer record agar lat/lng/parent konsisten dua arah. Best-effort.
@@ -345,6 +346,24 @@ class InfrastructureController {
       });
     } catch(e) {
       res.status(500).json({ success: false, error: e.message });
+    }
+  }
+
+  async odpOccupancy(req, res) {
+    try {
+      const occupancy = require('../services/OdpOccupancy');
+      const { applyTenantWhere } = require('../utils/tenantScope');
+      const data = await occupancy.recountAll(applyTenantWhere(req, {}));
+      const summary = {
+        total: data.length,
+        full: data.filter((d) => d.level === 'full').length,
+        warning: data.filter((d) => d.level === 'warning').length,
+        ok: data.filter((d) => d.level === 'ok').length,
+        unknown: data.filter((d) => d.level === 'unknown').length
+      };
+      res.json({ success: true, data, summary });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
     }
   }
 
