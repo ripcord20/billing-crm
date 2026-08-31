@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .mk-page { max-width: 860px; }
+    .mk-lead { margin: 6px 0 0; color: var(--text-secondary); font-size: 14px; line-height: 1.55; }
+    .mk-alert { border-radius: 12px; padding: 13px 15px; margin: 16px 0; font-size: 13.5px; line-height: 1.6; }
+    .mk-alert.warn { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; }
+    .mk-alert.ok { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+    .mk-alert.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; }
+    [data-theme="dark"] .mk-alert.warn { background: #3b2a10; border-color: #854d0e; color: #fde68a; }
+    [data-theme="dark"] .mk-alert.ok { background: #064e3b; border-color: #047857; color: #a7f3d0; }
+    [data-theme="dark"] .mk-alert.info { background: #1e3a5f; border-color: #1d4ed8; color: #bfdbfe; }
+    .mk-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .mk-pick-card {
+      border: 1px solid var(--border); border-radius: 14px; padding: 16px 16px 14px; background: var(--bg);
+    }
+    .mk-pick-card h3 { margin: 0 0 6px; font-size: 16px; }
+    .mk-pick-card p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+    .mk-pick-card .mk-tag { display: inline-block; margin-bottom: 8px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--primary); }
+    .mk-steps { margin: 0; padding-left: 20px; }
+    .mk-steps li { margin: 0 0 8px; line-height: 1.5; }
+    .mk-inline, .mk-steps code {
+      font-family: 'DM Mono', monospace; font-size: 12px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 1px 6px;
+    }
+    .mk-prewrap { position: relative; }
+    .mk-pre {
+      margin: 0; background: #0f172a; color: #e2e8f0; border-radius: 12px; padding: 14px 16px;
+      font-family: 'DM Mono', monospace; font-size: 12px; line-height: 1.5; overflow: auto; white-space: pre;
+    }
+    .mk-copy {
+      position: absolute; top: 8px; right: 8px; border: 0; background: #1e293b; color: #e2e8f0;
+      border-radius: 8px; padding: 5px 9px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .mk-tabs { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+    .mk-tab {
+      border: 1px solid var(--border); background: var(--bg-card); color: var(--text); border-radius: 8px;
+      padding: 6px 10px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .mk-tab.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .mk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .mk-table th, .mk-table td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .mk-table th { color: var(--text-muted); font-size: 11px; text-transform: uppercase; }
+    @media (max-width: 700px) { .mk-pick { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <%- include('../partials/sidebar') %>
+    <div class="main-content">
+      <%- include('../partials/topbar') %>
+      <main class="page-content mk-page">
+        <div class="page-header">
+          <div class="page-header-left">
+            <h1>Hubungkan MikroTik</h1>
+            <p class="mk-lead">
+              Tidak perlu IP public, tidak perlu buka port, tidak perlu buka <strong>Modul RADIUS</strong>.
+              Mitra hanya tempel script. Pilih versi RouterOS di bawah.
+            </p>
+          </div>
+        </div>
+
+        <div class="mk-alert info">
+          <strong>Modul RADIUS tidak perlu ditampilkan ke mitra.</strong>
+          Itu setting server FreeRADIUS (sekali, oleh owner). Kerja harian mitra: paket, pelanggan, tagihan — plus tempel script di Winbox.
+        </div>
+
+        <div class="mk-alert warn">
+          <strong>Jangan Tailscale / ZeroTier di MikroTik mitra.</strong>
+          Ide “tanpa IP public, tembus NAT” itu yang dipakai Fiberix.
+          Tapi Tailscale/ZeroTier untuk <em>laptop/server Linux</em>, bukan RouterOS:
+          ROS 6 tidak bisa dipasang, ROS 7 butuh container (sering gagal di RB biasa),
+          plus akun SaaS pihak ketiga. Mitra tempel script WireGuard (ROS 7) atau L2TP (ROS 6) bawaan Winbox.
+        </div>
+
+        <% if (guide.endpoint_warning) { %>
+          <div class="mk-alert warn"><%= guide.endpoint_warning %></div>
+        <% } %>
+
+        <div class="mk-pick" style="margin-bottom:16px;">
+          <div class="mk-pick-card">
+            <span class="mk-tag">RouterOS 7 — paling mudah</span>
+            <h3>WireGuard</h3>
+            <p>Sudah built-in. Satu script dari owner, tempel di New Terminal, cek handshake. Tanpa paket extra. <strong>Tidak sewa VPN cloud.</strong></p>
+          </div>
+          <div class="mk-pick-card">
+            <span class="mk-tag">RouterOS 6 — tanpa WireGuard</span>
+            <h3>L2TP / IPsec</h3>
+            <p>ROS 6 rata-rata tidak punya WireGuard. Pakai L2TP/IPsec yang sudah ada di menu PPP. Tetap outbound, tetap tanpa IP public.</p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><h3>3 langkah (mitra)</h3></div>
+          <div class="card-body">
+            <ol class="mk-steps">
+              <li>Minta script ke owner Fiberix (sebutkan ROS 6 atau ROS 7).</li>
+              <li>Winbox → <strong>New Terminal</strong> → tempel → Enter.</li>
+              <li>Cek perintah di bawah. Lalu tes 1 pelanggan PPPoE.</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><h3>Contoh script — ganti nilai dari owner</h3></div>
+          <div class="card-body">
+            <div class="mk-tabs">
+              <button type="button" class="mk-tab on" data-tab="v7">ROS 7 · WireGuard</button>
+              <button type="button" class="mk-tab" data-tab="v6">ROS 6 · L2TP/IPsec</button>
+            </div>
+            <div class="mk-prewrap" data-pane="v7">
+              <button type="button" class="mk-copy" data-copy="v7">Salin</button>
+              <pre class="mk-pre" id="mkScriptV7"><%= guide.scripts.v7 %></pre>
+            </div>
+            <div class="mk-prewrap" data-pane="v6" style="display:none">
+              <button type="button" class="mk-copy" data-copy="v6">Salin</button>
+              <pre class="mk-pre" id="mkScriptV6"><%= guide.scripts.v6 %></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><h3>Cek sudah nyambung</h3></div>
+          <div class="card-body">
+            <div class="mk-tabs">
+              <button type="button" class="mk-tab on" data-verify="v7">Cek ROS 7</button>
+              <button type="button" class="mk-tab" data-verify="v6">Cek ROS 6</button>
+            </div>
+            <div class="mk-prewrap" data-vfy="v7">
+              <button type="button" class="mk-copy" data-copy="verify7">Salin</button>
+              <pre class="mk-pre" id="mkVerify7"><%= guide.verify_v7.join('\n') %></pre>
+            </div>
+            <div class="mk-prewrap" data-vfy="v6" style="display:none">
+              <button type="button" class="mk-copy" data-copy="verify6">Salin</button>
+              <pre class="mk-pre" id="mkVerify6"><%= guide.verify_v6.join('\n') %></pre>
+            </div>
+            <ul class="mk-steps" style="margin-top:12px;">
+              <li>ROS 7: <code>last-handshake</code> harus ada waktu, bukan kosong.</li>
+              <li>ROS 6: L2TP client status <strong>running / connected</strong>.</li>
+              <li>Ping <code class="mk-inline"><%= guide.server_address %></code> dan <code class="mk-inline"><%= guide.radius_host %></code> reply.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><h3>Kalau macet</h3></div>
+          <div class="card-body" style="padding:0;">
+            <table class="mk-table">
+              <thead><tr><th>Gejala</th><th>Perbaikan</th></tr></thead>
+              <tbody>
+                <tr><td>ROS 6 tidak ada menu WireGuard</td><td>Benar — jangan pasang paket. Pakai tab <strong>L2TP/IPsec</strong>.</td></tr>
+                <tr><td>L2TP tidak connect</td><td>Owner buka UDP 1701 + IPsec (500/4500) di IP publik. Host jangan 192.168.x untuk mitra remote.</td></tr>
+                <tr><td>WG handshake 0s</td><td>Endpoint harus IP/DNS publik Fiberix, peer sudah di concentrator. Bukan IP LAN MikroTik reseller.</td></tr>
+                <tr><td>Host VPN = 192.168.x MikroTik reseller</td><td>Salah peran. MikroTik itu peer (satu script). Concentrator = server Fiberix, bukan router reseller.</td></tr>
+                <tr><td>Tunnel hidup, PPPoE timeout</td><td>Secret RADIUS / nasname harus IP tunnel, bukan IP LAN rumah.</td></tr>
+                <tr><td>Isolir tidak jalan</td><td>Di Device Management, host = IP tunnel, port 8728.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <% if (typeof isStaff !== 'undefined' && isStaff) { %>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><h3>Hanya owner / staf Fiberix</h3></div>
+          <div class="card-body">
+            <ol class="mk-steps">
+              <li>Kalau FreeRADIUS sudah jalan di server terpisah, <strong>jangan pakai Modul RADIUS di billing</strong>. MikroTik tetap mengarah ke server RADIUS yang ada.</li>
+              <li>ROS 7: tunnel WireGuard. ROS 6: L2TP/IPsec. Script dari Modul NAS (staf), bukan dari Modul RADIUS.</li>
+              <li>Jangan suruh mitra install Tailscale/ZeroTier. Itu bukan jalur Fiberix.</li>
+              <li>Jangan isi endpoint dengan IP LAN MikroTik reseller/mitra. Router itu <strong>peer</strong>. Host VPN = concentrator Fiberix (IP/DNS publik).</li>
+            </ol>
+            <p style="margin:12px 0 0;font-size:13px;">
+              <a href="/nas">Modul NAS</a>
+              · host WG <code class="mk-inline"><%= guide.endpoint_display %></code>
+              · host L2TP <code class="mk-inline"><%= guide.l2tp_display %></code>
+            </p>
+          </div>
+        </div>
+        <% } %>
+      </main>
+    </div>
+  </div>
+  <script src="/js/app.js"></script>
+  <script src="/js/panduan-mikrotik.js"></script>
+</body>
+</html>
