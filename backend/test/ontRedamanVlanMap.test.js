@@ -95,6 +95,7 @@ assert.strictEqual(norm.length, 2);
 const infraJs = fs.readFileSync(path.join(__dirname, '../../frontend/public/js/infrastructure.js'), 'utf8');
 assert.ok(!/rastertiles\/voyager/.test(infraJs), 'peta infrastruktur tidak boleh pakai Carto Voyager (watermark API key)');
 assert.ok(/tile\.openstreetmap\.org/.test(infraJs), 'mode Map harus OSM standar');
+assert.ok(/maxZoom:\s*19/.test(infraJs), 'maxZoom peta harus 19 agar tile OSM tampil');
 
 const infraEjs = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/infrastructure.ejs'), 'utf8');
 assert.ok(!/left:\s*50%;\s*[\s\S]*transform:\s*translateX\(-50%\)/.test(infraEjs.split('SEARCH BAR')[1] || ''), 'search tidak boleh overlay tengah peta');

@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initMap() {
-  map = L.map('infraMap', { zoomControl: false, preferCanvas: true, maxZoom: 20 }).setView([-6.595, 106.790], 14);
+  map = L.map('infraMap', { zoomControl: false, preferCanvas: true, maxZoom: 19 }).setView([-6.595, 106.790], 14);
   L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
   // ── Cluster group untuk marker PELANGGAN ──────────────────────────
@@ -297,7 +297,7 @@ function initMap() {
   // jumlahnya sedikit & saling terhubung garis.
   if (typeof L.markerClusterGroup === 'function') {
     customerCluster = L.markerClusterGroup({
-      maxZoom: 20,                     // WAJIB: cegah error "Map has no maxZoom"
+      maxZoom: 19,                     // OSM/Esri tiles tidak punya z20 (Carto watermarked z20)
       chunkedLoading: true,            // render bertahap → UI tidak freeze
       chunkInterval: 120,
       chunkDelay: 30,
@@ -413,6 +413,7 @@ function switchTile(type, btn) {
     detectRetina: false,
     opacity: 1
   }).addTo(map);
+  if (map.getZoom() > 19) map.setZoom(19);
 }
 
 // ─── Filter ───────────────────────────────────────────
@@ -675,7 +676,10 @@ async function _loadInfraInternal(type, opts) {
   // pertahankan view agar tidak zoom-out mendadak dan bikin user kehilangan
   // fokus dari area yang sedang dikerjakan.
   if (markers.length > 0 && !preserveView) {
-    try { map.fitBounds(L.featureGroup(markers).getBounds().pad(0.1)); } catch(e) {}
+    try {
+      map.fitBounds(L.featureGroup(markers).getBounds().pad(0.1));
+      if (map.getZoom() > 19) map.setZoom(19);
+    } catch(e) {}
   }
 
   // Refresh search index untuk fitur pencarian global di kanan atas peta
