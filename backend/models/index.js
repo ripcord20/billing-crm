@@ -47,6 +47,9 @@ const QosAlert = require('./QosAlert')(sequelize);
 const AuthFailEvent = require('./AuthFailEvent')(sequelize);
 const Device = require('./Device')(sequelize);
 const DeviceLog = require('./DeviceLog')(sequelize);
+const NasDevice = require('./NasDevice')(sequelize);
+const RadiusServer = require('./RadiusServer')(sequelize);
+const RadiusAccount = require('./RadiusAccount')(sequelize);
 const InfrastructurePoint = require('./InfrastructurePoint')(sequelize);
 const InfrastructureLink  = require('./InfrastructureLink')(sequelize);
 const OntDevice = require('./OntDevice')(sequelize);
@@ -193,6 +196,17 @@ User.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
 Tenant.hasMany(Customer, { foreignKey: 'tenant_id', as: 'customers' });
 Customer.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
 
+NasDevice.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+NasDevice.belongsTo(RadiusServer, { foreignKey: 'radius_server_id', as: 'radius_server' });
+NasDevice.belongsTo(Device, { foreignKey: 'device_id', as: 'device' });
+Device.hasMany(NasDevice, { foreignKey: 'device_id', as: 'nas_devices' });
+RadiusServer.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+RadiusServer.hasMany(NasDevice, { foreignKey: 'radius_server_id', as: 'nas_devices' });
+RadiusAccount.belongsTo(RadiusServer, { foreignKey: 'radius_server_id', as: 'radius_server' });
+RadiusAccount.belongsTo(NasDevice, { foreignKey: 'nas_id', as: 'nas' });
+RadiusAccount.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
+RadiusAccount.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+
 // Role <-> Permission (Many-to-Many)
 Role.belongsToMany(Permission, { through: RolePermission, foreignKey: 'role_id', as: 'permissions' });
 Permission.belongsToMany(Role, { through: RolePermission, foreignKey: 'permission_id', as: 'roles' });
@@ -270,6 +284,9 @@ const db = {
   AuthFailEvent,
   Device,
   DeviceLog,
+  NasDevice,
+  RadiusServer,
+  RadiusAccount,
   InfrastructurePoint,
   InfrastructureLink,
   OntDevice,

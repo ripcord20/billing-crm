@@ -73,6 +73,22 @@ router.put('/auth/password', authenticate, demoGuard, AuthController.changePassw
 router.get('/mitra/mikrotik-guide', authenticate, demoGuard, require('../controllers/MitraMikrotikGuideController').show);
 router.post('/nas/wireguard/phone-qr', authenticate, demoGuard, require('../controllers/WireguardPhoneQrController').createPhone);
 
+const NasController = require('../controllers/NasController');
+const { tenantContextMiddleware } = require('../middleware/tenantContext');
+const nasStaff = authorize('superadmin', 'admin', 'finance', 'noc');
+router.get('/nas/wireguard/server', authenticate, demoGuard, tenantContextMiddleware, nasStaff, (r, s) => NasController.wgServerGet(r, s));
+router.put('/nas/wireguard/server', authenticate, demoGuard, tenantContextMiddleware, nasStaff, (r, s) => NasController.wgServerSave(r, s));
+router.post('/nas/wireguard/server/init-keys', authenticate, demoGuard, tenantContextMiddleware, nasStaff, (r, s) => NasController.wgServerInitKeys(r, s));
+router.post('/nas/import', authenticate, demoGuard, tenantContextMiddleware, nasStaff, (r, s) => NasController.importFromRadius(r, s));
+router.get('/nas', authenticate, demoGuard, tenantContextMiddleware, nasStaff, (r, s) => NasController.index(r, s));
+router.post('/nas', authenticate, demoGuard, tenantContextMiddleware, nasStaff, (r, s) => NasController.create(r, s));
+router.post('/nas/:id/sync', authenticate, demoGuard, tenantContextMiddleware, nasStaff, (r, s) => NasController.syncOne(r, s));
+router.post('/nas/:id/wg/generate', authenticate, demoGuard, tenantContextMiddleware, nasStaff, (r, s) => NasController.wgGenerate(r, s));
+router.post('/nas/:id/vpn/generate', authenticate, demoGuard, tenantContextMiddleware, nasStaff, (r, s) => NasController.vpnGenerate(r, s));
+router.post('/nas/:id/routeros-script', authenticate, demoGuard, tenantContextMiddleware, nasStaff, (r, s) => NasController.routerosScript(r, s));
+router.put('/nas/:id', authenticate, demoGuard, tenantContextMiddleware, nasStaff, (r, s) => NasController.update(r, s));
+router.delete('/nas/:id', authenticate, demoGuard, tenantContextMiddleware, nasStaff, (r, s) => NasController.destroy(r, s));
+
 // ═══════════════════════════════════════════════════════════════════
 // FINANCE ROLE — Path-prefix API block
 // ─────────────────────────────────────────────────────────────────

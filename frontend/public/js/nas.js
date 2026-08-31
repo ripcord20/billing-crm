@@ -14,10 +14,16 @@ function modeBadge(n){
 async function loadNas(){
   const tb=document.getElementById('nasTable');
   const d=await App.api('/nas');
-  if(!d?.success){tb.innerHTML=`<tr><td colspan="6" style="text-align:center;color:#dc2626;padding:24px;">${esc(d?.message)}</td></tr>`;return;}
+  if(!d?.success){
+    const msg=d?.message==='Route not found'
+      ? 'API Modul NAS belum aktif di server. Refresh setelah diperbaiki.'
+      : (d?.message||'Gagal memuat NAS');
+    tb.innerHTML=`<tr><td colspan="6" style="text-align:center;color:#dc2626;padding:24px;">${esc(msg)}</td></tr>`;
+    return;
+  }
   if(!d.data.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:#94a3b8;">Belum ada NAS. Tambah router yang auth ke FreeRADIUS.</td></tr>';return;}
   tb.innerHTML=d.data.map(n=>`<tr>
-    <td class="mono">${esc(n.nasname)}${n.tunnel_address?`<br><span style="font-size:11px;color:#64748b;">tunnel: ${esc(n.tunnel_address)}</span>`:''}</td>
+    <td class="mono">${esc(n.nasname)}${n.tunnel_address?`<br><span style="font-size:11px;color:#64748b;">tunnel: ${esc(n.tunnel_address)}</span>`:''}${n.device?`<br><span style="font-size:11px;color:#166534;">Device: ${esc(n.device.name)}</span>`:''}</td>
     <td>${esc(n.shortname||'—')}</td>
     <td>${esc(n.type)}</td>
     <td>${modeBadge(n)}</td>
@@ -62,7 +68,12 @@ window.saveNas=async()=>{
   const r=await App.api(id?'/nas/'+id:'/nas',{method:id?'PUT':'POST',body:JSON.stringify(body)});
   if(!r?.success) return App.showToast(r?.message||'Gagal','error');
   document.getElementById('nasModal').style.display='none';
-  App.showToast(r.radius_sync?.success?'Tersimpan & ter-sync ke FreeRADIUS':'Tersimpan di billing: '+(r.radius_sync?.message||''), r.radius_sync?.success?'success':'error');
+  const linked=r.device_linked?' (sudah tertaut Device Management)':'';
+  const reused=r.reused?'NAS sudah ada, data diperbarui':'Tersimpan';
+  App.showToast(
+    (r.radius_sync?.success?(reused+' & ter-sync ke FreeRADIUS'):(reused+' di billing: '+(r.radius_sync?.message||'')))+linked,
+    r.radius_sync?.success?'success':'error'
+  );
   loadNas();
 };
 window.syncNas=async(id)=>{
