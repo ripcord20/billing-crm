@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    :root {
+      --rd-blue:#2563eb; --rd-green:#16a34a; --rd-amber:#d97706; --rd-red:#dc2626; --rd-hot:#7c3aed;
+      --border:#e2e8f0; --text:#0f172a; --muted:#64748b; --faint:#94a3b8;
+    }
+    .rd { font-family:'Plus Jakarta Sans',sans-serif; }
+    .rd-hdr { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:18px; }
+    .rd-hdr h1 { font-size:22px; font-weight:800; color:var(--text); margin:0 0 4px; }
+    .rd-hdr p { font-size:13px; color:var(--muted); margin:0; }
+    .rd-hdr-r { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .rd-btn {
+      display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:10px;
+      font-size:12.5px; font-weight:600; cursor:pointer; border:1.5px solid var(--border);
+      background:#fff; color:#374151; font-family:inherit;
+    }
+    .rd-btn:hover { background:#f8fafc; }
+    .rd-btn svg { width:14px; height:14px; }
+    .rd-btn.spin svg { animation: rdSpin 1s linear infinite; }
+    @keyframes rdSpin { to { transform: rotate(360deg); } }
+    .rd-cards {
+      display:grid; grid-template-columns:repeat(5,1fr); background:#fff;
+      border:1px solid var(--border); border-radius:16px; overflow:hidden; margin-bottom:16px;
+    }
+    .rd-card {
+      padding:16px 18px; border-right:1px solid var(--border); cursor:pointer;
+      transition:background .15s;
+    }
+    .rd-card:last-child { border-right:none; }
+    .rd-card:hover { background:#f8fafc; }
+    .rd-card.active { background:#2563eb; }
+    .rd-card.active .rd-lbl, .rd-card.active .rd-val { color:#fff; }
+    .rd-lbl { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+    .rd-val { font-size:26px; font-weight:800; color:var(--text); margin-top:4px; }
+    .rd-val.good { color:var(--rd-green); }
+    .rd-val.warn { color:var(--rd-amber); }
+    .rd-val.crit { color:var(--rd-red); }
+    .rd-val.hot { color:var(--rd-hot); }
+    .rd-toolbar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+    .rd-search {
+      flex:1; min-width:200px; padding:9px 12px 9px 36px; border:1.5px solid var(--border);
+      border-radius:10px; font-size:13px; font-family:inherit; outline:none; background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2394a3b8' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cline x1='20' y1='20' x2='16.5' y2='16.5'/%3E%3C/svg%3E") 12px 50% no-repeat;
+    }
+    .rd-search:focus { border-color:#93c5fd; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+    .rd-sel { padding:9px 12px; border:1.5px solid var(--border); border-radius:10px; font-size:13px; font-family:inherit; background:#fff; }
+    .rd-layout { display:grid; grid-template-columns:1fr 360px; gap:14px; align-items:start; }
+    .rd-table-wrap { background:#fff; border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+    .rd-table { width:100%; border-collapse:collapse; }
+    .rd-table th {
+      text-align:left; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;
+      letter-spacing:.3px; padding:10px 14px; border-bottom:1px solid var(--border); background:#f8fafc;
+    }
+    .rd-table td { padding:11px 14px; border-bottom:1px solid #f1f5f9; font-size:13px; color:var(--text); vertical-align:middle; }
+    .rd-table tr:last-child td { border-bottom:none; }
+    .rd-table tbody tr { cursor:pointer; }
+    .rd-table tbody tr:hover { background:#f8fafc; }
+    .rd-table tbody tr.sel { background:#eff6ff; }
+    .pill { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:700; }
+    .pill.good { background:#f0fdf4; color:#15803d; }
+    .pill.warning { background:#fffbeb; color:#b45309; }
+    .pill.critical { background:#fef2f2; color:#b91c1c; }
+    .pill.hot { background:#f5f3ff; color:#6d28d9; }
+    .pill.unknown { background:#f1f5f9; color:#64748b; }
+    .mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; }
+    .spark { display:block; }
+    .rd-side { background:#fff; border:1px solid var(--border); border-radius:16px; padding:16px; position:sticky; top:12px; }
+    .rd-side h2 { font-size:14px; font-weight:800; margin:0 0 4px; }
+    .rd-side .sub { font-size:12px; color:var(--muted); margin:0 0 12px; }
+    .rd-chart { height:180px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:8px; position:relative; }
+    .rd-empty { text-align:center; padding:40px 16px; color:var(--faint); }
+    .rd-empty svg { width:36px; height:36px; margin-bottom:8px; }
+    .rd-actions { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+    .rd-link { color:var(--rd-blue); font-weight:700; text-decoration:none; font-size:12px; }
+    @media (max-width: 980px) {
+      .rd-layout { grid-template-columns:1fr; }
+      .rd-cards { grid-template-columns:repeat(2,1fr); }
+      .rd-side { position:static; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <%- include('../partials/sidebar') %>
+    <div class="main-content">
+      <%- include('../partials/topbar') %>
+      <main class="page-content rd">
+        <div class="rd-hdr">
+          <div>
+            <h1>Riwayat Redaman ONT</h1>
+            <p>RX Power GPON dari GenieACS — kritis &lt; −27 dBm, lemah −27…−24, baik ≥ −24</p>
+          </div>
+          <div class="rd-hdr-r">
+            <button type="button" class="rd-btn" id="rdRefreshBtn" onclick="OntRedaman.refresh()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+              Refresh
+            </button>
+            <a class="rd-btn" href="/genieacs">ONT Management</a>
+          </div>
+        </div>
+
+        <div class="rd-cards" id="rdCards">
+          <div class="rd-card active" data-sev="" onclick="OntRedaman.setSeverity('',this)">
+            <div class="rd-lbl">Total ONT</div>
+            <div class="rd-val" id="st-total">—</div>
+          </div>
+          <div class="rd-card" data-sev="critical" onclick="OntRedaman.setSeverity('critical',this)">
+            <div class="rd-lbl">Kritis</div>
+            <div class="rd-val crit" id="st-critical">—</div>
+          </div>
+          <div class="rd-card" data-sev="warning" onclick="OntRedaman.setSeverity('warning',this)">
+            <div class="rd-lbl">Lemah</div>
+            <div class="rd-val warn" id="st-warning">—</div>
+          </div>
+          <div class="rd-card" data-sev="good" onclick="OntRedaman.setSeverity('good',this)">
+            <div class="rd-lbl">Baik</div>
+            <div class="rd-val good" id="st-good">—</div>
+          </div>
+          <div class="rd-card" data-sev="hot" onclick="OntRedaman.setSeverity('hot',this)">
+            <div class="rd-lbl">Terlalu kuat</div>
+            <div class="rd-val hot" id="st-hot">—</div>
+          </div>
+        </div>
+
+        <div class="rd-toolbar">
+          <input class="rd-search" id="rdSearch" placeholder="Cari serial, pelanggan, model…" oninput="OntRedaman.debounceSearch()">
+          <select class="rd-sel" id="rdHours" onchange="OntRedaman.refresh()">
+            <option value="6">6 jam</option>
+            <option value="24" selected>24 jam</option>
+            <option value="72">3 hari</option>
+            <option value="168">7 hari</option>
+          </select>
+        </div>
+
+        <div class="rd-layout">
+          <div class="rd-table-wrap">
+            <table class="rd-table">
+              <thead>
+                <tr>
+                  <th>Serial</th>
+                  <th>Pelanggan</th>
+                  <th>RX (dBm)</th>
+                  <th>Status</th>
+                  <th>Trend</th>
+                  <th>Update</th>
+                </tr>
+              </thead>
+              <tbody id="rdBody">
+                <tr><td colspan="6" class="rd-empty">Memuat…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <aside class="rd-side" id="rdSide">
+            <h2 id="rdSideTitle">Pilih ONT</h2>
+            <p class="sub" id="rdSideSub">Klik baris untuk melihat grafik redaman</p>
+            <div class="rd-chart" id="rdChartWrap">
+              <canvas id="rdChart"></canvas>
+              <div class="rd-empty" id="rdChartEmpty" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
+                Belum ada histori
+              </div>
+            </div>
+            <div class="rd-actions" id="rdSideActions" style="display:none">
+              <a class="rd-link" id="rdGenieLink" href="/genieacs">Buka di ONT Management →</a>
+            </div>
+          </aside>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="/js/app.js"></script>
+  <script src="/js/ont-redaman.js?v=1"></script>
+</body>
+</html>

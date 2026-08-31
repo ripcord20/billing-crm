@@ -302,6 +302,10 @@ router.get('/monitoring/olt-management', authenticate, blockFinanceArea, (req, r
   res.render('pages/olt-management', { title: 'OLT Management', user: req.user, active: 'olt-management' });
 });
 
+router.get('/monitoring/ont-redaman', authenticate, blockFinanceArea, (req, res) => {
+  res.render('pages/ont-redaman', { title: 'Riwayat Redaman ONT', user: req.user, active: 'ont-redaman' });
+});
+
 router.get('/monitoring/ping', authenticate, blockFinanceArea, (req, res) => {
   res.render('pages/ping-monitor', { title: 'Ping Monitor', user: req.user, active: 'ping-monitor' });
 });

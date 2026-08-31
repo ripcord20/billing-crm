@@ -1120,6 +1120,10 @@
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
           Kontrol
         </button>
+        <button class="m-tab" onclick="GeniePage.switchTab(this,'tab-vlan')">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+          VLAN 100
+        </button>
         <button class="m-tab" onclick="GeniePage.switchTab(this,'tab-signal')">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
           Signal History
@@ -1242,6 +1246,37 @@
           </button>
         </div>
         <div class="inline-alert" id="task-result"></div>
+      </div>
+
+      <!-- Tab: VLAN WAN bind -->
+      <div id="tab-vlan" class="m-panel">
+        <div class="task-card" style="margin-bottom:12px">
+          <div class="task-card-hdr">
+            <div class="task-icon ti-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+            <h4>Bind VLAN WAN</h4>
+          </div>
+          <p>Set VLAN ID pada koneksi WAN ONT via GenieACS (TR-069). Default layanan internet: <strong>VLAN 100</strong>. Path ZTE / Huawei / FiberHome / CT-COM dideteksi otomatis.</p>
+          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:12px 0 8px">
+            <div class="form-row" style="margin:0;min-width:140px">
+              <label>VLAN ID</label>
+              <input type="number" id="vlan-id" value="100" min="1" max="4094" style="width:120px">
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px">VLAN terdeteksi</div>
+              <div id="vlan-current" style="font-size:18px;font-weight:800;font-family:monospace">—</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Vendor</div>
+              <div id="vlan-vendor" style="font-size:13px;font-weight:700;text-transform:uppercase">—</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-blue btn-sm" id="btn-vlan-100" onclick="GeniePage.bindVlan(100)">Bind VLAN 100</button>
+            <button class="btn btn-outline btn-sm" onclick="GeniePage.bindVlan()">Terapkan VLAN</button>
+            <button class="btn btn-outline btn-sm" onclick="GeniePage.loadVlan()">Refresh</button>
+          </div>
+        </div>
+        <div class="inline-alert" id="vlan-result"></div>
       </div>
 
       <!-- Tab: Signal History -->
@@ -1474,7 +1509,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/genieacs.js"></script>
+<script src="/js/genieacs.js?v=vlan100-1"></script>
 
 <script>
 (function(){
