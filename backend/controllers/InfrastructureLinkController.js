@@ -53,7 +53,7 @@ class InfrastructureLinkController {
   // POST /api/infrastructure-links
   async create(req, res) {
     try {
-      const { from_point_id, to_point_id, link_type, status, name, notes, distance_m, waypoints } = req.body;
+      const { from_point_id, to_point_id, link_type, status, name, notes, distance_m, waypoints, metadata } = req.body;
       if (!from_point_id || !to_point_id)
         return res.status(400).json({ success: false, message: 'from_point_id and to_point_id required' });
 
@@ -64,7 +64,8 @@ class InfrastructureLinkController {
         link_type:  link_type  || 'fiber',
         status:     status     || 'active',
         notes,      distance_m,
-        waypoints:  waypoints  || null
+        waypoints:  waypoints  || null,
+        metadata:   metadata   || null
       });
 
       // ── Auto-set parent_id berdasarkan hierarki tipe titik ──
@@ -153,6 +154,21 @@ class InfrastructureLinkController {
       await link.update(req.body);
       res.json({ success: true, data: link });
     } catch (e) { res.status(400).json({ success: false, message: e.message }); }
+  }
+
+  // POST /api/infrastructure-links/route — snap kabel ke jalan (OSRM)
+  async route(req, res) {
+    try {
+      const { routeAlongRoads } = require('../services/RoadRouter');
+      const points = req.body?.points;
+      const result = await routeAlongRoads(points);
+      res.json({
+        success: !result.fallback || (result.path && result.path.length >= 2),
+        ...result,
+      });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message, fallback: true, waypoints: [] });
+    }
   }
 }
 

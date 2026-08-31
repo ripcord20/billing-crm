@@ -50,6 +50,8 @@ let drawFrom      = null;       // { id, lat, lng, name, type } — first endpoi
 let drawWaypoints = [];         // intermediate points clicked on map (not markers)
 let drawTempLine  = null;       // preview polyline (full path)
 let drawSegLines  = [];         // committed segment polylines
+let drawFollowRoad = false;
+let drawRouting   = false;
 
 const COLORS = {
   odc: '#1d4ed8', odp: '#1d4ed8', jb: '#0d9488', tower: '#475569',
@@ -68,9 +70,9 @@ function jbLabel(pt) {
 }
 
 const TILES = {
-  streets:   { url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', attr:'&copy; OpenStreetMap contributors &copy; CARTO' },
-  satellite: { url:'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr:'&copy; Google', subdomains:'0123' },
-  dark:      { url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attr:'&copy; CARTO' }
+  streets:   { url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'&copy; OpenStreetMap contributors', subdomains:'abc' },
+  satellite: { url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr:'Tiles &copy; Esri' },
+  dark:      { url:'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', attr:'Tiles &copy; Esri' }
 };
 
 // ─── CSS ──────────────────────────────────────────────
@@ -123,6 +125,13 @@ const TILES = {
     }
     .map-draw-btn:hover,.map-draw-btn.active { background:#1e3a8a; color:#fff; border-color:#1e3a8a; }
     .map-draw-btn svg { width:14px; height:14px; }
+    .map-follow-btn { border-color:#0d9488; color:#0f766e; }
+    .map-follow-btn:hover,.map-follow-btn.active { background:#0f766e; color:#fff; border-color:#0f766e; }
+    #drawModeBar .draw-follow-toggle {
+      display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700;
+      background:rgba(255,255,255,.18); border-radius:8px; padding:3px 10px; cursor:pointer;
+    }
+    #drawModeBar .draw-follow-toggle input { accent-color:#fff; }
 
     /* Highlight ring on selected marker during draw */
     .draw-selected-ring {
@@ -337,7 +346,8 @@ function initMap() {
 
   const streetCfg = TILES.streets;
   tileLayer = L.tileLayer(streetCfg.url, {
-    attribution: streetCfg.attr, maxZoom: 20,
+    attribution: streetCfg.attr, maxZoom: 19,
+    subdomains: streetCfg.subdomains || 'abc',
     updateWhenIdle: false, keepBuffer: 6,
     detectRetina: false,
     opacity: 1
@@ -355,16 +365,10 @@ function initMap() {
       return;
     }
     if (drawMode && drawFrom) {
+      if (drawRouting) return;
       // Add waypoint on empty map click (not on a marker)
       const ll = [e.latlng.lat, e.latlng.lng];
-      drawWaypoints.push(ll);
-      // Draw a committed dot at waypoint
-      const dot = L.circleMarker(ll, {
-        radius:5, color:'#00e5cc', fillColor:'#00e5cc', fillOpacity:1,
-        weight:2, interactive:false, className:'draw-waypoint-dot'
-      }).addTo(map);
-      drawSegLines.push(dot);
-      showToast('Titik waypoint ditambahkan — klik marker untuk selesai', 'success');
+      addDrawWaypoint(ll);
     }
   });
 
@@ -400,11 +404,11 @@ function switchTile(type, btn) {
   if (type === 'dark' || type === 'satellite') {
     mapEl.style.background = '#1a1a2e';
   } else {
-    mapEl.style.background = '#e8e0d8';
+    mapEl.style.background = '#d4dce3';
   }
   tileLayer = L.tileLayer(cfg.url, {
-    attribution: cfg.attr, maxZoom: 20,
-    subdomains: cfg.subdomains || 'abcd',
+    attribution: cfg.attr, maxZoom: 19,
+    subdomains: cfg.subdomains || 'abc',
     updateWhenIdle: false, keepBuffer: 6,
     detectRetina: false,
     opacity: 1
@@ -1821,42 +1825,129 @@ function addCustomerMarker(c) {
 
 // ─── Draw link mode ───────────────────────────────────
 function toggleDrawMode() {
-  if (drawMode) { cancelDrawMode(); return; }
+  if (drawMode && !drawFollowRoad) { cancelDrawMode(); return; }
+  if (drawMode) cancelDrawMode();
+  startDrawMode(false);
+}
+
+function toggleFollowRoadDraw() {
+  if (drawMode && drawFollowRoad) { cancelDrawMode(); return; }
+  if (drawMode) cancelDrawMode();
+  startDrawMode(true);
+}
+
+function setFollowRoad(on) {
+  drawFollowRoad = !!on;
+  const btn = document.getElementById('followRoadBtn');
+  if (btn) btn.classList.toggle('active', drawFollowRoad);
+  const cb = document.getElementById('drawFollowRoad');
+  if (cb) cb.checked = drawFollowRoad;
+}
+
+function startDrawMode(followRoad) {
   drawMode = true;
   drawFrom = null;
+  drawWaypoints = [];
+  setFollowRoad(!!followRoad);
   document.getElementById('infraMap').classList.add('draw-mode');
   document.getElementById('drawModeBar').classList.add('active');
-  document.getElementById('drawModeText').textContent = 'Klik titik PERTAMA (Pelanggan/ODP/ODC)';
-  document.getElementById('drawBtn').classList.add('active');
+  document.getElementById('drawModeText').textContent = followRoad
+    ? 'Kabel mengikuti jalan — klik titik PERTAMA'
+    : 'Klik titik PERTAMA (Pelanggan/ODP/ODC)';
+  document.getElementById('drawBtn').classList.toggle('active', !followRoad);
+  const fr = document.getElementById('followRoadBtn');
+  if (fr) fr.classList.toggle('active', !!followRoad);
   map.closePopup();
 }
 
 function cancelDrawMode() {
   drawMode = false; drawFrom = null;
   drawWaypoints = [];
+  drawRouting = false;
+  setFollowRoad(false);
   if (drawTempLine) { map.removeLayer(drawTempLine); drawTempLine = null; }
   drawSegLines.forEach(l => map.removeLayer(l)); drawSegLines = [];
   document.getElementById('infraMap').classList.remove('draw-mode');
   document.getElementById('drawModeBar').classList.remove('active');
   document.getElementById('drawBtn').classList.remove('active');
+  const fr = document.getElementById('followRoadBtn');
+  if (fr) fr.classList.remove('active');
+}
+
+function lastDrawPoint() {
+  if (drawWaypoints.length) return drawWaypoints[drawWaypoints.length - 1];
+  if (drawFrom) return [drawFrom.lat, drawFrom.lng];
+  return null;
+}
+
+function markWaypoint(ll) {
+  const dot = L.circleMarker(ll, {
+    radius:4, color:'#00e5cc', fillColor:'#00e5cc', fillOpacity:1,
+    weight:2, interactive:false, className:'draw-waypoint-dot'
+  }).addTo(map);
+  drawSegLines.push(dot);
+}
+
+async function routeSegment(fromLL, toLL) {
+  try {
+    const res = await fetch('/api/infrastructure-links/route', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ points: [fromLL, toLL] })
+    });
+    const j = await res.json();
+    if (j && Array.isArray(j.path) && j.path.length >= 2) {
+      const mids = j.path.slice(1); // keep destination, drop start
+      return { points: mids, distance_m: j.distance_m, fallback: !!j.fallback };
+    }
+  } catch (e) { /* fallback straight */ }
+  return { points: [toLL], fallback: true };
+}
+
+async function addDrawWaypoint(ll) {
+  const from = lastDrawPoint();
+  if (!from) return;
+  if (drawFollowRoad) {
+    drawRouting = true;
+    showToast('Menyusuri jalan…', 'info', 1800);
+    const routed = await routeSegment(from, ll);
+    drawRouting = false;
+    routed.points.forEach((p) => { drawWaypoints.push(p); markWaypoint(p); });
+    showToast(routed.fallback ? 'Jalan tidak ketemu — garis lurus' : 'Kabel mengikuti jalan', routed.fallback ? 'warning' : 'success');
+  } else {
+    drawWaypoints.push(ll);
+    markWaypoint(ll);
+    showToast('Titik waypoint ditambahkan — klik marker untuk selesai', 'success');
+  }
 }
 
 function handleDrawClick(pt) {
   if (!drawFrom) {
-    // First point
     drawFrom = pt; drawWaypoints = [];
     document.getElementById('drawModeText').innerHTML =
-      `<strong>${pt.name}</strong> dipilih &middot; klik peta untuk belokkan garis, klik marker untuk selesai`;
+      `<strong>${pt.name}</strong> dipilih &middot; ${drawFollowRoad ? 'ikuti jalan aktif · ' : ''}klik peta untuk belokkan garis, klik marker untuk selesai`;
     showSelectRing(pt.lat, pt.lng);
   } else {
-    // Second marker — finish line
-    if (drawFrom.id === pt.id) { showToast('Pilih titik yang berbeda', 'warning'); return; }
-    // Auto-calculate distance along waypoints
-    const pts = [[drawFrom.lat, drawFrom.lng], ...drawWaypoints, [pt.lat, pt.lng]];
-    let totalM = 0;
-    for (let i = 0; i < pts.length-1; i++) totalM += map.distance(pts[i], pts[i+1]);
-    openLinkModal(drawFrom, pt, Math.round(totalM), drawWaypoints);
+    finishDrawTo(pt);
   }
+}
+
+async function finishDrawTo(pt) {
+  if (drawFrom.id === pt.id) { showToast('Pilih titik yang berbeda', 'warning'); return; }
+  if (drawRouting) return;
+  if (drawFollowRoad) {
+    const from = lastDrawPoint() || [drawFrom.lat, drawFrom.lng];
+    drawRouting = true;
+    showToast('Menyusuri jalan ke titik akhir…', 'info', 2000);
+    const routed = await routeSegment(from, [pt.lat, pt.lng]);
+    drawRouting = false;
+    const mids = routed.points.slice(0, -1);
+    mids.forEach((p) => { drawWaypoints.push(p); markWaypoint(p); });
+  }
+  const pts = [[drawFrom.lat, drawFrom.lng], ...drawWaypoints, [pt.lat, pt.lng]];
+  let totalM = 0;
+  for (let i = 0; i < pts.length-1; i++) totalM += map.distance(pts[i], pts[i+1]);
+  openLinkModal(drawFrom, pt, Math.round(totalM), drawWaypoints);
 }
 
 let selectRingMarker = null;
@@ -1884,8 +1975,8 @@ function openLinkModal(from, to, autoDistM, waypoints) {
   // Show waypoint count
   const wpInfo = document.getElementById('lm-waypoints');
   if (wpInfo) wpInfo.textContent = linkWaypoints.length > 0
-    ? `${linkWaypoints.length} titik belok · jarak otomatis terhitung`
-    : 'Garis lurus (tanpa titik belok)';
+    ? `${linkWaypoints.length} titik belok${drawFollowRoad ? ' · mengikuti jalan' : ''} · jarak otomatis terhitung`
+    : (drawFollowRoad ? 'Mengikuti jalan (tanpa belokan manual)' : 'Garis lurus (tanpa titik belok)');
   document.getElementById('linkModal').classList.add('active');
 }
 
@@ -1907,7 +1998,8 @@ async function saveLink() {
       distance_m:    parseInt(document.getElementById('lm-dist').value) || null,
       notes:         document.getElementById('lm-notes').value,
       status:        'active',
-      waypoints:     linkWaypoints.length ? linkWaypoints : null
+      waypoints:     linkWaypoints.length ? linkWaypoints : null,
+      metadata:      drawFollowRoad ? { follow_road: true } : null
     };
     const res = await apiWithRetry('/infrastructure-links', { method:'POST', body:JSON.stringify(payload) });
     if (res?.success) {

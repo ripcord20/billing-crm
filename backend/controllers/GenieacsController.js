@@ -5,6 +5,8 @@
 
 const genieacs = require('../services/GenieacsService');
 const logger = require('../utils/logger');
+const vlanSvc = require('../services/GenieacsVlan');
+const redamanSvc = require('../services/OntRedaman');
 
 // ============================================================
 // GET /api/genieacs/devices — List semua ONT
@@ -294,6 +296,7 @@ exports.getDevice = async (req, res) => {
     const info = genieacs.extractDeviceInfo(d);
     const wifi = genieacs.extractWifiInfo(d);
     const signal = genieacs.extractSignalInfo(d);
+    const vlan = vlanSvc.extractVlan(d);
 
     const now = Date.now();
     const lastInform = d._lastInform ? new Date(d._lastInform).getTime() : 0;
@@ -323,6 +326,7 @@ exports.getDevice = async (req, res) => {
           ...signal,
           uptime_formatted: uptimeFormatted
         },
+        vlan,
         online: minutesAgo !== null && minutesAgo < 5,
         minutes_ago: minutesAgo,
         tags: d._tags || [],
@@ -1058,6 +1062,250 @@ exports.getStats = async (req, res) => {
       }
     });
   } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// ============================================================
+// GET /api/genieacs/devices/:id/vlan — baca VLAN WAN saat ini
+// ============================================================
+exports.getVlan = async (req, res) => {
+  try {
+    const deviceId = decodeURIComponent(req.params.id);
+    const result = await genieacs.getDevice(deviceId);
+    if (!result.success || !result.data) {
+      return res.status(404).json({ success: false, error: 'Device not found' });
+    }
+    const vlan = vlanSvc.extractVlan(result.data);
+    res.json({ success: true, data: vlan });
+  } catch (err) {
+    logger.error('getVlan error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// ============================================================
+// POST /api/genieacs/devices/:id/vlan-bind — bind WAN VLAN (default 100)
+// Body: { vlan: 100 }
+// ============================================================
+exports.bindVlan = async (req, res) => {
+  try {
+    const deviceId = decodeURIComponent(req.params.id);
+    const vlanId = parseInt(req.body?.vlan, 10) || 100;
+
+    const fetched = await genieacs.getDevice(deviceId);
+    const deviceData = fetched.success ? fetched.data : null;
+    const built = vlanSvc.buildBindParameters(deviceData || {}, vlanId);
+    if (!built.ok) {
+      return res.status(400).json({ success: false, error: built.error });
+    }
+    if (!built.parameters.length) {
+      return res.json({ success: false, error: 'Tidak ada path VLAN yang bisa di-set untuk ONT ini' });
+    }
+
+    const result = await genieacs.setParameterValues(deviceId, built.parameters);
+    if (!result.success) return res.json(result);
+
+    let eta = null;
+    if (result.queued) eta = await genieacs.getInformEta(deviceId);
+
+    res.json({
+      success: true,
+      data: result.data,
+      executed: result.executed,
+      queued: result.queued,
+      eta,
+      vlan: built.vlan,
+      vendor: built.vendor,
+      paths: built.parameters.map((p) => p[0]),
+      usedFallback: built.usedFallback,
+      message: result.executed
+        ? `VLAN ${built.vlan} diterapkan ke WAN ONT`
+        : `VLAN ${built.vlan} di-queue, menunggu inform ONT berikutnya`,
+    });
+  } catch (err) {
+    logger.error('bindVlan error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// ============================================================
+// GET /api/genieacs/ont-redaman — fleet riwayat redaman ONT
+// Query: q, severity (good|warning|critical|hot|unknown), hours
+// ============================================================
+exports.getOntRedaman = async (req, res) => {
+  try {
+    const { OntDevice, OntSignalHistory, Customer } = require('../models');
+    const { Op } = require('sequelize');
+    const q = String(req.query.q || '').trim();
+    const severityFilter = String(req.query.severity || '').trim().toLowerCase();
+    const hours = Math.min(168, Math.max(6, parseInt(req.query.hours, 10) || 24));
+
+    const where = {};
+    if (q) {
+      const or = [
+        { serial_number: { [Op.like]: `%${q}%` } },
+        { device_id: { [Op.like]: `%${q}%` } },
+        { model: { [Op.like]: `%${q}%` } },
+        { ip_address: { [Op.like]: `%${q}%` } },
+      ];
+      try {
+        const matchedCust = await Customer.findAll({
+          where: {
+            [Op.or]: [
+              { name: { [Op.like]: `%${q}%` } },
+              { customer_id: { [Op.like]: `%${q}%` } },
+            ],
+          },
+          attributes: ['id'],
+          limit: 100,
+        });
+        const cids = matchedCust.map((c) => c.id);
+        if (cids.length) or.push({ customer_id: { [Op.in]: cids } });
+      } catch (_) { /* ignore */ }
+      where[Op.or] = or;
+    }
+
+    const devices = await OntDevice.findAll({
+      where,
+      include: [{
+        model: Customer,
+        as: 'customer',
+        attributes: ['id', 'name', 'customer_id', 'status'],
+        required: false,
+      }],
+      order: [['signal_strength', 'ASC']],
+      limit: 500,
+    });
+
+    const ids = devices.map((d) => d.id);
+    const since = new Date(Date.now() - hours * 3600 * 1000);
+    let historyRows = [];
+    if (ids.length) {
+      historyRows = await OntSignalHistory.findAll({
+        where: {
+          ont_device_id: { [Op.in]: ids },
+          rx_power: { [Op.ne]: null },
+          recorded_at: { [Op.gte]: since },
+        },
+        attributes: ['ont_device_id', 'rx_power', 'tx_power', 'recorded_at', 'status'],
+        order: [['recorded_at', 'ASC']],
+        limit: 20000,
+      });
+    }
+
+    const byOnt = new Map();
+    for (const row of historyRows) {
+      const id = row.ont_device_id;
+      if (!byOnt.has(id)) byOnt.set(id, []);
+      byOnt.get(id).push({
+        time: row.recorded_at,
+        rx: parseFloat(row.rx_power),
+        tx: row.tx_power != null ? parseFloat(row.tx_power) : null,
+      });
+    }
+
+    const rows = devices.map((d) => {
+      const hist = byOnt.get(d.id) || [];
+      const lastHist = hist.length ? hist[hist.length - 1] : null;
+      const rx = lastHist?.rx != null && !Number.isNaN(lastHist.rx)
+        ? lastHist.rx
+        : (d.signal_strength != null ? parseFloat(d.signal_strength) : null);
+      const severity = redamanSvc.classifyRx(rx);
+      const spark = redamanSvc.downsampleSpark(hist.map((h) => h.rx), 24);
+      return {
+        id: d.id,
+        serial_number: d.serial_number,
+        device_id: d.device_id,
+        manufacturer: d.manufacturer,
+        model: d.model,
+        status: d.status,
+        ip_address: d.ip_address,
+        customer_id: d.customer?.customer_id || null,
+        customer_name: d.customer?.name || null,
+        rx_power: rx,
+        tx_power: lastHist?.tx ?? null,
+        severity,
+        severity_label: redamanSvc.rxLabel(severity),
+        last_inform: d.last_inform,
+        last_synced: d.last_synced,
+        last_recorded: lastHist?.time || d.last_synced || d.last_inform,
+        samples: hist.length,
+        sparkline: spark,
+      };
+    }).filter((r) => !severityFilter || r.severity === severityFilter);
+
+    rows.sort((a, b) => {
+      const order = { critical: 0, warning: 1, hot: 2, unknown: 3, good: 4 };
+      const da = order[a.severity] ?? 9;
+      const db = order[b.severity] ?? 9;
+      if (da !== db) return da - db;
+      const ra = a.rx_power == null ? 0 : a.rx_power;
+      const rb = b.rx_power == null ? 0 : b.rx_power;
+      return ra - rb;
+    });
+
+    res.json({
+      success: true,
+      hours,
+      stats: redamanSvc.summarize(rows),
+      data: rows,
+    });
+  } catch (err) {
+    logger.error('getOntRedaman error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// ============================================================
+// GET /api/genieacs/ont-redaman/:id/history — time-series 1 ONT
+// ============================================================
+exports.getOntRedamanHistory = async (req, res) => {
+  try {
+    const { OntDevice, OntSignalHistory } = require('../models');
+    const { Op } = require('sequelize');
+    const id = parseInt(req.params.id, 10);
+    const hours = Math.min(168, Math.max(6, parseInt(req.query.hours, 10) || 24));
+    const ont = await OntDevice.findByPk(id, {
+      attributes: ['id', 'serial_number', 'device_id', 'signal_strength', 'status', 'last_inform', 'last_synced', 'manufacturer', 'model', 'customer_id'],
+    });
+    if (!ont) return res.status(404).json({ success: false, error: 'ONT tidak ditemukan' });
+
+    const since = new Date(Date.now() - hours * 3600 * 1000);
+    const rows = await OntSignalHistory.findAll({
+      where: {
+        ont_device_id: ont.id,
+        rx_power: { [Op.ne]: null },
+        recorded_at: { [Op.gte]: since },
+      },
+      attributes: ['rx_power', 'tx_power', 'olt_rx_power', 'status', 'recorded_at'],
+      order: [['recorded_at', 'ASC']],
+      limit: 2000,
+    });
+
+    const data = rows.map((r) => ({
+      time: r.recorded_at,
+      rx: parseFloat(r.rx_power),
+      tx: r.tx_power != null ? parseFloat(r.tx_power) : null,
+      olt_rx: r.olt_rx_power != null ? parseFloat(r.olt_rx_power) : null,
+      status: r.status,
+    }));
+
+    const latestRx = data.length ? data[data.length - 1].rx : parseFloat(ont.signal_strength);
+    res.json({
+      success: true,
+      ont: {
+        id: ont.id,
+        serial_number: ont.serial_number,
+        device_id: ont.device_id,
+        status: ont.status,
+        rx_power: Number.isNaN(latestRx) ? null : latestRx,
+        severity: redamanSvc.classifyRx(latestRx),
+      },
+      data,
+    });
+  } catch (err) {
+    logger.error('getOntRedamanHistory error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 };

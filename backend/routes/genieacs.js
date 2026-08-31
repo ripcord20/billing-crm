@@ -35,10 +35,14 @@ router.get('/devices/:id/faults', GenieacsController.getFaults);
 router.get('/devices/:id/clients',   GenieacsController.getClients);
 router.get('/devices/:id/bandwidth', GenieacsController.getBandwidth);
 router.get('/devices/:id/rx-history',GenieacsController.getRxHistory);
+router.get('/devices/:id/vlan',      GenieacsController.getVlan);
+router.post('/devices/:id/vlan-bind',GenieacsController.bindVlan);
 router.get('/devices/:id/customer',  GenieacsController.getAssignedCustomer);
 router.post('/devices/:id/assign',   GenieacsController.assignCustomer);
 router.get('/customers/search',      GenieacsController.searchCustomers);
 router.get('/settings/load',         GenieacsController.loadSettings);
+router.get('/ont-redaman',           GenieacsController.getOntRedaman);
+router.get('/ont-redaman/:id/history', GenieacsController.getOntRedamanHistory);
 
 // ---- Page Route (untuk EJS) ----
 // Tambahkan ini di web.js / main router:

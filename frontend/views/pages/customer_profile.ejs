@@ -969,7 +969,7 @@ function initMap(lat, lng, name) {
   _leafletMap = L.map('custMap', {zoomControl:true, scrollWheelZoom:true}).setView([lat,lng],17);
 
   // Layer definitions — sama dengan infrastructure.js (CartoDB + Google)
-  _layerStreet = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  _layerStreet = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
     subdomains: 'abcd',
     maxZoom: 20
@@ -2071,7 +2071,7 @@ function epPinIcon(){ return L.divIcon({className:'',html:'<div style="position:
 function epAddBaseLayers(map){
   var street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'});
   var sat=L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',{maxZoom:21,subdomains:'0123',attribution:'&copy; Google'});
-  var labels=L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:19,pane:'overlayPane'});
+  var labels=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,pane:'overlayPane'});
   var hybrid=L.layerGroup([sat,labels]); street.addTo(map); var layers={street:street,hybrid:hybrid}; map._activeBase='street';
   var Ctl=L.Control.extend({options:{position:'topright'},onAdd:function(){ var div=L.DomUtil.create('div','map-toggle'); div.innerHTML='<button type="button" data-base="street" class="on">Peta</button><button type="button" data-base="hybrid">Satelit</button>'; L.DomEvent.disableClickPropagation(div); div.querySelectorAll('button').forEach(function(b){ b.addEventListener('click',function(){ var k=b.dataset.base; if(map._activeBase===k) return; Object.values(layers).forEach(function(l){ if(map.hasLayer(l)) map.removeLayer(l); }); layers[k].addTo(map); map._activeBase=k; div.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x.dataset.base===k);}); }); }); return div; }});
   map.addControl(new Ctl());

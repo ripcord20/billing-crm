@@ -421,6 +421,8 @@ const GeniePage = (() => {
         // WiFi SSID & password form — pre-fill dari data GenieACS
         el('d-ssid').textContent  = d.wifi?.ssid_2g || '—';
         el('d-ssid5g').textContent= d.wifi?.ssid_5g || '—';
+        if (el('vlan-current')) el('vlan-current').textContent = d.vlan?.current != null ? d.vlan.current : '—';
+        if (el('vlan-vendor'))  el('vlan-vendor').textContent  = d.vlan?.vendor || '—';
         if (d.wifi?.ssid_2g)     el('wifi-ssid').value    = d.wifi.ssid_2g;
         if (d.wifi?.ssid_5g)     el('wifi-ssid-5g').value = d.wifi.ssid_5g;
         // Password — tampilkan jika tersedia dari GenieACS
@@ -468,6 +470,7 @@ const GeniePage = (() => {
     if (panelId === 'tab-signal')  loadSignalHistory(6);
     if (panelId === 'tab-usage')   loadBandwidth();
     if (panelId === 'tab-assign')  loadAssignedCustomer();
+    if (panelId === 'tab-vlan')    loadVlan();
   }
 
   // ── WIFI ─────────────────────────────────────────────
@@ -590,6 +593,61 @@ const GeniePage = (() => {
   function confirmReboot(deviceId) {
     currentDeviceId = deviceId;
     sendTask('reboot');
+  }
+
+  async function loadVlan() {
+    if (!currentDeviceId) return;
+    try {
+      const r = await fetch(`/api/genieacs/devices/${safeEncodeId(currentDeviceId)}/vlan`);
+      const j = await r.json();
+      if (j.success && j.data) {
+        if (el('vlan-current')) el('vlan-current').textContent = j.data.current != null ? j.data.current : '—';
+        if (el('vlan-vendor'))  el('vlan-vendor').textContent  = j.data.vendor || '—';
+        if (j.data.current && el('vlan-id') && !el('vlan-id').dataset.touched) {
+          el('vlan-id').value = j.data.current;
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  async function bindVlan(forceVlan) {
+    if (!currentDeviceId) return;
+    const vlan = forceVlan != null ? forceVlan : parseInt(el('vlan-id')?.value, 10);
+    if (!vlan || vlan < 1 || vlan > 4094) {
+      showInlineAlert('vlan-result', 'error', 'VLAN ID harus 1–4094');
+      return;
+    }
+    if (!confirm(`Bind VLAN ${vlan} ke WAN ONT ini? Koneksi internet bisa putus sebentar.`)) return;
+    const btn = el('btn-vlan-100');
+    if (btn) { btn.disabled = true; btn.textContent = 'Mengirim…'; }
+    showInlineAlert('vlan-result', 'info', `Mengirim setParameterValues VLAN ${vlan}…`);
+    try {
+      const r = await fetch(`/api/genieacs/devices/${safeEncodeId(currentDeviceId)}/vlan-bind`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vlan })
+      });
+      const j = await r.json();
+      if (j.success) {
+        const paths = (j.paths || []).slice(0, 3).join(', ');
+        if (j.executed) {
+          showInlineAlert('vlan-result', 'success', `✅ VLAN ${vlan} diterapkan.${paths ? ' Path: ' + paths : ''}`);
+        } else if (j.queued) {
+          const eta = j.eta?.etaText || '± 1-15 menit';
+          showInlineAlert('vlan-result', 'info',
+            `VLAN ${vlan} di-queue. Akan diterapkan saat ONT inform berikutnya: <strong>${eta}</strong>`, true);
+        } else {
+          showInlineAlert('vlan-result', 'success', j.message || `VLAN ${vlan} dikirim`);
+        }
+        if (el('vlan-current')) el('vlan-current').textContent = vlan;
+      } else {
+        showInlineAlert('vlan-result', 'error', '⚠ ' + (j.error || 'Gagal bind VLAN'));
+      }
+    } catch (e) {
+      showInlineAlert('vlan-result', 'error', 'Error: ' + e.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Bind VLAN 100'; }
+    }
   }
 
   async function sendRefresh() {
@@ -1211,6 +1269,7 @@ const GeniePage = (() => {
     loadClients, loadSignalHistory, loadBandwidth,
     loadAssignedCustomer, searchCustomers, selectCustomer, unassignCustomer,
     sendTask, doConfirm, confirmReboot, sendRefresh,
+    loadVlan, bindVlan,
     openSettings, testConn, saveSettings,
     gotoPage, setPerPage, resetPageOnSearch
   };
