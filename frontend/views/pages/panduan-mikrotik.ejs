@@ -72,6 +72,14 @@
           Itu setting server FreeRADIUS (sekali, oleh owner). Kerja harian mitra: paket, pelanggan, tagihan — plus tempel script di Winbox.
         </div>
 
+        <div class="mk-alert warn">
+          <strong>Jangan Tailscale / ZeroTier di MikroTik mitra.</strong>
+          Ide “tanpa IP public, tembus NAT” itu yang dipakai Fiberix.
+          Tapi Tailscale/ZeroTier untuk <em>laptop/server Linux</em>, bukan RouterOS:
+          ROS 6 tidak bisa dipasang, ROS 7 butuh container (sering gagal di RB biasa),
+          plus akun SaaS pihak ketiga. Mitra tempel script WireGuard (ROS 7) atau L2TP (ROS 6) bawaan Winbox.
+        </div>
+
         <% if (guide.endpoint_warning) { %>
           <div class="mk-alert warn"><%= guide.endpoint_warning %></div>
         <% } %>
@@ -164,6 +172,7 @@
             <ol class="mk-steps">
               <li>Kalau FreeRADIUS sudah jalan di server terpisah, <strong>jangan pakai Modul RADIUS di billing</strong>. MikroTik tetap mengarah ke server RADIUS yang ada.</li>
               <li>ROS 7: tunnel WireGuard. ROS 6: L2TP/IPsec. Script dari Modul NAS (staf), bukan dari Modul RADIUS.</li>
+              <li>Jangan suruh mitra install Tailscale/ZeroTier. Itu bukan jalur Fiberix.</li>
               <li>Host VPN harus IP/DNS publik jika mitra di luar LAN.</li>
             </ol>
             <p style="margin:12px 0 0;font-size:13px;">

@@ -20,6 +20,9 @@ const lan = buildMitraMikrotikGuide({
   wg_enabled: 'true'
 });
 assert.strictEqual(lan.show_radius_module, false);
+assert.strictEqual(lan.use_tailscale, false);
+assert.strictEqual(lan.use_zerotier, false);
+assert.strictEqual(lan.use_mesh_saas, false);
 assert.strictEqual(lan.ros6_method, 'l2tp');
 assert.strictEqual(lan.ros7_method, 'wireguard');
 assert.strictEqual(lan.endpoint_is_private, true);

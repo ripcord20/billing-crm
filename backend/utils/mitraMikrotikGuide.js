@@ -99,6 +99,11 @@ function buildMitraMikrotikGuide(settings) {
   const guide = {
     title: 'Hubungkan MikroTik',
     show_radius_module: false,
+    // Overlay milik Fiberix (WG native / L2TP). Bukan Tailscale/ZeroTier:
+    // ROS 6 tidak bisa install client mesh; ROS 7 butuh container; RADIUS butuh IP tunnel tetap.
+    use_tailscale: false,
+    use_zerotier: false,
+    use_mesh_saas: false,
     ros6_method: 'l2tp',
     ros7_method: 'wireguard',
     radius_host: radiusHost,
