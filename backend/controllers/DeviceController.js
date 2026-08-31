@@ -37,11 +37,32 @@ class DeviceController {
   // Tidak expose api_password / sensitive fields.
   async mikrotikList(req, res) {
     try {
-      const rows = await Device.findAll({
-        where: { type: 'router', is_active: true },
-        attributes: ['id', 'name', 'ip_address', 'status'],
-        order: [['name', 'ASC']]
-      });
+      const attrs = ['id', 'name', 'ip_address', 'status'];
+      let rows = [];
+      try {
+        rows = await Device.findAll({
+          where: { type: 'router', is_active: true },
+          attributes: attrs,
+          order: [['name', 'ASC']]
+        });
+      } catch (_) {
+        rows = await Device.findAll({
+          where: { is_active: true },
+          attributes: attrs,
+          order: [['name', 'ASC']]
+        });
+      }
+      // NAS yang tersimpan bukan type=router tetap muncul di selector
+      // selama punya kredensial API MikroTik.
+      if (!rows.length) {
+        try {
+          rows = await Device.findAll({
+            where: { is_active: true, api_username: { [Op.ne]: null } },
+            attributes: attrs,
+            order: [['name', 'ASC']]
+          });
+        } catch (_) { /* kolom api_username belum ada */ }
+      }
       // Tandai primary kalau kolomnya ada
       let primaryId = null;
       try {
