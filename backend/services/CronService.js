@@ -1804,7 +1804,9 @@ class CronService {
 
   // ── Stop semua jobs ─────────────────────────────────────────────────
   stop() {
-    this.jobs.forEach(job => job.stop());
+    this.jobs.forEach(job => {
+      if (job && typeof job.stop === 'function') job.stop();
+    });
     this.jobs = [];
     logger.info('[CronService] All jobs stopped');
   }

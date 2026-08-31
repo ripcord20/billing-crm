@@ -562,21 +562,22 @@ PppoeProvisionItem.belongsTo(PppoeProvisionJob, { foreignKey: 'job_id', as: 'job
 PppoeProvisionJob.hasMany(PppoeProvisionItem,  { foreignKey: 'job_id', as: 'items', onDelete: 'CASCADE' });
 
 // ── PSB + Gudang SN ──────────────────────────────────────────
-PsbJob.belongsTo(Package,             { foreignKey: 'package_id',        as: 'package' });
-PsbJob.belongsTo(Customer,            { foreignKey: 'customer_id',       as: 'customer' });
-PsbJob.belongsTo(WorkOrder,           { foreignKey: 'work_order_id',     as: 'workOrder' });
-PsbJob.belongsTo(Invoice,             { foreignKey: 'invoice_id',        as: 'invoice' });
-PsbJob.belongsTo(InfrastructurePoint, { foreignKey: 'odp_id',            as: 'odp' });
-PsbJob.belongsTo(WarehouseItem,       { foreignKey: 'warehouse_item_id', as: 'warehouseItem' });
-PsbJob.belongsTo(User,                { foreignKey: 'created_by',        as: 'creator' });
-PsbJob.belongsTo(User,                { foreignKey: 'technician_user_id', as: 'technician' });
-Customer.hasMany(PsbJob,              { foreignKey: 'customer_id',       as: 'psb_jobs' });
+// constraints: false — tipe id Fiberix campur signed/unsigned; FK MySQL errno 150.
+PsbJob.belongsTo(Package,             { foreignKey: 'package_id',        as: 'package', constraints: false });
+PsbJob.belongsTo(Customer,            { foreignKey: 'customer_id',       as: 'customer', constraints: false });
+PsbJob.belongsTo(WorkOrder,           { foreignKey: 'work_order_id',     as: 'workOrder', constraints: false });
+PsbJob.belongsTo(Invoice,             { foreignKey: 'invoice_id',        as: 'invoice', constraints: false });
+PsbJob.belongsTo(InfrastructurePoint, { foreignKey: 'odp_id',            as: 'odp', constraints: false });
+PsbJob.belongsTo(WarehouseItem,       { foreignKey: 'warehouse_item_id', as: 'warehouseItem', constraints: false });
+PsbJob.belongsTo(User,                { foreignKey: 'created_by',        as: 'creator', constraints: false });
+PsbJob.belongsTo(User,                { foreignKey: 'technician_user_id', as: 'technician', constraints: false });
+Customer.hasMany(PsbJob,              { foreignKey: 'customer_id',       as: 'psb_jobs', constraints: false });
 
-WarehouseItem.belongsTo(Customer,     { foreignKey: 'customer_id',       as: 'customer' });
-WarehouseItem.belongsTo(User,         { foreignKey: 'created_by',        as: 'creator' });
-WarehouseItem.belongsTo(PsbJob,       { foreignKey: 'psb_job_id',        as: 'psbJob' });
-WarehouseItem.hasMany(WarehouseMovement, { foreignKey: 'item_id',        as: 'movements' });
-WarehouseMovement.belongsTo(WarehouseItem, { foreignKey: 'item_id',      as: 'item' });
-WarehouseMovement.belongsTo(User,     { foreignKey: 'performed_by',      as: 'actor' });
+WarehouseItem.belongsTo(Customer,     { foreignKey: 'customer_id',       as: 'customer', constraints: false });
+WarehouseItem.belongsTo(User,         { foreignKey: 'created_by',        as: 'creator', constraints: false });
+WarehouseItem.belongsTo(PsbJob,       { foreignKey: 'psb_job_id',        as: 'psbJob', constraints: false });
+WarehouseItem.hasMany(WarehouseMovement, { foreignKey: 'item_id',        as: 'movements', constraints: false });
+WarehouseMovement.belongsTo(WarehouseItem, { foreignKey: 'item_id',      as: 'item', constraints: false });
+WarehouseMovement.belongsTo(User,     { foreignKey: 'performed_by',      as: 'actor', constraints: false });
 
 module.exports = db;
