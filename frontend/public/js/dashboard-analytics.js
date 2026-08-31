@@ -170,6 +170,7 @@ async function loadTopCustomers() {
           <div class="customer-meta">
             <span class="customer-id">${escHtml(customer.customer_id)}</span>
             <span class="customer-package">${escHtml(customer.package_name || '-')}</span>
+            ${sourceBadges(customer.sources)}
           </div>
         </div>
         <div class="customer-usage">
@@ -649,6 +650,24 @@ function setText(id, val) {
 
 function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+const SOURCE_LABELS = {
+  queue: 'SQ',
+  pppoe: 'PPPoE',
+  hotspot: 'Hotspot',
+  l2tp: 'L2TP',
+  sstp: 'SSTP',
+  pptp: 'PPTP',
+  ovpn: 'OVPN'
+};
+
+function sourceBadges(sources) {
+  if (!Array.isArray(sources) || !sources.length) return '';
+  return sources.map((src) => {
+    const label = SOURCE_LABELS[src] || src;
+    return `<span class="customer-source">${escHtml(label)}</span>`;
+  }).join('');
 }
 // ═══════════════════════════════════════════════════════════════
 // PETA SEBARAN PELANGGAN + STATUS UP/DOWN (dashboard)

@@ -791,6 +791,21 @@ input, select, textarea { font-family: inherit; }
   color: var(--text-secondary);
 }
 
+.customer-source {
+  padding: 2px 6px;
+  background: #ecfeff;
+  color: #0e7490;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+[data-theme="dark"] .customer-source {
+  background: #164e63;
+  color: #a5f3fc;
+}
+
 .customer-usage {
   display: flex;
   flex-direction: column;
