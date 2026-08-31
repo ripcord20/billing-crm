@@ -206,6 +206,20 @@ router.get('/panduan/mikrotik', authenticate, allowMitraGuidePage, async (req, r
   });
 });
 
+function allowNasRadiusPage(req, res, next) {
+  const r = (req.user?.role?.name || '').toLowerCase();
+  if (['superadmin', 'admin', 'finance', 'noc'].includes(r)) return next();
+  return res.status(403).render('pages/403', {
+    title: 'Akses Ditolak',
+    layout: false,
+    message: 'Anda tidak punya akses ke modul NAS.'
+  });
+}
+
+router.get('/nas', authenticate, allowNasRadiusPage, (req, res) => {
+  res.render('pages/nas', { title: 'Modul NAS', user: req.user, active: 'nas' });
+});
+
 router.get('/radius', authenticate, (req, res) => {
   const r = (req.user?.role?.name || '').toLowerCase();
   if (r === 'tenant_owner') return res.redirect('/panduan/mikrotik');

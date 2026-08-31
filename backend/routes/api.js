@@ -71,6 +71,7 @@ router.get('/auth/profile', authenticate, demoGuard, AuthController.profile);
 router.put('/auth/profile', authenticate, demoGuard, AuthController.updateProfile);
 router.put('/auth/password', authenticate, demoGuard, AuthController.changePassword);
 router.get('/mitra/mikrotik-guide', authenticate, demoGuard, require('../controllers/MitraMikrotikGuideController').show);
+router.post('/nas/wireguard/phone-qr', authenticate, demoGuard, require('../controllers/WireguardPhoneQrController').createPhone);
 
 // ═══════════════════════════════════════════════════════════════════
 // FINANCE ROLE — Path-prefix API block
