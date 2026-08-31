@@ -51,6 +51,8 @@
   document.querySelectorAll('.mk-copy').forEach((btn) => {
     btn.addEventListener('click', () => {
       const which = btn.getAttribute('data-copy');
+      if (btn.id === 'mkCopyPeer') return copy(textOf('mkPhonePeer'), btn);
+      if (btn.id === 'mkCopyConf') return copy(textOf('mkPhoneConf'), btn);
       const map = {
         v7: 'mkScriptV7',
         v6: 'mkScriptV6',
@@ -61,4 +63,49 @@
       copy(textOf(map[which] || 'mkScriptV7'), btn);
     });
   });
+
+  const qrBtn = document.getElementById('mkPhoneQrBtn');
+  if (qrBtn && window.App && App.api) {
+    qrBtn.addEventListener('click', async () => {
+      const err = document.getElementById('mkPhoneQrErr');
+      const box = document.getElementById('mkPhoneQrBox');
+      if (err) { err.style.display = 'none'; err.textContent = ''; }
+      qrBtn.disabled = true;
+      const old = qrBtn.textContent;
+      qrBtn.textContent = 'Membuat…';
+      try {
+        const r = await App.api('/nas/wireguard/phone-qr', {
+          method: 'POST',
+          body: JSON.stringify({ label: 'HP tes' })
+        });
+        if (!r || !r.success) {
+          if (err) {
+            err.style.display = '';
+            err.textContent = (r && r.message) || 'Gagal membuat QR';
+          }
+          return;
+        }
+        const d = r.data || {};
+        const img = document.getElementById('mkPhoneQrImg');
+        if (img) img.src = d.qr_data_url || '';
+        const peer = document.getElementById('mkPhonePeer');
+        if (peer) peer.textContent = d.server_peer_block || '';
+        const conf = document.getElementById('mkPhoneConf');
+        if (conf) conf.textContent = d.client_config || '';
+        const warn = document.getElementById('mkPhoneQrWarn');
+        if (warn) {
+          if (d.endpoint_is_private) {
+            warn.style.display = '';
+            warn.textContent = 'Endpoint masih IP LAN. HP di data seluler tidak handshake sampai concentrator Fiberix punya IP/DNS publik.';
+          } else {
+            warn.style.display = 'none';
+          }
+        }
+        if (box) box.style.display = '';
+      } finally {
+        qrBtn.disabled = false;
+        qrBtn.textContent = old;
+      }
+    });
+  }
 })();

@@ -181,6 +181,27 @@
               · host WG <code class="mk-inline"><%= guide.endpoint_display %></code>
               · host L2TP <code class="mk-inline"><%= guide.l2tp_display %></code>
             </p>
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+              <h3 style="margin:0 0 6px;font-size:15px;">QR WireGuard untuk HP</h3>
+              <p style="margin:0 0 10px;font-size:13px;color:var(--text-secondary);line-height:1.5;">
+                Tes handshake dari HP: aplikasi <strong>WireGuard</strong> → + → Scan QR.
+                Ini peer terpisah, bukan kunci MikroTik. Setelah generate, tempel blok [Peer] di concentrator Fiberix.
+              </p>
+              <button type="button" class="btn-primary" id="mkPhoneQrBtn">Buat QR HP</button>
+              <p id="mkPhoneQrErr" class="mk-alert warn" style="display:none;margin-top:10px;"></p>
+              <div id="mkPhoneQrBox" style="display:none;margin-top:12px;text-align:center;">
+                <img id="mkPhoneQrImg" alt="QR WireGuard HP" style="width:240px;height:240px;background:#fff;padding:8px;border-radius:12px;">
+                <p id="mkPhoneQrWarn" class="mk-alert warn" style="display:none;text-align:left;"></p>
+                <div class="mk-prewrap" style="margin-top:10px;text-align:left;">
+                  <button type="button" class="mk-copy" id="mkCopyPeer">Salin [Peer]</button>
+                  <pre class="mk-pre" id="mkPhonePeer"></pre>
+                </div>
+                <div class="mk-prewrap" style="margin-top:10px;text-align:left;">
+                  <button type="button" class="mk-copy" id="mkCopyConf">Salin .conf</button>
+                  <pre class="mk-pre" id="mkPhoneConf"></pre>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <% } %>
