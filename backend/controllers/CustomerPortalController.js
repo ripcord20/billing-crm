@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const { Customer, Package, Invoice, Payment, Ticket, TicketTimeline,
         QueueHistory, AppSetting, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const { portalLoginKeys } = require('../utils/portalLogin');
 const genieacs = require('../services/GenieacsService');
 const { getMikrotikInstance } = require('../services/MikrotikService');
 const logger = require('../utils/logger');
@@ -27,12 +28,13 @@ async function getSetting(key, fallback = null) {
 exports.login = async (req, res) => {
   try {
     const { customer_id, password } = req.body;
-    if (!customer_id || !password)
+    const ident = String(customer_id || '').trim();
+    if (!ident || !password)
       return res.status(400).json({ success: false, message: 'ID Pelanggan dan password wajib diisi' });
 
     const customer = await Customer.findOne({
       where: {
-        [Op.or]: [{ customer_id }, { phone: customer_id }],
+        [Op.or]: portalLoginKeys(ident),
         portal_enabled: true
       },
       include: [{ model: Package, as: 'package' }]

@@ -295,6 +295,15 @@
       line-height:1.55;text-align:center;
     }
     .hint strong{color:#1e3a8a;font-weight:700;}
+    .apk-dl{
+      margin-top:14px;text-align:center;
+    }
+    .apk-dl a{
+      display:inline-flex;align-items:center;gap:6px;
+      font-size:12.5px;font-weight:700;color:var(--blue2);
+      text-decoration:none;padding:8px 12px;border-radius:10px;
+      border:1px solid #bfdbfe;background:#fff;
+    }
 
     /* Help footer */
     .help-footer{
@@ -412,9 +421,9 @@
 
     <div class="form-group">
       <div class="input-card">
-        <div class="input-label">ID Pelanggan / No. HP</div>
+        <div class="input-label">ID Pelanggan / HP / User PPPoE</div>
         <div class="input-row">
-          <input type="text" id="inputCID" placeholder="CID001 atau 08xxxxxxxxxx" autocomplete="username" autofocus>
+          <input type="text" id="inputCID" placeholder="CID001, 08xxxx, atau user PPPoE" autocomplete="username" autofocus>
         </div>
       </div>
     </div>
@@ -445,7 +454,11 @@
 
     <div class="hint">
       <strong>Pertama kali login?</strong><br>
-      Gunakan ID Pelanggan dan nomor HP yang terdaftar sebagai password.
+      Gunakan ID Pelanggan, nomor HP, atau username PPPoE. Password awal = nomor HP terdaftar.
+    </div>
+
+    <div class="apk-dl" id="apkDl">
+      <a href="/downloads/Fiberix-Pelanggan.apk" id="apkDlLink">Unduh aplikasi Android</a>
     </div>
 
     <div class="help-footer">
@@ -465,6 +478,10 @@
 
 <script>
 var _CS_WA = '';
+if (/FiberixPelanggan/i.test(navigator.userAgent || '')) {
+  var _apk = document.getElementById('apkDl');
+  if (_apk) _apk.style.display = 'none';
+}
 
 // ── Load brand/hero from public meta endpoint ──
 (async function loadMeta(){
@@ -584,7 +601,7 @@ async function doLogin(){
   var sp  = document.getElementById('btnSpinner');
 
   if(!cid || !pw){
-    err.textContent = 'ID Pelanggan dan Password wajib diisi';
+    err.textContent = 'ID Pelanggan / HP / user PPPoE dan password wajib diisi';
     err.style.display = 'block';
     return;
   }

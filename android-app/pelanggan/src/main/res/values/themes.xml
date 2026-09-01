@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.FiberixPelanggan" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/fiberix_blue</item>
+        <item name="android:statusBarColor">@color/fiberix_deep</item>
+        <item name="android:navigationBarColor">@color/fiberix_deep</item>
+        <item name="android:windowBackground">@color/fiberix_splash</item>
+    </style>
+</resources>

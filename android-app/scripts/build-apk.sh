@@ -31,10 +31,18 @@ if [[ ! -f "$KS" ]]; then
 fi
 
 python3 "$ROOT/scripts/gen-icons.py"
+python3 "$ROOT/scripts/gen-icons.py" \
+  --out "$ROOT/pelanggan/src/main/res" \
+  --letter P \
+  --from-rgb 13,148,136 \
+  --to-rgb 15,118,110
 
 cd "$ROOT"
 chmod +x gradlew 2>/dev/null || true
-./gradlew :app:assembleRelease --no-daemon
-APK="$ROOT/app/build/outputs/apk/release/app-release.apk"
-echo "APK: $APK"
-ls -lh "$APK"
+./gradlew :app:assembleRelease :pelanggan:assembleRelease --no-daemon
+STAFF="$ROOT/app/build/outputs/apk/release/app-release.apk"
+PELANGGAN="$ROOT/pelanggan/build/outputs/apk/release/pelanggan-release.apk"
+echo "Staff APK: $STAFF"
+ls -lh "$STAFF"
+echo "Pelanggan APK: $PELANGGAN"
+ls -lh "$PELANGGAN"

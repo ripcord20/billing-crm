@@ -1,2 +1,3 @@
-rootProject.name = "FiberixBilling"
+rootProject.name = "Fiberix"
 include ':app'
+include ':pelanggan'
