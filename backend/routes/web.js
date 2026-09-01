@@ -360,7 +360,8 @@ router.get('/work-orders', authenticate, blockFinanceArea, (req, res) => {
 });
 
 router.get('/psb', authenticate, blockFinanceArea, (req, res) => {
-  res.render('pages/psb', { title: 'Pasang Baru', user: req.user, active: 'psb' });
+  const { pageRedirect } = require('../services/PsbFlow');
+  return res.redirect(pageRedirect(req.user && req.user.role && req.user.role.name));
 });
 
 router.get('/gudang', authenticate, blockFinanceArea, (req, res) => {

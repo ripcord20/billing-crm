@@ -1,5 +1,8 @@
 'use strict';
 
+// Kanban /psb disembunyikan: form pasang baru ada di Sales (registrasi).
+// API di bawah tetap ada supaya data lama tidak rusak.
+
 const { Op } = require('sequelize');
 const { applyTenantWhere, getTenantId, stampTenant } = require('../utils/tenantScope');
 const { generateUniqueCustomerId } = require('../utils/helpers');

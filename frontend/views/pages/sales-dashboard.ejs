@@ -536,7 +536,7 @@
           <p id="fxSub">Ringkasan performa akuisisi pelanggan Anda</p>
         </div>
         <div class="fx-hdr-r">
-          <button class="btn btn-blue" onclick="openRegModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Registrasi Baru</button>
+          <button class="btn btn-blue" onclick="openRegModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Pasang Baru</button>
           <button class="icon-btn" onclick="refreshAll()" title="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg></button>
         </div>
       </div>
@@ -665,7 +665,7 @@
       <section class="fx-section" data-section="pipeline">
         <div class="card">
           <div class="card-h">
-            <div class="t">Pipeline Registrasi & Work Order</div>
+            <div class="t">Pipeline Pasang Baru<small>Registrasi, survey, work order, aktivasi</small></div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <button id="btnRegTrash" class="btn btn-outline btn-sm" onclick="openRegTrash()" style="display:none">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
@@ -1133,7 +1133,7 @@
 </div>
 <div class="sxmodal" id="regModal">
   <div class="sxmodal-box reg-modal">
-    <div class="sxmodal-h"><span>Registrasi Pelanggan Baru</span><span class="x" onclick="closeModal('regModal')">&times;</span></div>
+    <div class="sxmodal-h"><span>Pasang Baru — Registrasi Pelanggan</span><span class="x" onclick="closeModal('regModal')">&times;</span></div>
 
     <div class="reg-sec"><span class="reg-sec-t">Data Pelanggan</span></div>
     <div class="row">
@@ -1234,8 +1234,8 @@ async function api(url,opt={}){const r=await fetch('/api'+url,{headers:{'Content
 
 const STATUS_LABEL={lead:'Lead',survey_request:'Survey Request',surveyed:'Surveyed',survey_rejected:'Survey Ditolak',approved:'Approved',installing:'Installing',activated:'Activated',cancelled:'Cancelled'};
 const STATUS_CLASS={lead:'p-lead',survey_request:'p-survey',surveyed:'p-surveyed',survey_rejected:'p-rejected',approved:'p-approved',installing:'p-installing',activated:'p-activated',cancelled:'p-cancelled'};
-const SUB={overview:'Ringkasan performa akuisisi pelanggan Anda',pipeline:'Kelola lead, survey, dan instalasi',customers:'Pelanggan yang berhasil diaktivasi',coverage:'Cek ketersediaan jaringan di titik pelanggan',potential:'Area dengan banyak calon pelanggan tapi belum ter-cover ODP',referral:'Bagikan link & pantau referral Anda',kpi:'Progress target bulanan & indikator kinerja',commission:'Riwayat & pembayaran komisi',leaderboard:'Peringkat performa tim sales',analytics:'Analisis tren registrasi, aktivasi & komisi',manage:'Pantau kinerja tim sales & atur komisi'};
-const TITLE={overview:'Sales Dashboard',pipeline:'Pipeline Registrasi',customers:'Daftar Customer',coverage:'Coverage Checker',potential:'Area Potensi',referral:'Referral',kpi:'Target & KPI',commission:'Komisi',leaderboard:'Leaderboard',analytics:'Analytics',manage:'Manajemen Sales'};
+const SUB={overview:'Ringkasan performa akuisisi pelanggan Anda',pipeline:'Form pasang baru, survey, work order, dan aktivasi',customers:'Pelanggan yang berhasil diaktivasi',coverage:'Cek ketersediaan jaringan di titik pelanggan',potential:'Area dengan banyak calon pelanggan tapi belum ter-cover ODP',referral:'Bagikan link & pantau referral Anda',kpi:'Progress target bulanan & indikator kinerja',commission:'Riwayat & pembayaran komisi',leaderboard:'Peringkat performa tim sales',analytics:'Analisis tren registrasi, aktivasi & komisi',manage:'Pantau kinerja tim sales & atur komisi'};
+const TITLE={overview:'Sales Dashboard',pipeline:'Pipeline Pasang Baru',customers:'Daftar Customer',coverage:'Coverage Checker',potential:'Area Potensi',referral:'Referral',kpi:'Target & KPI',commission:'Komisi',leaderboard:'Leaderboard',analytics:'Analytics',manage:'Manajemen Sales'};
 
 function goSection(sec){
   document.querySelectorAll('.fx-section').forEach(s=>s.classList.toggle('on',s.dataset.section===sec));
