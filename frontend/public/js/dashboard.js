@@ -106,7 +106,7 @@ function rebuildActivityIfaceDropdown() {
   const previous = selectedActivityIface;
 
   // Build options. Default "All Interfaces" → aggregate.
-  let html = '<option value="__all__">All Interfaces</option>';
+  let html = '<option value="__all__">Auto (uplink)</option>';
   monitoredInterfaces.forEach(name => {
     html += `<option value="${escHtml(name)}">${escHtml(name)}</option>`;
   });
@@ -203,7 +203,7 @@ async function loadDashboardData() {
 async function initInterfaceList() {
   const data = await App.api(withDevice('/mikrotik/interfaces'));
   if (!data?.success) return;
-  const running = data.data.filter(i => i.running && !i.disabled).slice(0, 8);
+  const running = data.data.filter(i => i.running && !i.disabled && !isSessionIfaceName(i.name)).slice(0, 8);
   monitoredInterfaces = running.map(i => i.name);
 
   // Render skeleton list dulu
@@ -230,6 +230,40 @@ async function initInterfaceList() {
   `).join('');
 }
 
+function isSessionIfaceName(name) {
+  const n = String(name || '').trim();
+  if (!n) return false;
+  if (n.startsWith('<') && n.endsWith('>')) return true;
+  return /^(pppoe|l2tp|sstp|pptp|ovpn)-/i.test(n);
+}
+
+function pickBusiestTrafficSample(samples, selected) {
+  const list = Array.isArray(samples) ? samples : [];
+  if (selected && selected !== '__all__') {
+    return list.find(s => s && s.name === selected) || null;
+  }
+  let best = null;
+  let bestSum = -1;
+  for (const s of list) {
+    if (!s || isSessionIfaceName(s.name)) continue;
+    const sum = (Number(s.rxBitsPerSecond) || 0) + (Number(s.txBitsPerSecond) || 0);
+    if (sum > bestSum) { bestSum = sum; best = s; }
+  }
+  if (best) return best;
+  for (const s of list) {
+    if (!s) continue;
+    const sum = (Number(s.rxBitsPerSecond) || 0) + (Number(s.txBitsPerSecond) || 0);
+    if (sum > bestSum) { bestSum = sum; best = s; }
+  }
+  return best;
+}
+
+function setChartLiveIface(name) {
+  const el = document.getElementById('activityChartLiveIface');
+  if (!el) return;
+  el.textContent = name ? String(name) : '';
+}
+
 // ─── REAL-TIME POLL SETIAP 2 DETIK ───────────────────────────
 async function pollRealtimeTraffic() {
   if (!monitoredInterfaces.length) return;
@@ -239,45 +273,29 @@ async function pollRealtimeTraffic() {
     const data  = await App.api(withDevice(`/mikrotik/interfaces/monitor-selected?names=${encodeURIComponent(names)}`));
     if (!data?.success || !data.data?.length) return;
 
-    let totalRxBps = 0, totalTxBps = 0;
     let chartRxBps = 0, chartTxBps = 0;
     const ifaceData = [];
 
     data.data.forEach(s => {
       const rxMbps = (s.rxBitsPerSecond / 1_000_000);
       const txMbps = (s.txBitsPerSecond / 1_000_000);
-
-      // Total selalu aggregate semua interface (untuk card "Total Bandwidth"
-      // dan sidebar bandwidth bar — angka aggregate tetap relevan terlepas
-      // dari interface mana yang dipilih user di Activity Chart).
-      totalRxBps += s.rxBitsPerSecond;
-      totalTxBps += s.txBitsPerSecond;
-
-      // Chart series tergantung pilihan user:
-      //   '__all__'           → aggregate semua interface (sum)
-      //   <nama interface>    → hanya interface tersebut
-      if (selectedActivityIface === '__all__') {
-        chartRxBps += s.rxBitsPerSecond;
-        chartTxBps += s.txBitsPerSecond;
-      } else if (s.name === selectedActivityIface) {
-        chartRxBps = s.rxBitsPerSecond;
-        chartTxBps = s.txBitsPerSecond;
-      }
-
       ifaceData.push({ name: s.name, rxMbps, txMbps });
-
-      // Update baris di traffic list
       updateIfaceRow(s.name, rxMbps, txMbps);
     });
 
-    // Update activity chart sesuai filter user
+    // Chart: jangan SUM semua iface (WAN+LAN+PPPoE = traffic dobel).
+    // Auto = interface fisik tersibuk; pilihan user = iface itu saja.
+    const chartSample = pickBusiestTrafficSample(data.data, selectedActivityIface);
+    if (chartSample) {
+      chartRxBps = chartSample.rxBitsPerSecond || 0;
+      chartTxBps = chartSample.txBitsPerSecond || 0;
+    }
+    setChartLiveIface(chartSample && selectedActivityIface === '__all__' ? chartSample.name : '');
+
     pushChartPoint(chartRxBps / 1_000_000, chartTxBps / 1_000_000);
 
-    // Update total bandwidth card (selalu aggregate)
-    setText('totalBandwidth', (totalRxBps / 1_000_000).toFixed(1));
-
-    // Update sidebar bandwidth bar (selalu aggregate)
-    updateBandwidthBar(totalRxBps / 1_000_000);
+    setText('totalBandwidth', (chartRxBps / 1_000_000).toFixed(1));
+    updateBandwidthBar(chartRxBps / 1_000_000);
 
   } catch (e) { /* silent */ }
 }
@@ -330,8 +348,8 @@ function pushChartPoint(rxMbps, txMbps) {
 }
 
 function updateChartStats() {
-  const rxVals = rxSeries.map(p => p.y).filter(v => v > 0);
-  const txVals = txSeries.map(p => p.y).filter(v => v > 0);
+  const rxVals = rxSeries.map(p => Number(p.y) || 0);
+  const txVals = txSeries.map(p => Number(p.y) || 0);
   const maxRx = rxVals.length ? Math.max(...rxVals).toFixed(1) : '0.0';
   const maxTx = txVals.length ? Math.max(...txVals).toFixed(1) : '0.0';
   const avgRx = rxVals.length ? (rxVals.reduce((a,b)=>a+b,0)/rxVals.length).toFixed(1) : '0.0';

@@ -2,6 +2,9 @@ const { Device, Customer, Invoice, OntDevice, Payment, TrafficData, Ticket, Queu
 const { Op } = require('sequelize');
 const moment = require('moment');
 const { getMikrotikInstance, getMikrotikInstanceByDevice } = require('../services/MikrotikService');
+const CustomerBandwidth = require('../services/CustomerBandwidth');
+const { applyTenantWhere, getTenantId } = require('../utils/tenantScope');
+const { pickUplinkInterfaces } = require('../utils/ifaceTraffic');
 
 // Cache hasil peta sebaran pelanggan (60s) — lihat customerMapPoints()
 let _custMapCache = { ts: 0, data: null };
@@ -112,8 +115,9 @@ class DashboardController {
       try {
         const mt = await getMikrotikInstanceByDevice(deviceId);
         const ifaces = await mt.getInterfaces();
-        // Ambil top 5 interface yang running saja
-        const running = ifaces.filter(i => i.running && !i.disabled).slice(0, 5);
+        // Jangan slice(0,5) mentah: urutan ROS sering ether + sesi PPPoE,
+        // sehingga WAN (sfp) terlewat / chart menjumlahkan LAN+WAN+PPPoE.
+        const running = pickUplinkInterfaces(ifaces, 8);
         const statsPromises = running.map(iface =>
           mt.getInterfaceStats(iface.name).catch(() => ({
             name: iface.name,
@@ -160,137 +164,23 @@ class DashboardController {
     try {
       const limit = parseInt(req.query.limit) || 10;
       const period = req.query.period || 'total'; // 'total','24h','7d','30d'
+      const useWindow = ['24h', '7d', '30d'].includes(period);
 
-      let startDate;
-      switch (period) {
-        case '7d':
-          startDate = moment().subtract(7, 'days').toDate();
-          break;
-        case '30d':
-          startDate = moment().subtract(30, 'days').toDate();
-          break;
-        case '24h':
-          startDate = moment().subtract(24, 'hours').toDate();
-          break;
-        default: // 'total' — akumulatif dari Simple Queue, tidak pakai window waktu
-          startDate = null;
-      }
+      let startDate = null;
+      if (period === '7d') startDate = moment().subtract(7, 'days').toDate();
+      else if (period === '30d') startDate = moment().subtract(30, 'days').toDate();
+      else if (period === '24h') startDate = moment().subtract(24, 'hours').toDate();
 
-      let topCustomers = [];
-
-      // ─── METHOD 1: Agregasi Simple Queue dari SEMUA router MikroTik ───
-      // Bytes diambil dari field `bytes` Simple Queue (= Total Statistics:
-      // upload/download kumulatif). Cocokkan queue → customer via beberapa cara
-      // karena penamaan queue bervariasi (PPPoE pakai username, static/hotspot
-      // sering pakai nama/CID + target IP).
-      try {
-        const { Device, Package } = require('../models');
-
-        // Ambil semua customer aktif sekali (untuk matching)
-        const customers = await Customer.findAll({
-          where: { status: 'active' },
-          include: [{ model: Package, as: 'package', attributes: ['name', 'speed_down', 'speed_up', 'price'] }],
-          attributes: ['id', 'customer_id', 'name', 'pppoe_username', 'static_ip']
-        });
-
-        // Index pencocokan: 3 kunci → customer
-        const byPppoe = new Map();   // pppoe_username (lowercase)
-        const byIp    = new Map();   // static_ip
-        const byName  = new Map();   // nama & customer_id (lowercase, dinormalisasi)
-        const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        for (const c of customers) {
-          if (c.pppoe_username) byPppoe.set(String(c.pppoe_username).toLowerCase(), c);
-          if (c.static_ip)      byIp.set(String(c.static_ip).trim(), c);
-          if (c.name)           byName.set(norm(c.name), c);
-          if (c.customer_id)    byName.set(norm(c.customer_id), c);
-        }
-
-        // Cocokkan satu queue ke customer. Urutan: pppoe → IP target → nama.
-        const matchQueue = (q) => {
-          const qn = String(q.name || '');
-          // 1) PPPoE: nama queue == pppoe_username (kadang berformat <pppoe-USER>)
-          const pppoeKey = qn.toLowerCase().replace(/^<?pppoe-?/, '').replace(/>$/, '');
-          if (byPppoe.has(qn.toLowerCase())) return byPppoe.get(qn.toLowerCase());
-          if (byPppoe.has(pppoeKey))         return byPppoe.get(pppoeKey);
-          // 2) Static: target IP queue cocok dengan static_ip customer
-          if (q.target) {
-            const ip = String(q.target).split('/')[0].split(',')[0].trim();
-            if (byIp.has(ip)) return byIp.get(ip);
-          }
-          // 3) Nama queue mengandung nama/CID customer (mis. "<43. WARUNG NIA>")
-          const qnNorm = norm(qn);
-          if (byName.has(qnNorm)) return byName.get(qnNorm);
-          for (const [key, cust] of byName) {
-            if (key.length >= 4 && qnNorm.includes(key)) return cust;
-          }
-          return null;
-        };
-
-        // Loop semua router aktif, kumpulkan queue, akumulasi per-customer
-        const devices = await Device.findAll({
-          where: { type: 'router', is_active: true },
-          attributes: ['id', 'name']
-        });
-        // Fallback: kalau tidak ada device router terdaftar, pakai instance default
-        const deviceIds = devices.length ? devices.map(d => d.id) : [null];
-
-        const acc = new Map(); // customer.id → { customer, bytes, rxMbps, txMbps }
-        for (const devId of deviceIds) {
-          let queues = [];
-          try {
-            const mt = devId ? await getMikrotikInstanceByDevice(devId) : getMikrotikInstance();
-            queues = await mt.getQueueStats();
-          } catch (e) {
-            console.log(`[TopCustomers] Router ${devId || 'default'} tidak terjangkau: ${e.message}`);
-            continue;
-          }
-          for (const q of (queues || [])) {
-            const customer = matchQueue(q);
-            if (!customer) continue;
-            const rxMbps = parseFloat(q.rateIn  || 0) / 1000000;
-            const txMbps = parseFloat(q.rateOut || 0) / 1000000;
-            const bytes  = parseFloat(q.bytesIn || 0) + parseFloat(q.bytesOut || 0);
-            const prev = acc.get(customer.id) || { customer, bytes: 0, rxMbps: 0, txMbps: 0 };
-            prev.bytes  += bytes;       // akumulasi antar-router (jaga-jaga split queue)
-            prev.rxMbps += rxMbps;
-            prev.txMbps += txMbps;
-            acc.set(customer.id, prev);
-          }
-        }
-
-        topCustomers = Array.from(acc.values())
-          .map(({ customer, bytes, rxMbps, txMbps }) => {
-            const totalGB = bytes / 1073741824;
-            return {
-              id: customer.id,
-              customer_id: customer.customer_id,
-              name: customer.name,
-              pppoe_username: customer.pppoe_username,
-              package_name: customer.package?.name || '-',
-              speed_down: customer.package?.speed_down || 0,
-              speed_up: customer.package?.speed_up || 0,
-              total_gb: totalGB.toFixed(2),
-              avg_download_mbps: rxMbps.toFixed(2),
-              avg_upload_mbps: txMbps.toFixed(2),
-              peak_download_mbps: rxMbps.toFixed(2),
-              usage_percent: customer.package?.speed_down
-                ? ((rxMbps / customer.package.speed_down) * 100).toFixed(1)
-                : 0
-            };
-          })
-          .sort((a, b) => parseFloat(b.total_gb) - parseFloat(a.total_gb))
-          .slice(0, limit);
-      } catch (mtErr) {
-        console.log('[TopCustomers] MikroTik agregasi gagal, fallback ke database:', mtErr.message);
-      }
-
-      // ─── METHOD 2: Fallback to queue_history if MikroTik fails ───
-      if (topCustomers.length === 0) {
-        // Untuk period 'total' (startDate null) → tanpa filter tanggal (semua histori).
-        const dateClause = startDate ? 'AND qh.recorded_at >= ?' : '';
-        const repl = startDate ? [startDate, limit] : [limit];
-        topCustomers = await sequelize.query(`
-          SELECT 
+      const fetchHistory = async (windowStart) => {
+        const tid = getTenantId(req);
+        const dateClause = windowStart ? 'AND qh.recorded_at >= ?' : '';
+        const tenantClause = tid ? 'AND c.tenant_id = ?' : '';
+        const repl = [];
+        if (windowStart) repl.push(windowStart);
+        if (tid) repl.push(tid);
+        repl.push(limit);
+        const rows = await sequelize.query(`
+          SELECT
             c.id,
             c.customer_id,
             c.name,
@@ -298,15 +188,24 @@ class DashboardController {
             p.name as package_name,
             p.speed_down,
             p.speed_up,
-            COALESCE(SUM(qh.rx_bytes + qh.tx_bytes) / 1073741824, 0) as total_gb,
+            COALESCE(MAX(qh.rx_bytes) / 1073741824, 0) as download_gb,
+            COALESCE(MAX(qh.tx_bytes) / 1073741824, 0) as upload_gb,
+            COALESCE((MAX(qh.rx_bytes) + MAX(qh.tx_bytes)) / 1073741824, 0) as total_gb,
             COALESCE(AVG(qh.rx_rate) / 1000000, 0) as avg_download_mbps,
             COALESCE(AVG(qh.tx_rate) / 1000000, 0) as avg_upload_mbps,
             COALESCE(MAX(qh.rx_rate) / 1000000, 0) as peak_download_mbps
           FROM customers c
           LEFT JOIN packages p ON c.package_id = p.id
-          LEFT JOIN queue_history qh ON c.pppoe_username = qh.queue_name 
+          LEFT JOIN queue_history qh ON (
+            c.pppoe_username IS NOT NULL AND c.pppoe_username <> '' AND (
+              c.pppoe_username = qh.queue_name
+              OR qh.queue_name = CONCAT('<pppoe-', c.pppoe_username, '>')
+              OR qh.queue_name = CONCAT('pppoe-', c.pppoe_username)
+            )
+          )
             ${dateClause}
           WHERE c.status = 'active'
+            ${tenantClause}
           GROUP BY c.id, c.customer_id, c.name, c.pppoe_username, p.name, p.speed_down, p.speed_up
           HAVING total_gb > 0
           ORDER BY total_gb DESC
@@ -315,22 +214,75 @@ class DashboardController {
           replacements: repl,
           type: sequelize.QueryTypes.SELECT
         });
-
-        topCustomers = topCustomers.map(c => ({
+        return rows.map(c => ({
           ...c,
+          download_gb: parseFloat(c.download_gb).toFixed(2),
+          upload_gb: parseFloat(c.upload_gb).toFixed(2),
           total_gb: parseFloat(c.total_gb).toFixed(2),
           avg_download_mbps: parseFloat(c.avg_download_mbps).toFixed(2),
           avg_upload_mbps: parseFloat(c.avg_upload_mbps).toFixed(2),
           peak_download_mbps: parseFloat(c.peak_download_mbps).toFixed(2),
-          usage_percent: c.speed_down ? ((c.avg_download_mbps / c.speed_down) * 100).toFixed(1) : 0
+          usage_percent: c.speed_down ? ((c.avg_download_mbps / c.speed_down) * 100).toFixed(1) : 0,
+          sources: ['queue']
         }));
+      };
+
+      const fetchLive = async () => {
+        const { Package } = require('../models');
+        const customers = await Customer.findAll({
+          where: applyTenantWhere(req, { status: 'active' }),
+          include: [{ model: Package, as: 'package', attributes: ['name', 'speed_down', 'speed_up', 'price'] }],
+          attributes: ['id', 'customer_id', 'name', 'pppoe_username', 'static_ip']
+        });
+        const index = CustomerBandwidth.buildIndex(customers);
+        const devices = await Device.findAll({
+          where: { type: 'router', is_active: true },
+          attributes: ['id', 'name']
+        });
+        const deviceIds = devices.length ? devices.map(d => d.id) : [null];
+        const acc = await CustomerBandwidth.collectFromDevices(index, deviceIds, async (devId) => {
+          return getMikrotikInstanceByDevice(devId);
+        });
+        return CustomerBandwidth.formatRows(acc, { limit });
+      };
+
+      let topCustomers = [];
+      let source = 'mikrotik';
+
+      // Window 24h/7d/30d: pakai queue_history dulu (satu-satunya sumber ber-timestamp).
+      // Total: live multi-sumber (simple queue + interface PPPoE/L2TP + sesi PPP + hotspot).
+      if (useWindow) {
+        try {
+          topCustomers = await fetchHistory(startDate);
+          if (topCustomers.length) source = 'database';
+        } catch (histErr) {
+          console.log('[TopCustomers] queue_history gagal:', histErr.message);
+        }
+      }
+
+      if (topCustomers.length === 0) {
+        try {
+          topCustomers = await fetchLive();
+          source = 'mikrotik';
+        } catch (mtErr) {
+          console.log('[TopCustomers] MikroTik agregasi gagal, fallback ke database:', mtErr.message);
+        }
+      }
+
+      if (topCustomers.length === 0) {
+        try {
+          topCustomers = await fetchHistory(useWindow ? startDate : null);
+          source = 'database';
+        } catch (histErr) {
+          console.log('[TopCustomers] fallback queue_history gagal:', histErr.message);
+        }
       }
 
       res.json({
         success: true,
         data: topCustomers,
         period,
-        source: topCustomers.length > 0 && topCustomers[0].total_gb > 0 ? 'mikrotik' : 'database'
+        source
       });
     } catch (error) {
       console.error('Error fetching top customers:', error);

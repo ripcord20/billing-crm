@@ -170,18 +170,20 @@ async function loadTopCustomers() {
           <div class="customer-meta">
             <span class="customer-id">${escHtml(customer.customer_id)}</span>
             <span class="customer-package">${escHtml(customer.package_name || '-')}</span>
+            ${sourceBadges(customer)}
           </div>
         </div>
         <div class="customer-usage">
-          <div class="usage-gb">${customer.total_gb} GB</div>
+          <div class="usage-gb-split">
+            <span class="dl">↓${escHtml(customer.download_gb || customer.total_gb)} GB</span>
+            <span class="ul">↑${escHtml(customer.upload_gb != null ? customer.upload_gb : '0.00')} GB</span>
+          </div>
           <div class="usage-speed">
-            <span style="color:#3b82f6;">↓${customer.avg_download_mbps} Mbps</span>
-            <span style="color:#f97316;">↑${customer.avg_upload_mbps} Mbps</span>
+            <span style="color:#3b82f6;">↓${escHtml(customer.avg_download_mbps)} Mbps</span>
+            <span style="color:#f97316;">↑${escHtml(customer.avg_upload_mbps)} Mbps</span>
           </div>
         </div>
-        <div class="usage-bar">
-          <div class="usage-fill" style="width: ${Math.min(customer.usage_percent, 100)}%"></div>
-        </div>
+        ${Number(customer.usage_percent) > 0 ? `<div class="usage-bar"><div class="usage-fill" style="width: ${Math.min(customer.usage_percent, 100)}%"></div></div>` : ''}
       </div>
     `).join('');
   } catch (err) {
@@ -649,6 +651,31 @@ function setText(id, val) {
 
 function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+const SOURCE_LABELS = {
+  queue: 'SQ',
+  pppoe: 'PPPoE',
+  hotspot: 'Hotspot',
+  l2tp: 'L2TP',
+  sstp: 'SSTP',
+  pptp: 'PPTP',
+  ovpn: 'OVPN'
+};
+
+function sourceBadges(customer) {
+  const sources = customer && customer.sources;
+  const parts = [];
+  if (Array.isArray(sources)) {
+    sources.forEach((src) => {
+      const label = SOURCE_LABELS[src] || src;
+      parts.push(`<span class="customer-source">${escHtml(label)}</span>`);
+    });
+  }
+  if (customer && customer.unmatched) {
+    parts.push('<span class="customer-source customer-source-unmatched">MikroTik</span>');
+  }
+  return parts.join('');
 }
 // ═══════════════════════════════════════════════════════════════
 // PETA SEBARAN PELANGGAN + STATUS UP/DOWN (dashboard)

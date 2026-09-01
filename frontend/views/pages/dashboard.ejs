@@ -133,8 +133,9 @@
               </div>
               <div class="chart-legend">
                 <select id="activityChartIface" class="iface-select" title="Pilih interface untuk dipantau">
-                  <option value="__all__">All Interfaces</option>
+                  <option value="__all__">Auto (uplink)</option>
                 </select>
+                <span id="activityChartLiveIface" class="chart-live-iface"></span>
                 <span class="legend-item"><span class="legend-line blue"></span> RX</span>
                 <span class="legend-item"><span class="legend-line orange"></span> TX</span>
                 <div class="chart-range-btns">
@@ -184,7 +185,7 @@
                 <h3>Top Customers by Bandwidth</h3>
               </div>
               <select id="topCustomersPeriod" class="period-select">
-                <option value="total" selected>Total (Simple Queue)</option>
+                <option value="total" selected>Total (Queue + PPPoE)</option>
                 <option value="24h">Last 24h</option>
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
@@ -480,7 +481,7 @@
   <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
   <script src="/js/app.js"></script>
   <script src="/js/mikrotik-selector.js"></script>
-  <script src="/js/dashboard.js"></script>
-  <script src="/js/dashboard-analytics.js"></script>
+  <script src="/js/dashboard.js?v=act1"></script>
+  <script src="/js/dashboard-analytics.js?v=topbw4"></script>
 </body>
 </html>

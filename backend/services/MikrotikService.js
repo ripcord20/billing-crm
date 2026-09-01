@@ -343,8 +343,31 @@ class MikrotikService {
       // atau "pppoe-room-pppoe" tergantung versi RouterOS / format response).
       // Dipakai untuk korelasi dengan dynamic simple queue yang target/name-nya
       // mengacu ke interface ini.
-      interface: r.interface || ''
+      interface: r.interface || '',
+      // Semantik RouterOS: bytes-in = dari klien (upload), bytes-out = ke klien (download).
+      // Beberapa build tidak mengisi field ini — 0 artinya "tidak ada counter", bukan nol murni.
+      bytesIn:  parseInt(r['bytes-in']  || r.bytes_in  || '0', 10) || 0,
+      bytesOut: parseInt(r['bytes-out'] || r.bytes_out || '0', 10) || 0
     }));
+  }
+
+  // Hotspot active. Router tanpa paket hotspot → GET 404 / "no such command" → [].
+  async getHotspotActive() {
+    try {
+      const s = await this.get('/ip/hotspot/active', { timeout: 5000, retries: 0 });
+      return (Array.isArray(s) ? s : []).map(r => ({
+        id: r['.id'],
+        user: r.user || r.name || '',
+        address: r.address || '',
+        uptime: r.uptime || '',
+        bytesIn:  parseInt(r['bytes-in']  || r.bytes_in  || '0', 10) || 0,
+        bytesOut: parseInt(r['bytes-out'] || r.bytes_out || '0', 10) || 0
+      }));
+    } catch (e) {
+      const msg = e && e.message ? String(e.message) : '';
+      if (/no such command|not found|404|unknown command/i.test(msg)) return [];
+      throw e;
+    }
   }
 
   async getPPPoESecrets() {
