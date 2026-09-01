@@ -6,8 +6,49 @@
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .nas-page .page-content { min-width: 0; max-width: 100%; overflow-x: hidden; }
+    .nas-page .page-header { align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+    .nas-page .page-header-left {
+      display: flex; flex-direction: column; align-items: flex-start;
+      min-width: 0; flex: 1 1 220px;
+    }
+    .nas-page .page-header-left p { max-width: 100%; }
+    .nas-page .nas-table-card,
+    .nas-page .nas-table-card .card-body { min-width: 0; max-width: 100%; }
+    .nas-page .nas-table-card { overflow: visible; }
+    .nas-page .table-scroll {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      touch-action: pan-x pan-y;
+    }
+    .nas-page .table-scroll .data-table {
+      min-width: 920px;
+      width: max-content;
+    }
+    .nas-page .table-scroll .data-table th,
+    .nas-page .table-scroll .data-table td { white-space: nowrap; }
+    .nas-page .table-scroll .data-table td .empty-state,
+    .nas-page .table-scroll .data-table td[colspan] { white-space: normal; }
+    .nas-swipe-hint {
+      display: none;
+      margin: 8px 2px 0;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    @media (max-width: 768px) {
+      .nas-swipe-hint { display: block; }
+      .nas-page .page-header-right { width: 100%; }
+      .nas-page .page-header-right .btn { flex: 1 1 auto; }
+    }
+  </style>
 </head>
-<body>
+<body class="nas-page">
 <div class="app-layout">
   <%- include('../partials/sidebar') %>
   <div class="main-content">
@@ -16,19 +57,23 @@
       <div class="page-header">
         <div class="page-header-left">
           <h1>Modul NAS</h1>
-          <p style="margin:4px 0 0;color:var(--text-secondary);font-size:13px;">Tombol <b>Script</b> = satu tempelan RouterOS (WireGuard + RADIUS <code>192.168.22.9</code> + AAA + isolir). IP tunnel = WireGuard Fiberix (mis. <code>10.10.0.2</code>), bukan sewa VPN cloud.</p>
+          <p style="margin:4px 0 0;color:var(--text-secondary);font-size:13px;">Tombol <b>QR HP</b> = barcode untuk aplikasi WireGuard di HP (tes handshake). Tombol <b>Script</b> = tempelan RouterOS. IP tunnel = WireGuard Fiberix, bukan sewa VPN cloud.</p>
         </div>
-        <div class="page-header-right" style="display:flex;gap:8px;">
+        <div class="page-header-right" style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-secondary" onclick="openPhoneQr()">QR HP</button>
           <button class="btn btn-secondary" onclick="openWgServer()">⚙ WireGuard Server</button>
           <button class="btn btn-secondary" onclick="importNas()">Import dari RADIUS</button>
           <button class="btn btn-primary" onclick="openNas()">+ NAS</button>
         </div>
       </div>
-      <div class="card"><div class="card-body">
+      <div class="card nas-table-card"><div class="card-body">
+        <div class="table-scroll" id="nasTableScroll">
         <table class="data-table">
           <thead><tr><th>NAS IP</th><th>Nama</th><th>Tipe</th><th>Mode</th><th>Sync</th><th>Aksi</th></tr></thead>
           <tbody id="nasTable"><tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8;">Memuat…</td></tr></tbody>
         </table>
+        </div>
+        <p class="nas-swipe-hint">Geser tabel ke kanan untuk Mode, Sync, dan tombol Aksi.</p>
       </div></div>
     </main>
   </div>
@@ -111,6 +156,15 @@
     <p style="margin:0 0 12px;color:#b45309;font-size:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px;">⚠ Kredensial/private key hanya ditampilkan SEKARANG. Simpan config ini — generate ulang akan membuat kredensial baru.</p>
     <div style="margin-bottom:6px;font-size:13px;font-weight:600;">Alamat Tunnel: <span id="wgCfgAddr" class="mono"></span></div>
 
+    <div id="wgQrWrap" style="display:none;text-align:center;margin:10px 0 14px;padding:12px;border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc;">
+      <img id="wgQrImg" alt="QR WireGuard HP" style="width:240px;height:240px;background:#fff;padding:8px;border-radius:12px;">
+      <p id="wgQrHint" style="margin:8px 0 0;font-size:12px;color:#475569;line-height:1.5;">
+        Scan di aplikasi <b>WireGuard</b> (Play Store / App Store), bukan kamera biasa.
+        Satu QR = satu HP. Jangan pakai kunci yang sama dengan MikroTik yang sudah online.
+      </p>
+      <p id="wgQrWarn" style="display:none;margin:8px 0 0;font-size:12px;color:#9a3412;"></p>
+    </div>
+
     <div id="wgCredWrap" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;margin:8px 0;font-size:13px;">
       <div>Username: <b id="wgCredUser" class="mono"></b></div>
       <div>Password: <b id="wgCredPass" class="mono"></b></div>
@@ -159,10 +213,12 @@
     <div style="margin-top:14px;padding:12px;border:1px dashed var(--border);border-radius:10px;background:var(--bg-hover);">
       <strong style="font-size:13px;">Contoh Port Forward (belum dipasang)</strong>
       <p id="rosPfNote" style="margin:6px 0 8px;font-size:12px;color:var(--text-secondary);"></p>
+      <div class="table-scroll">
       <table class="data-table" style="margin:0;">
         <thead><tr><th>Kegunaan</th><th>Publik (VPS)</th><th>Internal (tunnel)</th></tr></thead>
         <tbody id="rosPfTable"></tbody>
       </table>
+      </div>
       <pre id="rosPfNft" style="margin:10px 0 0;font-size:11px;white-space:pre-wrap;color:var(--text-secondary);"></pre>
     </div>
     <p id="rosNotes" style="margin:12px 0 0;font-size:12px;color:var(--text-secondary);"></p>

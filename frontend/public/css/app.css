@@ -90,7 +90,7 @@ input, select, textarea { font-family: inherit; }
 /* ===== Layout ===== */
 .app-layout { display: flex; min-height: 100vh; }
 .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
-.page-content { flex: 1; padding: 24px 28px; overflow-y: auto; }
+.page-content { flex: 1; padding: 24px 28px; overflow-y: auto; min-width: 0; }
 
 /* ===== Sidebar ===== */
 .sidebar {
@@ -2012,3 +2012,15 @@ input, select, textarea { font-family: inherit; }
 @media (max-width: 640px) {
   .tod-kpi-row, .tod-grid, .tod-grid-tables { grid-template-columns: 1fr; }
 }
+/* Horizontal table pan on mobile (parent .main-content clips overflow) */
+.table-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  touch-action: pan-x pan-y;
+}
+.table-scroll .data-table { min-width: 720px; }
