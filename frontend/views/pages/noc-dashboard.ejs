@@ -811,9 +811,9 @@
             <option value="">— Pilih Router —</option>
           </select>
           <div class="nc-int-btns" id="ncIntBtns">
+            <button class="nc-int-btn active" data-int="2">2s</button>
             <button class="nc-int-btn" data-int="5">5s</button>
-            <button class="nc-int-btn active" data-int="10">10s</button>
-            <button class="nc-int-btn" data-int="30">30s</button>
+            <button class="nc-int-btn" data-int="10">10s</button>
             <button class="nc-int-btn" data-int="0">off</button>
           </div>
           <button class="nc-refresh-btn" id="ncRefresh" title="Refresh sekarang" aria-label="Refresh">
@@ -1443,7 +1443,7 @@
       chart: {
         toolbar:    { show:false },     // ← critical: hide zoom/pan icons
         zoom:       { enabled:false },
-        animations: { enabled:true, speed:400, animateGradually:{ enabled:false } },
+        animations: { enabled:true, easing:'linear', speed:180, animateGradually:{ enabled:false }, dynamicAnimation:{ enabled:true, speed:180 } },
         foreColor:  isDark() ? '#8892a4' : '#64748b',
         fontFamily: 'DM Sans, sans-serif',
         sparkline:  { enabled:false },
@@ -1462,6 +1462,13 @@
     const merged = Object.assign({}, defaults, opts);
     merged.chart = Object.assign({}, defaults.chart, userChart);
     return merged;
+  }
+
+  // ApexCharts updateSeries(data, animate=true) by default — animasi 400ms
+  // di setiap tick 2s bikin grafik terasa delay. Silent update = data langsung.
+  function setSeries(chart, data) {
+    if (!chart) return;
+    try { chart.updateSeries(data, false); } catch (_) {}
   }
 
   // ─── Chart instances ─────────────────────────────────
@@ -1491,7 +1498,7 @@
   function initCharts() {
     // CPU Gauge
     chCpuGauge = new ApexCharts($('chartCpuGauge'), {
-      chart:{ type:'radialBar', height:170, toolbar:{ show:false }, sparkline:{ enabled:false }, foreColor: isDark() ? '#8892a4' : '#64748b', fontFamily:'DM Sans, sans-serif', animations:{ enabled:true, speed:400 } },
+      chart:{ type:'radialBar', height:170, toolbar:{ show:false }, sparkline:{ enabled:false }, foreColor: isDark() ? '#8892a4' : '#64748b', fontFamily:'DM Sans, sans-serif', animations:{ enabled:true, easing:'linear', speed:180, dynamicAnimation:{ enabled:true, speed:180 } } },
       series: [0],
       colors: ['#22c55e'],
       plotOptions: {
@@ -1513,7 +1520,7 @@
 
     // Memory Gauge
     chMemGauge = new ApexCharts($('chartMemGauge'), {
-      chart:{ type:'radialBar', height:170, toolbar:{ show:false }, sparkline:{ enabled:false }, foreColor: isDark() ? '#8892a4' : '#64748b', fontFamily:'DM Sans, sans-serif', animations:{ enabled:true, speed:400 } },
+      chart:{ type:'radialBar', height:170, toolbar:{ show:false }, sparkline:{ enabled:false }, foreColor: isDark() ? '#8892a4' : '#64748b', fontFamily:'DM Sans, sans-serif', animations:{ enabled:true, easing:'linear', speed:180, dynamicAnimation:{ enabled:true, speed:180 } } },
       series: [0],
       colors: ['#3b82f6'],
       plotOptions: {
@@ -1775,7 +1782,7 @@
     const q = (Array.isArray(ifaces) && ifaces.length)
       ? '&ifaces=' + encodeURIComponent(ifaces.join(','))
       : '';
-    const j = await api('/api/noc/router/' + routerId + '/history?points=60' + q);
+    const j = await api('/api/noc/router/' + routerId + '/history?points=180' + q);
     return (j && j.success) ? j.data : null;
   }
   async function loadInterfaces(routerId) {
@@ -1802,7 +1809,7 @@
         height: 220,
         offsetY: 0,
         parentHeightOffset: 0,
-        animations: { enabled: true },
+        animations: { enabled: false },
       },
       series, labels, colors,
       stroke: { width: 2, colors: ['#fff'] },
@@ -1874,7 +1881,7 @@
         _tsDonutChart = new ApexCharts($('tsDonut'), webDonutOpts);
         _tsDonutChart.render();
       } else {
-        _tsDonutChart.updateOptions(webDonutOpts, true, true);
+        _tsDonutChart.updateOptions(webDonutOpts, false, false);
       }
 
       list.innerHTML = web.map(d => `
@@ -1923,7 +1930,7 @@
       _tsDonutChart = new ApexCharts($('tsDonut'), donutOpts);
       _tsDonutChart.render();
     } else {
-      _tsDonutChart.updateOptions(donutOpts, true, true);
+      _tsDonutChart.updateOptions(donutOpts, false, false);
     }
 
     // List di bawah/samping donut
@@ -2143,9 +2150,9 @@
     // Header subtitle
     $('ncSubTitle').textContent = `Monitoring ${d.identity || 'router'} · ${d.board || ''} ${d.version || ''}`.trim();
 
-    // Gauges
-    chCpuGauge.updateSeries([d.cpu || 0]);
-    chMemGauge.updateSeries([d.memoryPct || 0]);
+    // Gauges — keep a short animation so the needle still feels live
+    try { chCpuGauge.updateSeries([d.cpu || 0], true); } catch (_) {}
+    try { chMemGauge.updateSeries([d.memoryPct || 0], true); } catch (_) {}
 
     $('cpuSub').textContent = (d.cpu || 0) + '% · ' + (d.board || '');
     $('memSub').textContent = fmtBytes(d.memoryUsed) + ' / ' + fmtBytes(d.memoryTotal);
@@ -2154,22 +2161,29 @@
     $('kPPPoEval').textContent = fmtNum(d.pppoeActive || 0);
     $('kRxMbps').textContent   = Number(d.totalRxMbps || 0).toFixed(2);
     $('kTxMbps').textContent   = Number(d.totalTxMbps || 0).toFixed(2);
-    $('bwSub').textContent     = `${d.interfacesRunning || 0} interface aktif · sampling ${d.interfacesSampled || 0}`;
+    const uplinkHint = d.uplinkIface ? ' · ' + d.uplinkIface : '';
+    $('bwSub').textContent     = `${d.interfacesRunning || 0} interface aktif · sampling ${d.interfacesSampled || 0}${uplinkHint}`;
 
     // Updated timestamp
     $('ncUpdated').textContent = 'updated ' + new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+    // Charts from the same payload — no second /history round-trip
+    if (d.history) {
+      renderHistory(d.history);
+      refreshAllMonitors(d.history);
+    }
   }
 
   function renderHistory(h) {
     if (!h) return;
-    chCpuTL.updateSeries([{ name:'CPU %', data: h.cpu || [] }]);
-    chMemTL.updateSeries([{ name:'Memory %', data: h.mem || [] }]);
-    chPppoeTL.updateSeries([{ name:'PPPoE', data: h.pppoe || [] }]);
-    chPppoeSpark.updateSeries([{ name:'PPPoE', data: (h.pppoe || []).slice(-15) }]);
-    // Bandwidth Now sparkline — pakai last 20 sample dari history total
-    chBwSpark.updateSeries([
-      { name:'RX', data: (h.rx_mbps || []).slice(-20) },
-      { name:'TX', data: (h.tx_mbps || []).slice(-20) },
+    setSeries(chCpuTL, [{ name:'CPU %', data: h.cpu || [] }]);
+    setSeries(chMemTL, [{ name:'Memory %', data: h.mem || [] }]);
+    setSeries(chPppoeTL, [{ name:'PPPoE', data: h.pppoe || [] }]);
+    setSeries(chPppoeSpark, [{ name:'PPPoE', data: (h.pppoe || []).slice(-20) }]);
+    // Bandwidth Now sparkline — pakai last 30 sample dari history total
+    setSeries(chBwSpark, [
+      { name:'RX', data: (h.rx_mbps || []).slice(-30) },
+      { name:'TX', data: (h.tx_mbps || []).slice(-30) },
     ]);
   }
 
@@ -2283,19 +2297,39 @@
     monitorCharts[m.id] = chart;
   }
 
-  // Refresh data 1 monitor — panggil /history dengan filter ifaces
-  async function refreshOneMonitor(m) {
-    if (!m || !selectedRouterId) return;
-    const h = await loadHistory(m.router_id, m.ifaces);
-    if (!h) return;
+  function historyForMonitor(m, embedded) {
+    if (!m || !embedded || !embedded.ifaces) return null;
+    const names = m.ifaces || [];
+    if (!names.length) return null;
+    const firstName = names.find((n) => embedded.ifaces[n]);
+    if (!firstName) return null;
+    const base = embedded.ifaces[firstName];
+    const rx = (base.rx || []).map((pt, idx) => {
+      let y = 0;
+      for (const n of names) {
+        const s = embedded.ifaces[n];
+        if (s && s.rx && s.rx[idx]) y += s.rx[idx].y || 0;
+      }
+      return { x: pt.x, y: Math.round(y * 100) / 100 };
+    });
+    const tx = (base.tx || []).map((pt, idx) => {
+      let y = 0;
+      for (const n of names) {
+        const s = embedded.ifaces[n];
+        if (s && s.tx && s.tx[idx]) y += s.tx[idx].y || 0;
+      }
+      return { x: pt.x, y: Math.round(y * 100) / 100 };
+    });
+    return { rx_mbps: rx, tx_mbps: tx };
+  }
+
+  function applyMonitorSeries(m, h) {
+    if (!m || !h) return;
     const chart = monitorCharts[m.id];
-    if (chart) {
-      chart.updateSeries([
-        { name:'RX', data: h.rx_mbps || [] },
-        { name:'TX', data: h.tx_mbps || [] },
-      ]);
-    }
-    // Update current value labels (ambil titik terakhir)
+    setSeries(chart, [
+      { name:'RX', data: h.rx_mbps || [] },
+      { name:'TX', data: h.tx_mbps || [] },
+    ]);
     const rxArr = h.rx_mbps || [];
     const txArr = h.tx_mbps || [];
     const lastRx = rxArr.length ? rxArr[rxArr.length - 1].y : 0;
@@ -2306,11 +2340,25 @@
     if (txEl) txEl.textContent = Number(lastTx).toFixed(2);
   }
 
-  // Refresh semua monitor saat tick polling — di-call dari refreshAll
-  function refreshAllMonitors() {
+  // Refresh data 1 monitor — pakai history yang sudah di-embed di /realtime
+  // kalau ada, supaya tidak n+1 request /history per card.
+  async function refreshOneMonitor(m, embeddedHistory) {
+    if (!m || !selectedRouterId) return;
+    const fromLive = historyForMonitor(m, embeddedHistory);
+    if (fromLive) {
+      applyMonitorSeries(m, fromLive);
+      return;
+    }
+    const h = await loadHistory(m.router_id, m.ifaces);
+    if (!h) return;
+    applyMonitorSeries(m, h);
+  }
+
+  // Refresh semua monitor saat tick polling — di-call dari refreshLive
+  function refreshAllMonitors(embeddedHistory) {
     monitors
       .filter(m => Number(m.router_id) === Number(selectedRouterId))
-      .forEach(m => refreshOneMonitor(m));
+      .forEach(m => refreshOneMonitor(m, embeddedHistory));
   }
 
   // ═══ MODAL CREATE / EDIT ═══════════════════════════════════════════
@@ -2543,7 +2591,7 @@
     const stP  = stats.byStatus?.pending     || 0;
     const stR  = stats.byStatus?.resolved    || 0;
     const stC  = stats.byStatus?.closed      || 0;
-    chTicketStatus.updateSeries([stO, stIP, stP, stR, stC]);
+    setSeries(chTicketStatus, [stO, stIP, stP, stR, stC]);
 
     // Priority bar — 4 priority sesuai schema Ticket.priority ENUM:
     // ('low','medium','high','critical')
@@ -2551,7 +2599,7 @@
     const pHigh = stats.byPriority?.high     || 0;
     const pMed  = stats.byPriority?.medium   || 0;
     const pLow  = stats.byPriority?.low      || 0;
-    chTicketPriority.updateSeries([{ name:'Tiket', data:[pCrit, pHigh, pMed, pLow] }]);
+    setSeries(chTicketPriority, [{ name:'Tiket', data:[pCrit, pHigh, pMed, pLow] }]);
 
     const wrap = $('ncTicketList');
     const list = stats.recent || [];
@@ -2611,68 +2659,119 @@
     await refreshAll();
     // Resume auto-refresh dengan interval yang sebelumnya dipilih
     const activeBtn = document.querySelector('.nc-int-btn.active');
-    const sec = activeBtn ? (parseInt(activeBtn.getAttribute('data-int')) || 0) : 10;
+    const sec = activeBtn ? (parseInt(activeBtn.getAttribute('data-int')) || 0) : 2;
     setAutoRefresh(sec);
   };
 
   // ─── Refresh orchestrator ────────────────────────────
-  let _refreshing = false;
-  async function refreshAll() {
-    if (_refreshing) return;
-    _refreshing = true;
+  // Live path (gauges + timelines + monitor bandwidth) harus tetap jalan
+  // meski traffic-summary / tickets lambat. Slow path 15s, tidak nge-block.
+  let _liveBusy = false;
+  let _slowBusy = false;
+  const SLOW_MS = 15000;
+
+  async function refreshLive() {
+    if (_liveBusy || !selectedRouterId) return;
+    _liveBusy = true;
     const btn = $('ncRefresh');
-    btn.classList.add('spin');
+    if (btn) btn.classList.add('spin');
     try {
-      // Always loaded: overview, alerts, ticket stats, ONT stats, PPPoE users
-      const tasks = [loadOverview(), loadAlerts(), loadTicketStats(), loadOntStats(), loadPppoeUsers()];
-      // Router-specific data hanya kalau ada selectedRouterId
-      if (selectedRouterId) {
-        // realtime (untuk gauges + status bar)
-        tasks.push(loadRealtime(selectedRouterId));
-        // history TANPA ifaces filter → untuk CPU/Mem/PPPoE timeline (bukan
-        // bandwidth). Bandwidth per-monitor di-refresh terpisah di bawah.
-        tasks.push(loadHistory(selectedRouterId));
-        // Traffic summary per provider (connection tracking) — index 7
-        tasks.push(loadTrafficSummary(selectedRouterId));
+      const rt = await loadRealtime(selectedRouterId);
+      renderRealtime(rt);
+      // Fallback: router lama tanpa embedded history
+      if (rt && rt.success && rt.data && !rt.data.history) {
+        const h = await loadHistory(selectedRouterId);
+        renderHistory(h);
+        refreshAllMonitors();
       }
+    } finally {
+      setTimeout(() => { if (btn) btn.classList.remove('spin'); }, 180);
+      _liveBusy = false;
+    }
+  }
+
+  async function refreshSlow() {
+    if (_slowBusy) return;
+    _slowBusy = true;
+    try {
+      const tasks = [loadOverview(), loadAlerts(), loadTicketStats(), loadOntStats(), loadPppoeUsers()];
+      if (selectedRouterId) tasks.push(loadTrafficSummary(selectedRouterId));
       const results = await Promise.all(tasks);
       renderOverviewBar(results[0]);
       renderAlerts(results[1]);
       renderTickets(results[2]);
       renderOntStats(results[3]);
       renderPppoeUsers(results[4]);
-      if (selectedRouterId) {
-        renderRealtime(results[5]);
-        renderHistory(results[6]);
-        renderTrafficSummary(results[7]);
-        // Refresh setiap monitor card (parallel internal)
-        refreshAllMonitors();
-      }
+      if (selectedRouterId) renderTrafficSummary(results[5]);
     } finally {
-      setTimeout(() => btn.classList.remove('spin'), 400);
-      _refreshing = false;
+      _slowBusy = false;
     }
+  }
+
+  async function refreshAll() {
+    await Promise.all([refreshLive(), refreshSlow()]);
   }
   $('ncRefresh').addEventListener('click', refreshAll);
 
   // ─── Auto-refresh interval ───
-  let _refreshTimer = null;
-  function setAutoRefresh(seconds) {
-    if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null; }
-    // Auto-refresh jalan terlepas dari router selection — supaya PPPoE,
-    // tickets, ONT stats tetap update. Router-specific data (gauges, charts)
-    // di-skip internal di refreshAll() kalau tidak ada selectedRouterId.
-    if (seconds > 0) {
-      _refreshTimer = setInterval(refreshAll, seconds * 1000);
-    }
+  let _liveTimer = null;
+  let _slowTimer = null;
+  let _liveMs = 2000;
+  function clearRefreshTimers() {
+    if (_liveTimer) { clearTimeout(_liveTimer); _liveTimer = null; }
+    if (_slowTimer) { clearTimeout(_slowTimer); _slowTimer = null; }
   }
+  function setAutoRefresh(seconds) {
+    _liveMs = (parseInt(seconds, 10) || 0) * 1000;
+    clearRefreshTimers();
+    if (_liveMs <= 0) return;
+    const armLive = (delay) => {
+      _liveTimer = setTimeout(async () => {
+        const t0 = Date.now();
+        try { await refreshLive(); } catch (_) {}
+        if (_liveMs <= 0) return;
+        armLive(Math.max(200, _liveMs - (Date.now() - t0)));
+      }, delay);
+    };
+    const armSlow = (delay) => {
+      _slowTimer = setTimeout(async () => {
+        try { await refreshSlow(); } catch (_) {}
+        if (_liveMs <= 0) return;
+        armSlow(Math.max(SLOW_MS, _liveMs));
+      }, delay);
+    };
+    armLive(_liveMs);
+    armSlow(Math.max(SLOW_MS, _liveMs));
+  }
+  function applyIntervalButtons(sec) {
+    document.querySelectorAll('.nc-int-btn').forEach(b => {
+      b.classList.toggle('active', parseInt(b.getAttribute('data-int'), 10) === sec);
+    });
+  }
+  (function restorePollInterval() {
+    const saved = parseInt(localStorage.getItem('noc_poll_sec'), 10);
+    if (saved === 2 || saved === 5 || saved === 10 || saved === 0) {
+      applyIntervalButtons(saved);
+    }
+  })();
   document.querySelectorAll('.nc-int-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.nc-int-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
       const sec = parseInt(btn.getAttribute('data-int')) || 0;
+      localStorage.setItem('noc_poll_sec', String(sec));
+      applyIntervalButtons(sec);
       setAutoRefresh(sec);
     });
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      clearRefreshTimers();
+      return;
+    }
+    const activeBtn = document.querySelector('.nc-int-btn.active');
+    const sec = activeBtn ? (parseInt(activeBtn.getAttribute('data-int')) || 0) : 0;
+    if (sec > 0) {
+      refreshAll().finally(() => setAutoRefresh(sec));
+    }
   });
 
   // ─── Init ────────────────────────────────────────────
@@ -2705,7 +2804,7 @@
   });
 
   window.addEventListener('beforeunload', () => {
-    if (_refreshTimer) clearInterval(_refreshTimer);
+    clearRefreshTimers();
   });
 })();
 </script>
