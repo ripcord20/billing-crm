@@ -8,6 +8,7 @@ const VpnProvision = require('../services/VpnProvisionService');
 const { getTenantId } = require('../middleware/tenantContext');
 const { decryptSecret } = require('../utils/secretBox');
 const { buildNasRouterOsScript, radiusAllowedIps } = require('../utils/nasRouterOsScript');
+const { attachNasLinkStatus } = require('../utils/nasLinkStatus');
 
 // Push konfigurasi NAS ke server FreeRADIUS (tabel `nas`). Fungsi modul-level
 // supaya tidak bergantung pada `this` (handler dipasang unbound di router).
@@ -41,11 +42,14 @@ class NasController {
       const rows = await NasDevice.findAll({
         include: [
           { model: RadiusServer, as: 'radius_server', required: false },
-          { model: Device, as: 'device', attributes: ['id', 'name', 'ip_address'], required: false }
+          { model: Device, as: 'device', attributes: ['id', 'name', 'ip_address', 'status'], required: false }
         ],
         order: [['id', 'DESC']]
       });
-      res.json({ success: true, data: rows });
+      let dump = new Map();
+      try { dump = await Wireguard.dumpPeerMap(); } catch (_) { dump = new Map(); }
+      const data = await attachNasLinkStatus(rows, dump);
+      res.json({ success: true, data });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
     }
