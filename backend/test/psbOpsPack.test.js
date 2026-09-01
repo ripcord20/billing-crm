@@ -32,6 +32,14 @@ assert.strictEqual(flow.warehouseNextStatus('installed', 'return'), 'in_stock');
 assert.strictEqual(flow.warehouseNextStatus('in_stock', 'install'), null);
 assert.strictEqual(flow.warehouseNextStatus('damaged', 'checkout'), null);
 
+assert.strictEqual(flow.pageRedirect('admin'), '/sales#pipeline');
+assert.strictEqual(flow.pageRedirect('superadmin'), '/sales#pipeline');
+assert.strictEqual(flow.pageRedirect('sales'), '/sales#pipeline');
+assert.strictEqual(flow.pageRedirect('tenant_owner'), '/customers');
+assert.strictEqual(flow.pageRedirect('noc'), '/work-orders');
+assert.strictEqual(flow.pageRedirect('technician'), '/work-orders');
+assert.strictEqual(flow.pageRedirect('finance'), '/finance');
+
 assert.strictEqual(flow.alarmFingerprint('ont_offline', 'ZTEGC1'), 'alarm:ont_offline:ztegc1');
 assert.deepStrictEqual(flow.parseAlarmTag({ source: 'alarm', kind: 'ont_critical', key: 'A' }), {
   source: 'alarm', kind: 'ont_critical', key: 'A'

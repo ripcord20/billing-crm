@@ -74,6 +74,18 @@ function parseAlarmTag(tags) {
   return t;
 }
 
+/**
+ * Halaman /psb (kanban pasang baru) dobel dengan form registrasi Sales.
+ * Bookmark lama diarahkan ke alur yang sudah dipakai.
+ */
+function pageRedirect(roleName) {
+  const r = String(roleName || '').toLowerCase();
+  if (r === 'tenant_owner') return '/customers';
+  if (r === 'noc' || r === 'technician') return '/work-orders';
+  if (r === 'finance') return '/finance';
+  return '/sales#pipeline';
+}
+
 module.exports = {
   STAGES,
   STAGE_LABEL,
@@ -84,5 +96,6 @@ module.exports = {
   occupancyColor,
   warehouseNextStatus,
   alarmFingerprint,
-  parseAlarmTag
+  parseAlarmTag,
+  pageRedirect
 };
