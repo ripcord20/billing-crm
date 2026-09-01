@@ -19,8 +19,9 @@
  *
  * Ring buffer:
  *   Setiap call /realtime menyimpan snapshot ke in-memory buffer per
- *   router (max 60 entry). Buffer ini di-return /history untuk chart
- *   timeline tanpa polling berulang. Dihapus saat process restart.
+ *   router (max HISTORY_MAX entry). Buffer ini di-return /history dan
+ *   juga di-embed di response /realtime supaya grafik live tidak perlu
+ *   round-trip kedua. Dihapus saat process restart.
  */
 const { Op } = require('sequelize');
 const {
@@ -30,6 +31,14 @@ const {
 const { getMikrotikInstanceByDevice } = require('../services/MikrotikService');
 const logger = require('../utils/logger');
 const dns = require('dns').promises;
+const {
+  HISTORY_MAX,
+  selectSampleIfaces,
+  aggregateSampledTraffic,
+  seriesFromHistory,
+  ifaceSeriesFromHistory,
+  createRingBuffer,
+} = require('../utils/nocRealtime');
 
 // ═══ Reverse DNS cache ════════════════════════════════════════════
 // PTR lookup bisa lambat (50-500ms) & IP yg sama sering muncul berulang,
@@ -60,18 +69,45 @@ async function _reverseDnsCached(ip) {
 
 
 // ═══ Ring buffer per router ═══════════════════════════════════════
-const _history = new Map();
-const HISTORY_MAX = 60;
-function _pushHistory(deviceId, sample) {
-  if (!deviceId) return;
-  const key = Number(deviceId);
-  let arr = _history.get(key);
-  if (!arr) { arr = []; _history.set(key, arr); }
-  arr.push(sample);
-  while (arr.length > HISTORY_MAX) arr.shift();
+const _historyBuf = createRingBuffer(HISTORY_MAX);
+function _pushHistory(deviceId, sample) { _historyBuf.push(deviceId, sample); }
+function _getHistory(deviceId) { return _historyBuf.get(deviceId); }
+
+// Identity jarang berubah — cache 5 menit supaya /realtime tidak nunggu
+// GET /system/identity setiap tick 2 detik.
+const _identCache = new Map();
+async function _identityCached(mt, deviceId) {
+  const hit = _identCache.get(deviceId);
+  if (hit && (Date.now() - hit.at) < 5 * 60 * 1000) return hit.val;
+  const val = await mt.getSystemIdentity().catch(() => ({}));
+  _identCache.set(deviceId, { val, at: Date.now() });
+  return val;
 }
-function _getHistory(deviceId) {
-  return _history.get(Number(deviceId)) || [];
+
+// Daftar iface monitor preset — cache 15s, di-invalidate saat CRUD monitor.
+const _presetCache = new Map();
+function _invalidatePresetCache(deviceId) {
+  if (deviceId) _presetCache.delete(Number(deviceId));
+  else _presetCache.clear();
+}
+async function _presetIfacesCached(deviceId) {
+  const key = Number(deviceId);
+  const hit = _presetCache.get(key);
+  if (hit && (Date.now() - hit.at) < 15000) return hit.val;
+  let names = [];
+  try {
+    const presets = await NocMonitorPreset.findAll({
+      where: { router_id: deviceId },
+      attributes: ['ifaces']
+    });
+    const wanted = new Set();
+    for (const p of presets) {
+      for (const nm of (p.ifaces || [])) wanted.add(nm);
+    }
+    names = Array.from(wanted);
+  } catch (_) { /* fallback ke uplink saja */ }
+  _presetCache.set(key, { val: names, at: Date.now() });
+  return names;
 }
 
 class NocController {
@@ -302,12 +338,14 @@ class NocController {
 
       const mt = await getMikrotikInstanceByDevice(deviceId);
 
-      // Parallel fetch supaya cepat
-      const [resource, identity, pppoe, ifaces] = await Promise.all([
+      // Resource + PPPoE + interface list in parallel. Identity & monitor
+      // presets are cached so a 2s poll does not wait on extra round-trips.
+      const [resource, identity, pppoe, ifaces, presetNames] = await Promise.all([
         mt.getSystemResource(),
-        mt.getSystemIdentity().catch(() => ({})),
+        _identityCached(mt, deviceId),
         mt.getPPPoESessions().catch(() => []),
-        mt.getInterfaces().catch(() => [])
+        mt.getInterfaces().catch(() => []),
+        _presetIfacesCached(deviceId),
       ]);
 
       const memUsed = (resource.totalMemory || 0) - (resource.freeMemory || 0);
@@ -315,59 +353,24 @@ class NocController {
         ? Math.round((memUsed / resource.totalMemory) * 1000) / 10
         : 0;
 
-      // Total traffic dari interface ether/sfp/wlan yang running, skip virtual
-      // (pppoe-out, vlan, bridge) supaya tidak double-count pada AGREGAT total.
       const physicalRunning = ifaces.filter(i =>
         i.running && !i.disabled && /^(ether|sfp|wlan)/i.test(i.type || '')
       );
-      const physicalNames = physicalRunning.slice(0, 16).map(i => i.name);
 
-      // Interface "extra" yang dipantau lewat monitor preset tapi BUKAN fisik
-      // (mis. VLAN, bridge, pppoe). Ini perlu di-sample juga supaya per-interface
-      // stats-nya tersedia, TAPI tidak ikut dijumlahkan ke total agregat.
-      let extraNames = [];
-      try {
-        const presets = await NocMonitorPreset.findAll({
-          where: { router_id: deviceId },
-          attributes: ['ifaces']
-        });
-        const wanted = new Set();
-        for (const p of presets) {
-          for (const nm of (p.ifaces || [])) wanted.add(nm);
-        }
-        // Hanya yang benar-benar ada di router, running, dan belum termasuk fisik
-        const physSet = new Set(physicalNames);
-        extraNames = ifaces
-          .filter(i => wanted.has(i.name) && !physSet.has(i.name) && i.running && !i.disabled)
-          .map(i => i.name)
-          .slice(0, 16);
-      } catch (_) { /* abaikan — fallback ke fisik saja */ }
-
-      // Gabungan untuk di-sample (unik). Fisik untuk total, extra untuk per-iface.
-      const sampleIfaces = [...physicalNames, ...extraNames];
-      const physSetFinal = new Set(physicalNames);
-      let totalRxBps = 0, totalTxBps = 0;
-      const perIface = {}; // { name: { rxMbps, txMbps } }
-      if (sampleIfaces.length) {
+      // Sample only the busiest 2 uplinks + pinned monitor ifaces. monitor-traffic
+      // is ~1s per batch of 8; sampling 16 ethers made every tick slower than the UI.
+      const picked = selectSampleIfaces(ifaces, presetNames, { uplinkLimit: 2, extraLimit: 8 });
+      let rxMbps = 0, txMbps = 0, perIface = {}, uplinkName = null;
+      if (picked.sampleIfaces.length) {
         try {
-          const stats = await mt.getInterfacesBulkStats(sampleIfaces);
-          for (const s of stats) {
-            const rx = s.rxBitsPerSecond || 0;
-            const tx = s.txBitsPerSecond || 0;
-            // Hanya interface fisik yang masuk ke total agregat (hindari double-count)
-            if (physSetFinal.has(s.name)) {
-              totalRxBps += rx;
-              totalTxBps += tx;
-            }
-            perIface[s.name] = {
-              rxMbps: Math.round((rx / 1e6) * 100) / 100,
-              txMbps: Math.round((tx / 1e6) * 100) / 100,
-            };
-          }
+          const stats = await mt.getInterfacesBulkStats(picked.sampleIfaces);
+          const agg = aggregateSampledTraffic(stats, picked.uplinkNames);
+          rxMbps = agg.rxMbps;
+          txMbps = agg.txMbps;
+          perIface = agg.perIface;
+          uplinkName = agg.uplinkName;
         } catch (_) {}
       }
-      const rxMbps = Math.round((totalRxBps / 1e6) * 100) / 100;
-      const txMbps = Math.round((totalTxBps / 1e6) * 100) / 100;
 
       const ts = Date.now();
       _pushHistory(deviceId, {
@@ -376,8 +379,12 @@ class NocController {
         memPct,
         pppoe:  pppoe.length,
         rxMbps, txMbps,
-        perIface, // ← per-interface stats untuk filter di history
+        perIface,
       });
+
+      const histBuf = _getHistory(deviceId);
+      const history = seriesFromHistory(histBuf, null);
+      history.ifaces = ifaceSeriesFromHistory(histBuf);
 
       res.json({
         success:true,
@@ -395,10 +402,14 @@ class NocController {
           pppoeActive: pppoe.length,
           interfacesTotal:   ifaces.length,
           interfacesRunning: physicalRunning.length,
-          interfacesSampled: sampleIfaces.length,
+          interfacesSampled: picked.sampleIfaces.length,
+          uplinkIface: uplinkName,
           totalRxMbps: rxMbps,
           totalTxMbps: txMbps,
-          perIface, // current snapshot per interface
+          perIface,
+          history,
+          historyPoints: histBuf.length,
+          historyCapacity: HISTORY_MAX,
         }
       });
     } catch (e) {
@@ -555,31 +566,7 @@ class NocController {
         ? raw.split(',').map(s => s.trim()).filter(Boolean)
         : null;
 
-      // Hitung rx/tx per sample: kalau ada filter, sum dari sample.perIface
-      // hanya untuk iface yang dipilih. Kalau tidak, pakai total agregat.
-      function pickBandwidth(sample) {
-        if (!selected) return { rx:sample.rxMbps || 0, tx:sample.txMbps || 0 };
-        const pi = sample.perIface || {};
-        let rx = 0, tx = 0;
-        for (const name of selected) {
-          if (pi[name]) {
-            rx += pi[name].rxMbps || 0;
-            tx += pi[name].txMbps || 0;
-          }
-        }
-        return {
-          rx: Math.round(rx * 100) / 100,
-          tx: Math.round(tx * 100) / 100,
-        };
-      }
-
-      const series = {
-        cpu:     slice.map(s => ({ x:s.ts, y:s.cpu     })),
-        mem:     slice.map(s => ({ x:s.ts, y:s.memPct  })),
-        pppoe:   slice.map(s => ({ x:s.ts, y:s.pppoe   })),
-        rx_mbps: slice.map(s => ({ x:s.ts, y:pickBandwidth(s).rx })),
-        tx_mbps: slice.map(s => ({ x:s.ts, y:pickBandwidth(s).tx })),
-      };
+      const series = seriesFromHistory(slice, selected);
       res.json({
         success:true,
         data:series,
@@ -715,6 +702,7 @@ class NocController {
         color:     color || '#3b82f6',
         position:  maxPos + 1,
       });
+      _invalidatePresetCache(row.router_id);
 
       res.json({
         success:true,
@@ -753,6 +741,8 @@ class NocController {
       }
 
       await row.update(updates);
+      _invalidatePresetCache(row.router_id);
+      if (updates.router_id) _invalidatePresetCache(updates.router_id);
       res.json({ success:true, data: { id:row.id, ...updates } });
     } catch (e) {
       logger.error('[NocController.updateMonitor] ' + e.message);
@@ -772,7 +762,9 @@ class NocController {
       const row = await NocMonitorPreset.findOne({ where:{ id, user_id:userId } });
       if (!row) return res.status(404).json({ success:false, message:'Monitor tidak ditemukan' });
 
+      const rid = row.router_id;
       await row.destroy();
+      _invalidatePresetCache(rid);
       res.json({ success:true });
     } catch (e) {
       logger.error('[NocController.deleteMonitor] ' + e.message);
