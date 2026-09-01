@@ -27,9 +27,27 @@ assert.strictEqual(upHs.state, 'up');
 assert.strictEqual(upHs.reason, 'handshake');
 assert.strictEqual(upHs.label, 'Terhubung');
 
-const pending = classifyNasLink({ connMode: 'vpn', wgConfigured: false });
+const pending = classifyNasLink({ connMode: 'vpn', wgConfigured: false, deviceStatus: 'online' });
 assert.strictEqual(pending.state, 'pending');
 assert.strictEqual(pending.label, 'Belum generate');
+
+const vpnDeviceOnly = classifyNasLink({
+  connMode: 'vpn',
+  wgConfigured: true,
+  deviceStatus: 'online'
+});
+assert.strictEqual(vpnDeviceOnly.state, 'down', 'VPN jangan hijau hanya karena Device Management online');
+assert.strictEqual(vpnDeviceOnly.label, 'Belum terhubung');
+assert.ok(/handshake/i.test(vpnDeviceOnly.age_label));
+
+const vpnPing = classifyNasLink({
+  connMode: 'vpn',
+  wgConfigured: true,
+  deviceStatus: 'online',
+  reachable: true
+});
+assert.strictEqual(vpnPing.state, 'up');
+assert.strictEqual(vpnPing.reason, 'ping');
 
 const deviceUp = classifyNasLink({
   connMode: 'public',

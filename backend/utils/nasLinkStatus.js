@@ -36,22 +36,52 @@ function classifyNasLink({
   const handshakeUp = age != null && age <= HANDSHAKE_UP_SEC;
   const deviceUp = deviceStatus === 'online' || deviceStatus === 'warning';
 
-  if (handshakeUp) {
+  // VPN = tunnel WireGuard. Jangan pakai status Device Management (LAN/API):
+  // router bisa online meski interface WG belum ada di MikroTik.
+  if (vpn) {
+    if (handshakeUp) {
+      return {
+        state: 'up',
+        label: 'Terhubung',
+        reason: 'handshake',
+        age_sec: age,
+        age_label: formatAgeLabel(age)
+      };
+    }
+    if (reachable === true) {
+      return {
+        state: 'up',
+        label: 'Terhubung',
+        reason: 'ping',
+        age_sec: age,
+        age_label: 'IP tunnel merespons'
+      };
+    }
+    if (!wgConfigured) {
+      return {
+        state: 'pending',
+        label: 'Belum generate',
+        reason: 'keys',
+        age_sec: null,
+        age_label: ''
+      };
+    }
     return {
-      state: 'up',
-      label: 'Terhubung',
-      reason: 'handshake',
+      state: 'down',
+      label: 'Belum terhubung',
+      reason: age != null ? 'stale' : 'no_tunnel',
       age_sec: age,
-      age_label: formatAgeLabel(age)
+      age_label: age != null ? formatAgeLabel(age) : 'WG belum handshake'
     };
   }
+
   if (deviceUp) {
     return {
       state: 'up',
       label: 'Terhubung',
       reason: 'device',
-      age_sec: age,
-      age_label: age != null ? formatAgeLabel(age) : ''
+      age_sec: null,
+      age_label: ''
     };
   }
   if (reachable === true) {
@@ -59,15 +89,6 @@ function classifyNasLink({
       state: 'up',
       label: 'Terhubung',
       reason: 'ping',
-      age_sec: age,
-      age_label: ''
-    };
-  }
-  if (vpn && !wgConfigured) {
-    return {
-      state: 'pending',
-      label: 'Belum generate',
-      reason: 'keys',
       age_sec: null,
       age_label: ''
     };
@@ -75,9 +96,9 @@ function classifyNasLink({
   return {
     state: 'down',
     label: 'Belum terhubung',
-    reason: age != null ? 'stale' : 'none',
-    age_sec: age,
-    age_label: age != null ? formatAgeLabel(age) : ''
+    reason: 'none',
+    age_sec: null,
+    age_label: ''
   };
 }
 
