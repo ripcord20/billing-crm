@@ -103,6 +103,11 @@
       color:#cbd5e1; background:linear-gradient(180deg,#1e293b,#0f172a);
       box-shadow:0 0 0 1px #334155;
     }
+    .nas-legend {
+      display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+      margin-top:10px;
+    }
+    .nas-legend .nas-link { pointer-events:none; }
     .nas-swipe-hint {
       display: none;
       margin: 8px 2px 0;
@@ -142,6 +147,11 @@
         </table>
         </div>
         <p class="nas-swipe-hint">Geser tabel ke kanan untuk Mode, Sync, dan tombol Aksi.</p>
+        <div class="nas-legend" aria-label="Keterangan status Mode">
+          <span class="nas-link up"><span class="nas-led"></span><span class="nas-link-text">Terhubung</span></span>
+          <span class="nas-link down"><span class="nas-led"></span><span class="nas-link-text">Belum terhubung</span></span>
+          <span class="nas-link pending"><span class="nas-led"></span><span class="nas-link-text">Belum generate</span></span>
+        </div>
       </div></div>
     </main>
   </div>
