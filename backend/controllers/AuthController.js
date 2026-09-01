@@ -15,7 +15,7 @@
 const jwt = require('jsonwebtoken');
 const { User, Role, ActivityLog, Tenant } = require('../models');
 const logger = require('../utils/logger');
-const { homePathForRole } = require('../utils/tenantScope');
+const { appHomePath } = require('../utils/fiberixApp');
 
 const DEMO_JWT_EXPIRY = process.env.DEMO_JWT_EXPIRY || '2h';
 
@@ -133,7 +133,7 @@ class AuthController {
         maxAge: cookieMaxAge
       });
 
-      const redirect = homePathForRole(user.role?.name);
+      const redirect = appHomePath(user.role?.name, req);
 
       res.json({
         success: true,
@@ -191,7 +191,7 @@ class AuthController {
         sameSite: 'lax',
         maxAge: cookieMaxAge
       });
-      return res.json({ success: true, redirect: homePathForRole(user.role?.name) });
+      return res.json({ success: true, redirect: appHomePath(user.role?.name, req) });
     } catch (e) {
       // TokenExpiredError, JsonWebTokenError, dll — semua di-treat invalid
       return res.status(401).json({ success: false, message: 'Token invalid or expired' });

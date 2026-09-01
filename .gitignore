@@ -43,3 +43,15 @@ frontend/public/uploads/infra/
 .idea/
 *.swp
 coverage/
+
+# ── Android APK project ─────────────────────
+android-app/.gradle/
+android-app/build/
+android-app/app/build/
+android-app/local.properties
+android-app/*.iml
+*.apk
+*.ap_
+*.aab
+*.keystore
+*.jks

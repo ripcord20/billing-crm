@@ -544,7 +544,13 @@
     })();
     // Gabungkan tujuan server-role dengan FLYN_NEXT (kalau ada, next menang).
     window.flynDest = function(serverRedirect){
-      return window.FLYN_NEXT || serverRedirect || '/dashboard';
+      if (window.FLYN_NEXT) return window.FLYN_NEXT;
+      var ua = navigator.userAgent || '';
+      if (/FiberixBilling/i.test(ua)) {
+        var s = String(serverRedirect || '');
+        if (!s || s === '/dashboard') return '/mobile';
+      }
+      return serverRedirect || '/dashboard';
     };
   </script>
   <!-- ════════════════════════════════════════════════════════════════
