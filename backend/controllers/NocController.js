@@ -498,19 +498,40 @@ class NocController {
       const summary = summarize(allAgg);
 
       // "Web" tab: petakan IP → domain via DNS cache router, lalu agregasi
-      // per registrable-domain. Hanya terisi jika router jadi DNS resolver klien.
+      // per registrable-domain. Kalau cache kosong, fallback reverse DNS (PTR)
+      // untuk top IP supaya tab Web tetap terisi.
       let webDomains = [];
+      let webSource = 'none';
       try {
         const dnsCache = await mt.getDnsCache();
         const web = aggregateByDomain(allAgg, dnsCache);
-        webDomains = web.domains.slice(0, 15); // top 15 domain
-      } catch (_) { /* DNS cache tidak tersedia → web kosong */ }
+        webDomains = web.domains.slice(0, 15);
+        if (webDomains.length) webSource = 'dns-cache';
+      } catch (_) { /* DNS cache tidak tersedia → coba reverse DNS */ }
+
+      if (!webDomains.length && allAgg.length) {
+        const topIps = allAgg
+          .slice()
+          .sort((a, b) => (b.bytes || 0) - (a.bytes || 0))
+          .slice(0, 40);
+        const ptrCache = [];
+        await Promise.all(topIps.map(async (item) => {
+          const host = await _reverseDnsCached(item.dst);
+          if (host) ptrCache.push({ name: host, address: item.dst });
+        }));
+        if (ptrCache.length) {
+          const web = aggregateByDomain(allAgg, ptrCache);
+          webDomains = web.domains.slice(0, 15);
+          if (webDomains.length) webSource = 'reverse-dns';
+        }
+      }
 
       res.json({
         success: true, available: true,
         totalConnections: result.totalConnections,
         ...summary,
         web: webDomains,
+        webSource,
       });
     } catch (e) {
       logger.error('[NocController.routerTrafficSummary]', e.message);
