@@ -1,15 +1,15 @@
-# Fiberix Billing — APK Android
+# Fiberix — APK Android
 
-Aplikasi ini membungkus tampilan HP yang sudah ada (`https://fiberix.my.id/mobile`) jadi APK. Bukan rewrite native: login, pelanggan, pembayaran, isolir, tiket, NOC memakai UI `/mobile` yang sama.
+Aplikasi ini membuka **situs Fiberix yang sama** (`https://fiberix.my.id`) di WebView: dashboard, sidebar, dan semua modul seperti di browser. Bukan tampilan `/mobile` yang modulnya lebih sedikit.
 
 ## Pasang di HP
 
-1. Unduh `Fiberix-Billing.apk` (hasil build debug).
-2. Di HP: **Setelan → Keamanan → izinkan sumber tidak dikenal / Install unknown apps**.
-3. Buka file APK → Install.
-4. Login dengan akun staf Fiberix (admin / superadmin). Teknisi tetap masuk ke `/technician`.
+1. **Hapus dulu** APK lama (build debug v1) bila masih terpasang — tanda tangan rilis berbeda, jadi tidak bisa di-update menimpa.
+2. Unduh `Fiberix.apk`.
+3. Buka file APK → Install. Installer hanya butuh akses internet (tidak minta lokasi, SMS, atau penyimpanan).
+4. Login dengan akun staf Fiberix. Setelah login, home mengikuti peran seperti di web (`/dashboard`, `/noc`, `/sales`, dll.).
 
-Bukan unduhan Play Store. Sideload untuk tim internal.
+Sideload untuk tim internal, bukan unduhan Play Store. Play Protect tetap bisa menanya karena aplikasi belum di Play Store — itu normal.
 
 ## Bangun sendiri
 
@@ -18,17 +18,16 @@ Butuh JDK 17+ dan Android SDK (platform 34).
 ```bash
 export ANDROID_SDK_ROOT="$HOME/android-sdk"
 cd android-app
-python3 scripts/gen-icons.py
-./gradlew :app:assembleDebug
-# hasil: app/build/outputs/apk/debug/app-debug.apk
+./scripts/build-apk.sh
+# hasil: app/build/outputs/apk/release/app-release.apk
 ```
 
-Ubah URL jika domain berbeda: `MainActivity.START_URL`.
+Build rilis, ditandatangani keystore internal (`keystore/fiberix-release.jks`, tidak masuk git). Jangan pakai `assembleDebug` untuk dibagikan ke staf.
 
 ## Perilaku
 
-- User-Agent berisi `FiberixBilling/1.0` → admin diarahkan ke `/mobile`.
-- Cookie sesi disimpan di WebView (login tidak perlu diulang setiap buka, selama token berlaku).
-- Unggah foto (KTP / rumah / tiket) lewat file picker HP.
-- Unduhan invoice masuk folder Download.
-- WhatsApp / tel / mailto dibuka di aplikasi sistem.
+- User-Agent berisi `Fiberix/2.0`. Login tidak diarahkan ke `/mobile`.
+- Cookie sesi disimpan di WebView.
+- Unggah foto lewat file picker HP.
+- Unduhan invoice masuk folder Download (Android 10+).
+- Tautan di luar `fiberix.my.id`, plus WhatsApp / tel / mailto, dibuka di aplikasi sistem.

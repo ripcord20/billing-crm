@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bangun APK debug Fiberix Billing.
+# Bangun APK rilis Fiberix (bukan debug) supaya installer tidak menandai debug/test.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/android-sdk}}"
@@ -20,11 +20,21 @@ if [[ ! -f "$ROOT/gradle/wrapper/gradle-wrapper.jar" ]]; then
   exit 1
 fi
 
+KS_DIR="$ROOT/keystore"
+KS="$KS_DIR/fiberix-release.jks"
+mkdir -p "$KS_DIR"
+if [[ ! -f "$KS" ]]; then
+  keytool -genkeypair -keystore "$KS" -alias fiberix \
+    -keyalg RSA -keysize 2048 -validity 3650 \
+    -storepass fiberix-release -keypass fiberix-release \
+    -dname "CN=Fiberix, OU=INETmedia, O=Fiberix, L=Banyuwangi, ST=Jawa Timur, C=ID"
+fi
+
 python3 "$ROOT/scripts/gen-icons.py"
 
 cd "$ROOT"
 chmod +x gradlew 2>/dev/null || true
-./gradlew :app:assembleDebug --no-daemon
-APK="$ROOT/app/build/outputs/apk/debug/app-debug.apk"
+./gradlew :app:assembleRelease --no-daemon
+APK="$ROOT/app/build/outputs/apk/release/app-release.apk"
 echo "APK: $APK"
 ls -lh "$APK"

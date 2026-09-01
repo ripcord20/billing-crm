@@ -6,11 +6,11 @@ import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.View;
 import android.webkit.CookieManager;
-import android.webkit.GeolocationPermissions;
 import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -25,9 +25,14 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
+/**
+ * Membungkus situs Fiberix yang sama dengan browser (dashboard + semua modul),
+ * bukan UI /mobile yang modulnya lebih sedikit.
+ */
 public class MainActivity extends AppCompatActivity {
-    static final String START_URL = "https://fiberix.my.id/login?next=/mobile";
-    static final String UA_SUFFIX = " FiberixBilling/1.0";
+    static final String START_URL = "https://fiberix.my.id/login";
+    static final String ALLOWED_HOST = "fiberix.my.id";
+    static final String UA_SUFFIX = " Fiberix/2.0";
     private static final int FILE_CHOOSER = 4101;
 
     private WebView web;
@@ -51,12 +56,16 @@ public class MainActivity extends AppCompatActivity {
         s.setDatabaseEnabled(true);
         s.setLoadWithOverviewMode(true);
         s.setUseWideViewPort(true);
-        s.setSupportZoom(false);
-        s.setBuiltInZoomControls(false);
+        s.setSupportZoom(true);
+        s.setBuiltInZoomControls(true);
+        s.setDisplayZoomControls(false);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setUserAgentString(s.getUserAgentString() + UA_SUFFIX);
-        s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
-        s.setGeolocationEnabled(true);
+        s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        s.setGeolocationEnabled(false);
+        if (Build.VERSION.SDK_INT >= 26) {
+            s.setSafeBrowsingEnabled(true);
+        }
 
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -90,16 +99,6 @@ public class MainActivity extends AppCompatActivity {
                 }
                 return true;
             }
-
-            @Override
-            public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
-                callback.invoke(origin, true, false);
-            }
-
-            @Override
-            public void onHideCustomView() {
-                super.onHideCustomView();
-            }
         });
 
         web.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
@@ -111,7 +110,11 @@ public class MainActivity extends AppCompatActivity {
                 req.addRequestHeader("User-Agent", userAgent);
                 req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
                 String name = URLUtil.guessFileName(url, contentDisposition, mimeType);
-                req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name);
+                if (Build.VERSION.SDK_INT >= 29) {
+                    req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name);
+                } else {
+                    req.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, name);
+                }
                 DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
                 dm.enqueue(req);
                 Toast.makeText(this, "Mengunduh " + name, Toast.LENGTH_SHORT).show();
@@ -140,6 +143,16 @@ public class MainActivity extends AppCompatActivity {
         Uri uri = Uri.parse(url);
         String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase();
         if ("tel".equals(scheme) || "mailto".equals(scheme) || "whatsapp".equals(scheme) || "intent".equals(scheme)) {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, uri));
+            } catch (ActivityNotFoundException ignored) { }
+            return true;
+        }
+        if ("http".equals(scheme) || "https".equals(scheme)) {
+            String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase();
+            if (host.equals(ALLOWED_HOST) || host.endsWith("." + ALLOWED_HOST)) {
+                return false;
+            }
             try {
                 startActivity(new Intent(Intent.ACTION_VIEW, uri));
             } catch (ActivityNotFoundException ignored) { }

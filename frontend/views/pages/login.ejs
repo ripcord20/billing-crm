@@ -529,13 +529,16 @@
           if (safe(q)) chosen = q;
         } catch(_){}
       }
-      // Ingat kalau tujuan adalah area mobile, supaya relaunch APK (yang mungkin
-      // membuka /login polos tanpa ?next) tetap kembali ke /mobile.
+      // Area /mobile hanya diingat untuk browser HP yang memang buka /mobile.
+      // APK Fiberix memakai situs penuh (dashboard + sidebar), jangan paksa /mobile.
       try {
-        if (chosen && chosen.indexOf('/mobile') === 0) {
+        var isApp = /Fiberix(?:Billing)?\/\d/i.test(navigator.userAgent || '');
+        if (isApp) {
+          localStorage.removeItem('flyn_prefer_mobile');
+        } else if (chosen && chosen.indexOf('/mobile') === 0) {
           localStorage.setItem('flyn_prefer_mobile', chosen);
         }
-        if (!chosen) {
+        if (!chosen && !isApp) {
           var remembered = localStorage.getItem('flyn_prefer_mobile');
           if (safe(remembered) && remembered.indexOf('/mobile') === 0) chosen = remembered;
         }
@@ -545,11 +548,6 @@
     // Gabungkan tujuan server-role dengan FLYN_NEXT (kalau ada, next menang).
     window.flynDest = function(serverRedirect){
       if (window.FLYN_NEXT) return window.FLYN_NEXT;
-      var ua = navigator.userAgent || '';
-      if (/FiberixBilling/i.test(ua)) {
-        var s = String(serverRedirect || '');
-        if (!s || s === '/dashboard') return '/mobile';
-      }
       return serverRedirect || '/dashboard';
     };
   </script>

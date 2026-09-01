@@ -55,3 +55,4 @@ android-app/*.iml
 *.aab
 *.keystore
 *.jks
+android-app/keystore/

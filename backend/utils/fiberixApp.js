@@ -4,17 +4,14 @@ const { homePathForRole } = require('./tenantScope');
 
 function isFiberixAndroidApp(req) {
   const ua = String((req && req.headers && req.headers['user-agent']) || '');
-  return /FiberixBilling/i.test(ua);
+  return /Fiberix(?:Billing)?\/\d/i.test(ua);
 }
 
 /**
- * APK WebView: admin/owner masuk ke /mobile, role lain tetap home masing-masing.
+ * APK WebView memakai situs yang sama dengan browser.
+ * Home mengikuti peran (dashboard / noc / sales / …), bukan /mobile.
  */
 function appHomePath(roleName, req) {
-  const r = String(roleName || '').toLowerCase();
-  if (isFiberixAndroidApp(req) && (r === 'admin' || r === 'superadmin')) {
-    return '/mobile';
-  }
   return homePathForRole(roleName);
 }
 

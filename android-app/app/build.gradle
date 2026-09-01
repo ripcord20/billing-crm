@@ -2,6 +2,8 @@ plugins {
     id 'com.android.application'
 }
 
+def releaseStore = file("${rootProject.projectDir}/keystore/fiberix-release.jks")
+
 android {
     namespace 'id.fiberix.billing'
     compileSdk 34
@@ -10,18 +12,34 @@ android {
         applicationId 'id.fiberix.billing'
         minSdk 24
         targetSdk 34
-        versionCode 1
-        versionName '1.0.0'
-        resValue 'string', 'app_start_url', 'https://fiberix.my.id/login?next=/mobile'
+        versionCode 2
+        versionName '1.1.0'
+        resValue 'string', 'app_start_url', 'https://fiberix.my.id/login'
+    }
+
+    signingConfigs {
+        release {
+            if (releaseStore.exists()) {
+                storeFile releaseStore
+                storePassword 'fiberix-release'
+                keyAlias 'fiberix'
+                keyPassword 'fiberix-release'
+            }
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
+            debuggable false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (releaseStore.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
         debug {
             applicationIdSuffix ''
+            debuggable true
         }
     }
 

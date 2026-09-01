@@ -6,10 +6,13 @@ assert.strictEqual(isFiberixAndroidApp({ headers: { 'user-agent': 'Mozilla/5.0' 
 assert.strictEqual(isFiberixAndroidApp({
   headers: { 'user-agent': 'Mozilla/5.0 FiberixBilling/1.0 Android' }
 }), true);
+assert.strictEqual(isFiberixAndroidApp({
+  headers: { 'user-agent': 'Mozilla/5.0 Chrome Fiberix/2.0' }
+}), true);
 
-const appReq = { headers: { 'user-agent': 'FiberixBilling/1.0' } };
-assert.strictEqual(appHomePath('superadmin', appReq), '/mobile');
-assert.strictEqual(appHomePath('admin', appReq), '/mobile');
+const appReq = { headers: { 'user-agent': 'Fiberix/2.0' } };
+assert.strictEqual(appHomePath('superadmin', appReq), '/dashboard');
+assert.strictEqual(appHomePath('admin', appReq), '/dashboard');
 assert.strictEqual(appHomePath('tenant_owner', appReq), '/tenant');
 assert.strictEqual(appHomePath('technician', appReq), '/technician');
 assert.strictEqual(appHomePath('sales', appReq), '/sales');
