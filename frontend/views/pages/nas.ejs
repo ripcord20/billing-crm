@@ -28,11 +28,18 @@
       touch-action: pan-x pan-y;
     }
     .nas-page .table-scroll .data-table {
-      min-width: 920px;
+      min-width: 1100px;
       width: max-content;
     }
     .nas-page .table-scroll .data-table th,
     .nas-page .table-scroll .data-table td { white-space: nowrap; }
+    .nas-page .table-scroll .data-table th:last-child,
+    .nas-page .table-scroll .data-table td:last-child { min-width: 290px; }
+    .nas-page .table-scroll .data-table td:last-child .btn {
+      display: inline-flex;
+      flex: 0 0 auto;
+      margin-right: 4px;
+    }
     .nas-page .table-scroll .data-table td .empty-state,
     .nas-page .table-scroll .data-table td[colspan] { white-space: normal; }
     .nas-swipe-hint {

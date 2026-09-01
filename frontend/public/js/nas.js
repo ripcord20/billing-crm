@@ -2,6 +2,14 @@ function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt
 
 let __wgLastConfig = null; // {nas, client_config, filename}
 
+function fmtSyncAt(s){
+  if(!s) return 'belum';
+  const d=new Date(s);
+  if(Number.isNaN(d.getTime())) return esc(s);
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 function modeBadge(n){
   if(n.conn_mode==='vpn'){
     const ok = n.wg_configured;
@@ -27,8 +35,8 @@ async function loadNas(){
     <td>${esc(n.shortname||'—')}</td>
     <td>${esc(n.type)}</td>
     <td>${modeBadge(n)}</td>
-    <td>${n.last_error?`<span style="color:#dc2626;">${esc(n.last_error)}</span>`:(n.last_sync_at?esc(n.last_sync_at):'belum')}</td>
-    <td style="white-space:nowrap;">
+    <td>${n.last_error?`<span style="color:#dc2626;">${esc(n.last_error)}</span>`:fmtSyncAt(n.last_sync_at)}</td>
+    <td class="nas-aksi" style="white-space:nowrap;">
       <button class="btn btn-sm btn-primary" onclick="openRosScript(${n.id},'${esc(n.shortname||n.nasname)}')" title="Script RouterOS: VPN + RADIUS + isolir">Script</button>
       ${n.conn_mode==='vpn'?`<button class="btn btn-sm btn-secondary" onclick="wgGen(${n.id},'${esc(n.shortname||n.nasname)}')" title="Generate/regenerate config VPN saja">VPN</button>`:''}
       <button class="btn btn-sm btn-secondary" onclick="syncNas(${n.id})">Sync</button>
