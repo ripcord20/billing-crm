@@ -989,6 +989,25 @@ class MikrotikService {
       return { success: false, error: err.message };
     }
   }
+
+  /**
+   * Baca group user API di MikroTik (untuk cek full vs read).
+   * Gagal diam-diam kalau user tidak boleh /user/print.
+   */
+  async getApiUserProfile(username) {
+    const want = String(username || '').trim();
+    if (!want) return { found: false };
+    const raw = await this.get('/user', { timeout: 5000, retries: 0 });
+    const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+    const u = list.find((row) => String(row && row.name ? row.name : '') === want);
+    if (!u) return { found: false };
+    return {
+      found: true,
+      name: u.name,
+      group: u.group || '',
+      disabled: u.disabled === true || u.disabled === 'true'
+    };
+  }
 }
 
 // ─── INSTANCE CACHE ──────────────────────────────────────────

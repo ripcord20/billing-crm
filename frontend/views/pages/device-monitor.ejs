@@ -613,15 +613,17 @@
         </div>
         <div class="dm-fg">
           <label>Username</label>
-          <input type="text" id="fApiUser" placeholder="admin">
+          <input type="text" id="fApiUser" placeholder="fiberix" autocomplete="off">
         </div>
         <div class="dm-fg" style="grid-column:1/-1;">
           <label>Password</label>
-          <input type="password" id="fApiPass" placeholder="password">
+          <input type="password" id="fApiPass" placeholder="password user API" autocomplete="new-password">
         </div>
       </div>
       <p style="font-size:11px;color:var(--dm-muted,#64748b);margin:0 0 12px;padding:8px 10px;background:rgba(30,120,255,.06);border-radius:6px;border-left:3px solid #1e78ff;">
-        💡 Kosongkan API Port &amp; Username untuk menggunakan konfigurasi MikroTik utama dari settings.
+        User API di MikroTik pakai group <b>full</b> (bukan <b>read</b>) supaya isolir, PPPoE, dan QoS jalan.
+        Buat user khusus, contoh: <code>/user add name=fiberix group=full password="..."</code>.
+        Jangan pakai akun <code>admin</code> Winbox.
       </p>
     </div>
 

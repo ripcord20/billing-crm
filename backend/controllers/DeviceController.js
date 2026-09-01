@@ -628,6 +628,25 @@ async function _probeDevice(cfg) {
         result.identity = test.identity;
         result.method   = 'API';
         result.checks.push({ step: 'API Auth', ok: true, detail: `identity: ${test.identity}` });
+        try {
+          const { classifyMikrotikApiGroup } = require('../utils/mikrotikApiUser');
+          const profile = await mt.getApiUserProfile(cfg.api_username);
+          if (profile && profile.found) {
+            if (profile.disabled) {
+              result.checks.push({ step: 'Group user', ok: false, warn: true, detail: 'user API disabled di MikroTik' });
+            } else {
+              const cls = classifyMikrotikApiGroup(profile.group);
+              if (cls.message) {
+                result.checks.push({
+                  step: 'Group user',
+                  ok: cls.ok,
+                  warn: !!cls.warn,
+                  detail: cls.message
+                });
+              }
+            }
+          }
+        } catch (_) { /* /user/print tidak wajib — auth sudah lolos */ }
       } else {
         result.checks.push({ step: 'API Auth', ok: false, detail: test.error || 'auth failed' });
       }
