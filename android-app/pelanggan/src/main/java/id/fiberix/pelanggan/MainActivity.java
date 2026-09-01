@@ -143,6 +143,7 @@ public class MainActivity extends AppCompatActivity {
         if (h.contains("midtrans.com")) return true;
         if (h.contains("duitku.com")) return true;
         if (h.contains("tripay.co.id")) return true;
+        if (h.contains("xendit.co")) return true;
         return false;
     }
 

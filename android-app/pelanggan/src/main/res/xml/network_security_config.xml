@@ -10,5 +10,6 @@
         <domain includeSubdomains="true">midtrans.com</domain>
         <domain includeSubdomains="true">duitku.com</domain>
         <domain includeSubdomains="true">tripay.co.id</domain>
+        <domain includeSubdomains="true">xendit.co</domain>
     </domain-config>
 </network-security-config>
