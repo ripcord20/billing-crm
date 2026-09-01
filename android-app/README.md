@@ -1,15 +1,23 @@
 # Fiberix — APK Android
 
-Aplikasi ini membuka **situs Fiberix yang sama** (`https://fiberix.my.id`) di WebView: dashboard, sidebar, dan semua modul seperti di browser. Bukan tampilan `/mobile` yang modulnya lebih sedikit.
+Dua aplikasi WebView rilis (bukan debug), izin hanya internet:
 
-## Pasang di HP
+| APK | Package | Isi |
+|-----|---------|-----|
+| `Fiberix.apk` | `id.fiberix.billing` | Situs staf: dashboard + semua modul |
+| `Fiberix-Pelanggan.apk` | `id.fiberix.pelanggan` | Portal pelanggan `/portal` (tagihan, bayar, tiket, WiFi) |
 
-1. **Hapus dulu** APK lama (build debug v1) bila masih terpasang — tanda tangan rilis berbeda, jadi tidak bisa di-update menimpa.
-2. Unduh `Fiberix.apk`.
-3. Buka file APK → Install. Installer hanya butuh akses internet (tidak minta lokasi, SMS, atau penyimpanan).
-4. Login dengan akun staf Fiberix. Setelah login, home mengikuti peran seperti di web (`/dashboard`, `/noc`, `/sales`, dll.).
+## Staf (`Fiberix.apk`)
 
-Sideload untuk tim internal, bukan unduhan Play Store. Play Protect tetap bisa menanya karena aplikasi belum di Play Store — itu normal.
+1. Hapus APK debug lama bila masih terpasang.
+2. Unduh `Fiberix.apk`, install, login akun staf.
+3. Home mengikuti peran seperti di web (`/dashboard`, `/noc`, `/sales`, …).
+
+## Pelanggan PPPoE (`Fiberix-Pelanggan.apk`)
+
+1. Unduh `Fiberix-Pelanggan.apk` (atau tautan di `/portal/login`).
+2. Login dengan **ID pelanggan**, **nomor HP**, atau **username PPPoE**. Password awal = nomor HP terdaftar.
+3. Bukan Play Store. Installer tidak minta lokasi/SMS. Play Protect bisa menanya karena sideload.
 
 ## Bangun sendiri
 
@@ -19,15 +27,14 @@ Butuh JDK 17+ dan Android SDK (platform 34).
 export ANDROID_SDK_ROOT="$HOME/android-sdk"
 cd android-app
 ./scripts/build-apk.sh
-# hasil: app/build/outputs/apk/release/app-release.apk
+# hasil:
+#   app/build/outputs/apk/release/app-release.apk
+#   pelanggan/build/outputs/apk/release/pelanggan-release.apk
 ```
 
-Build rilis, ditandatangani keystore internal (`keystore/fiberix-release.jks`, tidak masuk git). Jangan pakai `assembleDebug` untuk dibagikan ke staf.
+Ditandatangani keystore internal (`keystore/fiberix-release.jks`, tidak masuk git).
 
 ## Perilaku
 
-- User-Agent berisi `Fiberix/2.0`. Login tidak diarahkan ke `/mobile`.
-- Cookie sesi disimpan di WebView.
-- Unggah foto lewat file picker HP.
-- Unduhan invoice masuk folder Download (Android 10+).
-- Tautan di luar `fiberix.my.id`, plus WhatsApp / tel / mailto, dibuka di aplikasi sistem.
+- Staf UA `Fiberix/2.0` — tidak diarahkan ke `/mobile`.
+- Pelanggan UA `FiberixPelanggan/1.0` — tetap di `/portal`. Pembayaran Midtrans/Duitku/Tripay tetap di dalam aplikasi; WhatsApp/tel dibuka di aplikasi sistem.

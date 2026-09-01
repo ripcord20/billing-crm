@@ -48,6 +48,7 @@ coverage/
 android-app/.gradle/
 android-app/build/
 android-app/app/build/
+android-app/pelanggan/build/
 android-app/local.properties
 android-app/*.iml
 *.apk
