@@ -133,8 +133,9 @@
               </div>
               <div class="chart-legend">
                 <select id="activityChartIface" class="iface-select" title="Pilih interface untuk dipantau">
-                  <option value="__all__">All Interfaces</option>
+                  <option value="__all__">Auto (uplink)</option>
                 </select>
+                <span id="activityChartLiveIface" class="chart-live-iface"></span>
                 <span class="legend-item"><span class="legend-line blue"></span> RX</span>
                 <span class="legend-item"><span class="legend-line orange"></span> TX</span>
                 <div class="chart-range-btns">
@@ -480,7 +481,7 @@
   <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
   <script src="/js/app.js"></script>
   <script src="/js/mikrotik-selector.js"></script>
-  <script src="/js/dashboard.js"></script>
+  <script src="/js/dashboard.js?v=act1"></script>
   <script src="/js/dashboard-analytics.js?v=topbw4"></script>
 </body>
 </html>

@@ -4,6 +4,7 @@ const moment = require('moment');
 const { getMikrotikInstance, getMikrotikInstanceByDevice } = require('../services/MikrotikService');
 const CustomerBandwidth = require('../services/CustomerBandwidth');
 const { applyTenantWhere, getTenantId } = require('../utils/tenantScope');
+const { pickUplinkInterfaces } = require('../utils/ifaceTraffic');
 
 // Cache hasil peta sebaran pelanggan (60s) — lihat customerMapPoints()
 let _custMapCache = { ts: 0, data: null };
@@ -114,8 +115,9 @@ class DashboardController {
       try {
         const mt = await getMikrotikInstanceByDevice(deviceId);
         const ifaces = await mt.getInterfaces();
-        // Ambil top 5 interface yang running saja
-        const running = ifaces.filter(i => i.running && !i.disabled).slice(0, 5);
+        // Jangan slice(0,5) mentah: urutan ROS sering ether + sesi PPPoE,
+        // sehingga WAN (sfp) terlewat / chart menjumlahkan LAN+WAN+PPPoE.
+        const running = pickUplinkInterfaces(ifaces, 8);
         const statsPromises = running.map(iface =>
           mt.getInterfaceStats(iface.name).catch(() => ({
             name: iface.name,
