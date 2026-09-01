@@ -359,7 +359,7 @@ class NocController {
 
       // Sample only the busiest 2 uplinks + pinned monitor ifaces. monitor-traffic
       // is ~1s per batch of 8; sampling 16 ethers made every tick slower than the UI.
-      const picked = selectSampleIfaces(ifaces, presetNames, { uplinkLimit: 2, extraLimit: 8 });
+      const picked = selectSampleIfaces(ifaces, presetNames, { uplinkLimit: 1, extraLimit: 8 });
       let rxMbps = 0, txMbps = 0, perIface = {}, uplinkName = null;
       if (picked.sampleIfaces.length) {
         try {

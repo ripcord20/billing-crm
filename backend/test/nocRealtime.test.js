@@ -28,24 +28,37 @@ const ifaces = [
 
 assert.deepStrictEqual(pickUplinkNames(ifaces, 2), ['sfp-sfpplus1', 'ether4']);
 
-const sampled = selectSampleIfaces(ifaces, ['vlan61', 'sfp-sfpplus1', 'ether5'], { uplinkLimit: 2, extraLimit: 8 });
-assert.deepStrictEqual(sampled.uplinkNames, ['sfp-sfpplus1', 'ether4']);
+const sampled = selectSampleIfaces(ifaces, ['vlan61', 'sfp-sfpplus1', 'ether5'], { uplinkLimit: 1, extraLimit: 8 });
+assert.deepStrictEqual(sampled.uplinkNames, ['sfp-sfpplus1']);
 assert.ok(sampled.sampleIfaces.includes('vlan61'));
 assert.ok(sampled.sampleIfaces.includes('ether5'));
 assert.ok(!sampled.extraNames.includes('sfp-sfpplus1'), 'uplink must not be duplicated in extra');
-assert.ok(sampled.sampleIfaces.length <= 4);
+assert.ok(sampled.sampleIfaces.length <= 3);
 assert.ok(!sampled.sampleIfaces.includes('bridge'), 'unmonitored bridge must not be sampled');
+assert.ok(!sampled.sampleIfaces.includes('ether4'), 'second-busiest ether is not the WAN total');
 
 const stats = [
   { name: 'ether4', rxBitsPerSecond: 11e6, txBitsPerSecond: 95e6 },
   { name: 'sfp-sfpplus1', rxBitsPerSecond: 189e6, txBitsPerSecond: 12e6 },
   { name: 'vlan61', rxBitsPerSecond: 180e6, txBitsPerSecond: 10e6 },
 ];
-const agg = aggregateSampledTraffic(stats, ['sfp-sfpplus1', 'ether4']);
+const agg = aggregateSampledTraffic(stats, ['sfp-sfpplus1']);
 assert.strictEqual(agg.uplinkName, 'sfp-sfpplus1');
 assert.strictEqual(agg.rxMbps, 189);
 assert.ok(agg.rxMbps < 189 + 11, 'must not sum every sampled iface');
 assert.strictEqual(agg.perIface.vlan61.rxMbps, 180);
+
+const flipped = aggregateSampledTraffic([
+  { name: 'ether4', rxBitsPerSecond: 12e6, txBitsPerSecond: 255e6 },
+  { name: 'sfp-sfpplus1', rxBitsPerSecond: 133e6, txBitsPerSecond: 6e6 },
+], ['sfp-sfpplus1', 'ether4']);
+assert.strictEqual(flipped.uplinkName, 'ether4', 'live-busiest of 2 uplinks can flip to LAN');
+const pinned = aggregateSampledTraffic([
+  { name: 'ether4', rxBitsPerSecond: 12e6, txBitsPerSecond: 255e6 },
+  { name: 'sfp-sfpplus1', rxBitsPerSecond: 133e6, txBitsPerSecond: 6e6 },
+], ['sfp-sfpplus1']);
+assert.strictEqual(pinned.uplinkName, 'sfp-sfpplus1');
+assert.strictEqual(pinned.rxMbps, 133);
 
 const slice = [
   { ts: 1, cpu: 10, memPct: 40, pppoe: 100, rxMbps: 50, txMbps: 8, perIface: { vlan61: { rxMbps: 12, txMbps: 1 } } },

@@ -42,7 +42,7 @@ function pickUplinkNames(ifaces, limit = 2) {
  * that still need per-iface samples (VLAN, bridge, a quieter ether, …).
  */
 function selectSampleIfaces(ifaces, presetNames, opts = {}) {
-  const uplinkLimit = opts.uplinkLimit == null ? 2 : opts.uplinkLimit;
+  const uplinkLimit = opts.uplinkLimit == null ? 1 : opts.uplinkLimit;
   const extraLimit = opts.extraLimit == null ? 8 : opts.extraLimit;
   const uplinkNames = pickUplinkNames(ifaces, uplinkLimit);
   const uplinkSet = new Set(uplinkNames);
