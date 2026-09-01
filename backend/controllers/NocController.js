@@ -357,8 +357,9 @@ class NocController {
         i.running && !i.disabled && /^(ether|sfp|wlan)/i.test(i.type || '')
       );
 
-      // Sample only the busiest 2 uplinks + pinned monitor ifaces. monitor-traffic
-      // is ~1s per batch of 8; sampling 16 ethers made every tick slower than the UI.
+      // Sample only the busiest uplink + pinned monitor ifaces. Sampling two
+      // physical ifaces made Bandwidth Now flip to a busy LAN (ether4) whenever
+      // its live rate beat the WAN. monitor-traffic is ~1s per batch of 8.
       const picked = selectSampleIfaces(ifaces, presetNames, { uplinkLimit: 1, extraLimit: 8 });
       let rxMbps = 0, txMbps = 0, perIface = {}, uplinkName = null;
       if (picked.sampleIfaces.length) {
