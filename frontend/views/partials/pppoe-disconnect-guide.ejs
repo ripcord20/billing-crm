@@ -1,0 +1,180 @@
+<%
+  const _pcgVariant = (typeof variant !== 'undefined' && variant) ? variant : 'panel';
+  const _pcgOpenFirst = _pcgVariant === 'panel';
+%>
+<style>
+  .pcg {
+    font-family: inherit;
+    color: inherit;
+  }
+  .pcg-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 10px; margin-bottom: 10px;
+  }
+  .pcg-kicker {
+    font-size: 11px; font-weight: 700; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--nc-muted, #64748b);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .pcg-kicker svg { width: 13px; height: 13px; opacity: .7; }
+  .pcg-lead {
+    font-size: 12.5px; color: var(--nc-muted, #64748b); margin: 0 0 12px;
+    line-height: 1.5;
+  }
+  .pcg-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .pcg.pcg-stack .pcg-grid { grid-template-columns: 1fr; }
+  @media (max-width: 1100px) {
+    .pcg:not(.pcg-stack) .pcg-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 640px) {
+    .pcg .pcg-grid { grid-template-columns: 1fr !important; }
+  }
+  .pcg-cat {
+    border: 1px solid var(--nc-border, #e2e8f0);
+    background: var(--nc-panel, #f8fafc);
+    border-radius: 12px;
+    padding: 0;
+    overflow: hidden;
+  }
+  .pcg-cat summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 11px 12px;
+    font-size: 12.5px; font-weight: 800; color: var(--nc-text, #0f172a);
+    user-select: none;
+  }
+  .pcg-cat summary::-webkit-details-marker { display: none; }
+  .pcg-cat summary::after {
+    content: '';
+    width: 8px; height: 8px;
+    margin-left: auto; flex-shrink: 0; margin-top: 4px;
+    border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+    transform: rotate(45deg); opacity: .45;
+  }
+  .pcg-cat[open] summary::after { transform: rotate(225deg); margin-top: 7px; }
+  .pcg-badge {
+    flex-shrink: 0;
+    width: 22px; height: 22px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; color: #fff;
+  }
+  .pcg-cat.c-phys .pcg-badge { background: #f59e0b; }
+  .pcg-cat.c-isp  .pcg-badge { background: #2563eb; }
+  .pcg-cat.c-cfg  .pcg-badge { background: #7c3aed; }
+  .pcg-cat.c-cpe  .pcg-badge { background: #dc2626; }
+  .pcg-body { padding: 0 12px 12px 12px; }
+  .pcg-item { margin: 0 0 8px; }
+  .pcg-item:last-child { margin-bottom: 0; }
+  .pcg-item strong {
+    display: block; font-size: 12px; font-weight: 700;
+    color: var(--nc-text, #0f172a); margin-bottom: 2px;
+  }
+  .pcg-item p {
+    margin: 0; font-size: 11.5px; line-height: 1.45;
+    color: var(--nc-muted, #64748b);
+  }
+  .dark-mode .pcg-cat { background: rgba(255,255,255,.03); }
+</style>
+
+<div class="pcg <%= _pcgVariant === 'stack' ? 'pcg-stack' : '' %>">
+  <% if (_pcgVariant !== 'embed') { %>
+  <div class="pcg-head">
+    <div class="pcg-kicker">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+      Diagnosa PPPoE putus
+    </div>
+  </div>
+  <p class="pcg-lead">Empat kategori utama. Cek berurutan dari fisik ke klien supaya tiket gangguan tidak salah arah.</p>
+  <% } %>
+
+  <div class="pcg-grid">
+    <details class="pcg-cat c-phys" <%= _pcgOpenFirst ? 'open' : '' %>>
+      <summary><span class="pcg-badge">1</span><span>Fisik &amp; Jaringan<br><span style="font-weight:600;font-size:10.5px;opacity:.7;">Layer 1 &amp; 2</span></span></summary>
+      <div class="pcg-body">
+        <div class="pcg-item">
+          <strong>Kabel &amp; konektor rusak</strong>
+          <p>UTP/fiber terjepit, tertekuk, atau konektor RJ45/SC-UPC kotor dan longgar.</p>
+        </div>
+        <div class="pcg-item">
+          <strong>Redaman fiber tinggi</strong>
+          <p>Rx Power ONU/ONT di atas toleransi (mis. &gt; −27 dBm) membuat paket drop.</p>
+        </div>
+        <div class="pcg-item">
+          <strong>Radio/wireless rontok</strong>
+          <p>Packet loss, interferensi, atau cuaca buruk pada PTP/PTMP.</p>
+        </div>
+        <div class="pcg-item">
+          <strong>Port / switch flapping</strong>
+          <p>Port LAN/Ethernet di router, switch, atau OLT on/off sendiri.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="pcg-cat c-isp">
+      <summary><span class="pcg-badge">2</span><span>Server / ISP<br><span style="font-weight:600;font-size:10.5px;opacity:.7;">Keepalive &amp; BRAS</span></span></summary>
+      <div class="pcg-body">
+        <div class="pcg-item">
+          <strong>LCP Echo failure</strong>
+          <p>Echo-Reply hilang karena packet loss beruntun — server anggap klien mati.</p>
+        </div>
+        <div class="pcg-item">
+          <strong>Resource server overload</strong>
+          <p>CPU BRAS/MikroTik 100% sehingga keepalive terlambat diproses.</p>
+        </div>
+        <div class="pcg-item">
+          <strong>Session / idle timeout</strong>
+          <p>Sesi diputus otomatis saat idle atau mencapai batas waktu harian.</p>
+        </div>
+        <div class="pcg-item">
+          <strong>Reset dari ISP</strong>
+          <p>Maintenance atau reboot BRAS/RADIUS.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="pcg-cat c-cfg">
+      <summary><span class="pcg-badge">3</span><span>Konfigurasi<br><span style="font-weight:600;font-size:10.5px;opacity:.7;">Auth &amp; billing</span></span></summary>
+      <div class="pcg-body">
+        <div class="pcg-item">
+          <strong>Double login</strong>
+          <p>Username yang sama dial dari router lain (one-session-per-host).</p>
+        </div>
+        <div class="pcg-item">
+          <strong>Masa aktif / tagihan habis</strong>
+          <p>RADIUS menolak atau memutus sesi saat akun kedaluwarsa.</p>
+        </div>
+        <div class="pcg-item">
+          <strong>IP pool penuh</strong>
+          <p>Stok IP habis saat re-auth, sesi gagal naik lagi.</p>
+        </div>
+        <div class="pcg-item">
+          <strong>MTU/MRU tidak cocok</strong>
+          <p>Paket melebihi batas jalur — koneksi naik-turun.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="pcg-cat c-cpe">
+      <summary><span class="pcg-badge">4</span><span>Sisi klien<br><span style="font-weight:600;font-size:10.5px;opacity:.7;">CPE / rumah</span></span></summary>
+      <div class="pcg-body">
+        <div class="pcg-item">
+          <strong>Router overheat / hang</strong>
+          <p>Modem rumah hang atau adaptor/PSU lemah.</p>
+        </div>
+        <div class="pcg-item">
+          <strong>Firmware bug</strong>
+          <p>PPP daemon di router klien crash berkala.</p>
+        </div>
+        <div class="pcg-item">
+          <strong>Micro-outage listrik</strong>
+          <p>Lonjakan atau mati listrik singkat di rumah pelanggan.</p>
+        </div>
+      </div>
+    </details>
+  </div>
+</div>

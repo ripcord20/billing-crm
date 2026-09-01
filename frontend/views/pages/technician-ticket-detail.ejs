@@ -374,6 +374,12 @@
           </div>
         </div>
 
+        <div class="card-modern" id="pppoeCauseCard" style="display:none;">
+          <div class="info-section">
+            <%- include('../partials/pppoe-disconnect-guide', { variant: 'stack' }) %>
+          </div>
+        </div>
+
         <!-- Map -->
         <div class="card-modern" id="mapCard" style="display:none;">
           <div class="info-section">
@@ -580,6 +586,11 @@ function renderTicket(t){
     ${t.closed_at?`<div class="info-item"><div class="info-label">DITUTUP</div><div class="info-value">${fd(t.closed_at)}</div></div>`:''}
     ${t.location_note?`<div class="info-item" style="grid-column:1/-1;"><div class="info-label">LOKASI</div><div class="info-value">${esc(t.location_note)}</div></div>`:''}`;
   if(t.description){$('descSection').style.display='block';$('descBox').textContent=t.description;}
+  const pcg=$('pppoeCauseCard');
+  if(pcg){
+    const hit=t.type==='gangguan' || /pppoe/i.test(String(t.title||''));
+    pcg.style.display=hit?'block':'none';
+  }
 
   // Quick actions (teknisi)
   let qa='';
