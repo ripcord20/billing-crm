@@ -553,20 +553,19 @@ async function setupFirewallV2(api, device) {
     errors.push('Filter DROP: ' + e.message);
   }
 
-  // ── 8. Setup PPPoE isolir-profile + IP pool (auto-create) ──
+  // ── 8. Setup IP Isolir (gateway + pool + PPP profile) ──
   // Best-effort: kalau gagal, isolir static masih jalan. Hanya isolir PPPoE
   // yang terganggu. Tampilkan warning di details.
   try {
     const IsolirPPPoE = require('./IsolirPPPoE');
-    const pppRes = await IsolirPPPoE.setupIsolirProfile(api, sequelize);
+    const pppRes = await IsolirPPPoE.setupIsolirIp(api, sequelize);
     if (pppRes.success) {
       results.push(...(pppRes.details || []));
-      results.push(`✓ Isolir profile PPPoE siap`);
     } else {
-      results.push(`⚠ Setup profile PPPoE gagal: ${pppRes.error} (isolir static tetap berfungsi)`);
+      results.push(`⚠ Setup IP Isolir gagal: ${pppRes.error} (isolir static tetap berfungsi)`);
     }
   } catch (e) {
-    results.push(`⚠ Setup profile PPPoE error: ${e.message} (isolir static tetap berfungsi)`);
+    results.push(`⚠ Setup IP Isolir error: ${e.message} (isolir static tetap berfungsi)`);
   }
 
   // ── 9. Setup Web Proxy Redirect (kalau enabled) ──

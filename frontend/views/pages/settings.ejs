@@ -1775,6 +1775,32 @@
                 <textarea class="pf-input" id="isoWaMessage" rows="4" placeholder="Yth {nama}, layanan internet Anda (ID: {cid}) untuk sementara kami nonaktifkan karena tagihan belum dibayar. Total: {tagihan}. Bayar di: {url}" style="resize:vertical;font-family:inherit;"></textarea>
                 <div class="op-hint">Placeholder: <code>{nama}</code> <code>{cid}</code> <code>{tagihan}</code> <code>{url}</code></div>
 
+                <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--d-border);">
+                  <div class="pf-label" style="margin:0 0 4px;">IP Isolir PPPoE</div>
+                  <div class="op-hint" style="margin-bottom:12px;">Gateway + pool yang dipakai saat pelanggan PPPoE diisolir. Setelah simpan, klik <strong>Buat IP Isolir</strong> di halaman Isolir.</div>
+                  <div class="op-grid">
+                    <div>
+                      <label class="pf-label">Gateway (local-address)</label>
+                      <input type="text" class="pf-input" id="isoPppoeLocalAddr" placeholder="10.255.255.1" style="font-family:ui-monospace,monospace;">
+                    </div>
+                    <div>
+                      <label class="pf-label">Range pool</label>
+                      <input type="text" class="pf-input" id="isoPppoePoolRange" placeholder="10.255.255.2-10.255.255.254" style="font-family:ui-monospace,monospace;">
+                    </div>
+                    <div>
+                      <label class="pf-label">Rate-limit</label>
+                      <input type="text" class="pf-input" id="isoPppoeRateLimit" placeholder="128k/128k" style="font-family:ui-monospace,monospace;">
+                    </div>
+                    <div>
+                      <label class="pf-label">Profile / pool</label>
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                        <input type="text" class="pf-input" id="isoPppoeProfileName" placeholder="isolir-profile">
+                        <input type="text" class="pf-input" id="isoPppoePoolName" placeholder="isolir-pool">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div style="margin-top:18px;">
                   <button class="op-btn-primary" onclick="saveIsolirSettings()">Simpan Pengaturan Isolir</button>
                 </div>
@@ -2320,6 +2346,12 @@ async function loadIsolirSettings() {
     document.getElementById('isoAutoEnable').checked = c.isolir_auto_enable === '1';
     document.getElementById('isoNotifyWa').checked   = c.isolir_notify_wa === '1' || c.isolir_notify_wa === undefined;
     document.getElementById('isoWaMessage').value    = c.isolir_wa_message || '';
+    const setVal = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
+    setVal('isoPppoeLocalAddr',   c.isolir_pppoe_local_addr || '10.255.255.1');
+    setVal('isoPppoePoolRange',   c.isolir_pppoe_pool_range || '10.255.255.2-10.255.255.254');
+    setVal('isoPppoeRateLimit',   c.isolir_pppoe_rate_limit || '128k/128k');
+    setVal('isoPppoeProfileName', c.isolir_pppoe_profile_name || 'isolir-profile');
+    setVal('isoPppoePoolName',    c.isolir_pppoe_pool_name || 'isolir-pool');
   } catch (e) { App.showToast('Gagal memuat pengaturan isolir', 'error'); }
 }
 async function saveIsolirSettings() {
@@ -2328,7 +2360,12 @@ async function saveIsolirSettings() {
     isolir_auto_hour:  document.getElementById('isoAutoHour').value,   // '-1' = setiap jam
     isolir_auto_enable: document.getElementById('isoAutoEnable').checked ? '1' : '0',
     isolir_notify_wa:   document.getElementById('isoNotifyWa').checked ? '1' : '0',
-    isolir_wa_message:  document.getElementById('isoWaMessage').value || ''
+    isolir_wa_message:  document.getElementById('isoWaMessage').value || '',
+    isolir_pppoe_local_addr:   (document.getElementById('isoPppoeLocalAddr')?.value || '').trim() || '10.255.255.1',
+    isolir_pppoe_pool_range:   (document.getElementById('isoPppoePoolRange')?.value || '').trim() || '10.255.255.2-10.255.255.254',
+    isolir_pppoe_rate_limit:   (document.getElementById('isoPppoeRateLimit')?.value || '').trim() || '128k/128k',
+    isolir_pppoe_profile_name: (document.getElementById('isoPppoeProfileName')?.value || '').trim() || 'isolir-profile',
+    isolir_pppoe_pool_name:    (document.getElementById('isoPppoePoolName')?.value || '').trim() || 'isolir-pool'
   };
   const d = await App.api('/isolir/settings', { method:'POST', body: JSON.stringify(payload) });
   if (d?.success) App.showToast('Pengaturan isolir disimpan', 'success');

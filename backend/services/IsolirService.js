@@ -758,6 +758,49 @@ async function setupFirewall(deviceId) {
   return { success: true, details: results };
 }
 
+async function setupIsolirIp(deviceId) {
+  const device = await loadDeviceWithMaster(deviceId, true);
+  if (!device) throw new Error('Device tidak ditemukan atau tidak aktif');
+
+  const IsolirPPPoE = require('./IsolirPPPoE');
+  const api = await connectDevice(device);
+  try {
+    const result = await IsolirPPPoE.setupIsolirIp(api, sequelize);
+    if (result.success) {
+      await sequelize.query(
+        "UPDATE mikrotik_devices SET status='online', last_ping=NOW() WHERE id=?",
+        { replacements: [deviceId] }
+      );
+    }
+    return {
+      ...result,
+      message: result.success
+        ? 'IP Isolir siap di router'
+        : (result.error || 'Gagal membuat IP Isolir'),
+      device: { id: device.id, name: device.name, host: device.host }
+    };
+  } finally {
+    try { api.close(); } catch (_) {}
+  }
+}
+
+async function inspectIsolirIp(deviceId) {
+  const device = await loadDeviceWithMaster(deviceId, true);
+  if (!device) throw new Error('Device tidak ditemukan atau tidak aktif');
+
+  const IsolirPPPoE = require('./IsolirPPPoE');
+  const api = await connectDevice(device);
+  try {
+    const result = await IsolirPPPoE.inspectIsolirIp(api, sequelize);
+    return {
+      ...result,
+      device: { id: device.id, name: device.name, host: device.host }
+    };
+  } finally {
+    try { api.close(); } catch (_) {}
+  }
+}
+
 // ── Isolir satu pelanggan ──────────────────────────────────────
 async function isolirCustomer(customerId, triggerBy = 'admin', adminUserId = null) {
   // Step 1: ambil customer + extension ID
@@ -1878,4 +1921,4 @@ _${`{perusahaan}`}_`;
 ensureSchema();
 
 
-module.exports = { connectDevice, setupFirewall, testConnection, isolirCustomer, restoreCustomer, runAutoIsolir, restoreAfterPayment, evaluateCustomer, ensureSchema, loadDeviceWithMaster, deriveApiMode };
+module.exports = { connectDevice, setupFirewall, setupIsolirIp, inspectIsolirIp, testConnection, isolirCustomer, restoreCustomer, runAutoIsolir, restoreAfterPayment, evaluateCustomer, ensureSchema, loadDeviceWithMaster, deriveApiMode };
