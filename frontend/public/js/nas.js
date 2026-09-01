@@ -2,6 +2,14 @@ function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt
 
 let __wgLastConfig = null; // {nas, client_config, filename}
 
+function fmtSyncAt(s){
+  if(!s) return 'belum';
+  const d=new Date(s);
+  if(Number.isNaN(d.getTime())) return esc(s);
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 function modeBadge(n){
   if(n.conn_mode==='vpn'){
     const ok = n.wg_configured;
@@ -14,15 +22,21 @@ function modeBadge(n){
 async function loadNas(){
   const tb=document.getElementById('nasTable');
   const d=await App.api('/nas');
-  if(!d?.success){tb.innerHTML=`<tr><td colspan="6" style="text-align:center;color:#dc2626;padding:24px;">${esc(d?.message)}</td></tr>`;return;}
+  if(!d?.success){
+    const msg=d?.message==='Route not found'
+      ? 'API Modul NAS belum aktif di server. Refresh setelah diperbaiki.'
+      : (d?.message||'Gagal memuat NAS');
+    tb.innerHTML=`<tr><td colspan="6" style="text-align:center;color:#dc2626;padding:24px;">${esc(msg)}</td></tr>`;
+    return;
+  }
   if(!d.data.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:#94a3b8;">Belum ada NAS. Tambah router yang auth ke FreeRADIUS.</td></tr>';return;}
   tb.innerHTML=d.data.map(n=>`<tr>
-    <td class="mono">${esc(n.nasname)}${n.tunnel_address?`<br><span style="font-size:11px;color:#64748b;">tunnel: ${esc(n.tunnel_address)}</span>`:''}</td>
+    <td class="mono">${esc(n.nasname)}${n.tunnel_address?`<br><span style="font-size:11px;color:#64748b;">tunnel: ${esc(n.tunnel_address)}</span>`:''}${n.device?`<br><span style="font-size:11px;color:#166534;">Device: ${esc(n.device.name)}</span>`:''}</td>
     <td>${esc(n.shortname||'—')}</td>
     <td>${esc(n.type)}</td>
     <td>${modeBadge(n)}</td>
-    <td>${n.last_error?`<span style="color:#dc2626;">${esc(n.last_error)}</span>`:(n.last_sync_at?esc(n.last_sync_at):'belum')}</td>
-    <td style="white-space:nowrap;">
+    <td>${n.last_error?`<span style="color:#dc2626;">${esc(n.last_error)}</span>`:fmtSyncAt(n.last_sync_at)}</td>
+    <td class="nas-aksi" style="white-space:nowrap;">
       <button class="btn btn-sm btn-primary" onclick="openRosScript(${n.id},'${esc(n.shortname||n.nasname)}')" title="Script RouterOS: VPN + RADIUS + isolir">Script</button>
       ${n.conn_mode==='vpn'?`<button class="btn btn-sm btn-secondary" onclick="wgGen(${n.id},'${esc(n.shortname||n.nasname)}')" title="Generate/regenerate config VPN saja">VPN</button>`:''}
       <button class="btn btn-sm btn-secondary" onclick="syncNas(${n.id})">Sync</button>
@@ -62,7 +76,12 @@ window.saveNas=async()=>{
   const r=await App.api(id?'/nas/'+id:'/nas',{method:id?'PUT':'POST',body:JSON.stringify(body)});
   if(!r?.success) return App.showToast(r?.message||'Gagal','error');
   document.getElementById('nasModal').style.display='none';
-  App.showToast(r.radius_sync?.success?'Tersimpan & ter-sync ke FreeRADIUS':'Tersimpan di billing: '+(r.radius_sync?.message||''), r.radius_sync?.success?'success':'error');
+  const linked=r.device_linked?' (sudah tertaut Device Management)':'';
+  const reused=r.reused?'NAS sudah ada, data diperbarui':'Tersimpan';
+  App.showToast(
+    (r.radius_sync?.success?(reused+' & ter-sync ke FreeRADIUS'):(reused+' di billing: '+(r.radius_sync?.message||'')))+linked,
+    r.radius_sync?.success?'success':'error'
+  );
   loadNas();
 };
 window.syncNas=async(id)=>{
@@ -132,6 +151,7 @@ window.wgGen=async(id,label)=>{
   document.getElementById('wgCfgAddr').textContent=d.tunnel_address||'—';
   document.getElementById('wgCfgClient').textContent=d.client_config||'';
   document.getElementById('wgCfgMikrotik').textContent=d.mikrotik_commands||'';
+  showWgQr(d, type==='wireguard');
 
   // Kredensial (l2tp/openvpn)
   const credWrap=document.getElementById('wgCredWrap');
@@ -188,6 +208,58 @@ window.wgDownload=()=>{
   a.download=__wgLastConfig.filename;
   document.body.appendChild(a);a.click();a.remove();
   URL.revokeObjectURL(a.href);
+};
+
+function showWgQr(d, enabled){
+  const wrap=document.getElementById('wgQrWrap');
+  const img=document.getElementById('wgQrImg');
+  const warn=document.getElementById('wgQrWarn');
+  if(!wrap||!img) return;
+  if(enabled && d && d.qr_data_url){
+    wrap.style.display='block';
+    img.src=d.qr_data_url;
+    if(warn){
+      if(d.endpoint_is_private){
+        warn.style.display='block';
+        warn.textContent='Endpoint masih IP LAN. HP di data seluler tidak handshake. Isi dulu IP/DNS publik concentrator Fiberix.';
+      }else{
+        warn.style.display='none';
+        warn.textContent='';
+      }
+    }
+  }else{
+    wrap.style.display='none';
+    img.removeAttribute('src');
+    if(warn){ warn.style.display='none'; warn.textContent=''; }
+  }
+}
+
+window.openPhoneQr=async()=>{
+  const label=window.prompt('Nama peer HP (contoh: HP tes Sys)','HP tes')||'HP tes';
+  const r=await App.api('/nas/wireguard/phone-qr',{method:'POST',body:JSON.stringify({label})});
+  if(!r?.success) return App.showToast(r?.message||'Gagal buat QR HP','error');
+  const d=r.data;
+  __wgLastConfig={label:d.label,client_config:d.client_config,filename:d.filename||'fiberix-hp.conf'};
+  document.getElementById('wgCfgType').textContent='HP';
+  document.getElementById('wgCfgNas').textContent=d.label||'HP';
+  document.getElementById('wgCfgAddr').textContent=d.tunnel_address||'—';
+  document.getElementById('wgCfgClient').textContent=d.client_config||'';
+  document.getElementById('wgCfgMikrotik').textContent='(QR ini untuk aplikasi WireGuard di HP, bukan script MikroTik.)';
+  document.getElementById('wgCredWrap').style.display='none';
+  document.getElementById('wgCfgClientLabel').textContent='Config HP (.conf)';
+  document.getElementById('wgCfgPeerLabel').textContent='Blok [Peer] — tempel di concentrator Fiberix';
+  document.getElementById('wgCfgPeer').textContent=d.server_peer_block||'';
+  document.getElementById('wgPeerWrap').style.display='block';
+  const note=document.getElementById('wgApplyNote');
+  if(d.applied&&d.applied.attempted){
+    note.textContent=d.applied.ok
+      ? '✓ Peer HP sudah dipasang di interface WireGuard server ini. Scan QR di aplikasi WireGuard.'
+      : 'Peer belum terpasang otomatis: '+(d.applied.message||'')+' — tempel blok [Peer] di concentrator, lalu scan QR.';
+  }else{
+    note.textContent='Tempel blok [Peer] di concentrator WireGuard Fiberix, lalu scan QR di HP. Concentrator sekarang bukan Ubuntu billing.';
+  }
+  showWgQr(d, true);
+  document.getElementById('wgConfigModal').style.display='flex';
 };
 
 let __rosLast=null;
