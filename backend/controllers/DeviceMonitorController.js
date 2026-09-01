@@ -590,6 +590,19 @@ exports.testConnection = async (req, res) => {
       try {
         const identityRow = await mt.getSystemIdentity();
         const identity = identityRow?.name || 'MikroTik';
+        let groupNote = '';
+        try {
+          const { classifyMikrotikApiGroup } = require('../utils/mikrotikApiUser');
+          const profile = await mt.getApiUserProfile(user);
+          if (profile && profile.found && !profile.disabled) {
+            const cls = classifyMikrotikApiGroup(profile.group);
+            if (cls.level === 'read') {
+              groupNote = ' — group read: isolir/PPPoE tidak jalan, ganti ke full';
+            } else if (profile.group) {
+              groupNote = ` — group ${profile.group}`;
+            }
+          }
+        } catch (_) { /* optional */ }
         // Tutup koneksi binary kalau ada (REST tidak perlu)
         if (mt._apiClient) { try { mt._apiClient.close(); } catch (_) {} }
         const protoLabel = mt.protocol === 'api'     ? 'API binary (plain, port 8728)'
@@ -599,7 +612,7 @@ exports.testConnection = async (req, res) => {
         return res.json({
           success: true,
           protocol: 'api',
-          message: `✓ Terhubung via ${protoLabel} — ${identity}`,
+          message: `✓ Terhubung via ${protoLabel} — ${identity}${groupNote}`,
           identity,
           transport: mt.protocol,  // 'api' | 'api-ssl' | 'rest'
         });

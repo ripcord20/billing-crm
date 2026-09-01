@@ -268,7 +268,28 @@
     .test-check-row svg { flex-shrink:0; width:13px; height:13px; }
     .test-check-ok { color:#15803d; }
     .test-check-fail { color:#b91c1c; }
+    .test-check-warn { color:#b45309; }
     .test-check-detail { color:var(--muted); margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:11px; }
+    .api-user-script {
+      margin-top: 8px; padding: 10px 12px;
+      background: #0f172a; border-radius: 10px; color: #e2e8f0;
+    }
+    .api-user-script-hdr {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      margin-bottom: 8px; font-size: 11px; font-weight: 700; color: #94a3b8;
+    }
+    .api-user-script-hdr .btn { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+    .api-user-script-pre {
+      margin: 0; white-space: pre-wrap; word-break: break-all;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 11px; line-height: 1.45; color: #e2e8f0;
+    }
+    .api-role-warn {
+      display: none; margin-top: 8px; padding: 8px 10px;
+      background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;
+      font-size: 12px; color: #92400e;
+    }
+    .api-role-warn.show { display: block; }
 
     /* Conditional field wrapper */
     .cond-hide { display:none; }
@@ -788,17 +809,39 @@
           <div class="form-grid">
             <div class="field">
               <label class="field-label">API Username</label>
-              <input type="text" id="devApiUser" placeholder="admin">
+              <input type="text" id="devApiUser" placeholder="fiberix" autocomplete="off" oninput="refreshApiUserScript()">
+              <div class="field-hint">User khusus di MikroTik. Jangan pakai <code>admin</code> Winbox.</div>
             </div>
             <div class="field">
               <label class="field-label">API Password</label>
-              <input type="password" id="devApiPass" placeholder="••••••••">
+              <input type="password" id="devApiPass" placeholder="password user API" autocomplete="new-password" oninput="refreshApiUserScript()">
             </div>
             <div class="field">
               <label class="field-label">API Port</label>
               <input type="number" id="devApiPort" value="80" placeholder="80 / 443 / 8728 / 8729" onchange="onApiPortInput()">
               <div class="field-hint">Default: <code>80</code> (REST) atau <code>8728</code> (Binary). SSL: <code>443</code> atau <code>8729</code>.</div>
             </div>
+          </div>
+          <div class="field">
+            <label class="field-label">Group user MikroTik</label>
+            <select id="devApiRole" onchange="onApiRoleChange()">
+              <option value="full">full — isolir, PPPoE, QoS, firewall (disarankan)</option>
+              <option value="read">read — monitor saja (grafik &amp; status)</option>
+            </select>
+            <div class="field-hint" id="devApiRoleHint">
+              Fiberix menulis ke router lewat API (isolir, kick PPPoE, queue, firewall).
+              Pakai group <strong>full</strong>. Group <strong>read</strong> hanya cukup kalau device ini cuma dipantau.
+            </div>
+            <div class="api-role-warn" id="devApiRoleWarn">
+              Group <strong>read</strong> tidak bisa isolir / putus PPPoE / ubah queue. Test koneksi bisa hijau, tapi fitur billing tidak jalan.
+            </div>
+          </div>
+          <div class="api-user-script" id="devApiScriptWrap">
+            <div class="api-user-script-hdr">
+              <span>Tempel di terminal MikroTik (New Terminal)</span>
+              <button type="button" class="btn btn-outline btn-sm" onclick="copyApiUserScript()">Salin</button>
+            </div>
+            <pre id="devApiUserScript" class="api-user-script-pre"></pre>
           </div>
         </div>
       </div>
@@ -1149,13 +1192,15 @@
     document.getElementById('devSnmpCommunity').value = 'public';
     document.getElementById('devSnmpVersion').value = '2';
     document.getElementById('devSnmpPort').value = '161';
-    document.getElementById('devApiUser').value = '';
+    document.getElementById('devApiUser').value = 'fiberix';
     document.getElementById('devApiPass').value = '';
     document.getElementById('devApiPort').value = '80';
-    document.getElementById('devApiProtocol').value = 'rest-http';
+    document.getElementById('devApiProtocol').value = 'rest';
+    document.getElementById('devApiRole').value = 'full';
     document.getElementById('devNotes').value = '';
     hideTestResult();
     onMonTypeChange();
+    onApiRoleChange();
     loadPopOptions();
     document.getElementById('deviceModal').classList.add('active');
     setTimeout(() => document.getElementById('devName').focus(), 100);
@@ -1187,9 +1232,11 @@
     // Untuk device lama yang belum ter-migrate (api_protocol = NULL), deteksi via port.
     document.getElementById('devApiProtocol').value   =
       dbProtocolToUi(d.api_protocol) || portToUiProtocol(d.api_port || 80);
+    document.getElementById('devApiRole').value       = 'full';
     document.getElementById('devNotes').value         = d.notes || '';
     hideTestResult();
     onMonTypeChange();
+    onApiRoleChange();
     // Load POP options async, lalu set value berdasarkan device.pop_id
     loadPopOptions(d.pop_id || '');
     document.getElementById('deviceModal').classList.add('active');
@@ -1274,11 +1321,61 @@
     const proto = document.getElementById('devApiProtocol').value;
     const def   = PROTO_DEFAULT_PORT[proto];
     if (def) document.getElementById('devApiPort').value = String(def);
+    refreshApiUserScript();
   }
   function onApiPortInput() {
     // Tidak perlu mengubah dropdown otomatis — user bertanggung jawab pilih
     // protocol secara eksplisit (REST vs Binary). Port hanya menentukan
     // plain-vs-SSL di backend, bukan REST-vs-Binary.
+  }
+
+  function escapeRosScript(s) {
+    return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  }
+
+  function buildApiUserScript() {
+    const user = (document.getElementById('devApiUser').value.trim() || 'fiberix');
+    const pass = document.getElementById('devApiPass').value || 'GANTI_PASSWORD';
+    const role = document.getElementById('devApiRole').value === 'read' ? 'read' : 'full';
+    const proto = document.getElementById('devApiProtocol').value;
+    const port = parseInt(document.getElementById('devApiPort').value, 10) || 0;
+    const u = escapeRosScript(user);
+    const p = escapeRosScript(pass);
+    const lines = [
+      '# Fiberix Device Management — user API',
+      role === 'read'
+        ? '# Group read = monitor saja. Isolir / PPPoE / QoS tidak jalan.'
+        : '# Group full = isolir, kick PPPoE, queue, firewall (disarankan).',
+      `:do { /user add name="${u}" group=${role} password="${p}" comment="Fiberix billing API" } on-error={ /user set [find name="${u}"] group=${role} password="${p}" }`
+    ];
+    if (proto === 'api-binary') {
+      lines.push(port === 8729 ? '/ip service set api-ssl disabled=no' : '/ip service set api disabled=no');
+    } else {
+      lines.push(port === 443 ? '/ip service set www-ssl disabled=no' : '/ip service set www disabled=no');
+    }
+    return lines.join('\n');
+  }
+
+  function refreshApiUserScript() {
+    const pre = document.getElementById('devApiUserScript');
+    if (pre) pre.textContent = buildApiUserScript();
+  }
+
+  function onApiRoleChange() {
+    const role = document.getElementById('devApiRole').value;
+    const warn = document.getElementById('devApiRoleWarn');
+    if (warn) warn.classList.toggle('show', role === 'read');
+    refreshApiUserScript();
+  }
+
+  async function copyApiUserScript() {
+    const text = buildApiUserScript();
+    try {
+      await navigator.clipboard.writeText(text);
+      App.showToast('Perintah user MikroTik disalin', 'success');
+    } catch (_) {
+      App.showToast('Gagal menyalin. Salin manual dari kotak hitam.', 'error');
+    }
   }
 
   // ── Save (create/update) ──
@@ -1433,10 +1530,12 @@
     if (Array.isArray(r.checks) && r.checks.length) {
       html += '<div style="margin-top:8px">';
       r.checks.forEach(c => {
-        const cls = c.ok ? 'test-check-ok' : 'test-check-fail';
-        const icon = c.ok
+        const cls = c.ok && !c.warn ? 'test-check-ok' : (c.warn ? 'test-check-warn' : 'test-check-fail');
+        const icon = c.ok && !c.warn
           ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
-          : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+          : (c.warn
+            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>'
+            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>');
         html += `<div class="test-check-row ${cls}">${icon}<span>${esc(c.step)}</span><span class="test-check-detail">${esc(c.detail || '')}</span></div>`;
       });
       html += '</div>';
