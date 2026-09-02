@@ -140,8 +140,27 @@ const lanDespiteDns = buildNasRouterOsScript({
   connMode: 'public',
   vpsHost: 'fiberix.my.id'
 });
-assert.strictEqual(lanDespiteDns.port_forward_example.skipped, true);
+assert.ok(lanDespiteDns.port_forward_example.skipped, true);
 assert.ok(!/VPS/.test(lanDespiteDns.v7));
+assert.ok(lanDespiteDns.v7.includes('# Script RouterOS v7'));
+assert.ok(lanDespiteDns.v7.includes('# Mode: LAN'));
+assert.ok(!/217\.216\.34\.97/.test(lanDespiteDns.v7));
+assert.ok(!/pptp-client/.test(lanDespiteDns.v7));
+
+const lanPpp = buildNasRouterOsScript({
+  nasname: '192.168.62.2',
+  shortname: 'NAGA',
+  secret: 'secret',
+  radiusHost: '192.168.22.9',
+  vpnType: 'public',
+  connMode: 'public',
+  pppPool: '10.20.0.2-10.20.0.254',
+  pppLocal: '10.20.0.1'
+});
+assert.ok(lanPpp.v7.includes('/ip/pool/add name=FIBERIX ranges=10.20.0.2-10.20.0.254'));
+assert.ok(lanPpp.v7.includes('/ppp/profile/add name=FIBERIX local-address=10.20.0.1'));
+assert.ok(lanPpp.v6.includes('/ip pool add name=FIBERIX'));
+assert.ok(lanPpp.usage.join(' ').includes('tempel'));
 
 const lanWg = buildNasRouterOsScript({
   nasId: 3,

@@ -397,6 +397,7 @@ router.get('/nas/wireguard/server', authenticate, demoGuard, tenantContextMiddle
 router.put('/nas/wireguard/server', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.wgServerSave(r, s));
 router.post('/nas/wireguard/server/init-keys', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.wgServerInitKeys(r, s));
 router.post('/nas/import', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.importFromRadius(r, s));
+router.post('/nas/routeros-preview', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.routerosPreview(r, s));
 router.get('/nas', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.index(r, s));
 router.post('/nas', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.create(r, s));
 router.post('/nas/:id/sync', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.syncOne(r, s));

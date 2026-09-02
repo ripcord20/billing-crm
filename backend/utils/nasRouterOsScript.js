@@ -10,6 +10,8 @@ const DEFAULT_RADIUS_HOST = process.env.RADIUS_HOST || '192.168.22.9';
 const EXPIRED_POOL = '10.200.200.2-10.200.201.254';
 const EXPIRED_GW = '10.200.200.1';
 const EXPIRED_NET = '10.200.200.0/23';
+const DEFAULT_PPP_POOL = '10.20.0.2-10.20.0.254';
+const DEFAULT_PPP_LOCAL = '10.20.0.1';
 
 function escapeRos(s) {
   return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
@@ -19,6 +21,23 @@ function stripCidr(ip) {
   return String(ip || '').split('/')[0];
 }
 
+function formatIdDate(d) {
+  const dt = d instanceof Date ? d : new Date();
+  try {
+    return new Intl.DateTimeFormat('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      day: 'numeric',
+      month: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }).format(dt);
+  } catch (_) {
+    return dt.toISOString();
+  }
+}
+
 function buildCleanup(version) {
   const foreach = [
     ':foreach i in=[/interface wireguard find where comment~"FIBERIX"] do={/interface wireguard remove $i}',
@@ -26,10 +45,12 @@ function buildCleanup(version) {
     ':foreach i in=[/ip address find where comment~"FIBERIX"] do={/ip address remove $i}',
     ':foreach i in=[/ip route find where comment~"FIBERIX"] do={/ip route remove $i}',
     ':foreach i in=[/radius find where comment~"FIBERIX"] do={/radius remove $i}',
-    ':foreach i in=[/ip pool find where comment~"FIBERIX"] do={/ip pool remove $i}',
-    ':foreach i in=[/ppp profile find where comment~"FIBERIX"] do={/ppp profile remove $i}',
+    ':foreach i in=[/ip pool find where name~"FIBERIX"] do={/ip pool remove $i}',
+    ':foreach i in=[/ppp profile find where name~"FIBERIX"] do={/ppp profile remove $i}',
+    ':foreach i in=[/ip proxy access find where comment~"FIBERIX"] do={/ip proxy access remove $i}',
     ':foreach i in=[/ip firewall address-list find where comment~"FIBERIX"] do={/ip firewall address-list remove $i}',
-    ':foreach i in=[/ip firewall filter find where comment~"FIBERIX"] do={/ip firewall filter remove $i}'
+    ':foreach i in=[/ip firewall filter find where comment~"FIBERIX"] do={/ip firewall filter remove $i}',
+    ':foreach i in=[/ip firewall nat find where comment~"FIBERIX"] do={/ip firewall nat remove $i}'
   ];
   if (version === 'v7') {
     return [
@@ -38,13 +59,31 @@ function buildCleanup(version) {
       ':foreach i in=[/ip/address/find where comment~"FIBERIX"] do={/ip/address/remove $i}',
       ':foreach i in=[/ip/route/find where comment~"FIBERIX"] do={/ip/route/remove $i}',
       ':foreach i in=[/radius/find where comment~"FIBERIX"] do={/radius/remove $i}',
-      ':foreach i in=[/ip/pool/find where comment~"FIBERIX"] do={/ip/pool/remove $i}',
-      ':foreach i in=[/ppp/profile/find where comment~"FIBERIX"] do={/ppp/profile/remove $i}',
+      ':foreach i in=[/ip/pool/find where name~"FIBERIX"] do={/ip/pool/remove $i}',
+      ':foreach i in=[/ppp/profile/find where name~"FIBERIX"] do={/ppp/profile/remove $i}',
+      ':foreach i in=[/ip/proxy/access/find where comment~"FIBERIX"] do={/ip/proxy/access/remove $i}',
       ':foreach i in=[/ip/firewall/address-list/find where comment~"FIBERIX"] do={/ip/firewall/address-list/remove $i}',
-      ':foreach i in=[/ip/firewall/filter/find where comment~"FIBERIX"] do={/ip/firewall/filter/remove $i}'
+      ':foreach i in=[/ip/firewall/filter/find where comment~"FIBERIX"] do={/ip/firewall/filter/remove $i}',
+      ':foreach i in=[/ip/firewall/nat/find where comment~"FIBERIX"] do={/ip/firewall/nat/remove $i}'
     ];
   }
   return foreach;
+}
+
+function buildPppProfile(version, pool, local) {
+  const ranges = String(pool || '').trim();
+  const gw = String(local || '').trim();
+  if (!ranges || !gw) return [];
+  if (version === 'v7') {
+    return [
+      `/ip/pool/add name=FIBERIX ranges=${ranges} comment="FIBERIX"`,
+      `/ppp/profile/add name=FIBERIX local-address=${gw} remote-address=FIBERIX comment="FIBERIX"`
+    ];
+  }
+  return [
+    `/ip pool add name=FIBERIX ranges=${ranges} comment="FIBERIX"`,
+    `/ppp profile add name=FIBERIX local-address=${gw} remote-address=FIBERIX comment="FIBERIX"`
+  ];
 }
 
 function buildWireguardBlock(version, wg) {
@@ -170,41 +209,65 @@ function buildNasRouterOsScript(opts) {
   const radiusHost = opts.radiusHost || DEFAULT_RADIUS_HOST;
   const secret = opts.secret || '';
   const tunnel = stripCidr(opts.tunnelAddress || '');
-  const header = [
-    `# FIBERIX — script NAS ${name}`,
-    `# Radius: ${radiusHost}  secret: (terisi)  comment=FIBERIX`,
-    `# Tidak menghapus object BILLINGRADIUS. Disable radius sewa secara manual jika auth hanya mau lewat Fiberix.`,
-    tunnel
-      ? `# IP tunnel WireGuard router ini: ${tunnel}  ← pakai ini untuk API/sync jika mode tunnel.`
-      : '# Mode LAN / langsung: RADIUS lewat IP lokal. WireGuard tidak wajib.',
-    ''
-  ];
+  const connMode = opts.connMode === 'vpn' || opts.vpnType === 'wireguard' || opts.vpnType === 'l2tp' || opts.vpnType === 'openvpn'
+    ? 'vpn'
+    : 'public';
+  const modeLabel = connMode === 'vpn' ? 'VPN / tunnel' : 'LAN';
+  const pppPool = (opts.pppPool || opts.ppp_pool_ranges || '').trim();
+  const pppLocal = (opts.pppLocal || opts.ppp_local_address || '').trim();
+  const stamped = formatIdDate(opts.now);
 
   function assemble(version) {
-    const lines = [
-      ...header,
+    const verLabel = version === 'v7' ? 'v7' : 'v6';
+    const header = [
+      `# Script RouterOS ${verLabel} untuk NAS ${name}`,
+      `# Mode: ${modeLabel}`,
+      `# Tanggal: ${stamped}`,
+      `# Radius: ${radiusHost}  comment=FIBERIX`,
+      '# Tidak menghapus object BILLINGRADIUS. Disable radius sewa secara manual jika auth hanya mau lewat Fiberix.',
+      tunnel
+        ? `# IP tunnel WireGuard router ini: ${tunnel}  ← pakai ini untuk API/sync jika mode tunnel.`
+        : '# Mode LAN / langsung: RADIUS lewat IP lokal. WireGuard tidak wajib.',
+      ''
+    ];
+    const body = [
       '# 1) Hapus object FIBERIX lama',
       ...buildCleanup(version),
       ''
     ];
     if (opts.vpnType === 'wireguard' && opts.wireguard) {
-      lines.push('# 2) WireGuard ke server billing Fiberix (bukan L2TP)');
-      lines.push(...buildWireguardBlock(version, opts.wireguard));
-      lines.push('');
+      body.push('# 2) WireGuard ke server billing Fiberix (bukan L2TP)');
+      body.push(...buildWireguardBlock(version, opts.wireguard));
+      body.push('');
     } else if (opts.vpnType === 'l2tp' && opts.l2tp) {
-      lines.push('# 2) L2TP ke server VPN Anda');
-      lines.push(...buildL2tpBlock(version, opts.l2tp));
-      lines.push('');
+      body.push('# 2) L2TP ke server VPN Anda');
+      body.push(...buildL2tpBlock(version, opts.l2tp));
+      body.push('');
     } else {
-      lines.push('# 2) Tunnel dilewati (mode LAN / langsung — disarankan jika satu jaringan)');
-      lines.push('');
+      body.push('# 2) Tunnel dilewati (mode LAN / langsung — disarankan jika satu jaringan)');
+      body.push('');
     }
-    lines.push('# 3) RADIUS Fiberix + PPP AAA + profile isolir');
-    lines.push(...buildRadiusAndIsolir(version, radiusHost, secret));
-    lines.push('');
-    lines.push('# 4) Cek: /radius print  dan  /ppp aaa print');
-    return lines.join('\n');
+    if (pppPool && pppLocal) {
+      body.push('# 3) Pool + profile PPP Fiberix');
+      body.push(...buildPppProfile(version, pppPool, pppLocal));
+      body.push('');
+      body.push('# 4) RADIUS Fiberix + PPP AAA + profile isolir');
+    } else {
+      body.push('# 3) RADIUS Fiberix + PPP AAA + profile isolir');
+    }
+    body.push(...buildRadiusAndIsolir(version, radiusHost, secret));
+    body.push('');
+    body.push('# Cek: /radius print  dan  /ppp aaa print');
+    return [...header, ...body.filter((l) => l != null)].join('\n');
   }
+
+  const usage = [
+    'Script di atas disesuaikan dengan NAS Anda dan halaman isolir Fiberix.',
+    'Pilih versi RouterOS, lalu Salin dan tempel di New Terminal MikroTik.',
+    'RouterOS v7 memakai path /radius/add (dan action-data jika ada proxy). RouterOS v6 memakai /radius add.',
+    'Mode LAN: tidak ada L2TP/PPTP ke server cloud. RADIUS langsung ke IP server Fiberix.',
+    'Object comment=BILLINGRADIUS tidak disentuh.'
+  ];
 
   const notes = [
     'Tempel di New Terminal MikroTik (RouterOS v7 atau v6 sesuai tab).',
@@ -232,9 +295,13 @@ function buildNasRouterOsScript(opts) {
     recommended_api_host: tunnel || opts.nasname || null,
     recommended_api_port: 8728,
     skip_port_forward: !!portForward.skipped,
+    mode_label: modeLabel,
+    ppp_pool_ranges: pppPool || null,
+    ppp_local_address: pppLocal || null,
     v7: assemble('v7'),
     v6: assemble('v6'),
     notes,
+    usage,
     port_forward_example: portForward
   };
 }
@@ -250,6 +317,8 @@ function radiusAllowedIps(serverAddress, radiusHost) {
 
 module.exports = {
   DEFAULT_RADIUS_HOST,
+  DEFAULT_PPP_POOL,
+  DEFAULT_PPP_LOCAL,
   EXPIRED_NET,
   buildNasRouterOsScript,
   buildPortForwardExample,

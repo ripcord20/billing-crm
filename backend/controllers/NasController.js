@@ -7,7 +7,7 @@ const Wireguard = require('../services/WireguardService');
 const VpnProvision = require('../services/VpnProvisionService');
 const { getTenantId } = require('../middleware/tenantContext');
 const { decryptSecret } = require('../utils/secretBox');
-const { buildNasRouterOsScript, radiusAllowedIps, isPrivateHost } = require('../utils/nasRouterOsScript');
+const { buildNasRouterOsScript, radiusAllowedIps, isPrivateHost, DEFAULT_PPP_POOL, DEFAULT_PPP_LOCAL } = require('../utils/nasRouterOsScript');
 const { attachNasLinkStatus } = require('../utils/nasLinkStatus');
 
 // Push konfigurasi NAS ke server FreeRADIUS (tabel `nas`). Fungsi modul-level
@@ -34,6 +34,16 @@ async function pushNas(row) {
     await row.update({ last_error: String(e.message).slice(0, 250) });
     return { success: false, message: e.message };
   }
+}
+
+function pickPpp(row, b) {
+  const body = b || {};
+  const pool = (body.ppp_pool_ranges != null ? body.ppp_pool_ranges : (row && row.ppp_pool_ranges)) || '';
+  const local = (body.ppp_local_address != null ? body.ppp_local_address : (row && row.ppp_local_address)) || '';
+  return {
+    pppPool: String(pool).trim() || DEFAULT_PPP_POOL,
+    pppLocal: String(local).trim() || DEFAULT_PPP_LOCAL
+  };
 }
 
 class NasController {
@@ -72,6 +82,8 @@ class NasController {
         conn_mode: connMode,
         vpn_type: connMode === 'vpn' ? (b.vpn_type || 'wireguard') : null,
         tunnel_address: b.tunnel_address || null,
+        ppp_pool_ranges: b.ppp_pool_ranges || null,
+        ppp_local_address: b.ppp_local_address || null,
         ports: b.ports || null,
         secret: b.secret,
         community: b.community || null,
@@ -91,7 +103,7 @@ class NasController {
       if (!row) return res.status(404).json({ success: false, message: 'NAS tidak ditemukan' });
       const b = req.body || {};
       const patch = {};
-      for (const f of ['nasname','shortname','type','ports','community','description','is_active','radius_server_id','device_id','conn_mode','vpn_type','tunnel_address']) {
+      for (const f of ['nasname','shortname','type','ports','community','description','is_active','radius_server_id','device_id','conn_mode','vpn_type','tunnel_address','ppp_pool_ranges','ppp_local_address']) {
         if (b[f] !== undefined) patch[f] = b[f];
       }
       if (b.conn_mode === 'vpn' && b.vpn_type === undefined) patch.vpn_type = row.vpn_type || 'wireguard';
@@ -272,6 +284,7 @@ class NasController {
         serverHost: wgCfg.endpointHost,
         connMode: row.conn_mode,
         skipPortForward: row.conn_mode !== 'vpn' || isPrivateHost(wgCfg.endpointHost),
+        ...pickPpp(row, req.body),
         wireguard,
         l2tp
       });
@@ -283,6 +296,43 @@ class NasController {
           vpn_type: vpnType || null,
           conn_mode: row.conn_mode,
           endpoint_is_lan: isPrivateHost(wgCfg.endpointHost)
+        }
+      });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  async routerosPreview(req, res) {
+    try {
+      const b = req.body || {};
+      const nasname = String(b.nasname || '').trim();
+      const secret = String(b.secret || '').trim();
+      if (!nasname || !secret || secret === '********') {
+        return res.status(400).json({ success: false, message: 'IP NAS dan secret wajib untuk pratinjau script' });
+      }
+      const server = await RadiusProv.resolveServer(b.radius_server_id);
+      const radiusHost = (server && server.host) || process.env.RADIUS_HOST || '192.168.22.9';
+      const connMode = b.conn_mode === 'vpn' ? 'vpn' : 'public';
+      const vpnType = connMode === 'vpn' ? String(b.vpn_type || 'wireguard').toLowerCase() : 'public';
+      const data = buildNasRouterOsScript({
+        nasname,
+        shortname: b.shortname || nasname,
+        secret,
+        radiusHost,
+        vpnType,
+        connMode,
+        skipPortForward: connMode !== 'vpn',
+        ...pickPpp(null, b)
+      });
+      res.json({
+        success: true,
+        data: {
+          ...data,
+          generated: false,
+          vpn_type: vpnType === 'public' ? null : vpnType,
+          conn_mode: connMode,
+          endpoint_is_lan: true
         }
       });
     } catch (e) {

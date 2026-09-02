@@ -129,6 +129,16 @@ module.exports = (sequelize) => {
     last_error: {
       type: DataTypes.STRING(255),
       allowNull: true
+    },
+    ppp_pool_ranges: {
+      type: DataTypes.STRING(120),
+      allowNull: true,
+      comment: 'Range IP pool PPP Fiberix, mis. 10.20.0.2-10.20.0.254'
+    },
+    ppp_local_address: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      comment: 'IP local-address profile PPP Fiberix'
     }
   }, {
     tableName: 'nas_devices',
