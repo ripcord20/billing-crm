@@ -44,9 +44,9 @@ async function loadDeviceList() {
       <td>
         <div style="display:flex;align-items:center;gap:6px;">
           <div style="width:50px;height:5px;background:#f1f5f9;border-radius:3px;overflow:hidden;">
-            <div style="width:${d.cpu_load||0}%;height:100%;background:${(d.cpu_load||0)>80?'#ef4444':(d.cpu_load||0)>60?'#f59e0b':'#22c55e'};border-radius:3px;"></div>
+            <div style="width:${Math.min(d.cpu_load||0,100)}%;height:100%;background:${(d.cpu_load||0)>80?'#ef4444':(d.cpu_load||0)>60?'#f59e0b':'#22c55e'};border-radius:3px;"></div>
           </div>
-          <span style="font-size:12px;">${d.cpu_load||0}%</span>
+          <span style="font-size:12px;">${(d.cpu_load > 100 ? '—' : (d.cpu_load||0))}%</span>
         </div>
       </td>
       <td>

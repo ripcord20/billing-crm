@@ -11,12 +11,16 @@ const {
   mergeSettings, settingsToRows, SETTING_KEYS,
   computeJitter, classifyRtt, classifyLoss, classifyJitter,
   classifyBandwidth, classifyAuthFails, classifyTrafficAnomaly,
-  classifyDns, alertAudience, alertRoles
+  shouldRaiseDdos, dnsCompare, classifyDns, alertAudience, alertRoles
 } = require('../utils/qosSla');
+const {
+  isCustomerTunnelIface, isDdosWatchIface, pppoeIfaceMatchesUsername, latestUniqueBy
+} = require('../utils/deviceMetrics');
 
 const METRIC_RETENTION_DAYS = 7;
 const ALERT_DEDUPE_MIN = 30;
 const CUSTOMER_SAMPLE = 40;
+let cycleLock = false;
 
 async function loadSettings() {
   const rows = await AppSetting.findAll({ where: { key: { [Op.in]: SETTING_KEYS } } });
@@ -290,14 +294,62 @@ async function runPingTargets(settings) {
   return rows;
 }
 
-async function runBandwidthChecks(settings) {
+async function ackPppoeDdosAlerts() {
+  const open = await QosAlert.findAll({
+    where: { type: { [Op.in]: ['ddos_anomaly', 'bandwidth_bottleneck'] }, status: 'open' },
+    attributes: ['id', 'type', 'target_key', 'metadata', 'title']
+  });
+  let acked = 0;
+  for (const a of open) {
+    const ifn = (a.metadata && a.metadata.interface_name) || String(a.target_key || '');
+    if (isDdosWatchIface(ifn)) continue;
+    await a.update({
+      status: 'acked',
+      acked_at: new Date(),
+      message: a.type === 'ddos_anomaly'
+        ? 'Ditutup otomatis: bukan uplink WAN/SFP, jadi bukan sinyal DDoS.'
+        : 'Ditutup otomatis: bottleneck hanya dipantau di uplink WAN/SFP.'
+    });
+    acked += 1;
+  }
+  return acked;
+}
+
+async function ackRecoveredDnsAlerts() {
+  const open = await QosAlert.findAll({
+    where: { type: 'dns_degraded', status: 'open' },
+    attributes: ['id', 'target_key', 'metadata']
+  });
+  if (!open.length) return 0;
+  const latest = await latestByKind('dns', 40);
+  const unique = latestUniqueBy(latest, (r) => `${r.source}:${r.target}`);
+  const ok = new Set(unique.filter((r) => r.status === 'ok').map((r) => `${r.source}:${r.target}`));
+  let acked = 0;
+  for (const a of open) {
+    const key = String(a.target_key || ''); // dns:public:8.8.8.8
+    const parts = key.split(':');
+    const source = parts[1] === 'isp' ? 'isp_dns' : 'public_dns';
+    const server = parts[2] || (a.metadata && a.metadata.server);
+    if (!ok.has(`${source}:${server}`)) continue;
+    await a.update({
+      status: 'acked',
+      acked_at: new Date(),
+      message: `Resolver ${server} sudah kembali cepat & akurat.`
+    });
+    acked += 1;
+  }
+  return acked;
+}
+
+async function runBandwidthChecks(settings, opts = {}) {
+  const light = !!opts.light;
   const capBps = settings.uplinkMbps * 1e6;
-  const since = new Date(Date.now() - 30 * 60 * 1000);
+  const since = new Date(Date.now() - (light ? 12 : 30) * 60 * 1000);
   const samples = await TrafficData.findAll({
     where: { recorded_at: { [Op.gte]: since } },
     attributes: ['device_id', 'interface_name', 'rx_rate', 'tx_rate', 'recorded_at'],
     order: [['recorded_at', 'DESC']],
-    limit: 4000
+    limit: light ? 1600 : 4000
   });
 
   const latestByIf = new Map();
@@ -310,57 +362,73 @@ async function runBandwidthChecks(settings) {
     histByIf.get(key).push(used);
   }
 
+  await ackPppoeDdosAlerts();
+  await ackRecoveredDnsAlerts();
+
   const interfaces = [];
   for (const [key, latest] of latestByIf) {
+    const name = latest.interface_name;
+    const tunnel = isCustomerTunnelIface(name);
+    const uplink = isDdosWatchIface(name);
     const hist = histByIf.get(key) || [];
     const baseline = hist.length > 1
       ? hist.slice(1, 13).reduce((a, b) => a + b, 0) / Math.max(1, Math.min(12, hist.length - 1))
       : 0;
+    const recentHot = hist.slice(0, 3).filter((v) => v >= (settings.minDdosCurrentBps || 80e6)).length;
     const bw = classifyBandwidth(latest.used, capBps, settings);
     const anomaly = classifyTrafficAnomaly(latest.used, baseline, settings);
     interfaces.push({
       device_id: latest.device_id,
-      interface_name: latest.interface_name,
+      interface_name: name,
       rx_rate: latest.rx_rate,
       tx_rate: latest.tx_rate,
       used: latest.used,
       pct: bw.pct,
       status: bw.status,
-      anomaly: anomaly.status,
+      anomaly: uplink && !tunnel ? anomaly.status : 'ok',
       ratio: anomaly.ratio
     });
-    await recordMetric({
-      kind: 'bandwidth', source: 'interface', target: key,
-      value: bw.pct, unit: '%', status: bw.status,
-      metadata: { used: latest.used, cap: capBps, rx: latest.rx_rate, tx: latest.tx_rate }
-    });
+
+    if (!uplink || tunnel) continue;
+
+    if (!light) {
+      await recordMetric({
+        kind: 'bandwidth', source: 'interface', target: key,
+        value: bw.pct, unit: '%', status: bw.status,
+        metadata: { used: latest.used, cap: capBps, rx: latest.rx_rate, tx: latest.tx_rate }
+      });
+    }
     if (bw.status === 'critical') {
       await raiseAlert({
         type: 'bandwidth_bottleneck',
         status: 'critical',
         targetKey: `if:${key}`,
-        title: `Bottleneck ${latest.interface_name}: ${bw.pct}%`,
-        message: `Utilisasi ${latest.interface_name} ${bw.pct}% dari ${settings.uplinkMbps} Mbps. Kemacetan — investigasi kapasitas.`,
-        metadata: { device_id: latest.device_id, interface_name: latest.interface_name, pct: bw.pct }
+        title: `Bottleneck ${name}: ${bw.pct}%`,
+        message: `Utilisasi uplink ${name} ${bw.pct}% dari ${settings.uplinkMbps} Mbps. Kemacetan — investigasi kapasitas.`,
+        metadata: { device_id: latest.device_id, interface_name: name, pct: bw.pct }
       });
     } else if (bw.status === 'warn') {
       await raiseAlert({
         type: 'bandwidth_bottleneck',
         status: 'warn',
         targetKey: `if:${key}`,
-        title: `Bandwidth mendekati batas: ${latest.interface_name} (${bw.pct}%)`,
-        message: `Interface ${latest.interface_name} memakai ${bw.pct}% kapasitas. Pantau bottleneck / rencana upgrade.`,
-        metadata: { device_id: latest.device_id, interface_name: latest.interface_name, pct: bw.pct }
+        title: `Bandwidth mendekati batas: ${name} (${bw.pct}%)`,
+        message: `Uplink ${name} memakai ${bw.pct}% kapasitas. Pantau bottleneck / rencana upgrade.`,
+        metadata: { device_id: latest.device_id, interface_name: name, pct: bw.pct }
       });
     }
-    if (anomaly.status !== 'ok' && anomaly.status !== 'unknown') {
+    if (shouldRaiseDdos({
+      currentBps: latest.used,
+      baselineBps: baseline,
+      consecutive: recentHot
+    }, settings)) {
       await raiseAlert({
         type: 'ddos_anomaly',
         status: anomaly.status,
         targetKey: `ddos:${key}`,
-        title: `Anomali traffic ${latest.interface_name} (${anomaly.ratio}× baseline)`,
-        message: `Traffic ${latest.interface_name} ${Math.round(latest.used / 1e6)} Mbps vs baseline ${Math.round(baseline / 1e6)} Mbps (${anomaly.ratio}×). Indikasi serangan DDoS / burst abnormal.`,
-        metadata: { device_id: latest.device_id, interface_name: latest.interface_name, ratio: anomaly.ratio, used: latest.used, baseline }
+        title: `Anomali traffic uplink ${name} (${anomaly.ratio}× baseline)`,
+        message: `Uplink ${name} ${Math.round(latest.used / 1e6)} Mbps vs baseline ${Math.round(baseline / 1e6)} Mbps (${anomaly.ratio}×). Bukan session PPPoE — indikasi burst/DDoS di sisi WAN.`,
+        metadata: { device_id: latest.device_id, interface_name: name, ratio: anomaly.ratio, used: latest.used, baseline }
       });
     }
   }
@@ -375,12 +443,11 @@ async function runBandwidthChecks(settings) {
   for (const c of customers) {
     const capMbps = Number(c.package?.speed_down) || 0;
     if (!capMbps) continue;
-    const uname = (c.pppoe_username || '').toLowerCase();
+    const uname = c.pppoe_username || '';
     if (!uname) continue;
     let match = null;
     for (const latest of latestByIf.values()) {
-      const ifn = String(latest.interface_name || '').toLowerCase();
-      if (ifn.includes(uname)) { match = latest; break; }
+      if (pppoeIfaceMatchesUsername(latest.interface_name, uname)) { match = latest; break; }
     }
     if (!match) continue;
     const capBpsCust = capMbps * 1e6;
@@ -397,10 +464,12 @@ async function runBandwidthChecks(settings) {
         status: bw.status
       };
       upsell.push(row);
-      await recordMetric({
-        kind: 'bandwidth', source: 'customer', target: String(c.id),
-        value: bw.pct, unit: '%', status: bw.status, metadata: row
-      });
+      if (!light) {
+        await recordMetric({
+          kind: 'bandwidth', source: 'customer', target: String(c.id),
+          value: bw.pct, unit: '%', status: bw.status, metadata: row
+        });
+      }
       await raiseAlert({
         type: 'bandwidth_upsell',
         status: bw.status,
@@ -413,7 +482,11 @@ async function runBandwidthChecks(settings) {
     }
   }
 
-  return { interfaces, upsell, sample_count: samples.length };
+  return {
+    interfaces: interfaces.filter((i) => isDdosWatchIface(i.interface_name)),
+    upsell,
+    sample_count: samples.length
+  };
 }
 
 async function runAuthFailChecks(settings) {
@@ -494,27 +567,55 @@ async function pruneOld() {
   await AuthFailEvent.destroy({ where: { created_at: { [Op.lt]: authSince } } });
 }
 
+async function withCycleLock(fn) {
+  if (cycleLock) return { skipped: true };
+  cycleLock = true;
+  try {
+    return await fn();
+  } finally {
+    cycleLock = false;
+  }
+}
+
 async function runCycle() {
-  const settings = await loadSettings();
-  const out = { settings, dns: [], probes: [], bandwidth: null, auth: null, mikrotik: null, error: null };
-  try {
-    out.dns = await runDnsChecks(settings);
-  } catch (e) { out.error = (out.error || '') + ` dns:${e.message}`; }
-  try {
-    out.probes = await runPingTargets(settings);
-  } catch (e) { out.error = (out.error || '') + ` ping:${e.message}`; }
-  try {
-    out.bandwidth = await runBandwidthChecks(settings);
-  } catch (e) { out.error = (out.error || '') + ` bw:${e.message}`; }
-  try {
-    out.mikrotik = await ingestMikrotikAuthFails();
-  } catch (e) { out.error = (out.error || '') + ` mt:${e.message}`; }
-  try {
-    out.auth = await runAuthFailChecks(settings);
-  } catch (e) { out.error = (out.error || '') + ` auth:${e.message}`; }
-  try { await pruneOld(); } catch (_) {}
-  out.ran_at = new Date().toISOString();
-  return out;
+  return withCycleLock(async () => {
+    const settings = await loadSettings();
+    const out = { settings, dns: [], probes: [], bandwidth: null, auth: null, mikrotik: null, error: null, mode: 'full' };
+    try {
+      out.dns = await runDnsChecks(settings);
+    } catch (e) { out.error = (out.error || '') + ` dns:${e.message}`; }
+    try {
+      out.probes = await runPingTargets(settings);
+    } catch (e) { out.error = (out.error || '') + ` ping:${e.message}`; }
+    try {
+      out.bandwidth = await runBandwidthChecks(settings);
+    } catch (e) { out.error = (out.error || '') + ` bw:${e.message}`; }
+    try {
+      out.mikrotik = await ingestMikrotikAuthFails();
+    } catch (e) { out.error = (out.error || '') + ` mt:${e.message}`; }
+    try {
+      out.auth = await runAuthFailChecks(settings);
+    } catch (e) { out.error = (out.error || '') + ` auth:${e.message}`; }
+    try { await pruneOld(); } catch (_) {}
+    out.ran_at = new Date().toISOString();
+    return out;
+  });
+}
+
+/** Reuse traffic_data + auth window. No extra MikroTik/DNS storm. */
+async function runLightCycle() {
+  return withCycleLock(async () => {
+    const settings = await loadSettings();
+    const out = { settings, bandwidth: null, auth: null, error: null, mode: 'light' };
+    try {
+      out.bandwidth = await runBandwidthChecks(settings, { light: true });
+    } catch (e) { out.error = (out.error || '') + ` bw:${e.message}`; }
+    try {
+      out.auth = await runAuthFailChecks(settings);
+    } catch (e) { out.error = (out.error || '') + ` auth:${e.message}`; }
+    out.ran_at = new Date().toISOString();
+    return out;
+  });
 }
 
 async function latestByKind(kind, limit = 12) {
@@ -557,6 +658,15 @@ async function overview() {
     alertsByAudience[a.audience] = (alertsByAudience[a.audience] || 0) + 1;
   }
 
+  const dnsRows = latestUniqueBy(dns.map((r) => ({
+    group: r.source === 'public_dns' ? 'public' : (r.source === 'isp_dns' ? 'isp' : r.source),
+    server: r.target,
+    value: r.value == null ? null : Number(r.value),
+    status: r.status,
+    metadata: r.metadata,
+    recorded_at: r.recorded_at
+  })), (r) => `${r.group}:${r.server}`);
+
   return {
     settings,
     sla: {
@@ -570,21 +680,16 @@ async function overview() {
       packet_loss: metricSummary(loss),
       jitter: metricSummary(jitter),
       bandwidth: metricSummary(bw.filter((r) => r.source === 'interface')),
-      dns: metricSummary(dns),
+      dns: metricSummary(dnsRows),
       auth_fails: { status: auth[0]?.status || (authRecent > 0 ? 'warn' : 'ok'), value: authRecent, target: `${settings.authWindowMin}m` }
     },
-    dns: dns.slice(0, 12).map((r) => ({
-      group: r.source === 'public_dns' ? 'public' : (r.source === 'isp_dns' ? 'isp' : r.source),
-      server: r.target,
-      value: r.value == null ? null : Number(r.value),
-      status: r.status,
-      metadata: r.metadata,
-      recorded_at: r.recorded_at
-    })),
+    dns: dnsRows,
+    dns_compare: dnsCompare(dnsRows),
     alerts: openAlerts,
     alert_counts: { total: openAlerts.length, by_type: alertsByType, by_audience: alertsByAudience },
     upsell: bw.filter((r) => r.source === 'customer' && r.status !== 'ok').slice(0, 20),
-    device_count: devices
+    device_count: devices,
+    generated_at: new Date().toISOString()
   };
 }
 
@@ -595,6 +700,7 @@ module.exports = {
   recordMetric,
   raiseAlert,
   runCycle,
+  runLightCycle,
   runDnsChecks,
   runAuthFailChecks,
   overview,

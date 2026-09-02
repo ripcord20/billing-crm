@@ -92,7 +92,8 @@ class CronService {
     try {
       const QosSla = require('./QosSlaService');
       cron.schedule('*/5 * * * *', () => QosSla.runCycle().catch((e) => console.error('[Cron] qos sla:', e.message)));
-      setTimeout(() => QosSla.runCycle().catch(() => {}), 18000);
+      cron.schedule('*/20 * * * * *', () => QosSla.runLightCycle().catch((e) => console.error('[Cron] qos light:', e.message)));
+      setTimeout(() => QosSla.runLightCycle().catch(() => {}), 18000);
     } catch (e) { console.error('[Cron] qos sla schedule:', e.message); }
 
     // Pengeluaran berulang — cek tiap hari jam 02:00; entri dibuat saat
@@ -1698,7 +1699,7 @@ class CronService {
           type: { [Op.in]: ['router', 'olt'] },
           api_username: { [Op.ne]: null }
         },
-        attributes: ['id','name','ip_address','api_port','api_username','api_password','api_protocol']
+        attributes: ['id','name','ip_address','api_port','api_username','api_password','api_protocol','uptime']
       });
 
       if (!devices.length) return;
@@ -1718,31 +1719,83 @@ class CronService {
               timeout:      6000
             });
 
+            const {
+              normalizeCpuPercent,
+              normalizeMemPercent,
+              isCustomerTunnelIface,
+              isUplinkIface
+            } = require('../utils/deviceMetrics');
+
+            // CPU/RAM dari /system/resource (0–100), bukan SNMP frequency/MHz.
+            try {
+              const res = await mt.getSystemResource();
+              const totalMem = Number(res.totalMemory) || 0;
+              const freeMem = Number(res.freeMemory) || 0;
+              const memPct = totalMem > 0
+                ? normalizeMemPercent(((totalMem - freeMem) / totalMem) * 100)
+                : null;
+              const patch = {
+                status: 'online',
+                cpu_load: normalizeCpuPercent(res.cpuLoad),
+                uptime: res.uptime || device.uptime,
+                last_polled: new Date()
+              };
+              if (res.version) patch.firmware = res.version;
+              if (memPct != null) patch.memory_usage = memPct;
+              await device.update(patch);
+            } catch (_) { /* traffic poll still useful if resource fails */ }
+
             // Ambil list interface + bulk traffic stats
             const ifaces = await mt.getInterfaces();
             if (!ifaces || !ifaces.length) return;
 
-            // Filter interface yang running + bukan bridge/vlan (hindari double count)
+            // Uplink + PPPoE (untuk upsell). Skip bridge/vlan supaya tidak double-count.
             const running = ifaces.filter(i =>
               i.running && !['bridge','vlan','vrrp'].includes((i.type||'').toLowerCase())
+              && (isUplinkIface(i.name, i.type) || isCustomerTunnelIface(i.name, i.type))
             );
             if (!running.length) return;
 
-            const stats = await mt.getInterfacesBulkStats(running.map(i => i.name));
+            const uplink = running.filter(i => isUplinkIface(i.name, i.type) && !isCustomerTunnelIface(i.name, i.type));
+            const stats = uplink.length ? await mt.getInterfacesBulkStats(uplink.map(i => i.name)) : [];
             const statsByName = {};
             stats.forEach(s => { statsByName[s.name] = s; });
 
-            // Insert 1 row per interface ke traffic_data
+            const prevRows = await TrafficData.findAll({
+              where: { device_id: device.id },
+              attributes: ['interface_name', 'rx_bytes', 'tx_bytes', 'recorded_at'],
+              order: [['recorded_at', 'DESC']],
+              limit: 800
+            });
+            const prevByName = new Map();
+            for (const p of prevRows) {
+              if (!prevByName.has(p.interface_name)) prevByName.set(p.interface_name, p);
+            }
+
             const now = new Date();
-            const rows = running.map(i => ({
-              device_id: device.id,
-              interface_name: i.name,
-              rx_bytes: i.rxByte || 0,
-              tx_bytes: i.txByte || 0,
-              rx_rate: statsByName[i.name]?.rxBitsPerSecond || 0,
-              tx_rate: statsByName[i.name]?.txBitsPerSecond || 0,
-              recorded_at: now
-            }));
+            const rows = running.map(i => {
+              let rxRate = statsByName[i.name]?.rxBitsPerSecond || 0;
+              let txRate = statsByName[i.name]?.txBitsPerSecond || 0;
+              if (!statsByName[i.name]) {
+                const prev = prevByName.get(i.name);
+                if (prev) {
+                  const sec = Math.max(1, (now - new Date(prev.recorded_at)) / 1000);
+                  const rxDiff = (i.rxByte || 0) - (Number(prev.rx_bytes) || 0);
+                  const txDiff = (i.txByte || 0) - (Number(prev.tx_bytes) || 0);
+                  if (rxDiff >= 0) rxRate = Math.round((rxDiff * 8) / sec);
+                  if (txDiff >= 0) txRate = Math.round((txDiff * 8) / sec);
+                }
+              }
+              return {
+                device_id: device.id,
+                interface_name: i.name,
+                rx_bytes: i.rxByte || 0,
+                tx_bytes: i.txByte || 0,
+                rx_rate: rxRate,
+                tx_rate: txRate,
+                recorded_at: now
+              };
+            });
 
             if (rows.length) await TrafficData.bulkCreate(rows);
           } catch (e) {

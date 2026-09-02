@@ -815,11 +815,15 @@ class MikrotikService {
 
   // ── SYSTEM ─────────────────────────────────────────────────
   async getSystemResource() {
-    const r = await this.get('/system/resource');
+    const { unwrapRos, normalizeCpuPercent } = require('../utils/deviceMetrics');
+    const r = unwrapRos(await this.get('/system/resource'));
     return {
       uptime: r.uptime || '0s', version: r.version || '',
       boardName: r['board-name'] || '', platform: r.platform || '',
-      cpuLoad: parseInt(r['cpu-load']) || 0,
+      // Only cpu-load (0–100). Never cpu-frequency (e.g. 1400 MHz on RB4011).
+      cpuLoad: normalizeCpuPercent(r['cpu-load']),
+      cpuCount: parseInt(r['cpu-count']) || 0,
+      cpuFrequency: parseInt(r['cpu-frequency']) || 0,
       freeMemory: parseInt(r['free-memory']) || 0,
       totalMemory: parseInt(r['total-memory']) || 0
     };

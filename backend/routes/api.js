@@ -28,7 +28,10 @@ const { apiBlockFinanceArea } = require('../middleware/financeAccess');
 const { apiBlockNocArea }     = require('../middleware/nocAccess');
 const { apiBlockSalesArea }   = require('../middleware/salesAccess');
 const { apiBlockTenantOwner } = require('../middleware/tenantAccess');
+const { tenantContextMiddleware } = require('../middleware/tenantContext');
 const TenantController = require('../controllers/TenantController');
+const RadiusController = require('../controllers/RadiusController');
+const NasController = require('../controllers/NasController');
 const demoRoutes = require('./demo');
 
 // Controllers (existing)
@@ -197,7 +200,7 @@ for (const p of _salesBlockedPrefixes) {
 const _tenantBlockedPrefixes = [
   '/keuangan', '/finance', '/laporan',
   '/devices', '/infrastructure', '/monitoring', '/qos', '/mikrotik',
-  '/genieacs', '/olt', '/ont', '/hotspot', '/isolir',
+  '/genieacs', '/olt', '/ont', '/hotspot',
   '/wa', '/whatsapp', '/broadcast', '/email-broadcast', '/mikrotik-backup', '/message-logs',
   '/users', '/roles', '/permissions', '/activity-logs', '/system',
   '/dashboard', '/tenants'
@@ -375,6 +378,30 @@ router.post('/packages', authenticate, demoGuard, authorize('superadmin', 'admin
 router.get('/packages/:id', authenticate, demoGuard, PackageController.show);
 router.put('/packages/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'package'), PackageController.update);
 router.delete('/packages/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('delete', 'package'), PackageController.destroy);
+
+// ===== RADIUS / NAS (FreeRADIUS + WireGuard/OpenVPN/L2TP) =====
+const radiusStaff = authorize('superadmin', 'admin', 'tenant_owner', 'finance', 'noc');
+router.get('/radius/servers', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => RadiusController.listServers(r, s));
+router.post('/radius/servers', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => RadiusController.createServer(r, s));
+router.put('/radius/servers/:id', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => RadiusController.updateServer(r, s));
+router.post('/radius/servers/:id/test', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => RadiusController.testServer(r, s));
+router.get('/radius/sessions', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => RadiusController.sessions(r, s));
+router.get('/radius/users', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => RadiusController.radiusUsers(r, s));
+router.post('/radius/provision', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => RadiusController.provision(r, s));
+router.post('/radius/customers/:customerId/isolir', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => RadiusController.isolate(r, s));
+router.post('/radius/customers/:customerId/restore', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => RadiusController.restore(r, s));
+
+router.get('/nas/wireguard/server', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.wgServerGet(r, s));
+router.put('/nas/wireguard/server', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.wgServerSave(r, s));
+router.post('/nas/wireguard/server/init-keys', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.wgServerInitKeys(r, s));
+router.post('/nas/import', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.importFromRadius(r, s));
+router.get('/nas', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.index(r, s));
+router.post('/nas', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.create(r, s));
+router.post('/nas/:id/sync', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.syncOne(r, s));
+router.post('/nas/:id/wg/generate', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.wgGenerate(r, s));
+router.post('/nas/:id/vpn/generate', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.vpnGenerate(r, s));
+router.put('/nas/:id', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.update(r, s));
+router.delete('/nas/:id', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.destroy(r, s));
 
 // ===== BILLING =====
 router.get('/billing/invoices', authenticate, demoGuard, BillingController.listInvoices);
