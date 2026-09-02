@@ -29,6 +29,7 @@ const { apiBlockNocArea }     = require('../middleware/nocAccess');
 const { apiBlockSalesArea }   = require('../middleware/salesAccess');
 const { apiBlockTenantOwner } = require('../middleware/tenantAccess');
 const TenantController = require('../controllers/TenantController');
+const PublicTenantSignupController = require('../controllers/PublicTenantSignupController');
 const demoRoutes = require('./demo');
 
 // Controllers (existing)
@@ -59,6 +60,7 @@ router.use('/reseller-admin', resellerAdminRoutes);
 
 // ===== AUTH =====
 router.post('/auth/login', AuthController.login);
+router.post('/public/tenant-signup', PublicTenantSignupController.signup);
 router.post('/auth/refresh', AuthController.refreshToken);
 router.post('/auth/logout', authenticate, demoGuard, AuthController.logout);
 router.get('/auth/profile', authenticate, demoGuard, AuthController.profile);

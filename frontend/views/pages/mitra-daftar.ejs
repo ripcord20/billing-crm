@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <%- include('../partials/public-saas-head') %>
+</head>
+<body class="saas-body">
+  <%- include('../partials/public-saas-nav') %>
+
+  <main class="saas-form-page">
+    <div class="saas-wrap">
+      <div class="saas-form-card">
+        <h1>Daftar mitra ISP</h1>
+        <p class="saas-muted">Buat akun pemilik usaha. Tenant baru dimulai kosong — tanpa mengambil pelanggan milik orang lain.</p>
+
+        <form id="mitraSignupForm" autocomplete="on">
+          <div class="saas-hp" aria-hidden="true">
+            <label>Website<input type="text" id="website" name="website" tabindex="-1" autocomplete="off"></label>
+          </div>
+          <div class="saas-field">
+            <label for="company_name">Nama usaha</label>
+            <input id="company_name" name="company_name" required minlength="2" maxlength="150" placeholder="Contoh: Gananet">
+          </div>
+          <div class="saas-field">
+            <label for="owner_name">Nama pemilik</label>
+            <input id="owner_name" name="owner_name" required minlength="2" maxlength="100" placeholder="Nama lengkap">
+          </div>
+          <div class="saas-field">
+            <label for="email">Email login</label>
+            <input id="email" name="email" type="email" required maxlength="150" placeholder="owner@usaha.id" autocomplete="email">
+          </div>
+          <div class="saas-field">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" required minlength="8" maxlength="128" placeholder="Minimal 8 karakter" autocomplete="new-password">
+          </div>
+          <div class="saas-field">
+            <label for="phone">Telepon (opsional)</label>
+            <input id="phone" name="phone" type="tel" maxlength="20" placeholder="08xxxxxxxxxx" autocomplete="tel">
+          </div>
+          <div id="mitraSignupAlert" class="saas-alert" role="alert"></div>
+          <div class="saas-field">
+            <button type="submit" class="saas-btn saas-btn-dark saas-btn-wide" id="mitraSignupBtn">Buat akun mitra</button>
+          </div>
+        </form>
+        <p class="saas-form-foot">Sudah punya akun? <a href="/login">Masuk</a> · <a href="/">Kembali ke beranda</a></p>
+      </div>
+    </div>
+  </main>
+
+  <%- include('../partials/public-saas-footer') %>
+</body>
+</html>

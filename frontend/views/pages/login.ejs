@@ -221,6 +221,21 @@
       transform: none;
     }
 
+    .saas-login-links {
+      margin-top: 18px;
+      text-align: center;
+      font-size: 14px;
+      color: #64748b;
+    }
+
+    .saas-login-links a {
+      color: #2563eb;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .saas-login-links a:hover { text-decoration: underline; }
+
     .error-msg {
       background: rgba(239, 68, 68, 0.1);
       border: 1px solid rgba(239, 68, 68, 0.3);
@@ -663,6 +678,10 @@
           <button type="submit" class="login-btn" id="loginBtn">
             Sign in
           </button>
+          <p class="saas-login-links">
+            Belum punya akun mitra? <a href="/mitra/daftar">Daftar</a>
+            · <a href="/">Lihat fitur</a>
+          </p>
           <style>
             @keyframes demoSpin { to { transform: rotate(360deg); } }
             #demoQuickStart:hover, #demoSharedFill:hover { transform: translateY(-1px); }

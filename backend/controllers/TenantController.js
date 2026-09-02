@@ -5,9 +5,9 @@ const { Op } = require('sequelize');
 const {
   getTenantId,
   isTenantOwner,
-  isPlatformAdmin,
-  slugify
+  isPlatformAdmin
 } = require('../utils/tenantScope');
+const { uniqueSlug, ensureTenantOwnerRole } = require('../utils/tenantSignup');
 
 function parsePeriod(query) {
   const now = new Date();
@@ -22,33 +22,6 @@ function parsePeriod(query) {
 function num(v) {
   const n = parseFloat(v);
   return Number.isFinite(n) ? n : 0;
-}
-
-async function uniqueSlug(base, excludeId) {
-  let slug = slugify(base);
-  let i = 0;
-  while (true) {
-    const candidate = i === 0 ? slug : `${slug}-${i}`;
-    const where = { slug: candidate };
-    if (excludeId) where.id = { [Op.ne]: excludeId };
-    const exists = await Tenant.findOne({ where });
-    if (!exists) return candidate;
-    i += 1;
-    if (i > 50) return `${slug}-${Date.now()}`;
-  }
-}
-
-async function ensureTenantOwnerRole() {
-  const [role] = await Role.findOrCreate({
-    where: { name: 'tenant_owner' },
-    defaults: {
-      name: 'tenant_owner',
-      display_name: 'Pemilik Tenant',
-      description: 'Pemilik usaha tenant: dashboard pelanggan, tagihan, dan penerimaan.',
-      is_system: true
-    }
-  });
-  return role;
 }
 
 async function buildDashboard(tenantId, month, year) {

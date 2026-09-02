@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../middleware/auth');
+const { authenticate, optionalAuth } = require('../middleware/auth');
 const {
   allowFinanceArea,
   blockFinanceArea,
@@ -52,9 +52,30 @@ router.get('/login', async (req, res) => {
   res.render('pages/login', { title: 'Login', layout: false });
 });
 
-// Root redirect — role-aware
-router.get('/', authenticate, (req, res) => {
-  return res.redirect(homePathForRole(req.user?.role?.name));
+// Root — tamu melihat landing publik (gaya SaaS). User yang sudah login
+// tetap diarahkan ke beranda sesuai role.
+router.get('/', optionalAuth, (req, res) => {
+  if (req.user) {
+    return res.redirect(homePathForRole(req.user.role?.name));
+  }
+  res.render('pages/marketing-landing', {
+    title: 'Solusi Cerdas Kelola ISP Anda',
+    layout: false,
+    saasPage: 'home'
+  });
+});
+
+router.get('/mitra', (req, res) => res.redirect(301, '/mitra/daftar'));
+
+router.get('/mitra/daftar', optionalAuth, (req, res) => {
+  if (req.user) {
+    return res.redirect(homePathForRole(req.user.role?.name));
+  }
+  res.render('pages/mitra-daftar', {
+    title: 'Daftar Mitra ISP',
+    layout: false,
+    saasPage: 'daftar'
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -117,7 +138,7 @@ router.use((req, res, next) => {
 
 const _tenantAllowedPaths = new Set([
   '/tenant', '/customers', '/billing', '/payments', '/packages',
-  '/login', '/logout'
+  '/login', '/logout', '/', '/mitra', '/mitra/daftar'
 ]);
 const _tenantAllowedPrefixes = ['/customers/', '/billing/', '/payments/', '/packages/'];
 router.use((req, res, next) => {

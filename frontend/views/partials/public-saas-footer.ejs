@@ -1,0 +1,24 @@
+<% var brand = typeof appName !== 'undefined' && appName ? appName : 'Fiberix'; %>
+<footer class="saas-footer">
+  <div class="saas-wrap saas-footer-inner">
+    <div>
+      <div class="saas-brand saas-footer-brand">
+        <% if (typeof logoUrl !== 'undefined' && logoUrl) { %>
+          <img src="<%= logoUrl %>" alt="<%= brand %>" class="saas-brand-logo">
+        <% } else { %>
+          <span class="saas-brand-mark"><%= String(brand).charAt(0) %></span>
+        <% } %>
+        <span class="saas-brand-name"><%= brand %></span>
+      </div>
+      <p class="saas-muted"><%= typeof appTagline !== 'undefined' && appTagline ? appTagline : 'Billing, RADIUS, dan operasional ISP dalam satu tempat.' %></p>
+    </div>
+    <div class="saas-footer-links">
+      <a href="/#fitur">Fitur</a>
+      <a href="/mitra/daftar">Daftar mitra</a>
+      <a href="/login">Masuk</a>
+      <a href="/daftar">Daftar pelanggan</a>
+    </div>
+  </div>
+  <div class="saas-wrap saas-copy">© <%= new Date().getFullYear() %> <%= brand %>. Semua hak dilindungi.</div>
+</footer>
+<script src="/js/public-saas.js" defer></script>
