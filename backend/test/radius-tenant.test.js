@@ -88,19 +88,27 @@ const ros = buildNasRouterOsScript({
     keepalive: 25
   }
 });
-assert.ok(ros.v7.includes('/radius/add'));
+assert.ok(ros.v7.includes('/radius add'));
 assert.ok(ros.v7.includes('address=192.168.22.9'));
 assert.ok(ros.v7.includes('secret="sec\\"ret"'));
 assert.ok(ros.v7.includes('comment="FIBERIX"'));
+assert.ok(ros.v7.includes('action-data=192.168.22.9:80'));
+assert.ok(!ros.v7.includes('redirect-to='));
 assert.ok(!/comment~"BILLINGRADIUS"/.test(ros.v7));
 assert.ok(ros.v7.includes('Tidak menghapus object BILLINGRADIUS'));
 assert.ok(ros.v7.includes('EXPIRED_FIBERIX'));
 assert.ok(ros.v7.includes(EXPIRED_NET));
 assert.ok(ros.v7.includes('wg-fiberix'));
 assert.ok(ros.v7.includes('WireGuard ke server billing Fiberix'));
+assert.ok(ros.v7.includes(':delay 1s'));
 assert.ok(!/VPS/.test(ros.v7));
 assert.ok(!/VPS/.test(ros.v6));
+assert.ok(!/pptp-client/.test(ros.v7));
+assert.ok(!/217\.216\.34\.97/.test(ros.v7));
+assert.ok(!/\/radius disable/.test(ros.v7));
 assert.ok(ros.v6.includes('/radius add'));
+assert.ok(ros.v6.includes('redirect-to=192.168.22.9:80'));
+assert.ok(!ros.v6.includes('action-data='));
 assert.strictEqual(ros.recommended_api_host, '10.10.0.2');
 assert.strictEqual(ros.port_forward_example.applied, false);
 assert.strictEqual(ros.port_forward_example.skipped, false);
@@ -157,10 +165,13 @@ const lanPpp = buildNasRouterOsScript({
   pppPool: '10.20.0.2-10.20.0.254',
   pppLocal: '10.20.0.1'
 });
-assert.ok(lanPpp.v7.includes('/ip/pool/add name=FIBERIX ranges=10.20.0.2-10.20.0.254'));
-assert.ok(lanPpp.v7.includes('/ppp/profile/add name=FIBERIX local-address=10.20.0.1'));
+assert.ok(lanPpp.v7.includes('/ip pool add name=FIBERIX ranges=10.20.0.2-10.20.0.254'));
+assert.ok(lanPpp.v7.includes('/ppp profile add name=FIBERIX local-address=10.20.0.1'));
 assert.ok(lanPpp.v6.includes('/ip pool add name=FIBERIX'));
+assert.ok(lanPpp.v7.includes('action-data='));
+assert.ok(lanPpp.v6.includes('redirect-to='));
 assert.ok(lanPpp.usage.join(' ').includes('tempel'));
+assert.ok(lanPpp.usage.join(' ').includes('action-data'));
 
 const lanWg = buildNasRouterOsScript({
   nasId: 3,

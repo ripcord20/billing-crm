@@ -255,15 +255,17 @@
           </div>
           <div class="nas-detail-card nas-script-card">
             <h2>Script Otomatis</h2>
-            <p class="sub">Script Konfigurasi RouterOS — disesuaikan dengan NAS Anda. Tanpa L2TP/PPTP ke VPS.</p>
+            <p class="sub">Script Konfigurasi RouterOS — disesuaikan dengan NAS Anda. Tanpa L2TP/PPTP ke server cloud.</p>
             <p id="rosHint" style="margin:0 0 12px;color:var(--text-secondary);font-size:13px;"></p>
-            <div style="display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap;">
-              <button class="btn btn-sm btn-primary" type="button" id="rosTabV7" onclick="showRosTab('v7')">RouterOS v7</button>
+            <div style="display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap;align-items:center;">
+              <span style="font-size:12px;color:var(--text-secondary);margin-right:4px;">Script Konfigurasi RouterOS:</span>
               <button class="btn btn-sm btn-secondary" type="button" id="rosTabV6" onclick="showRosTab('v6')">RouterOS v6</button>
+              <button class="btn btn-sm btn-primary" type="button" id="rosTabV7" onclick="showRosTab('v7')">RouterOS v7</button>
               <button class="btn btn-sm btn-secondary" type="button" onclick="copyRos()">Salin Script</button>
               <button class="btn btn-sm btn-secondary" type="button" onclick="downloadRos()">Unduh .rsc</button>
             </div>
             <div style="font-size:12px;font-weight:600;margin:0 0 6px;" id="rosScriptLabel">RouterOS v7 Script</div>
+            <div style="font-size:11px;color:var(--text-secondary);margin:-2px 0 8px;" id="rosScriptFormat">(Format action-data)</div>
             <pre id="rosScript" class="radius-guide-pre" style="max-height:420px;background:#0f172a;color:#e2e8f0;border:none;">Isi IP NAS dan secret, lalu script muncul di sini.</pre>
             <div id="rosPfBox" style="display:none;margin-top:14px;padding:12px;border:1px dashed var(--border);border-radius:10px;background:var(--bg-hover);">
               <strong style="font-size:13px;">Lanjutan: contoh port-forward (opsional)</strong>

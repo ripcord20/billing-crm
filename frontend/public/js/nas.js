@@ -401,6 +401,8 @@ window.showRosTab=(tab)=>{
   document.getElementById('rosScript').textContent=tab==='v6'?d.v6:d.v7;
   const lab=document.getElementById('rosScriptLabel');
   if(lab) lab.textContent=tab==='v7'?'RouterOS v7 Script':'RouterOS v6 Script';
+  const fmt=document.getElementById('rosScriptFormat');
+  if(fmt) fmt.textContent=tab==='v7'?'(Format action-data)':'(Format redirect-to)';
   document.getElementById('rosTabV7').className='btn btn-sm '+(tab==='v7'?'btn-primary':'btn-secondary');
   document.getElementById('rosTabV6').className='btn btn-sm '+(tab==='v6'?'btn-primary':'btn-secondary');
 };
