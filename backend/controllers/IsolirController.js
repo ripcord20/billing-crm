@@ -398,7 +398,7 @@ class IsolirController {
         // Eligible untuk isolir: punya MIKROTIK + method valid
         const isolirMethod = detectMethod(r);
         const hasMethod = isolirMethod !== 'unknown';
-        const isEligibleForIsolir = !!(hasMethod && r.mikrotik_id);
+        const isEligibleForIsolir = !!(hasMethod && (r.mikrotik_id || r.pppoe_username));
         const overdueDays = parseInt(r.days_overdue) || 0;
         const item = {
           id:              r.id,
