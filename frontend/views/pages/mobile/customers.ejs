@@ -732,11 +732,13 @@
       }
       document.getElementById('addOverlay').classList.add('open');
       document.getElementById('addSheet').classList.add('open');
+      await refreshRadiusStatus();
       // Tunggu opsi selesai dimuat — penting untuk mode edit (agar nilai bisa dipilih).
       if(!_addLoaded){
         _addLoaded=true;
         try{ await Promise.all([loadAddOptions(), loadProvinces()]); }catch(_){ }
       }
+      if(!_editId) onRouterChange();
       setTimeout(initAfMap, 350);
     }
     function closeAdd(){
@@ -864,12 +866,31 @@
     async function onRouterChange(){
       const dev=document.getElementById('afRouter').value;
       const sel=document.getElementById('afPppoeProfile');
-      if(!dev){ sel.innerHTML='<option value="">Pilih router dulu…</option>'; sel.disabled=true; return; }
+      const groups=await fetchRadiusGroups();
+      if(!dev && !groups.length && !_radiusEnabled){
+        sel.innerHTML='<option value="">Pilih router dulu…</option>'; sel.disabled=true; return;
+      }
       sel.innerHTML='<option value="">Memuat profil…</option>'; sel.disabled=true;
-      const j=await api('/api/mikrotik/pppoe/profiles?device_id='+encodeURIComponent(dev));
-      const rows=(j&&j.success)?(Array.isArray(j.data)?j.data:[]):[];
-      if(rows.length){ sel.innerHTML='<option value="">Pilih profil…</option>'+rows.map(p=>{ const nm=p.name||p; return '<option value="'+esc(nm)+'">'+esc(nm)+(p.rateLimit?(' ('+esc(p.rateLimit)+')'):'')+'</option>'; }).join(''); sel.disabled=false; }
-      else{ sel.innerHTML='<option value="">Tidak ada profil</option>'; sel.disabled=true; }
+      let rows=[];
+      if(dev){
+        const j=await api('/api/mikrotik/pppoe/profiles?device_id='+encodeURIComponent(dev));
+        rows=(j&&j.success)?(Array.isArray(j.data)?j.data:[]):[];
+      }
+      const seen={};
+      let html='<option value="">Opsional (paket / group RADIUS)…</option>';
+      rows.forEach(p=>{
+        const nm=p.name||p;
+        if(!nm||seen[nm]) return;
+        seen[nm]=true;
+        html+='<option value="'+esc(nm)+'">'+esc(nm)+(p.rateLimit?(' ('+esc(p.rateLimit)+')'):'')+'</option>';
+      });
+      groups.forEach(nm=>{
+        if(!nm||seen[nm]) return;
+        seen[nm]=true;
+        html+='<option value="'+esc(nm)+'">'+esc(nm)+' (RADIUS)</option>';
+      });
+      sel.innerHTML=html;
+      sel.disabled=false;
     }
     function getMyLocation(){
       const lbl=document.getElementById('geoLbl');
@@ -886,6 +907,33 @@
     function fmtRp(n){ return 'Rp '+Math.round(Number(n)||0).toLocaleString('id-ID'); }
     // ID pelanggan yang sedang diedit. null = mode tambah.
     var _editId = null;
+    var _radiusEnabled = false;
+    async function refreshRadiusStatus(){
+      try{
+        const d=await api('/api/radius/status');
+        _radiusEnabled=!!(d&&d.success&&d.data&&d.data.enabled);
+      }catch(_){ _radiusEnabled=false; }
+      const hint=document.getElementById('afPppoeRadiusHint');
+      if(hint){
+        hint.style.display='block';
+        hint.textContent=_radiusEnabled
+          ? 'Jika username & password diisi, user PPPoE disimpan ke RADIUS (radcheck), bukan PPP Secret MikroTik.'
+          : 'Jika username & password diisi, secret PPPoE dibuat di router yang dipilih.';
+      }
+      const rtLbl=document.getElementById('afRouterLbl');
+      if(rtLbl) rtLbl.textContent=_radiusEnabled ? 'Router / MikroTik (opsional)' : 'Router / MikroTik';
+    }
+
+    async function fetchRadiusGroups(){
+      if(!_radiusEnabled) return [];
+      try{
+        const d=await api('/api/radius/groups');
+        if(d&&d.success&&Array.isArray(d.data)){
+          return d.data.map(g=>typeof g==='string'?g:(g.groupname||g.name||'')).filter(Boolean);
+        }
+      }catch(_){}
+      return [];
+    }
 
     async function saveCustomer(){
       const name=document.getElementById('afName').value.trim();
@@ -919,6 +967,10 @@
         body.pppoe_username=document.getElementById('afPppoeUser').value.trim()||null;
         body.pppoe_password=document.getElementById('afPppoePass').value.trim()||null;
         body.pppoe_profile=document.getElementById('afPppoeProfile').value||null;
+        if(!_editId && body.pppoe_username && body.pppoe_password){
+          body.create_pppoe=true;
+          body.pppoe_backend='auto';
+        }
       }
       // Status hanya dikirim saat edit (di form tambah, default 'active' dari server)
       if(_editId){
@@ -944,10 +996,12 @@
         });
         const d=await r.json().catch(()=>null);
         ok=(r.ok && d && d.success); msg=(d&&d.message)||'';
+        if(ok && d.pppoe_status==='radius') msg = (isEdit?'Perubahan tersimpan':'Pelanggan ditambahkan') + ' • akun PPPoE di RADIUS';
+        else if(ok && d.pppoe_status==='mikrotik') msg = (isEdit?'Perubahan tersimpan':'Pelanggan ditambahkan') + ' • akun PPPoE di MikroTik';
       }catch(e){ msg=e.message; }
       btn.disabled=false; btn.textContent = isEdit ? 'Simpan Perubahan' : 'Simpan Pelanggan';
       if(ok){
-        toast(isEdit?'Perubahan tersimpan':'Pelanggan berhasil ditambahkan','ok');
+        toast(msg||(isEdit?'Perubahan tersimpan':'Pelanggan berhasil ditambahkan'),'ok');
         closeAdd(); clearAddForm(); _editId=null;
         loadCustStats(); loadGrowth(); loadCustomers(true);
       }
@@ -1042,7 +1096,7 @@
     }
     function clearAddForm(){ ['afName','afPhone','afEmail','afAddress','afLat','afLng','afPppoeUser','afPppoePass','afStaticIp','afMac','afNotes','afInstallDate','afDueDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); const _dh=document.getElementById('afDueHint'); if(_dh)_dh.textContent='Jatuh tempo otomatis 1 bulan setelah tanggal aktivasi. Bisa diubah manual.'; document.getElementById('afSendWa').checked=false; document.getElementById('afSendEmail').checked=false; 
       ['afRegency','afDistrict','afVillage'].forEach(id=>{const el=document.getElementById(id);if(el){el.innerHTML='<option value="">-</option>';el.disabled=true;}}); const pv=document.getElementById('afProvince'); if(pv)pv.value='';
-      const pp=document.getElementById('afPppoeProfile'); if(pp){pp.innerHTML='<option value="">Pilih router dulu…</option>';pp.disabled=true;} const rr=document.getElementById('afRouter'); if(rr)rr.value='';
+      const pp=document.getElementById('afPppoeProfile'); if(pp){pp.innerHTML='<option value="">Opsional…</option>';pp.disabled=false;} const rr=document.getElementById('afRouter'); if(rr)rr.value='';
       if(_afMap&&_afMarker){ _afMarker.setLatLng(AF_DEFAULT); _afMap.setView(AF_DEFAULT,13); }
       const gh=document.getElementById('afGeoHint'); if(gh)gh.textContent='';
     }
@@ -1124,12 +1178,13 @@
         <option value="static">IP Static</option>
         <option value="hotspot">Hotspot</option>
       </select>
-      <label class="as-lbl">Router / MikroTik</label>
+      <label class="as-lbl" id="afRouterLbl">Router / MikroTik</label>
       <select class="as-in" id="afRouter" onchange="onRouterChange()"><option value="">Pilih router…</option></select>
 
       <div id="pppoeFields">
-        <label class="as-lbl">Profil PPPoE</label>
-        <select class="as-in" id="afPppoeProfile" disabled><option value="">Pilih router dulu…</option></select>
+        <div class="as-hint" id="afPppoeRadiusHint" style="margin-bottom:8px;">Jika username &amp; password diisi, akun PPPoE dibuat otomatis (RADIUS jika aktif).</div>
+        <label class="as-lbl">Profil / Group RADIUS</label>
+        <select class="as-in" id="afPppoeProfile"><option value="">Opsional…</option></select>
         <div class="as-row">
           <div><label class="as-lbl">PPPoE Username</label><input class="as-in" id="afPppoeUser" placeholder="username"></div>
           <div><label class="as-lbl">PPPoE Password</label><input class="as-in" id="afPppoePass" placeholder="password"></div>

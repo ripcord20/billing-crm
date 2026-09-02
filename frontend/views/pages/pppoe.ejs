@@ -299,6 +299,11 @@
         </div>
       </div>
 
+      <div id="radiusPppoeBanner" style="display:none;margin-bottom:16px;padding:12px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;font-size:13px;color:#1e40af;line-height:1.5;">
+        Server RADIUS aktif. Tombol <strong>Tambah User PPPoE</strong> menyimpan ke <code>radcheck</code>/<code>radreply</code>, bukan PPP Secret MikroTik.
+        Daftar user: <a href="/monitoring/radius" style="color:#1d4ed8;font-weight:700;">Monitoring → RADIUS</a>.
+      </div>
+
       <!-- Stat cards -->
       <div class="pp-cards">
 
@@ -1281,23 +1286,52 @@
       var r = await App.api(_withDev('/mikrotik/pppoe/profiles'));
       var profiles = (r && r.success && Array.isArray(r.data)) ? r.data : [];
       _profiles = profiles;
+      var groups = [];
+      try {
+        var g = await App.api('/radius/groups');
+        if (g && g.success && Array.isArray(g.data)) {
+          groups = g.data.map(function(x){ return typeof x === 'string' ? x : (x.groupname || x.name || ''); }).filter(Boolean);
+        }
+      } catch (_) {}
 
-      if (profiles.length) {
-        sel.innerHTML = profiles.map(function(p){
-          var meta = [];
-          if (p.rateLimit) meta.push(p.rateLimit);
-          if (p.remoteAddress) meta.push('pool: ' + p.remoteAddress);
-          var label = p.name + (meta.length ? '  (' + meta.join(' • ') + ')' : '');
-          return '<option value="' + esc(p.name) + '">' + esc(label) + '</option>';
-        }).join('');
+      var seen = {};
+      var opts = [];
+      profiles.forEach(function(p){
+        if (!p.name || seen[p.name]) return;
+        seen[p.name] = true;
+        var meta = [];
+        if (p.rateLimit) meta.push(p.rateLimit);
+        if (p.remoteAddress) meta.push('pool: ' + p.remoteAddress);
+        var label = p.name + (meta.length ? '  (' + meta.join(' • ') + ')' : '');
+        opts.push('<option value="' + esc(p.name) + '">' + esc(label) + '</option>');
+      });
+      groups.forEach(function(name){
+        if (!name || seen[name]) return;
+        seen[name] = true;
+        opts.push('<option value="' + esc(name) + '">' + esc(name) + '  (RADIUS)</option>');
+      });
+
+      if (opts.length) {
+        sel.innerHTML = opts.join('');
         sel.disabled = false;
 
-        if (currentProfile && profiles.some(function(p){return p.name === currentProfile;})) {
+        if (currentProfile && seen[currentProfile]) {
           sel.value = currentProfile;
-        } else {
+        } else if (currentProfile) {
+          var extra = document.createElement('option');
+          extra.value = currentProfile;
+          extra.textContent = currentProfile;
+          sel.appendChild(extra);
+          sel.value = currentProfile;
+        } else if (profiles[0]) {
           sel.value = profiles[0].name;
         }
-        if (hint) hint.textContent = profiles.length + ' profile dimuat dari MikroTik';
+        if (hint) {
+          hint.style.color = '#2563eb';
+          hint.textContent = profiles.length
+            ? (profiles.length + ' profile MikroTik' + (groups.length ? ', ' + groups.length + ' group RADIUS' : ''))
+            : (groups.length + ' group RADIUS');
+        }
       } else {
         // MikroTik tidak return profile (atau error connection)
         var warning = (r && r.warning) ? r.warning : 'MikroTik tidak mengembalikan daftar profile';
@@ -1405,7 +1439,9 @@
         : await App.api(_withDev('/mikrotik/pppoe/secrets'), { method:'POST', body: JSON.stringify(body) });
       if (r && r.success) {
         closeUserModal();
-        showToast((r.message) || (id ? 'Updated' : 'Dibuat'), 'success');
+        var okMsg = r.message || (id ? 'Updated' : 'Dibuat');
+        if (!id && r.backend === 'radius') okMsg = (r.message || 'User PPPoE dibuat di RADIUS') + ' — lihat Monitoring → RADIUS';
+        showToast(okMsg, 'success');
         switchTab('secrets');
         await loadSecrets();
       } else {
@@ -1445,6 +1481,11 @@
   }
 
   document.addEventListener('DOMContentLoaded', function(){
+    App.api('/radius/status').then(function(d){
+      var on = !!(d && d.success && d.data && d.data.enabled);
+      var b = document.getElementById('radiusPppoeBanner');
+      if (b) b.style.display = on ? 'block' : 'none';
+    }).catch(function(){});
     // Init MikroTik selector — reload data saat user ganti device
     // PENTING: pakai onReady agar initial load TIDAK race dengan selector
     if (window.MikrotikSelector) {

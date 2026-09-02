@@ -183,6 +183,7 @@ const _salesBlockedPrefixes = [
   '/billing', '/payments', '/keuangan', '/finance', '/laporan',
   '/packages', '/voucher', '/voucher-template', '/invoice-template',
   '/customers', '/devices', '/infrastructure', '/monitoring', '/mikrotik',
+  '/radius',
   '/genieacs', '/olt', '/ont', '/hotspot', '/isolir',
   '/wa', '/whatsapp', '/broadcast', '/email-broadcast', '/mikrotik-backup', '/message-logs',
   '/users', '/roles', '/permissions', '/activity-logs', '/system',
@@ -2214,6 +2215,22 @@ router.get('/activity-logs/:id', authenticate, demoGuard, authorize('superadmin'
 // ===== MIKROTIK (NEW) =====
 const mikrotikRoutes = require('./mikrotik');
 router.use('/mikrotik', authenticate, demoGuard, mikrotikRoutes);
+
+// ===== RADIUS (FreeRADIUS SQL) =====
+const RadiusController = require('../controllers/RadiusController');
+router.get('/radius/status', authenticate, demoGuard, RadiusController.status.bind(RadiusController));
+router.get('/radius/servers', authenticate, demoGuard, RadiusController.listServers.bind(RadiusController));
+router.post('/radius/servers', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('create', 'radius_server'), RadiusController.createServer.bind(RadiusController));
+router.put('/radius/servers/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'radius_server'), RadiusController.updateServer.bind(RadiusController));
+router.delete('/radius/servers/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('delete', 'radius_server'), RadiusController.deleteServer.bind(RadiusController));
+router.post('/radius/servers/:id/test', authenticate, demoGuard, authorize('superadmin', 'admin'), RadiusController.testServer.bind(RadiusController));
+router.get('/radius/sessions', authenticate, demoGuard, RadiusController.sessions.bind(RadiusController));
+router.get('/radius/users', authenticate, demoGuard, RadiusController.radiusUsers.bind(RadiusController));
+router.get('/radius/groups', authenticate, demoGuard, RadiusController.groups.bind(RadiusController));
+router.post('/radius/users', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('create', 'radius_user'), RadiusController.createUser.bind(RadiusController));
+router.post('/radius/provision', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('create', 'radius_user'), RadiusController.provision.bind(RadiusController));
+router.post('/radius/customers/:customerId/isolir', authenticate, demoGuard, authorize('superadmin', 'admin'), RadiusController.isolate.bind(RadiusController));
+router.post('/radius/customers/:customerId/restore', authenticate, demoGuard, authorize('superadmin', 'admin'), RadiusController.restore.bind(RadiusController));
 
 // ===== NMS (Interface Monitor) =====
 const nmsRoutes = require('./nms');

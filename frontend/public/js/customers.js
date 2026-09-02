@@ -12,6 +12,26 @@ let _pppoeManuallyEdited = false;
 // → kalau berubah, tampilkan modal konfirmasi sync ke router.
 // Direset ke '' setiap kali openAddCustomer() (tidak relevan di tambah baru).
 let _originalPppoeUsername = '';
+let _radiusEnabled = false;
+
+async function refreshRadiusStatus() {
+  try {
+    const d = await App.api('/radius/status');
+    _radiusEnabled = !!(d?.success && d.data?.enabled);
+  } catch (_) {
+    _radiusEnabled = false;
+  }
+  const title = document.getElementById('pppoeCreateTitle');
+  const hint = document.getElementById('pppoeCreateHint');
+  const req = document.getElementById('pppoeRouterReq');
+  if (title) title.textContent = _radiusEnabled ? 'Buat Akun PPPoE di RADIUS' : 'Buat Akun PPPoE di MikroTik';
+  if (hint) {
+    hint.textContent = _radiusEnabled
+      ? 'User disimpan ke radcheck/radreply FreeRADIUS. MikroTik tidak perlu PPP Secret.'
+      : 'Otomatis tambahkan secret PPPoE ke router yang dipilih saat customer disimpan.';
+  }
+  if (req) req.style.display = _radiusEnabled ? 'none' : '';
+}
 const AVATAR_BG = ['#2563eb','#0891b2','#059669','#d97706','#dc2626','#0284c7','#16a34a','#ea580c','#0369a1','#0d9488'];
 
 // Toggle field MAC Address — hanya relevan untuk tipe koneksi Hotspot (IP Binding).
@@ -83,6 +103,7 @@ window.openAddCustomer = async function () {
   _custEditId = null;
   _pppoeManuallyEdited = false; // reset flag → auto-fill PPPoE dari nama aktif
   _originalPppoeUsername = '';   // tidak relevan di tambah baru
+  await refreshRadiusStatus();
   _setText('customerModalTitle', 'Tambah Customer');
   // Pindahkan field PPPoE ke posisi mode Tambah (di dalam pppoeFormBox)
   _movePppoeToAddSlot();
@@ -238,13 +259,12 @@ function _confirmCustomerDelete(customer) {
   return new Promise((resolve) => {
     const hasPppoe = !!(customer.pppoe_username && String(customer.pppoe_username).trim());
     const hasRouter = !!customer.mikrotik_id;
-    const canSync = hasPppoe && hasRouter;
+    const canSync = hasPppoe && (hasRouter || _radiusEnabled);
 
     // Build reason kalau tidak bisa sync
     let syncDisabledReason = '';
-    if (!hasPppoe && !hasRouter) syncDisabledReason = 'Customer tidak punya PPPoE username & router';
-    else if (!hasPppoe)          syncDisabledReason = 'Customer tidak punya PPPoE username';
-    else if (!hasRouter)         syncDisabledReason = 'Customer tidak punya router MikroTik terhubung';
+    if (!hasPppoe)               syncDisabledReason = 'Customer tidak punya PPPoE username';
+    else if (!hasRouter && !_radiusEnabled) syncDisabledReason = 'Customer tidak punya router MikroTik terhubung';
 
     const overlay = document.createElement('div');
     overlay.id = '__custDeleteModal';
@@ -271,21 +291,27 @@ function _confirmCustomerDelete(customer) {
         ${canSync ? `
           <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:12px;color:#92400e;line-height:1.5;margin-bottom:6px;">
             <strong>Apa yang ingin Anda lakukan?</strong><br>
-            Tanpa hapus secret di router, customer mungkin masih bisa login PPPoE meski sudah dihapus di FLAYNET.
+            ${_radiusEnabled
+              ? 'Tanpa hapus user RADIUS, pelanggan masih bisa login PPPoE meski sudah dihapus di FLAYNET.'
+              : 'Tanpa hapus secret di router, customer mungkin masih bisa login PPPoE meski sudah dihapus di FLAYNET.'}
           </div>` : `
           <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:10px 12px;font-size:12px;color:#475569;line-height:1.5;margin-bottom:6px;">
-            ${syncDisabledReason}, jadi tidak ada secret di router yang perlu dihapus.
+            ${syncDisabledReason}, jadi tidak ada akun PPPoE yang perlu dihapus.
           </div>`}
       </div>
       <div style="padding:14px 22px;background:#fafbfc;border-top:1px solid #f1f5f9;display:flex;flex-direction:column;gap:8px;">
         <button id="__custDelSync" ${canSync ? '' : 'disabled'}
           style="background:${canSync ? '#dc2626' : '#cbd5e1'};color:#fff;border:none;border-radius:8px;padding:11px 14px;font-size:13px;font-weight:600;cursor:${canSync ? 'pointer' : 'not-allowed'};text-align:left;line-height:1.4;opacity:${canSync ? 1 : 0.6};">
-          <div>✗ Hapus customer &amp; secret di router MikroTik</div>
-          <div style="font-size:11px;font-weight:400;opacity:.9;margin-top:2px;">${canSync ? 'Sync penuh. Customer langsung disconnect, tidak bisa login lagi.' : syncDisabledReason}</div>
+          <div>${_radiusEnabled ? '✗ Hapus customer &amp; user RADIUS' : '✗ Hapus customer &amp; secret di router MikroTik'}</div>
+          <div style="font-size:11px;font-weight:400;opacity:.9;margin-top:2px;">${canSync
+            ? (_radiusEnabled
+              ? 'User dihapus dari radcheck. Secret MikroTik juga dihapus jika router terhubung.'
+              : 'Sync penuh. Customer langsung disconnect, tidak bisa login lagi.')
+            : syncDisabledReason}</div>
         </button>
         <button id="__custDelDbOnly" style="background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:8px;padding:11px 14px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;line-height:1.4;">
-          <div>Hapus dari database saja (tanpa sentuh router)</div>
-          <div style="font-size:11px;font-weight:400;color:#64748b;margin-top:2px;">${hasPppoe ? 'Pilih ini kalau Anda sudah hapus secret manual via Winbox.' : 'Hanya hapus record di database FLAYNET.'}</div>
+          <div>Hapus dari database saja (tanpa sentuh ${_radiusEnabled ? 'RADIUS' : 'router'})</div>
+          <div style="font-size:11px;font-weight:400;color:#64748b;margin-top:2px;">${hasPppoe ? 'Pilih ini kalau akun PPPoE sudah dihapus manual.' : 'Hanya hapus record di database FLAYNET.'}</div>
         </button>
         <button id="__custDelCancel" style="background:#fff;color:#64748b;border:1px solid #e2e8f0;border-radius:8px;padding:9px 14px;font-size:12.5px;font-weight:500;cursor:pointer;margin-top:2px;">
           Batal
@@ -362,13 +388,16 @@ window.deleteCustomer = async function (id, name) {
     let toastMsg = 'Customer dihapus';
     let toastType = 'success';
     if (choice === 'sync') {
-      if (data.router_status === 'deleted')   toastMsg = `Customer & secret di router dihapus (${detail.pppoe_username})`;
+      if (data.radius_status === 'deleted') toastMsg = `Customer & user RADIUS dihapus (${detail.pppoe_username})`;
+      else if (data.router_status === 'deleted')   toastMsg = `Customer & secret di router dihapus (${detail.pppoe_username})`;
       else if (data.router_status === 'not_found') {
         toastMsg = `Customer dihapus. Secret di router sudah tidak ada (mungkin sudah dihapus manual sebelumnya).`;
         toastType = 'info';
       }
     } else {
-      toastMsg = 'Customer dihapus dari database (router tidak disentuh)';
+      toastMsg = _radiusEnabled
+        ? 'Customer dihapus dari database (user RADIUS tidak dihapus)'
+        : 'Customer dihapus dari database (router tidak disentuh)';
       toastType = 'info';
     }
     App.showToast(toastMsg, toastType);
@@ -457,6 +486,7 @@ function showConfirmModal(title, body, iconType, accentColor, onConfirm) {
 document.addEventListener('DOMContentLoaded', () => {
   loadMikrotikDevices();
   if (typeof App !== 'undefined') App.init();
+  refreshRadiusStatus();
   loadCustomerStats();
 
   // Deep-link: auto-apply filter dari URL query param `?status=active`
@@ -876,10 +906,10 @@ async function _saveCustomerInner() {
     const pppoeLocal  = document.getElementById('custPppoeLocalAddr')?.value?.trim() || '';
     const pppoeRemote = document.getElementById('custPppoeRemoteAddr')?.value?.trim() || '';
 
-    if (!mkId)      { App.showToast('Pilih Router MikroTik untuk PPPoE', 'error'); return; }
+    if (!_radiusEnabled && !mkId) { App.showToast('Pilih Router MikroTik untuk PPPoE', 'error'); return; }
     if (!pppoeUser) { App.showToast('PPPoE Username wajib diisi', 'error'); return; }
     if (!pppoePass) { App.showToast('Password PPPoE wajib diisi', 'error'); return; }
-    if (!pppoeProf) { App.showToast('Pilih Profile PPPoE', 'error'); return; }
+    if (!_radiusEnabled && !pppoeProf) { App.showToast('Pilih Profile PPPoE', 'error'); return; }
 
     pppoeData = {
       device_id:     mkId,
@@ -895,38 +925,7 @@ async function _saveCustomerInner() {
 
   btn.disabled = true; btn.textContent = 'Menyimpan...';
 
-  // ═══ STEP 1: Buat akun PPPoE di MikroTik dulu (kalau diminta) ═══
-  // Alasan: kalau gagal, jangan lanjutkan create customer (rollback gampang).
   let pppoeStatus = 'skipped';
-  if (pppoeData) {
-    btn.textContent = 'Membuat akun PPPoE...';
-    try {
-      const url = '/mikrotik/pppoe/secrets?device_id=' + encodeURIComponent(pppoeData.device_id);
-      const ppRes = await App.api(url, {
-        method: 'POST',
-        body: JSON.stringify({
-          name:          pppoeData.name,
-          password:      pppoeData.password,
-          profile:       pppoeData.profile,
-          service:       pppoeData.service,
-          localAddress:  pppoeData.localAddress,
-          remoteAddress: pppoeData.remoteAddress,
-          comment:       pppoeData.comment
-        })
-      });
-      if (!ppRes?.success) {
-        const errMsg = ppRes?.message || 'Gagal membuat akun PPPoE';
-        App.showToast('PPPoE gagal: ' + errMsg + '. Customer TIDAK disimpan.', 'error');
-        btn.disabled = false; btn.textContent = 'Simpan Customer';
-        return;
-      }
-      pppoeStatus = 'created';
-    } catch (e) {
-      App.showToast('PPPoE gagal: ' + e.message + '. Customer TIDAK disimpan.', 'error');
-      btn.disabled = false; btn.textContent = 'Simpan Customer';
-      return;
-    }
-  }
 
   // ═══ STEP 2: Simpan customer ═══
   btn.textContent = 'Menyimpan customer...';
@@ -1051,6 +1050,20 @@ async function _saveCustomerInner() {
   if (_custEditId || createPppoe) {
     body.pppoe_username = document.getElementById('custPPPoE')?.value || '';
   }
+  if (createPppoe && pppoeData) {
+    body.create_pppoe = true;
+    body.radius_password = pppoeData.password;
+    body.pppoe_profile = pppoeData.profile;
+    body.pppoe_service = pppoeData.service;
+    body.pppoe_local_address = pppoeData.localAddress;
+    body.pppoe_remote_address = pppoeData.remoteAddress;
+    body.pppoe_backend = 'auto';
+    if (pppoeData.device_id) {
+      body.device_id = pppoeData.device_id;
+      if (!body.mikrotik_id) body.mikrotik_id = pppoeData.device_id;
+    }
+    if (!body.connection_type) body.connection_type = 'pppoe';
+  }
   if (sendWA) body.send_wa_welcome = true;
   if (sendEmail) body.send_email_welcome = true;
   // Kalau PPPoE rename sudah di-handle oleh endpoint khusus di atas,
@@ -1094,7 +1107,9 @@ async function _saveCustomerInner() {
     let toastType = 'success';
 
     // Info status pembuatan PPPoE
-    if (pppoeStatus === 'created') {
+    if (data.pppoe_status === 'radius') {
+      msg += ' • Akun PPPoE di RADIUS ✓';
+    } else if (data.pppoe_status === 'mikrotik' || pppoeStatus === 'created') {
       msg += ' • Akun PPPoE dibuat ✓';
     }
 
@@ -1252,7 +1267,11 @@ function _clearForm() {
   const routerSel = document.getElementById('custPppoeRouter');
   if (routerSel) routerSel.innerHTML = '<option value="">— Memuat daftar router —</option>';
   const profSel = document.getElementById('custPppoeProfile');
-  if (profSel) profSel.innerHTML = '<option value="">— Pilih router dulu —</option>';
+  if (profSel) {
+    profSel.innerHTML = _radiusEnabled
+      ? '<option value="">— Opsional (group RADIUS / dari paket) —</option>'
+      : '<option value="">— Pilih router dulu —</option>';
+  }
   const hintBox = document.getElementById('pppoeFormHint');
   if (hintBox) { hintBox.style.display = 'none'; hintBox.innerHTML = ''; }
 
@@ -1350,65 +1369,83 @@ async function loadPppoeRouters() {
   }
 }
 
-// Load profiles dari router yang dipilih
+async function fetchRadiusGroups() {
+  if (!_radiusEnabled) return [];
+  try {
+    const d = await App.api('/radius/groups');
+    if (d?.success && Array.isArray(d.data)) {
+      return d.data.map(g => (typeof g === 'string' ? g : (g.groupname || g.name || ''))).filter(Boolean);
+    }
+  } catch (_) {}
+  return [];
+}
+
+function _renderProfileOptions(sel, profiles, groups) {
+  const seen = new Set();
+  const opts = ['<option value="">— Opsional (dari paket / group RADIUS) —</option>'];
+  (profiles || []).forEach(p => {
+    const name = p.name || '';
+    if (!name || seen.has(name)) return;
+    seen.add(name);
+    const meta = [];
+    if (p.rateLimit) meta.push(p.rateLimit);
+    if (p.localAddress) meta.push('local:' + p.localAddress);
+    if (p.remoteAddress) meta.push('pool:' + p.remoteAddress);
+    const label = name + (meta.length ? '  •  ' + meta.join(' / ') : '');
+    opts.push(`<option value="${_esc(name)}" data-rate="${_esc(p.rateLimit||'')}" data-local="${_esc(p.localAddress||'')}" data-remote="${_esc(p.remoteAddress||'')}">${_esc(label)}</option>`);
+  });
+  (groups || []).forEach(name => {
+    if (!name || seen.has(name)) return;
+    seen.add(name);
+    opts.push(`<option value="${_esc(name)}">${_esc(name)}  •  RADIUS</option>`);
+  });
+  sel.innerHTML = opts.join('');
+}
+
+// Load profiles dari router yang dipilih + group RADIUS (kalau server aktif)
 async function loadPppoeProfiles(deviceId) {
-  console.log('[PPPoE] loadPppoeProfiles called with deviceId =', deviceId);
   const sel = document.getElementById('custPppoeProfile');
   const spinner = document.getElementById('pppoeProfileSpinner');
-  if (!sel) { console.warn('[PPPoE] custPppoeProfile element not found'); return; }
+  if (!sel) return;
 
-  if (!deviceId) {
-    sel.innerHTML = '<option value="">— Pilih router dulu —</option>';
-    return;
-  }
-
-  // Show spinner & disable
   sel.innerHTML = '<option value="">Memuat profile...</option>';
   sel.disabled = true;
   if (spinner) spinner.style.display = 'inline';
 
+  let profiles = [];
+  let loadErr = '';
   try {
-    const url = '/mikrotik/pppoe/profiles?device_id=' + encodeURIComponent(deviceId);
-    console.log('[PPPoE] fetching:', url);
-    const d = await App.api(url);
-    console.log('[PPPoE] profile response:', d);
-
-    if (d?.success && Array.isArray(d.data) && d.data.length) {
-      // Sort: 'default' first, lalu alfabet
-      const profiles = d.data.slice().sort((a, b) => {
-        if (a.name === 'default') return -1;
-        if (b.name === 'default') return 1;
-        return (a.name || '').localeCompare(b.name || '');
-      });
-      sel.innerHTML = '<option value="">— Pilih profile —</option>' +
-        profiles.map(p => {
-          const meta = [];
-          if (p.rateLimit) meta.push(p.rateLimit);
-          if (p.localAddress) meta.push('local:' + p.localAddress);
-          if (p.remoteAddress) meta.push('pool:' + p.remoteAddress);
-          const label = p.name + (meta.length ? '  •  ' + meta.join(' / ') : '');
-          return `<option value="${_esc(p.name)}" data-rate="${_esc(p.rateLimit||'')}" data-local="${_esc(p.localAddress||'')}" data-remote="${_esc(p.remoteAddress||'')}">${_esc(label)}</option>`;
-        }).join('');
-      console.log('[PPPoE] loaded', profiles.length, 'profiles');
-    } else if (d?.success && Array.isArray(d.data) && d.data.length === 0) {
-      sel.innerHTML = '<option value="">Tidak ada profile di router ini</option>';
-    } else {
-      sel.innerHTML = '<option value="">Gagal muat profile</option>';
-      const errMsg = d?.message || 'Response tidak valid (cek koneksi MikroTik)';
-      console.error('[PPPoE] load profiles failed:', errMsg, d);
+    if (deviceId) {
+      const d = await App.api('/mikrotik/pppoe/profiles?device_id=' + encodeURIComponent(deviceId));
+      if (d?.success && Array.isArray(d.data)) {
+        profiles = d.data.slice().sort((a, b) => {
+          if (a.name === 'default') return -1;
+          if (b.name === 'default') return 1;
+          return (a.name || '').localeCompare(b.name || '');
+        });
+      } else if (d && !d.success) {
+        loadErr = d.message || 'Gagal muat profile MikroTik';
+      }
+    }
+    const groups = await fetchRadiusGroups();
+    if (!deviceId && !groups.length && !_radiusEnabled) {
+      sel.innerHTML = '<option value="">— Pilih router dulu —</option>';
+      return;
+    }
+    _renderProfileOptions(sel, profiles, groups);
+    if (loadErr && !groups.length) {
       const hint = document.getElementById('pppoeFormHint');
       if (hint) {
         hint.style.display = 'block';
-        hint.innerHTML = '<strong style="color:#dc2626">⚠ Gagal muat profile:</strong> ' + _esc(errMsg);
+        hint.innerHTML = '<strong style="color:#dc2626">⚠ Gagal muat profile:</strong> ' + _esc(loadErr);
       }
     }
   } catch (e) {
-    console.error('[PPPoE] loadPppoeProfiles exception:', e);
-    sel.innerHTML = '<option value="">Error: ' + _esc(e.message) + '</option>';
-    const hint = document.getElementById('pppoeFormHint');
-    if (hint) {
-      hint.style.display = 'block';
-      hint.innerHTML = '<strong style="color:#dc2626">⚠ Error:</strong> ' + _esc(e.message);
+    const groups = await fetchRadiusGroups();
+    if (groups.length || _radiusEnabled) {
+      _renderProfileOptions(sel, [], groups);
+    } else {
+      sel.innerHTML = '<option value="">Error: ' + _esc(e.message) + '</option>';
     }
   } finally {
     sel.disabled = false;
@@ -1441,9 +1478,8 @@ window.generatePppoePassword = function() {
       if (t.checked) {
         // Load daftar router dari /api/devices/mikrotik-list
         loadPppoeRouters();
-        // Reset profile dropdown
-        const profSel = document.getElementById('custPppoeProfile');
-        if (profSel) profSel.innerHTML = '<option value="">— Pilih router dulu —</option>';
+        const routerVal = document.getElementById('custPppoeRouter')?.value || '';
+        loadPppoeProfiles(routerVal);
         const hint = document.getElementById('pppoeFormHint');
         if (hint) { hint.style.display = 'none'; hint.innerHTML = ''; }
 

@@ -1,5 +1,6 @@
 const { getMikrotikInstance, getMikrotikInstanceByDevice } = require('../services/MikrotikService');
 const logger = require('../utils/logger');
+const { getTenantId } = require('../utils/tenantScope');
 
 // Helper: ambil device_id dari query/header lalu return instance MikroTik
 function resolveDeviceId(req) {
@@ -119,12 +120,28 @@ class PPPoEController {
   // POST /api/mikrotik/pppoe/secrets
   async createSecret(req, res) {
     try {
-      const mt = await getMt(req);
       if (!req.body.name)     return res.status(400).json({ success:false, message:'Username wajib diisi' });
       if (!req.body.password) return res.status(400).json({ success:false, message:'Password wajib diisi' });
-      await mt.createPPPoESecret(req.body);
-      // null response = ECONNRESET after write = operation succeeded
-      res.json({ success: true, message: 'User PPPoE berhasil dibuat' });
+
+      const PppoeAccount = require('../services/PppoeAccountService');
+      const result = await PppoeAccount.provisionStandalone({
+        username: req.body.name,
+        password: req.body.password,
+        profile: req.body.profile,
+        remoteAddress: req.body.remoteAddress,
+        localAddress: req.body.localAddress,
+        deviceId: resolveDeviceId(req),
+        service: req.body.service,
+        comment: req.body.comment,
+        backend: req.body.pppoe_backend || 'auto',
+        tenant_id: getTenantId(req),
+        failIfExists: true
+      });
+      if (!result.success) {
+        return res.status(400).json({ success:false, message: result.message, detail: String(result.message || '') });
+      }
+      const where = result.backend === 'radius' ? 'RADIUS (radcheck)' : 'MikroTik secret';
+      res.json({ success: true, message: 'User PPPoE berhasil dibuat di ' + where, backend: result.backend });
     } catch (err) {
       logger.error('PPPoE createSecret error:', err.message);
       res.status(400).json({ success:false, message: err.message, detail: String(err.message) });
