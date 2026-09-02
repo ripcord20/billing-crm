@@ -900,7 +900,9 @@ async function loadUplinkStrip(){
     const down = j && typeof j.down === 'number' ? j.down : rows.filter(r => r.isDown && r.state !== 'unknown').length;
     const badge = document.getElementById('uplinkStripBadge');
     if (badge){
+      const unknown = rows.filter(r => r.state === 'unknown').length;
       if (down){ badge.style.display='inline-block'; badge.textContent=down+' down'; badge.style.background='#f5365c'; }
+      else if (unknown && unknown === rows.length){ badge.style.display='inline-block'; badge.textContent=rows.length+' dipantau'; badge.style.background='#f59e0b'; }
       else if (rows.length){ badge.style.display='inline-block'; badge.textContent=rows.length+' up'; badge.style.background='#16a34a'; }
       else badge.style.display='none';
     }

@@ -2774,14 +2774,17 @@
   // ─── Init ────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', async () => {
     initCharts();
+    // Uplink terpin: load mandiri supaya tidak tertahan loader GenieACS/PPPoE.
+    loadUplinks().then(renderUplinks).catch(() => renderUplinks([]));
+    setInterval(() => { loadUplinks().then(renderUplinks).catch(() => {}); }, 15000);
     // Load list router untuk selector & empty state cards
     routers = await loadRouters();
     renderRouterSelect(routers);
     renderEmptyCards(routers);
     // Load overview & alerts & tickets & monitors & ONT stats & PPPoE users
     // (data global, tidak butuh router)
-    const [ov, al, tk, mons, ont, ppp, upl] = await Promise.all([
-      loadOverview(), loadAlerts(), loadTicketStats(), loadMonitors(), loadOntStats(), loadPppoeUsers(), loadUplinks()
+    const [ov, al, tk, mons, ont, ppp] = await Promise.all([
+      loadOverview(), loadAlerts(), loadTicketStats(), loadMonitors(), loadOntStats(), loadPppoeUsers()
     ]);
     monitors = mons || [];
     renderOverviewBar(ov);
@@ -2789,8 +2792,6 @@
     renderTickets(tk);
     renderOntStats(ont);
     renderPppoeUsers(ppp);
-    renderUplinks(upl);
-    setInterval(() => { loadUplinks().then(renderUplinks).catch(() => {}); }, 15000);
     // Restore last selected router atau auto-pick primary
     const savedId = localStorage.getItem('noc_router');
     const validSaved = savedId && routers.find(r => String(r.id) === String(savedId));
