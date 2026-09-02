@@ -1749,9 +1749,14 @@
     if (!wrap) return;
     const list = Array.isArray(rows) ? rows : [];
     const down = list.filter(r => r.isDown && r.state !== 'unknown').length;
+    const unknown = list.filter(r => r.state === 'unknown').length;
     if (sub) {
       sub.textContent = list.length
-        ? (down ? (down + ' uplink down dari ' + list.length + ' terpin') : (list.length + ' uplink terpin · semua up'))
+        ? (down
+            ? (down + ' uplink down dari ' + list.length + ' terpin')
+            : (unknown
+                ? (list.length + ' uplink terpin · router tidak terjangkau')
+                : (list.length + ' uplink terpin · semua up')))
         : 'Port yang di-pin di Device Management';
     }
     if (!list.length) {
