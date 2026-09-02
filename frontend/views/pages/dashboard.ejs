@@ -46,6 +46,26 @@
 
         <!-- Dashboard styles live in app.css (token + dark mode) -->
 
+        <!-- Uplink terpin — selalu tampil, bukan tebakan semua port -->
+        <div class="uplink-strip" id="uplinkStrip">
+          <div class="uplink-strip-hd">
+            <div class="card-title-group">
+              <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+                <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                <line x1="12" y1="20" x2="12.01" y2="20"></line>
+              </svg>
+              <h3>Uplink Terpin</h3>
+              <span id="uplinkStripBadge" class="alerts-badge" style="display:none"></span>
+            </div>
+            <a href="/devices" class="card-link">Pin di Device Management →</a>
+          </div>
+          <div class="uplink-strip-body" id="uplinkStripBody">
+            <div class="uplink-empty">Memuat status uplink…</div>
+          </div>
+        </div>
+
         <!-- Summary Cards -->
         <div class="summary-cards ui-enter">
           <div class="summary-card gradient-blue">
@@ -93,6 +113,7 @@
                 <button class="alert-chip" data-f="ont_offline">ONT</button>
                 <button class="alert-chip" data-f="customer_isolated">Isolir</button>
                 <button class="alert-chip" data-f="ticket_urgent">Tiket</button>
+                <button class="alert-chip" data-f="uplink_down">Uplink</button>
                 <button id="alertsRefresh" class="period-select" style="cursor:pointer" title="Refresh">↻</button>
               </div>
             </div>
@@ -481,6 +502,6 @@
   <script src="/js/app.js"></script>
   <script src="/js/mikrotik-selector.js"></script>
   <script src="/js/dashboard.js"></script>
-  <script src="/js/dashboard-analytics.js"></script>
+  <script src="/js/dashboard-analytics.js?v=uplink1"></script>
 </body>
 </html>

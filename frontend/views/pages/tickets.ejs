@@ -1111,6 +1111,16 @@
           </div>
         </div>
 
+        <div class="form-group" id="notifyTechGroupWrap">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;background:#f8fafc;">
+            <input type="checkbox" id="notifyTechGroup" checked style="margin-top:3px;width:16px;height:16px;accent-color:#1a6ef5;">
+            <span>
+              <span style="display:block;font-size:13px;font-weight:700;color:var(--text);">Kirim ke grup teknisi</span>
+              <span style="display:block;font-size:11.5px;color:var(--muted);margin-top:2px;">Default nyala untuk Gangguan. Instalasi / request / maintenance tidak ikut, kecuali dicentang.</span>
+            </span>
+          </label>
+        </div>
+
       </div>
 
       <!-- Footer -->
@@ -1208,6 +1218,8 @@ function closeCreateModal() {
   // Reset form
   document.getElementById('createTicketForm').reset();
   document.querySelectorAll('.type-card, .priority-card').forEach(c => c.classList.remove('active'));
+  const techCb = document.getElementById('notifyTechGroup');
+  if (techCb) techCb.checked = true;
   clearCustomer();
 }
 
@@ -1216,6 +1228,8 @@ function selectType(card, value) {
   document.querySelectorAll('.type-card').forEach(c => c.classList.remove('active'));
   card.classList.add('active');
   card.querySelector('input[type="radio"]').checked = true;
+  const cb = document.getElementById('notifyTechGroup');
+  if (cb) cb.checked = (value === 'gangguan');
 }
 
 // Priority Selection
@@ -1346,6 +1360,8 @@ async function submitTicket(event) {
   const data = Object.fromEntries(formData.entries());
   
   data.status = 'open';
+  const techCb = document.getElementById('notifyTechGroup');
+  data.notify_tech_group = (techCb && techCb.checked) ? '1' : '0';
   
   const customerId = document.getElementById('selectedCustomerId').value;
   if (customerId) {

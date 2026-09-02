@@ -791,6 +791,18 @@ exports.ticketCreate = async (req, res) => {
         description: ticket.description,
         createdAt: ticket.created_at || ticket.createdAt,
       }).catch(() => {});
+      require('../services/OpsNotifyService').notifyTicket({
+        event: 'created',
+        type: ticket.type,
+        ticketNo: ticket.ticket_number,
+        subject: ticket.title,
+        priority: ticket.priority,
+        customerName: c?.name || null,
+        customerCode: c?.customer_id || null,
+        createdBy: (c?.name ? `${c.name} (Pelanggan via Portal)` : 'Pelanggan via Portal'),
+        description: ticket.description,
+        createdAt: ticket.created_at || ticket.createdAt,
+      }).catch(() => {});
     } catch (_) {}
 
     res.status(201).json({

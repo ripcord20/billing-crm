@@ -581,6 +581,8 @@ function initRefresh() {
       loadDevices();
       loadBillingStats();
       pollRealtimeTraffic();
+      if (typeof window.loadUplinkStrip === 'function') window.loadUplinkStrip();
+      if (typeof window.loadAlerts === 'function') window.loadAlerts();
     });
   }
   // Backward-compat: ID lama yang mungkin masih ada di view lain

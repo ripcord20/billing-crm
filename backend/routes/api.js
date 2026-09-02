@@ -460,6 +460,16 @@ router.delete('/noc/monitors/:id', authenticate, demoGuard, NocController.delete
 // PPPoE username → Customer name mapping (untuk NOC dashboard panel PPPoE)
 router.get('/noc/pppoe-customer-map', authenticate, demoGuard, NocController.pppoeCustomerMap);
 
+const OpsNotifyController = require('../controllers/OpsNotifyController');
+router.get ('/noc/uplinks',            authenticate, demoGuard, OpsNotifyController.uplinkStatus);
+router.post('/noc/uplinks/refresh',    authenticate, demoGuard, OpsNotifyController.uplinkRefresh);
+router.get ('/uplinks/status',         authenticate, demoGuard, OpsNotifyController.uplinkStatus);
+router.post('/uplinks/refresh',        authenticate, demoGuard, OpsNotifyController.uplinkRefresh);
+router.get ('/ops-notify/config',      authenticate, demoGuard, OpsNotifyController.config);
+router.post('/ops-notify/save',        authenticate, demoGuard, OpsNotifyController.save);
+router.get ('/ops-notify/groups',      authenticate, demoGuard, OpsNotifyController.groups);
+router.post('/ops-notify/test',        authenticate, demoGuard, OpsNotifyController.test);
+
 router.get('/billing/unpaid-customers', authenticate, demoGuard, BillingController.unpaidCustomers);
 router.get('/billing/total-outstanding', authenticate, demoGuard, BillingController.totalOutstanding);
 

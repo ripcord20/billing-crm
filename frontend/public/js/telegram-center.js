@@ -83,6 +83,7 @@
       if ($('tg-notif-router'))   $('tg-notif-router').checked   = String(c.telegram_notif_router) === '1';
       if ($('tg-notif-resource')) $('tg-notif-resource').checked = String(c.telegram_notif_resource) === '1';
       if ($('tg-notif-iface'))    $('tg-notif-iface').checked    = String(c.telegram_notif_iface) === '1';
+      if ($('tg-notif-uplink'))   $('tg-notif-uplink').checked   = String(c.telegram_notif_uplink) !== '0';
       if ($('tg-cpu-threshold'))  $('tg-cpu-threshold').value    = c.telegram_cpu_threshold != null ? c.telegram_cpu_threshold : '';
       if ($('tg-mem-threshold'))  $('tg-mem-threshold').value    = c.telegram_mem_threshold != null ? c.telegram_mem_threshold : '';
       if ($('tg-alert-offline'))  $('tg-alert-offline').checked  = String(c.telegram_alert_offline) === '1';
@@ -117,13 +118,14 @@
         const el = $('tg-chat-' + k); if (el) el.value = c['telegram_chat_' + k] || '';
       });
       if ($('tg-chat-event'))   $('tg-chat-event').value = c.telegram_chat_event || '';
+      if ($('tg-chat-uplink')) $('tg-chat-uplink').value = c.telegram_chat_uplink || '';
       if ($('tg-evt-payment'))  $('tg-evt-payment').checked = String(c.telegram_evt_payment) === '1';
       if ($('tg-evt-newcust'))  $('tg-evt-newcust').checked = String(c.telegram_evt_newcust) === '1';
       if ($('tg-evt-ticket'))   $('tg-evt-ticket').checked = String(c.telegram_evt_ticket) === '1';
       if ($('tg-evt-voucher'))  $('tg-evt-voucher').checked = String(c.telegram_evt_voucher) === '1';
       applyBotBadge(!!r.bot_running, String(c.telegram_bot_enabled) === '1');
 
-      ['device','ont','ip','pppoe','router','resource','iface'].forEach(k => {
+      ['device','ont','ip','pppoe','router','resource','iface','uplink'].forEach(k => {
         const cb = $('tg-notif-' + k); if (cb) syncNotifCard(cb);
       });
       // Kartu event bisnis & feed PPPoE kini juga pakai pola .tg-notif → sync highlight.
@@ -140,6 +142,7 @@
       refreshIntervalPill();
       state.dirty = false;
       setSaveDirty(false);
+      loadOpsNotify();
     } catch (e) {
       App.toast && App.toast('Gagal memuat: ' + e.message, 'error');
     }
@@ -370,6 +373,7 @@
       telegram_notif_router:   ($('tg-notif-router') && $('tg-notif-router').checked) ? '1' : '0',
       telegram_notif_resource: ($('tg-notif-resource') && $('tg-notif-resource').checked) ? '1' : '0',
       telegram_notif_iface:    ($('tg-notif-iface') && $('tg-notif-iface').checked) ? '1' : '0',
+      telegram_notif_uplink:   ($('tg-notif-uplink') && $('tg-notif-uplink').checked) ? '1' : '0',
       telegram_cpu_threshold:  ($('tg-cpu-threshold') ? ($('tg-cpu-threshold').value || '90') : '90'),
       telegram_mem_threshold:  ($('tg-mem-threshold') ? ($('tg-mem-threshold').value || '90') : '90'),
       telegram_alert_offline:  ($('tg-alert-offline') && $('tg-alert-offline').checked) ? '1' : '0',
@@ -397,6 +401,7 @@
       telegram_chat_ont:     ($('tg-chat-ont') ? $('tg-chat-ont').value.trim() : ''),
       telegram_chat_ip:      ($('tg-chat-ip') ? $('tg-chat-ip').value.trim() : ''),
       telegram_chat_pppoe:   ($('tg-chat-pppoe') ? $('tg-chat-pppoe').value.trim() : ''),
+      telegram_chat_uplink:  ($('tg-chat-uplink') ? $('tg-chat-uplink').value.trim() : ''),
       telegram_chat_event:   ($('tg-chat-event') ? $('tg-chat-event').value.trim() : ''),
       telegram_evt_payment:  ($('tg-evt-payment') && $('tg-evt-payment').checked) ? '1' : '0',
       telegram_evt_newcust:  ($('tg-evt-newcust') && $('tg-evt-newcust').checked) ? '1' : '0',
@@ -425,6 +430,7 @@
       if (r && r.success) {
         showResult(true, 'Tersimpan', r.message || 'Pengaturan Telegram berhasil disimpan.');
         state.dirty = false; setSaveDirty(false);
+        await saveOpsNotify();
         await loadConfig();
         if (state.current) selectTpl(state.current);
       } else {
@@ -815,7 +821,112 @@
     }
   }
 
-  window.TG = { selectTpl, insertPh, onBody, useDefault, clearBody, toggleToken, testNotif, syncQuiet, refreshHistory, histGoto, onTokenInput, detectChats, useChatId, summaryNow };
+  async function loadOpsNotify() {
+    try {
+      const r = await App.api('/ops-notify/config');
+      const d = (r && r.success && r.data) ? r.data : {};
+      const sel = $('ops-wa-group');
+      if (sel && d.group_jid) {
+        let found = false;
+        for (const o of sel.options) if (o.value === d.group_jid) { found = true; break; }
+        if (!found) {
+          const opt = document.createElement('option');
+          opt.value = d.group_jid;
+          opt.textContent = d.group_name || d.group_jid;
+          sel.appendChild(opt);
+        }
+        sel.value = d.group_jid;
+      }
+      if ($('ops-wa-jid-manual') && d.group_jid && sel && !sel.value) {
+        $('ops-wa-jid-manual').value = d.group_jid;
+      }
+      if ($('ops-wa-uplink')) $('ops-wa-uplink').checked = d.notify_uplink !== false;
+      if ($('ops-wa-ticket')) $('ops-wa-ticket').checked = d.notify_ticket !== false;
+      if ($('ops-wa-uplink')) syncNotifCard($('ops-wa-uplink'));
+      if ($('ops-wa-ticket')) syncNotifCard($('ops-wa-ticket'));
+    } catch (_) {}
+  }
+
+  async function saveOpsNotify() {
+    const sel = $('ops-wa-group');
+    if (!sel && !$('ops-wa-jid-manual')) return;
+    const manual = ($('ops-wa-jid-manual') && $('ops-wa-jid-manual').value.trim()) || '';
+    const jid = manual || (sel && sel.value ? sel.value.trim() : '');
+    let name = '';
+    if (sel && sel.value && sel.selectedOptions && sel.selectedOptions[0] && sel.value === jid) {
+      name = sel.selectedOptions[0].textContent || '';
+    } else if (jid) {
+      name = jid;
+    }
+    try {
+      await App.api('/ops-notify/save', {
+        method: 'POST',
+        body: JSON.stringify({
+          group_jid: jid,
+          group_name: jid ? name : '',
+          notify_uplink: $('ops-wa-uplink') && $('ops-wa-uplink').checked,
+          notify_ticket: $('ops-wa-ticket') && $('ops-wa-ticket').checked,
+        })
+      });
+    } catch (e) {
+      showResult(false, 'Grup WA', 'Telegram tersimpan, grup WA gagal: ' + e.message);
+    }
+  }
+
+  async function refreshOpsGroups() {
+    const sel = $('ops-wa-group');
+    const hint = $('ops-wa-group-hint');
+    if (hint) hint.textContent = 'Memuat daftar grup…';
+    try {
+      const r = await App.api('/ops-notify/groups');
+      const list = (r && r.success && Array.isArray(r.data)) ? r.data : [];
+      const current = sel ? sel.value : '';
+      if (sel) {
+        sel.innerHTML = '<option value="">— Belum dipilih —</option>';
+        list.forEach(g => {
+          const o = document.createElement('option');
+          o.value = g.jid;
+          o.textContent = g.name || g.jid;
+          sel.appendChild(o);
+        });
+        if (current) {
+          let found = false;
+          for (const o of sel.options) if (o.value === current) found = true;
+          if (!found && current) {
+            const o = document.createElement('option');
+            o.value = current; o.textContent = current; sel.appendChild(o);
+          }
+          sel.value = current;
+        }
+      }
+      if (hint) {
+        hint.textContent = list.length
+          ? (list.length + ' grup. Nomor WA default harus sudah join grup.')
+          : ((r && r.message) || 'Tidak ada grup. Pastikan sesi WA terhubung dan bot/nomor sudah masuk grup teknisi.');
+      }
+    } catch (e) {
+      if (hint) hint.textContent = 'Gagal memuat grup: ' + e.message;
+    }
+  }
+
+  function onOpsGroupChange() {
+    const man = $('ops-wa-jid-manual');
+    if (man) man.value = '';
+    markOpsDirty();
+  }
+  function onOpsManualJid() { markOpsDirty(); }
+  function markOpsDirty() { state.dirty = true; setSaveDirty(true); }
+
+  async function testOps(kind) {
+    try {
+      await saveOpsNotify();
+      const r = await App.api('/ops-notify/test', { method: 'POST', body: JSON.stringify({ kind: kind || 'uplink' }) });
+      if (r && r.success) showResult(true, 'Tes WA', r.message || 'Terkirim.');
+      else showResult(false, 'Tes WA', (r && r.message) || 'Gagal mengirim.');
+    } catch (e) { showResult(false, 'Tes WA', e.message); }
+  }
+
+  window.TG = { selectTpl, insertPh, onBody, useDefault, clearBody, toggleToken, testNotif, syncQuiet, refreshHistory, histGoto, onTokenInput, detectChats, useChatId, summaryNow, refreshOpsGroups, onOpsGroupChange, onOpsManualJid, markOpsDirty, testOps };
   window.selectTpl = selectTpl;
   window.saveAll = saveAll;
   window.testConnection = testConnection;

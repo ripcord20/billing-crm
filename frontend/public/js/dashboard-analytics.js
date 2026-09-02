@@ -112,6 +112,8 @@ function initAnalyticsControls() {
       loadBwInterfaceList().then(() => loadBandwidthTrends());
       loadCustomerGrowth();
       loadRevenueForecast();
+      if (typeof loadUplinkStrip === 'function') loadUplinkStrip();
+      if (typeof loadAlerts === 'function') loadAlerts();
     });
   }
 }
@@ -804,9 +806,10 @@ const _ALERT_ICONS = {
   ont:     {bg:'#fff5e9',fg:'#fb8c00',svg:'<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>'},
   isolir:  {bg:'#fff5e9',fg:'#fb8c00',svg:'<circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>'},
   ticket:  {bg:'#eef4ff',fg:'#1d4ed8',svg:'<path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1a2 2 0 0 0 0 4v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 0 0-4z"/>'},
+  uplink:  {bg:'#fdecef',fg:'#dc2626',svg:'<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>'},
 };
 function _alertIcon(kind){
-  const map={device_offline:'device',ont_offline:'ont',customer_isolated:'isolir',ticket_urgent:'ticket'};
+  const map={device_offline:'device',ont_offline:'ont',customer_isolated:'isolir',ticket_urgent:'ticket',uplink_down:'uplink'};
   return _ALERT_ICONS[map[kind]] || _ALERT_ICONS.device;
 }
 function _alertTimeAgo(t){
@@ -871,6 +874,64 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const rf=document.getElementById('alertsRefresh');
   if(rf) rf.addEventListener('click', ()=>loadAlerts());
   setInterval(()=>{ if(typeof loadAlerts==='function') loadAlerts(); }, 60000);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// STRIP UPLINK TERPIN — poll /api/uplinks/status (pin-only)
+// ═══════════════════════════════════════════════════════════════
+function _ulLedClass(row){
+  if (!row) return 'unknown';
+  if (row.state === 'unknown' || row.state === 'missing' || row.state === 'disabled') return row.state;
+  if (row.isDown) return 'down';
+  return 'up';
+}
+function _ulLabel(row){
+  if (row.label) return row.label;
+  if (row.isDown) return 'Down';
+  if (row.state === 'unknown') return 'Router tidak terjangkau';
+  return 'Up';
+}
+async function loadUplinkStrip(){
+  const body = document.getElementById('uplinkStripBody');
+  if (!body) return;
+  try{
+    const j = await App.api('/uplinks/status');
+    const rows = (j && j.success && Array.isArray(j.data)) ? j.data : [];
+    const down = j && typeof j.down === 'number' ? j.down : rows.filter(r => r.isDown && r.state !== 'unknown').length;
+    const badge = document.getElementById('uplinkStripBadge');
+    if (badge){
+      if (down){ badge.style.display='inline-block'; badge.textContent=down+' down'; badge.style.background='#f5365c'; }
+      else if (rows.length){ badge.style.display='inline-block'; badge.textContent=rows.length+' up'; badge.style.background='#16a34a'; }
+      else badge.style.display='none';
+    }
+    if (!rows.length){
+      body.innerHTML='<div class="uplink-empty">Belum ada uplink yang di-pin. <a href="/devices">Pin uplink di Device Management</a>.</div>';
+      return;
+    }
+    body.innerHTML=rows.map(r=>{
+      const led=_ulLedClass(r);
+      const cls='ul-card'+(r.isDown && r.state!=='unknown'?' is-down':'')+(r.state==='unknown'?' is-unknown':'');
+      const rate=(!r.isDown && r.state!=='unknown')
+        ? (`RX ${Number(r.rx_mbps||0).toFixed(1)} / TX ${Number(r.tx_mbps||0).toFixed(1)} Mbps`)
+        : _ulLabel(r);
+      return `<a class="${cls}" href="/noc">
+        <span class="ul-led ${led}"></span>
+        <span class="ul-body">
+          <span class="ul-name">${escHtml(r.router_name||'Router')}</span>
+          <span class="ul-port">${escHtml(r.iface||'')}${r.comment? ' · '+escHtml(r.comment):''}</span>
+          <span class="ul-meta">${escHtml(rate)}</span>
+        </span>
+      </a>`;
+    }).join('');
+  }catch(e){
+    body.innerHTML='<div class="uplink-empty">Gagal memuat status uplink.</div>';
+  }
+}
+window.loadUplinkStrip = loadUplinkStrip;
+window.loadAlerts = loadAlerts;
+document.addEventListener('DOMContentLoaded', ()=>{
+  loadUplinkStrip();
+  setInterval(()=>{ if(typeof loadUplinkStrip==='function') loadUplinkStrip(); }, 15000);
 });
 
 window.addEventListener('themechange', () => {
