@@ -1,6 +1,8 @@
 function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
 let __wgLastConfig = null; // {nas, client_config, filename}
+let __nasRows = [];
+let __previewTimer = null;
 
 function fmtSyncAt(s){
   if(!s) return 'belum';
@@ -42,7 +44,12 @@ async function loadNas(){
     tb.innerHTML=`<tr><td colspan="6" style="text-align:center;color:#dc2626;padding:24px;">${esc(msg)}</td></tr>`;
     return;
   }
-  if(!d.data.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:#94a3b8;">Belum ada NAS. Tambah router yang auth ke FreeRADIUS.</td></tr>';return;}
+  if(!d.data.length){
+    __nasRows=[];
+    tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:#94a3b8;">Belum ada NAS. Tambah router yang auth ke FreeRADIUS.</td></tr>';
+    return;
+  }
+  __nasRows=d.data;
   tb.innerHTML=d.data.map(n=>`<tr>
     <td class="mono">${esc(n.nasname)}${n.tunnel_address?`<br><span style="font-size:11px;color:#64748b;">tunnel: ${esc(n.tunnel_address)}</span>`:''}${n.device?`<br><span style="font-size:11px;color:#166534;">Device: ${esc(n.device.name)}</span>`:''}</td>
     <td>${esc(n.shortname||'—')}</td>
@@ -50,7 +57,7 @@ async function loadNas(){
     <td>${modeBadge(n)}</td>
     <td>${n.last_error?`<span style="color:#dc2626;">${esc(n.last_error)}</span>`:fmtSyncAt(n.last_sync_at)}</td>
     <td class="nas-aksi" style="white-space:nowrap;">
-      <button class="btn btn-sm btn-primary" onclick="openRosScript(${n.id},'${esc(n.shortname||n.nasname)}')" title="Script RouterOS: VPN + RADIUS + isolir">Script</button>
+      <button class="btn btn-sm btn-primary" onclick="openNasDetail(${n.id})" title="Detail NAS + script RouterOS">Detail</button>
       ${n.conn_mode==='vpn'?`<button class="btn btn-sm btn-secondary" onclick="wgGen(${n.id},'${esc(n.shortname||n.nasname)}')" title="Generate/regenerate config VPN saja">VPN</button>`:''}
       <button class="btn btn-sm btn-secondary" onclick="syncNas(${n.id})">Sync</button>
       <button class="btn btn-sm btn-danger" onclick="delNas(${n.id})">Hapus</button>
@@ -62,9 +69,37 @@ window.onConnModeChange=()=>{
   const vpn=document.getElementById('nasConnMode').value==='vpn';
   const lanHint=document.getElementById('nasLanHint');
   if(lanHint) lanHint.style.display=vpn?'none':'block';
-  document.getElementById('nasVpnHint').style.display=vpn?'block':'none';
-  document.getElementById('nasVpnTypeWrap').style.display=vpn?'block':'none';
+  const hint=document.getElementById('nasVpnHint');
+  const wrap=document.getElementById('nasVpnTypeWrap');
+  if(hint) hint.style.display=vpn?'block':'none';
+  if(wrap) wrap.style.display=vpn?'block':'none';
 };
+
+function showNasDetail(show){
+  const list=document.getElementById('nasListView');
+  const det=document.getElementById('nasDetailView');
+  if(list) list.style.display=show?'none':'block';
+  if(det) det.style.display=show?'block':'none';
+}
+
+window.closeNasDetail=()=>{
+  showNasDetail(false);
+};
+
+function nasFormBody(){
+  const secret=document.getElementById('nasSecret').value;
+  const body={
+    nasname:document.getElementById('nasIp').value.trim(),
+    shortname:document.getElementById('nasShort').value.trim(),
+    type:document.getElementById('nasType').value.trim()||'mikrotik',
+    conn_mode:document.getElementById('nasConnMode').value,
+    vpn_type:document.getElementById('nasVpnType').value,
+    ppp_pool_ranges:document.getElementById('nasPppPool').value.trim(),
+    ppp_local_address:document.getElementById('nasPppLocal').value.trim()
+  };
+  if(secret && secret!=='********') body.secret=secret;
+  return body;
+}
 
 window.openNas=()=>{
   document.getElementById('nasId').value='';
@@ -75,29 +110,58 @@ window.openNas=()=>{
   document.getElementById('nasType').value='mikrotik';
   document.getElementById('nasConnMode').value='public';
   document.getElementById('nasVpnType').value='wireguard';
+  document.getElementById('nasPppPool').value='10.20.0.2-10.20.0.254';
+  document.getElementById('nasPppLocal').value='10.20.0.1';
+  __rosTab='v7';
   onConnModeChange();
-  document.getElementById('nasModal').style.display='flex';
+  showNasDetail(true);
+  const pre=document.getElementById('rosScript');
+  if(pre) pre.textContent='Isi IP NAS dan secret, lalu script muncul di sini.';
+  document.getElementById('rosNotes').textContent='Pilih versi RouterOS, lalu salin dan tempel di New Terminal MikroTik.';
+  window.scrollTo({top:0,behavior:'smooth'});
 };
+
+window.openNasDetail=async(id)=>{
+  let n=(__nasRows||[]).find(x=>String(x.id)===String(id));
+  if(!n){
+    await loadNas();
+    n=(__nasRows||[]).find(x=>String(x.id)===String(id));
+  }
+  if(!n) return App.showToast('NAS tidak ditemukan','error');
+  document.getElementById('nasId').value=String(n.id);
+  document.getElementById('nasTitle').textContent='Detail NAS';
+  document.getElementById('nasIp').value=n.nasname||'';
+  document.getElementById('nasShort').value=n.shortname||'';
+  document.getElementById('nasSecret').value='';
+  document.getElementById('nasSecret').placeholder='kosongkan jika tidak diubah';
+  document.getElementById('nasType').value=n.type||'mikrotik';
+  document.getElementById('nasConnMode').value=n.conn_mode==='vpn'?'vpn':'public';
+  document.getElementById('nasVpnType').value=n.vpn_type||'wireguard';
+  document.getElementById('nasPppPool').value=n.ppp_pool_ranges||'10.20.0.2-10.20.0.254';
+  document.getElementById('nasPppLocal').value=n.ppp_local_address||'10.20.0.1';
+  __rosTab='v7';
+  onConnModeChange();
+  showNasDetail(true);
+  window.scrollTo({top:0,behavior:'smooth'});
+  await openRosScript(n.id, n.shortname||n.nasname);
+};
+
 window.saveNas=async()=>{
-  const body={
-    nasname:document.getElementById('nasIp').value.trim(),
-    shortname:document.getElementById('nasShort').value.trim(),
-    secret:document.getElementById('nasSecret').value,
-    type:document.getElementById('nasType').value.trim()||'mikrotik',
-    conn_mode:document.getElementById('nasConnMode').value,
-    vpn_type:document.getElementById('nasVpnType').value
-  };
+  const body=nasFormBody();
   const id=document.getElementById('nasId').value;
+  if(!body.nasname) return App.showToast('IP NAS wajib','error');
+  if(!id && !body.secret) return App.showToast('Secret wajib','error');
   const r=await App.api(id?'/nas/'+id:'/nas',{method:id?'PUT':'POST',body:JSON.stringify(body)});
   if(!r?.success) return App.showToast(r?.message||'Gagal','error');
-  document.getElementById('nasModal').style.display='none';
   const linked=r.device_linked?' (sudah tertaut Device Management)':'';
   const reused=r.reused?'NAS sudah ada, data diperbarui':'Tersimpan';
   App.showToast(
     (r.radius_sync?.success?(reused+' & ter-sync ke FreeRADIUS'):(reused+' di billing: '+(r.radius_sync?.message||'')))+linked,
     r.radius_sync?.success?'success':'error'
   );
-  loadNas();
+  const newId=(r.data&&r.data.id)||id;
+  await loadNas();
+  if(newId) await openNasDetail(newId);
 };
 window.syncNas=async(id)=>{
   const r=await App.api('/nas/'+id+'/sync',{method:'POST'});
@@ -280,37 +344,67 @@ window.openPhoneQr=async()=>{
 let __rosLast=null;
 let __rosTab='v7';
 window.openRosScript=async(id,label)=>{
-  const r=await App.api('/nas/'+id+'/routeros-script',{method:'POST',body:JSON.stringify({})});
+  const r=await App.api('/nas/'+id+'/routeros-script',{method:'POST',body:JSON.stringify(nasFormBody())});
   if(!r?.success) return App.showToast(r?.message||'Gagal membuat script','error');
-  __rosLast={id,label,data:r.data};
-  __rosTab='v7';
-  document.getElementById('rosNas').textContent=label||('#'+id);
-  const apiHost=r.data.recommended_api_host||'—';
-  const radius=' Radius: '+(r.data.radius_host||'192.168.22.9')+'.';
-  const lanDirect=r.data.conn_mode!=='vpn';
+  applyRosData(r.data, label||('#'+id));
+  if(r.data.generated) App.showToast('Peer WireGuard baru digenerate untuk script ini','success');
+};
+
+function applyRosData(data, label){
+  __rosLast={id:document.getElementById('nasId').value,label,data};
+  const apiHost=data.recommended_api_host||'—';
+  const radius=' Radius: '+(data.radius_host||'192.168.22.9')+'.';
+  const lanDirect=data.conn_mode!=='vpn';
   document.getElementById('rosHint').textContent=lanDirect
     ? 'API/sync: '+apiHost+':8728.'+radius+' Mode LAN: tempel script, tanpa VPS dan tanpa port-forward.'
-    : (r.data.endpoint_is_lan
+    : (data.endpoint_is_lan
       ? 'API/sync: '+apiHost+':8728 (tunnel ke IP LAN Fiberix).'+radius+' Bukan VPS cloud. Port-forward tidak dipakai.'
       : 'API/sync: '+apiHost+':8728 (IP tunnel).'+radius+' Server tunnel = Fiberix, bukan VPS cloud.');
-  document.getElementById('rosNotes').textContent=(r.data.notes||[]).join(' ');
-  const pf=r.data.port_forward_example||{};
+  const usage=(data.usage&&data.usage.length)?data.usage.join(' '):(data.notes||[]).join(' ');
+  document.getElementById('rosNotes').textContent=usage;
+  if(data.radius_host){
+    const rh=document.getElementById('nasRadiusHost');
+    if(rh) rh.value=data.radius_host;
+  }
+  const pf=data.port_forward_example||{};
   const pfBox=document.getElementById('rosPfBox');
   const showPf=!pf.skipped && Array.isArray(pf.rules) && pf.rules.length>0;
   if(pfBox) pfBox.style.display=showPf?'block':'none';
   document.getElementById('rosPfNote').textContent=pf.note||'';
   document.getElementById('rosPfTable').innerHTML=(pf.rules||[]).map(x=>`<tr><td>${esc(x.use)}</td><td class="mono">${esc(x.public)}</td><td class="mono">${esc(x.internal)}</td></tr>`).join('');
   document.getElementById('rosPfNft').textContent=pf.nft_example||'';
-  showRosTab('v7');
-  document.getElementById('rosModal').style.display='flex';
-  if(r.data.generated) App.showToast('Peer WireGuard baru digenerate untuk script ini','success');
-  loadNas();
+  showRosTab(__rosTab||'v7');
+}
+
+window.previewNasScript=()=>{
+  clearTimeout(__previewTimer);
+  __previewTimer=setTimeout(runNasPreview, 400);
 };
+
+async function runNasPreview(){
+  const det=document.getElementById('nasDetailView');
+  if(!det || det.style.display==='none') return;
+  const id=document.getElementById('nasId').value;
+  const secret=document.getElementById('nasSecret').value.trim();
+  const nasname=document.getElementById('nasIp').value.trim();
+  if(id && (!secret || secret==='********')){
+    return openRosScript(id, document.getElementById('nasShort').value||nasname);
+  }
+  if(!nasname || !secret) return;
+  const r=await App.api('/nas/routeros-preview',{method:'POST',body:JSON.stringify(nasFormBody())});
+  if(!r?.success) return;
+  applyRosData(r.data, document.getElementById('nasShort').value||nasname);
+}
+
 window.showRosTab=(tab)=>{
   __rosTab=tab;
   const d=__rosLast&&__rosLast.data;
   if(!d) return;
   document.getElementById('rosScript').textContent=tab==='v6'?d.v6:d.v7;
+  const lab=document.getElementById('rosScriptLabel');
+  if(lab) lab.textContent=tab==='v7'?'RouterOS v7 Script':'RouterOS v6 Script';
+  const fmt=document.getElementById('rosScriptFormat');
+  if(fmt) fmt.textContent=tab==='v7'?'(Format action-data)':'(Format redirect-to)';
   document.getElementById('rosTabV7').className='btn btn-sm '+(tab==='v7'?'btn-primary':'btn-secondary');
   document.getElementById('rosTabV6').className='btn btn-sm '+(tab==='v6'?'btn-primary':'btn-secondary');
 };

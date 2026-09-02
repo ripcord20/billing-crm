@@ -60,6 +60,8 @@ async function run(db) {
   await addColumn(sequelize, 'nas_devices', 'vpn_username', 'vpn_username VARCHAR(120) NULL');
   await addColumn(sequelize, 'nas_devices', 'vpn_password', 'vpn_password VARCHAR(256) NULL');
   await addColumn(sequelize, 'nas_devices', 'vpn_psk', 'vpn_psk VARCHAR(256) NULL');
+  await addColumn(sequelize, 'nas_devices', 'ppp_pool_ranges', 'ppp_pool_ranges VARCHAR(120) NULL');
+  await addColumn(sequelize, 'nas_devices', 'ppp_local_address', 'ppp_local_address VARCHAR(64) NULL');
 
   // Tabel signup tenant (self-service) — dibuat bila belum ada.
   if (db.TenantSignup) await db.TenantSignup.sync();

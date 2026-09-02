@@ -613,6 +613,7 @@ function allowNasRadiusPage(req, res, next) {
 router.get('/nas', authenticate, allowNasRadiusPage, (req, res) => {
   res.render('pages/nas', { title: 'Modul NAS', user: req.user, active: 'nas' });
 });
+router.get('/panduan/mikrotik', authenticate, (req, res) => res.redirect(302, '/nas'));
 router.get('/radius', authenticate, allowNasRadiusPage, (req, res) => {
   res.render('pages/radius', { title: 'Modul RADIUS', user: req.user, active: 'radius' });
 });

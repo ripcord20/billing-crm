@@ -136,6 +136,19 @@
       .nas-page .page-header-right { width: 100%; }
       .nas-page .page-header-right .btn { flex: 1 1 auto; }
     }
+    .nas-detail-grid { display:grid; gap:14px; }
+    @media (min-width: 960px) {
+      .nas-detail-grid { grid-template-columns: 1fr 1fr; }
+    }
+    .nas-detail-card { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:16px 18px; }
+    .nas-detail-card h2 { margin:0 0 4px; font-size:15px; }
+    .nas-detail-card .sub { margin:0 0 12px; font-size:12px; color:var(--text-secondary); }
+    .nas-detail-card label { font-size:13px; display:block; }
+    .nas-detail-card input, .nas-detail-card select {
+      width:100%; margin:6px 0 10px; padding:8px; border:1px solid #e2e8f0; border-radius:8px; background:var(--bg-input); color:var(--text);
+    }
+    .nas-script-card { grid-column: 1 / -1; }
+    .nas-usage { margin:12px 0 0; padding:12px; border-radius:10px; background:var(--bg-hover); font-size:12px; color:var(--text-secondary); line-height:1.55; }
   </style>
 </head>
 <body class="nas-page">
@@ -144,10 +157,11 @@
   <div class="main-content">
     <%- include('../partials/topbar') %>
     <main class="page-content">
+      <div id="nasListView">
       <div class="page-header">
         <div class="page-header-left">
           <h1>Modul NAS</h1>
-          <p style="margin:4px 0 0;color:var(--text-secondary);font-size:13px;">Cara mudah: jika MikroTik dan Fiberix <b>satu jaringan</b>, pilih mode <b>LAN / langsung</b> — WireGuard tidak perlu. Tunnel hanya untuk router di lokasi lain. Tombol <b>Script</b> = tempelan RouterOS. Tombol <b>QR HP</b> = tes handshake di HP.</p>
+          <p style="margin:4px 0 0;color:var(--text-secondary);font-size:13px;">Cara mudah: jika MikroTik dan Fiberix <b>satu jaringan</b>, pilih mode <b>LAN / langsung</b> — WireGuard tidak perlu. Tunnel hanya untuk router di lokasi lain. Tombol <b>Detail</b> / <b>+ NAS</b> membuka script RouterOS v6/v7. Tombol <b>QR HP</b> = tes handshake di HP.</p>
         </div>
         <div class="page-header-right" style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-secondary" onclick="openPhoneQr()">QR HP</button>
@@ -160,8 +174,8 @@
         <h2>Cara paling mudah (tanpa VPS, tanpa WireGuard)</h2>
         <ol>
           <li>Pastikan MikroTik bisa ping server Fiberix / RADIUS (biasanya <code>192.168.22.9</code>).</li>
-          <li>Klik <b>+ NAS</b> → mode <b>LAN / satu jaringan</b> → isi IP router + secret → Simpan.</li>
-          <li>Klik <b>Script</b> → salin tab RouterOS v7 → tempel di New Terminal MikroTik.</li>
+          <li>Klik <b>+ NAS</b> → isi Informasi NAS + Profile PPP → <b>Simpan &amp; sync</b>.</li>
+          <li>Salin tab RouterOS v7 di bawah, tempel di New Terminal MikroTik.</li>
         </ol>
         <p class="nas-easy-note">WireGuard / QR HP hanya jika router <em>tidak</em> satu LAN dengan Fiberix. Server tunnel = proses di server Fiberix yang sama, bukan VPS cloud.</p>
       </div>
@@ -180,43 +194,98 @@
         </div>
         <p class="nas-legend-note">Mode VPN hijau hanya jika tunnel WireGuard handshake / IP tunnel merespons. Router online di Device Management tidak dihitung.</p>
       </div></div>
+      </div>
+
+      <div id="nasDetailView" style="display:none;">
+        <div class="page-header">
+          <div class="page-header-left">
+            <button class="btn btn-sm btn-secondary" type="button" onclick="closeNasDetail()" style="margin-bottom:8px;">← Kembali</button>
+            <h1 id="nasTitle">Detail NAS</h1>
+            <p style="margin:4px 0 0;color:var(--text-secondary);font-size:13px;">Informasi detail dan script konfigurasi perangkat NAS</p>
+          </div>
+          <div class="page-header-right" style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-secondary" type="button" onclick="closeNasDetail()">Batal</button>
+            <button class="btn btn-primary" type="button" onclick="saveNas()">Simpan &amp; sync</button>
+          </div>
+        </div>
+        <input type="hidden" id="nasId">
+        <div class="nas-detail-grid">
+          <div class="nas-detail-card">
+            <h2>Informasi Koneksi</h2>
+            <p class="sub">Cara MikroTik mencapai RADIUS Fiberix. LAN jika satu jaringan — tanpa VPS.</p>
+            <label>Mode Koneksi</label>
+            <select id="nasConnMode" onchange="onConnModeChange(); previewNasScript();">
+              <option value="public">LAN / satu jaringan (disarankan)</option>
+              <option value="vpn">Tunnel WireGuard (router beda jaringan)</option>
+            </select>
+            <p id="nasLanHint" style="margin:-4px 0 12px;font-size:12px;color:#166534;line-height:1.45;">Disarankan jika MikroTik bisa ping server Fiberix. Cukup IP NAS + secret. Tidak perlu VPS dan tidak perlu WireGuard.</p>
+            <div id="nasVpnTypeWrap" style="display:none;">
+              <label>Tipe VPN</label>
+              <select id="nasVpnType" onchange="previewNasScript();">
+                <option value="wireguard">WireGuard</option>
+                <option value="openvpn">OpenVPN</option>
+                <option value="l2tp">L2TP / IPsec</option>
+              </select>
+            </div>
+            <div id="nasVpnHint" style="display:none;background:#fff7ed;border:1px dashed #fdba74;border-radius:8px;padding:10px;font-size:12px;color:#9a3412;margin:0 0 12px;">
+              Pakai hanya jika MikroTik <b>tidak</b> satu LAN dengan Fiberix. Endpoint = IP/DNS server Fiberix — bukan VPS cloud.
+            </div>
+            <label>Host RADIUS Fiberix</label>
+            <input id="nasRadiusHost" value="192.168.22.9" readonly>
+          </div>
+          <div class="nas-detail-card">
+            <h2>Informasi Profile PPP</h2>
+            <p class="sub">Pool IP pelanggan aktif. Profile isolir (EXPIRED_FIBERIX) tetap ditambahkan di script.</p>
+            <label>Range IP Pool PPP</label>
+            <input id="nasPppPool" placeholder="10.20.0.2-10.20.0.254" oninput="previewNasScript();">
+            <label>Local address (gateway PPP)</label>
+            <input id="nasPppLocal" placeholder="10.20.0.1" oninput="previewNasScript();">
+          </div>
+          <div class="nas-detail-card">
+            <h2>Informasi NAS</h2>
+            <p class="sub">Identitas router di FreeRADIUS (nasname = IP sumber paket RADIUS).</p>
+            <label>IP NAS (nasname) *</label>
+            <input id="nasIp" placeholder="192.168.22.1" oninput="previewNasScript();">
+            <label>Shortname / nama</label>
+            <input id="nasShort" placeholder="contoh: NAGA" oninput="previewNasScript();">
+            <label>Secret *</label>
+            <input id="nasSecret" type="password" placeholder="secret RADIUS" oninput="previewNasScript();">
+            <label>Tipe</label>
+            <input id="nasType" value="mikrotik">
+          </div>
+          <div class="nas-detail-card nas-script-card">
+            <h2>Script Otomatis</h2>
+            <p class="sub">Script Konfigurasi RouterOS — disesuaikan dengan NAS Anda. Tanpa L2TP/PPTP ke server cloud.</p>
+            <p id="rosHint" style="margin:0 0 12px;color:var(--text-secondary);font-size:13px;"></p>
+            <div style="display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap;align-items:center;">
+              <span style="font-size:12px;color:var(--text-secondary);margin-right:4px;">Script Konfigurasi RouterOS:</span>
+              <button class="btn btn-sm btn-secondary" type="button" id="rosTabV6" onclick="showRosTab('v6')">RouterOS v6</button>
+              <button class="btn btn-sm btn-primary" type="button" id="rosTabV7" onclick="showRosTab('v7')">RouterOS v7</button>
+              <button class="btn btn-sm btn-secondary" type="button" onclick="copyRos()">Salin Script</button>
+              <button class="btn btn-sm btn-secondary" type="button" onclick="downloadRos()">Unduh .rsc</button>
+            </div>
+            <div style="font-size:12px;font-weight:600;margin:0 0 6px;" id="rosScriptLabel">RouterOS v7 Script</div>
+            <div style="font-size:11px;color:var(--text-secondary);margin:-2px 0 8px;" id="rosScriptFormat">(Format action-data)</div>
+            <pre id="rosScript" class="radius-guide-pre" style="max-height:420px;background:#0f172a;color:#e2e8f0;border:none;">Isi IP NAS dan secret, lalu script muncul di sini.</pre>
+            <div id="rosPfBox" style="display:none;margin-top:14px;padding:12px;border:1px dashed var(--border);border-radius:10px;background:var(--bg-hover);">
+              <strong style="font-size:13px;">Lanjutan: contoh port-forward (opsional)</strong>
+              <p id="rosPfNote" style="margin:6px 0 8px;font-size:12px;color:var(--text-secondary);"></p>
+              <div class="table-scroll">
+              <table class="data-table" style="margin:0;">
+                <thead><tr><th>Kegunaan</th><th>Publik (server Fiberix)</th><th>Internal (tunnel)</th></tr></thead>
+                <tbody id="rosPfTable"></tbody>
+              </table>
+              </div>
+              <pre id="rosPfNft" style="margin:10px 0 0;font-size:11px;white-space:pre-wrap;color:var(--text-secondary);"></pre>
+            </div>
+            <div class="nas-usage" id="rosUsage">
+              <b>Petunjuk Penggunaan</b>
+              <p id="rosNotes" style="margin:8px 0 0;"></p>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
-  </div>
-</div>
-<div id="nasModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:460px;">
-    <h3 style="margin:0 0 12px;" id="nasTitle">NAS baru</h3>
-    <input type="hidden" id="nasId">
-    <label style="font-size:13px;">IP NAS (nasname) *</label>
-    <input id="nasIp" placeholder="192.168.22.1" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-    <label style="font-size:13px;">Shortname</label>
-    <input id="nasShort" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-    <label style="font-size:13px;">Secret *</label>
-    <input id="nasSecret" type="password" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-    <label style="font-size:13px;">Tipe</label>
-    <input id="nasType" value="mikrotik" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-    <label style="font-size:13px;">Mode Koneksi</label>
-    <select id="nasConnMode" onchange="onConnModeChange()" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-      <option value="public">LAN / satu jaringan (disarankan)</option>
-      <option value="vpn">Tunnel WireGuard (router beda jaringan)</option>
-    </select>
-    <p id="nasLanHint" style="margin:-4px 0 12px;font-size:12px;color:#166534;line-height:1.45;">Disarankan jika MikroTik bisa ping server Fiberix. Cukup IP NAS + secret. Tidak perlu VPS dan tidak perlu WireGuard.</p>
-    <div id="nasVpnTypeWrap" style="display:none;">
-      <label style="font-size:13px;">Tipe VPN</label>
-      <select id="nasVpnType" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-        <option value="wireguard">WireGuard</option>
-        <option value="openvpn">OpenVPN</option>
-        <option value="l2tp">L2TP / IPsec</option>
-      </select>
-    </div>
-    <div id="nasVpnHint" style="display:none;background:#fff7ed;border:1px dashed #fdba74;border-radius:8px;padding:10px;font-size:12px;color:#9a3412;margin:0 0 12px;">
-      Pakai hanya jika MikroTik <b>tidak</b> satu LAN dengan Fiberix. Setelah simpan, klik tombol
-      <b>VPN</b> lalu tempel script. Endpoint = IP/DNS server Fiberix yang dijangkau router — bukan VPS cloud.
-    </div>
-    <div style="display:flex;justify-content:flex-end;gap:8px;">
-      <button class="btn btn-secondary" onclick="document.getElementById('nasModal').style.display='none'">Batal</button>
-      <button class="btn btn-primary" onclick="saveNas()">Simpan &amp; sync</button>
-    </div>
   </div>
 </div>
 
@@ -305,34 +374,6 @@
   </div>
 </div>
 
-<div id="rosModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1002;align-items:center;justify-content:center;">
-  <div style="background:var(--bg-card);border-radius:12px;padding:24px;width:100%;max-width:720px;max-height:92vh;overflow:auto;color:var(--text);">
-    <h3 style="margin:0 0 4px;">Script RouterOS — <span id="rosNas"></span></h3>
-    <p id="rosHint" style="margin:0 0 12px;color:var(--text-secondary);font-size:13px;"></p>
-    <div style="display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap;">
-      <button class="btn btn-sm btn-primary" type="button" id="rosTabV7" onclick="showRosTab('v7')">RouterOS v7</button>
-      <button class="btn btn-sm btn-secondary" type="button" id="rosTabV6" onclick="showRosTab('v6')">RouterOS v6</button>
-      <button class="btn btn-sm btn-secondary" type="button" onclick="copyRos()">Salin</button>
-      <button class="btn btn-sm btn-secondary" type="button" onclick="downloadRos()">Unduh .rsc</button>
-    </div>
-    <pre id="rosScript" class="radius-guide-pre" style="max-height:320px;background:#0f172a;color:#e2e8f0;border:none;"></pre>
-    <div id="rosPfBox" style="display:none;margin-top:14px;padding:12px;border:1px dashed var(--border);border-radius:10px;background:var(--bg-hover);">
-      <strong style="font-size:13px;">Lanjutan: contoh port-forward (opsional)</strong>
-      <p id="rosPfNote" style="margin:6px 0 8px;font-size:12px;color:var(--text-secondary);"></p>
-      <div class="table-scroll">
-      <table class="data-table" style="margin:0;">
-        <thead><tr><th>Kegunaan</th><th>Publik (server Fiberix)</th><th>Internal (tunnel)</th></tr></thead>
-        <tbody id="rosPfTable"></tbody>
-      </table>
-      </div>
-      <pre id="rosPfNft" style="margin:10px 0 0;font-size:11px;white-space:pre-wrap;color:var(--text-secondary);"></pre>
-    </div>
-    <p id="rosNotes" style="margin:12px 0 0;font-size:12px;color:var(--text-secondary);"></p>
-    <div style="display:flex;justify-content:flex-end;margin-top:14px;">
-      <button class="btn btn-primary" onclick="document.getElementById('rosModal').style.display='none'">Selesai</button>
-    </div>
-  </div>
-</div>
 <style>
   .radius-guide-pre{margin:0;padding:12px;border-radius:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.45;white-space:pre-wrap;word-break:break-all;overflow:auto;}
 </style>
