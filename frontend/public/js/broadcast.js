@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadTemplates();
   loadPackages();
   updateTargetCount();
+  renderBcPlaceholders();
   _refreshTimer = setInterval(() => { loadStats(); loadBroadcasts(true); }, 10000);
 });
 
@@ -216,6 +217,41 @@ window.onTplChange = function(tplId) {
 
 window.updateMsgCount = function() {
   _setText('msgCount', (document.getElementById('bcMessage')?.value?.length || 0) + ' karakter');
+};
+
+const BC_PLACEHOLDERS = [
+  ['{nama}','Nama pelanggan'],['{cid}','ID pelanggan'],['{paket}','Nama paket'],
+  ['{harga}','Harga paket'],['{phone}','No HP'],['{nohp}','Alias no HP'],['{alamat}','Alamat'],
+  ['{invoice}','No invoice'],['{periode}','Periode'],['{jumlah}','Total tagihan'],
+  ['{jatuh_tempo}','Jatuh tempo'],['{duedate}','JT singkat'],['{status}','Status'],['{perusahaan}','Perusahaan']
+];
+
+function renderBcPlaceholders() {
+  const row = document.getElementById('bcPhRow');
+  if (!row) return;
+  row.innerHTML = BC_PLACEHOLDERS.map(([v, desc]) =>
+    '<span title="'+_esc(desc)+'" onclick="insertBcPh(\''+v+'\')" style="font-family:DM Mono,monospace;font-size:11px;font-weight:700;background:#eef5ff;color:#1565e0;padding:4px 9px;border-radius:7px;border:1px solid #dbe7ff;cursor:pointer;">'+_esc(v)+'</span>'
+  ).join('');
+}
+
+window.insertBcPh = function(v) {
+  const ta = document.getElementById('bcMessage');
+  if (!ta) return;
+  if (window.PlaceholderInsert) PlaceholderInsert.insertAtCursor(ta, v);
+  else {
+    const s = ta.selectionStart || 0, e = ta.selectionEnd || 0;
+    ta.value = ta.value.slice(0, s) + v + ta.value.slice(e);
+    ta.focus();
+  }
+  window.updateMsgCount();
+};
+
+window.insertBcCustomPh = function() {
+  const inp = document.getElementById('bcPhCustom');
+  const tok = window.PlaceholderInsert ? PlaceholderInsert.token(inp && inp.value) : '';
+  if (!tok) { App.toast && App.toast('Isi nama placeholder dulu', 'error'); return; }
+  window.insertBcPh(tok);
+  if (inp) inp.value = '';
 };
 
 // ── Create broadcast ──────────────────────────────────────────

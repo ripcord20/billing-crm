@@ -1636,6 +1636,14 @@
                   <span class="tg-ph" onclick="tgInsertPlaceholder('{cid}')">{cid}</span>
                   <span class="tg-ph" onclick="tgInsertPlaceholder('{user}')">{user}</span>
                   <span class="tg-ph" onclick="tgInsertPlaceholder('{waktu}')">{waktu}</span>
+                  <span class="tg-ph" onclick="tgInsertPlaceholder('{router}')">{router}</span>
+                  <span class="tg-ph" onclick="tgInsertPlaceholder('{iface}')">{iface}</span>
+                  <span class="tg-ph" onclick="tgInsertPlaceholder('{alasan}')">{alasan}</span>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0 12px;">
+                  <input class="pf-input" id="tgPhCustom" placeholder="tambah placeholder, mis. paket" style="flex:1;min-width:140px;"
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();tgInsertCustomPlaceholder();}">
+                  <button type="button" class="op-btn-outline" onclick="tgInsertCustomPlaceholder()">Sisipkan {…}</button>
                 </div>
 
                 <div class="tg-tpl-grid">
@@ -1773,7 +1781,24 @@
 
                 <label class="pf-label" style="margin-top:14px;">Template Pesan WA Isolir</label>
                 <textarea class="pf-input" id="isoWaMessage" rows="4" placeholder="Yth {nama}, layanan internet Anda (ID: {cid}) untuk sementara kami nonaktifkan karena tagihan belum dibayar. Total: {tagihan}. Bayar di: {url}" style="resize:vertical;font-family:inherit;"></textarea>
-                <div class="op-hint">Placeholder: <code>{nama}</code> <code>{cid}</code> <code>{tagihan}</code> <code>{url}</code></div>
+                <div id="isoWaPhRow" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
+                  <span class="tg-ph" onclick="insertIsoPh('{nama}')">{nama}</span>
+                  <span class="tg-ph" onclick="insertIsoPh('{cid}')">{cid}</span>
+                  <span class="tg-ph" onclick="insertIsoPh('{phone}')">{phone}</span>
+                  <span class="tg-ph" onclick="insertIsoPh('{paket}')">{paket}</span>
+                  <span class="tg-ph" onclick="insertIsoPh('{invoice}')">{invoice}</span>
+                  <span class="tg-ph" onclick="insertIsoPh('{jumlah}')">{jumlah}</span>
+                  <span class="tg-ph" onclick="insertIsoPh('{tagihan}')">{tagihan}</span>
+                  <span class="tg-ph" onclick="insertIsoPh('{tgl_jatuh_tempo}')">{tgl_jatuh_tempo}</span>
+                  <span class="tg-ph" onclick="insertIsoPh('{url}')">{url}</span>
+                  <span class="tg-ph" onclick="insertIsoPh('{perusahaan}')">{perusahaan}</span>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;">
+                  <input class="pf-input" id="isoPhCustom" placeholder="tambah placeholder, mis. odp" style="flex:1;min-width:140px;"
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();insertIsoCustomPh();}">
+                  <button type="button" class="op-btn-outline" onclick="insertIsoCustomPh()">Sisipkan {…}</button>
+                </div>
+                <div class="op-hint">Klik chip atau ketik nama field. Diganti data pelanggan saat isolir dikirim.</div>
 
                 <div style="margin-top:18px;">
                   <button class="op-btn-primary" onclick="saveIsolirSettings()">Simpan Pengaturan Isolir</button>
@@ -2119,6 +2144,7 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
+<script src="/js/placeholder-insert.js"></script>
 <script>
 function showSection(id, el) {
   document.querySelectorAll('.st-section').forEach(s => s.classList.remove('show'));
@@ -3776,13 +3802,41 @@ document.addEventListener('focusin', (e) => {
 function tgInsertPlaceholder(ph){
   const el = _tgLastTpl || document.getElementById('tg-tpl-device_down');
   if (!el) return;
-  const s = el.selectionStart ?? el.value.length;
-  const e = el.selectionEnd ?? el.value.length;
-  el.value = el.value.slice(0, s) + ph + el.value.slice(e);
-  const pos = s + ph.length;
-  el.focus();
-  try { el.setSelectionRange(pos, pos); } catch(_){}
+  if (window.PlaceholderInsert) PlaceholderInsert.insertAtCursor(el, ph);
+  else {
+    const s = el.selectionStart ?? el.value.length;
+    const e = el.selectionEnd ?? el.value.length;
+    el.value = el.value.slice(0, s) + ph + el.value.slice(e);
+    const pos = s + ph.length;
+    el.focus();
+    try { el.setSelectionRange(pos, pos); } catch(_){}
+  }
   _tgLastTpl = el;
+}
+function tgInsertCustomPlaceholder(){
+  const inp = document.getElementById('tgPhCustom');
+  const tok = window.PlaceholderInsert ? PlaceholderInsert.token(inp && inp.value) : '';
+  if (!tok) { if (window.App && App.toast) App.toast('Isi nama placeholder dulu', 'error'); return; }
+  tgInsertPlaceholder(tok);
+  if (inp) inp.value = '';
+}
+function insertIsoPh(ph){
+  const el = document.getElementById('isoWaMessage');
+  if (!el) return;
+  if (window.PlaceholderInsert) PlaceholderInsert.insertAtCursor(el, ph);
+  else {
+    const s = el.selectionStart ?? el.value.length;
+    const e = el.selectionEnd ?? el.value.length;
+    el.value = el.value.slice(0, s) + ph + el.value.slice(e);
+    el.focus();
+  }
+}
+function insertIsoCustomPh(){
+  const inp = document.getElementById('isoPhCustom');
+  const tok = window.PlaceholderInsert ? PlaceholderInsert.token(inp && inp.value) : '';
+  if (!tok) { if (window.App && App.toast) App.toast('Isi nama placeholder dulu', 'error'); return; }
+  insertIsoPh(tok);
+  if (inp) inp.value = '';
 }
 
 async function loadTelegramSettings() {

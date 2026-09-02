@@ -301,7 +301,13 @@
                 <span id="msgCount" style="font-weight:400;color:var(--d-muted);">0 karakter</span>
               </label>
               <textarea class="pf-textarea" id="bcMessage" placeholder="Halo {nama},&#10;&#10;Informasi untuk Anda..." oninput="updateMsgCount()"></textarea>
-              <div style="font-size:10.5px;color:var(--d-muted);margin-top:3px;">Variabel: <code>{nama}</code> <code>{cid}</code> <code>{paket}</code> <code>{harga}</code> <code>{phone}</code></div>
+              <div id="bcPhRow" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;">
+                <input type="text" class="pf-input" id="bcPhCustom" placeholder="tambah placeholder, mis. odp" style="flex:1;min-width:140px;"
+                  onkeydown="if(event.key==='Enter'){event.preventDefault();insertBcCustomPh();}">
+                <button type="button" onclick="insertBcCustomPh()" style="white-space:nowrap;padding:8px 12px;border-radius:8px;border:1.5px solid #e0e7f3;background:#fff;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;">Sisipkan {…}</button>
+              </div>
+              <div style="font-size:10.5px;color:var(--d-muted);margin-top:3px;">Klik chip atau ketik nama field. Diganti data pelanggan saat kirim.</div>
             </div>
 
             <!-- Target -->
@@ -519,6 +525,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
+<script src="/js/placeholder-insert.js"></script>
 <script src="/js/broadcast.js"></script>
 
 <script>

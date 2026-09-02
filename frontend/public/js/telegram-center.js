@@ -14,7 +14,27 @@
     { key:'pppoe_recover',  name:'PPPoE Pulih',        group:'recover', color:'#22c55e', vars:['{nama}','{cid}','{user}','{waktu}'] },
     { key:'pppoe_connect',    name:'Feed PPPoE Connect',    group:'feed', color:'#16a34a', vars:['{server}','{user}','{nama}','{paket}','{odp}','{ip}','{mac}','{uptime}','{total_active}','{total_offline}'] },
     { key:'pppoe_disconnect', name:'Feed PPPoE Disconnect', group:'feed', color:'#dc2626', vars:['{server}','{user}','{nama}','{paket}','{odp}','{ip}','{mac}','{last_logout}','{total_active}','{total_offline}'] },
+    { key:'router_down',      name:'Router Down',         group:'infra', color:'#7c3aed', vars:['{nama}','{ip}','{alasan}','{waktu}'] },
+    { key:'router_recover',   name:'Router Pulih',        group:'infra', color:'#22c55e', vars:['{nama}','{ip}','{waktu}'] },
+    { key:'resource_down',    name:'Beban Router Tinggi', group:'infra', color:'#c026d3', vars:['{nama}','{ip}','{cpu}','{mem}','{pemicu}','{waktu}'] },
+    { key:'resource_recover', name:'Beban Router Normal', group:'infra', color:'#22c55e', vars:['{nama}','{cpu}','{mem}','{waktu}'] },
+    { key:'iface_down',       name:'Interface Down',      group:'infra', color:'#0f766e', vars:['{router}','{iface}','{komentar}','{waktu}'] },
+    { key:'iface_recover',    name:'Interface Pulih',     group:'infra', color:'#22c55e', vars:['{router}','{iface}','{waktu}'] },
+    { key:'uplink_down',      name:'Uplink Down',         group:'infra', color:'#b45309', vars:['{router}','{iface}','{komentar}','{waktu}'] },
+    { key:'uplink_recover',   name:'Uplink Pulih',        group:'infra', color:'#22c55e', vars:['{router}','{iface}','{waktu}'] },
+    { key:'alert_offline',    name:'PPPoE Offline Massal', group:'alert', color:'#dc2626', vars:['{offline}','{total}','{threshold}','{active}','{waktu}'] },
+    { key:'alert_offline_ok', name:'PPPoE Offline Normal', group:'alert', color:'#16a34a', vars:['{offline}','{total}','{threshold}','{active}','{waktu}'] },
   ];
+
+  const TEST_KIND = {
+    pppoe_connect: 'pppoe_feed_connect',
+    pppoe_disconnect: 'pppoe_feed_disconnect',
+    router_down: 'router', router_recover: 'router',
+    resource_down: 'resource', resource_recover: 'resource',
+    iface_down: 'iface', iface_recover: 'iface',
+    uplink_down: 'uplink', uplink_recover: 'uplink',
+    alert_offline: 'alert_offline', alert_offline_ok: 'alert_offline',
+  };
 
   // Sample data utk preview — placeholder di-replace agar mirip pesan asli.
   const SAMPLE = {
@@ -23,6 +43,9 @@
     server: 'Archer', paket: 'Upto 50Mbps',
     odp: 'ODP-Blok-C', mac: '5C:09:79:52:09:64', uptime: '9s',
     last_logout: nowClock(), total_active: 2, total_offline: 0,
+    alasan: 'ICMP tidak merespons', pemicu: 'CPU', cpu: '92', mem: '81',
+    router: 'CORE 1', iface: 'sfp+1', komentar: ' (Uplink ISP)',
+    offline: '48', total: '120', threshold: '30', active: '72',
   };
   // Untuk ont/ip/pppoe, {cid} dipakai polos tanpa kurung di sebagian template.
   const SAMPLE_PLAIN = { ...SAMPLE, cid: 'CUST-00123' };
@@ -174,6 +197,8 @@
       { id:'down',    label:'Gangguan / Down', dot:'#ef4444' },
       { id:'recover', label:'Pemulihan',       dot:'#22c55e' },
       { id:'feed',    label:'Feed PPPoE (kartu)', dot:'#229ED9' },
+      { id:'infra',   label:'Router / Interface / Uplink', dot:'#7c3aed' },
+      { id:'alert',   label:'Alert massal', dot:'#b45309' },
     ];
     let html = '';
     groups.forEach(g => {
@@ -195,6 +220,7 @@
       });
     });
     wrap.innerHTML = html;
+    if ($('tplCount')) $('tplCount').textContent = String(TPLS.length);
   }
 
   function hexA(hex, a) {
@@ -217,10 +243,9 @@
     const tags = ['<b>','</b>','<i>','</i>','<code>','</code>']
       .map(tag => `<span class="tg-tag" onclick="TG.insertPh('${escAttr(tag)}')">${escHtml(tag)}</span>`).join('');
 
-    const isFeed = (key === 'pppoe_connect' || key === 'pppoe_disconnect');
-    const feedKind = key === 'pppoe_connect' ? 'pppoe_feed_connect' : 'pppoe_feed_disconnect';
-    const testBtn = isFeed
-      ? `<button class="et-link-btn" onclick="TG.testNotif('${feedKind}')" style="color:#229ED9;">
+    const testKind = TEST_KIND[key];
+    const testBtn = testKind
+      ? `<button class="et-link-btn" onclick="TG.testNotif('${testKind}')" style="color:#229ED9;">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
           Tes Kirim
         </button>`
@@ -233,6 +258,13 @@
       <textarea id="tplBody" class="et-ta" oninput="TG.onBody()" placeholder="${escAttr(def)}"></textarea>
       <div class="et-label" style="margin:14px 0 0;">Placeholder</div>
       <div class="tg-ph-row">${phChips}</div>
+      <div class="et-label" style="margin-top:2px;">Tambah placeholder</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+        <input id="tplPhCustom" class="et-inp" placeholder="mis. odp atau paket" style="flex:1;min-width:140px;"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();TG.insertCustomPh();}">
+        <button type="button" class="et-link-btn" onclick="TG.insertCustomPh()">Sisipkan {…}</button>
+      </div>
+      <div class="et-hint" style="margin-top:-4px;">Ketik nama field lalu sisipkan ke isi pesan. Sistem mengganti {nama} dengan data asli saat dikirim.</div>
       <div class="et-label" style="margin-top:2px;">Format HTML Telegram</div>
       <div class="tg-tag-row">${tags}</div>
       <div class="et-editor-foot">
@@ -260,11 +292,21 @@
   }
   function insertPh(ph) {
     const ta = $('tplBody'); if (!ta) return;
-    const s = ta.selectionStart || 0, e = ta.selectionEnd || 0;
-    ta.value = ta.value.slice(0, s) + ph + ta.value.slice(e);
-    ta.focus();
-    ta.selectionStart = ta.selectionEnd = s + ph.length;
+    if (window.PlaceholderInsert) PlaceholderInsert.insertAtCursor(ta, ph);
+    else {
+      const s = ta.selectionStart || 0, e = ta.selectionEnd || 0;
+      ta.value = ta.value.slice(0, s) + ph + ta.value.slice(e);
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = s + ph.length;
+    }
     onBody();
+  }
+  function insertCustomPh() {
+    const inp = $('tplPhCustom');
+    const tok = window.PlaceholderInsert ? PlaceholderInsert.token(inp && inp.value) : '';
+    if (!tok) { App.toast && App.toast('Isi nama placeholder dulu', 'error'); return; }
+    insertPh(tok);
+    if (inp) inp.value = '';
   }
   function useDefault() {
     const ta = $('tplBody'); if (!ta || !state.current) return;
@@ -362,7 +404,7 @@
   }
 
   function payload() {
-    return {
+    const o = {
       telegram_enabled:      $('tg-enabled').checked ? '1' : '0',
       telegram_bot_token:    tokenValueForSave(),
       telegram_chat_id:      $('tg-chat-id').value.trim(),
@@ -407,17 +449,11 @@
       telegram_evt_newcust:  ($('tg-evt-newcust') && $('tg-evt-newcust').checked) ? '1' : '0',
       telegram_evt_ticket:   ($('tg-evt-ticket') && $('tg-evt-ticket').checked) ? '1' : '0',
       telegram_evt_voucher:  ($('tg-evt-voucher') && $('tg-evt-voucher').checked) ? '1' : '0',
-      telegram_tpl_device_down:    state.config.telegram_tpl_device_down || '',
-      telegram_tpl_device_recover: state.config.telegram_tpl_device_recover || '',
-      telegram_tpl_ont_down:       state.config.telegram_tpl_ont_down || '',
-      telegram_tpl_ont_recover:    state.config.telegram_tpl_ont_recover || '',
-      telegram_tpl_ip_down:        state.config.telegram_tpl_ip_down || '',
-      telegram_tpl_ip_recover:     state.config.telegram_tpl_ip_recover || '',
-      telegram_tpl_pppoe_down:     state.config.telegram_tpl_pppoe_down || '',
-      telegram_tpl_pppoe_recover:  state.config.telegram_tpl_pppoe_recover || '',
-      telegram_tpl_pppoe_connect:    state.config.telegram_tpl_pppoe_connect || '',
-      telegram_tpl_pppoe_disconnect: state.config.telegram_tpl_pppoe_disconnect || '',
     };
+    TPLS.forEach((t) => {
+      o['telegram_tpl_' + t.key] = state.config['telegram_tpl_' + t.key] || '';
+    });
+    return o;
   }
 
   async function saveAll() {
@@ -926,7 +962,7 @@
     } catch (e) { showResult(false, 'Tes WA', e.message); }
   }
 
-  window.TG = { selectTpl, insertPh, onBody, useDefault, clearBody, toggleToken, testNotif, syncQuiet, refreshHistory, histGoto, onTokenInput, detectChats, useChatId, summaryNow, refreshOpsGroups, onOpsGroupChange, onOpsManualJid, markOpsDirty, testOps };
+  window.TG = { selectTpl, insertPh, insertCustomPh, onBody, useDefault, clearBody, toggleToken, testNotif, syncQuiet, refreshHistory, histGoto, onTokenInput, detectChats, useChatId, summaryNow, refreshOpsGroups, onOpsGroupChange, onOpsManualJid, markOpsDirty, testOps };
   window.selectTpl = selectTpl;
   window.saveAll = saveAll;
   window.testConnection = testConnection;

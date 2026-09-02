@@ -224,7 +224,12 @@
             <div class="wt-field">
               <div class="wt-label">Variabel Tersedia <span style="font-weight:600;color:#9aa6bd;">— klik untuk menyisipkan</span></div>
               <div class="wt-vars" id="varChips"></div>
-              <div class="wt-hint">Variabel otomatis diganti dengan data asli saat pesan dikirim.</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;">
+                <input class="wt-inp" id="fPhCustom" placeholder="tambah placeholder, mis. odp" style="flex:1;min-width:140px;padding:8px 11px;"
+                  onkeydown="if(event.key==='Enter'){event.preventDefault();insertCustomPh();}">
+                <button type="button" class="wt-btn wt-btn-ghost" onclick="insertCustomPh()" style="padding:8px 12px;">Sisipkan {…}</button>
+              </div>
+              <div class="wt-hint">Klik chip di atas, atau ketik nama field lalu sisipkan. Variabel otomatis diganti data asli saat pesan dikirim.</div>
             </div>
           </div>
         </div>
@@ -302,6 +307,7 @@
 </div>
 
 <script src="/js/app.js"></script>
+<script src="/js/placeholder-insert.js"></script>
 <script>
   // ── Metadata kategori (label, warna, ikon SVG line) ──
   const CATS = {
@@ -346,12 +352,13 @@
   };
   // Variabel per kategori
   const V = {
-    REMINDER:[['{nama}','Nama pelanggan'],['{nohp}','No HP, 628xxx'],['{invoice}','No invoice'],['{paket}','Nama paket'],['{periode}','Periode tagihan'],['{jumlah}','Total tagihan'],['{jatuh_tempo}','Tgl jatuh tempo'],['{tgl_jatuh_tempo}','Alias jatuh_tempo'],['{status}','Status tagihan'],['{link_bayar_permanen}','Link bayar permanen'],['{perusahaan}','Nama perusahaan']],
+    REMINDER:[['{nama}','Nama pelanggan'],['{cid}','ID pelanggan'],['{nohp}','No HP, 628xxx'],['{phone}','Alias no HP'],['{alamat}','Alamat'],['{invoice}','No invoice'],['{paket}','Nama paket'],['{harga}','Harga paket'],['{periode}','Periode tagihan'],['{jumlah}','Total tagihan'],['{jatuh_tempo}','Tgl jatuh tempo'],['{tgl_jatuh_tempo}','Alias jatuh_tempo'],['{duedate}','JT singkat DD/MM/YYYY'],['{status}','Status tagihan'],['{link_bayar_permanen}','Link bayar permanen'],['{perusahaan}','Nama perusahaan']],
     PAYMENT:[['{nama}','Nama pelanggan'],['{nohp}','No HP'],['{invoice}','No invoice'],['{paket}','Nama paket'],['{jumlah}','Jumlah bayar'],['{tgl_bayar}','Tgl pembayaran'],['{metode}','Metode bayar'],['{ref_no}','No referensi'],['{due_date_baru}','JT periode berikutnya'],['{link_bayar_permanen}','Link bayar permanen'],['{perusahaan}','Nama perusahaan']],
-    ISOLIR:[['{nama}','Nama pelanggan'],['{cid}','ID pelanggan'],['{phone}','No HP'],['{invoice}','No invoice menunggak'],['{jumlah}','Jumlah tagihan'],['{tgl_jatuh_tempo}','Tgl jatuh tempo'],['{paket}','Nama paket'],['{static_ip}','IP statis'],['{link_bayar_permanen}','Link bayar permanen'],['{perusahaan}','Nama perusahaan']],
+    ISOLIR:[['{nama}','Nama pelanggan'],['{cid}','ID pelanggan'],['{phone}','No HP'],['{invoice}','No invoice menunggak'],['{jumlah}','Jumlah tagihan'],['{tagihan}','Alias jumlah'],['{tgl_jatuh_tempo}','Tgl jatuh tempo'],['{paket}','Nama paket'],['{static_ip}','IP statis'],['{link_bayar_permanen}','Link bayar permanen'],['{url}','URL halaman isolir'],['{perusahaan}','Nama perusahaan']],
     RESTORE:[['{nama}','Nama pelanggan'],['{cid}','ID pelanggan'],['{phone}','No HP'],['{invoice}','No invoice dibayar'],['{jumlah}','Jumlah dibayar'],['{tgl_bayar}','Tgl pembayaran'],['{paket}','Nama paket'],['{link_bayar_permanen}','Link bayar permanen'],['{perusahaan}','Nama perusahaan']],
     WELCOME:[['{nama}','Nama pelanggan'],['{cid}','ID pelanggan'],['{phone}','No HP'],['{email}','Email'],['{alamat}','Alamat'],['{paket}','Nama paket'],['{harga_paket}','Harga paket'],['{tgl_install}','Tgl pemasangan'],['{jatuh_tempo}','JT invoice pertama'],['{link_bayar_permanen}','Link bayar permanen'],['{perusahaan}','Nama perusahaan']],
-    INVOICE:[['{nama}','Nama pelanggan'],['{nohp}','No HP'],['{invoice}','No invoice'],['{paket}','Nama paket'],['{periode}','Periode tagihan'],['{jumlah}','Total tagihan'],['{jatuh_tempo}','Tgl jatuh tempo'],['{tgl_bayar}','Tgl bayar (PAID)'],['{metode}','Metode (PAID)'],['{aktif_hingga}','Aktif sampai'],['{status}','Status'],['{link_invoice}','Link invoice publik'],['{link_bayar_permanen}','Link bayar permanen'],['{perusahaan}','Nama perusahaan']]
+    INVOICE:[['{nama}','Nama pelanggan'],['{nohp}','No HP'],['{invoice}','No invoice'],['{paket}','Nama paket'],['{periode}','Periode tagihan'],['{jumlah}','Total tagihan'],['{jatuh_tempo}','Tgl jatuh tempo'],['{tgl_bayar}','Tgl bayar (PAID)'],['{metode}','Metode (PAID)'],['{aktif_hingga}','Aktif sampai'],['{status}','Status'],['{link_invoice}','Link invoice publik'],['{link_bayar_permanen}','Link bayar permanen'],['{perusahaan}','Nama perusahaan']],
+    BROADCAST:[['{nama}','Nama pelanggan'],['{cid}','ID pelanggan'],['{paket}','Nama paket'],['{harga}','Harga paket'],['{phone}','No HP'],['{nohp}','Alias no HP'],['{alamat}','Alamat'],['{invoice}','No invoice terakhir'],['{periode}','Periode tagihan'],['{jumlah}','Total tagihan'],['{jatuh_tempo}','Tgl jatuh tempo'],['{tgl_jatuh_tempo}','Alias jatuh_tempo'],['{duedate}','JT singkat'],['{status}','Status tagihan'],['{perusahaan}','Nama perusahaan']]
   };
   function varsFor(cat){
     if(cat==='payment_confirm') return V.PAYMENT;
@@ -359,6 +366,7 @@
     if(cat==='isolir') return V.ISOLIR;
     if(cat==='restore') return V.RESTORE;
     if(cat==='invoice_paid'||cat==='invoice_unpaid') return V.INVOICE;
+    if(cat==='broadcast'||cat==='custom') return V.BROADCAST;
     return V.REMINDER;
   }
 
@@ -476,10 +484,20 @@
 
   function insertVar(v){
     const ta=document.getElementById('fContent');
-    const s=ta.selectionStart,e=ta.selectionEnd;
-    ta.value=ta.value.substring(0,s)+v+ta.value.substring(e);
-    ta.selectionStart=ta.selectionEnd=s+v.length; ta.focus();
+    if(window.PlaceholderInsert) PlaceholderInsert.insertAtCursor(ta,v);
+    else {
+      const s=ta.selectionStart,e=ta.selectionEnd;
+      ta.value=ta.value.substring(0,s)+v+ta.value.substring(e);
+      ta.selectionStart=ta.selectionEnd=s+v.length; ta.focus();
+    }
     onEdit();
+  }
+  function insertCustomPh(){
+    const inp=document.getElementById('fPhCustom');
+    const tok=window.PlaceholderInsert?PlaceholderInsert.token(inp&&inp.value):'';
+    if(!tok){ toast('Isi nama placeholder dulu',true); return; }
+    insertVar(tok);
+    if(inp) inp.value='';
   }
   function wrapSel(mark){
     const ta=document.getElementById('fContent');
