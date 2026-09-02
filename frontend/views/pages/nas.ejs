@@ -109,6 +109,22 @@
     }
     .nas-legend .nas-link { pointer-events:none; }
     .nas-legend-note { margin:8px 2px 0; font-size:12px; color:var(--text-secondary); }
+    .nas-easy {
+      margin: 0 0 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid #bbf7d0;
+      background: linear-gradient(180deg,#f0fdf4 0%,#ecfdf5 100%);
+    }
+    .nas-easy h2 { margin:0 0 6px; font-size:15px; color:#065f46; }
+    .nas-easy ol { margin:0; padding-left:18px; color:#14532d; font-size:13px; line-height:1.55; }
+    .nas-easy .nas-easy-note { margin:8px 0 0; font-size:12px; color:#3f6212; }
+    [data-theme="dark"] .nas-easy {
+      border-color:#166534; background:linear-gradient(180deg,#052e16,#14532d);
+    }
+    [data-theme="dark"] .nas-easy h2 { color:#bbf7d0; }
+    [data-theme="dark"] .nas-easy ol { color:#d1fae5; }
+    [data-theme="dark"] .nas-easy .nas-easy-note { color:#a3e635; }
     .nas-swipe-hint {
       display: none;
       margin: 8px 2px 0;
@@ -131,7 +147,7 @@
       <div class="page-header">
         <div class="page-header-left">
           <h1>Modul NAS</h1>
-          <p style="margin:4px 0 0;color:var(--text-secondary);font-size:13px;">Tombol <b>QR HP</b> = barcode untuk aplikasi WireGuard di HP (tes handshake). Tombol <b>Script</b> = tempelan RouterOS. IP tunnel = WireGuard Fiberix, bukan sewa VPN cloud.</p>
+          <p style="margin:4px 0 0;color:var(--text-secondary);font-size:13px;">Cara mudah: jika MikroTik dan Fiberix <b>satu jaringan</b>, pilih mode <b>LAN / langsung</b> — WireGuard tidak perlu. Tunnel hanya untuk router di lokasi lain. Tombol <b>Script</b> = tempelan RouterOS. Tombol <b>QR HP</b> = tes handshake di HP.</p>
         </div>
         <div class="page-header-right" style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-secondary" onclick="openPhoneQr()">QR HP</button>
@@ -139,6 +155,15 @@
           <button class="btn btn-secondary" onclick="importNas()">Import dari RADIUS</button>
           <button class="btn btn-primary" onclick="openNas()">+ NAS</button>
         </div>
+      </div>
+      <div class="nas-easy">
+        <h2>Cara paling mudah (tanpa VPS, tanpa WireGuard)</h2>
+        <ol>
+          <li>Pastikan MikroTik bisa ping server Fiberix / RADIUS (biasanya <code>192.168.22.9</code>).</li>
+          <li>Klik <b>+ NAS</b> → mode <b>LAN / satu jaringan</b> → isi IP router + secret → Simpan.</li>
+          <li>Klik <b>Script</b> → salin tab RouterOS v7 → tempel di New Terminal MikroTik.</li>
+        </ol>
+        <p class="nas-easy-note">WireGuard / QR HP hanya jika router <em>tidak</em> satu LAN dengan Fiberix. Server tunnel = proses di server Fiberix yang sama, bukan VPS cloud.</p>
       </div>
       <div class="card nas-table-card"><div class="card-body">
         <div class="table-scroll" id="nasTableScroll">
@@ -172,9 +197,10 @@
     <input id="nasType" value="mikrotik" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
     <label style="font-size:13px;">Mode Koneksi</label>
     <select id="nasConnMode" onchange="onConnModeChange()" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-      <option value="public">Public IP (langsung)</option>
-      <option value="vpn">VPN (tunnel)</option>
+      <option value="public">LAN / satu jaringan (disarankan)</option>
+      <option value="vpn">Tunnel WireGuard (router beda jaringan)</option>
     </select>
+    <p id="nasLanHint" style="margin:-4px 0 12px;font-size:12px;color:#166534;line-height:1.45;">Disarankan jika MikroTik bisa ping server Fiberix. Cukup IP NAS + secret. Tidak perlu VPS dan tidak perlu WireGuard.</p>
     <div id="nasVpnTypeWrap" style="display:none;">
       <label style="font-size:13px;">Tipe VPN</label>
       <select id="nasVpnType" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
@@ -183,10 +209,9 @@
         <option value="l2tp">L2TP / IPsec</option>
       </select>
     </div>
-    <div id="nasVpnHint" style="display:none;background:#f0f6ff;border:1px dashed #9cc2ff;border-radius:8px;padding:10px;font-size:12px;color:#334155;margin:0 0 12px;">
-      Alamat tunnel dialokasikan otomatis. Setelah disimpan, klik tombol
-      <b>VPN</b> pada baris NAS untuk auto-generate credential/peer + config yang siap
-      ditempel ke MikroTik.
+    <div id="nasVpnHint" style="display:none;background:#fff7ed;border:1px dashed #fdba74;border-radius:8px;padding:10px;font-size:12px;color:#9a3412;margin:0 0 12px;">
+      Pakai hanya jika MikroTik <b>tidak</b> satu LAN dengan Fiberix. Setelah simpan, klik tombol
+      <b>VPN</b> lalu tempel script. Endpoint = IP/DNS server Fiberix yang dijangkau router — bukan VPS cloud.
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;">
       <button class="btn btn-secondary" onclick="document.getElementById('nasModal').style.display='none'">Batal</button>
@@ -199,14 +224,15 @@
 <div id="wgServerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:520px;max-height:90vh;overflow:auto;">
     <h3 style="margin:0 0 4px;">Pengaturan WireGuard Server</h3>
-    <p style="margin:0 0 14px;color:#64748b;font-size:12px;">Server tunnel tempat MikroTik terhubung. Endpoint host harus dijangkau router (IP publik server, atau DNS).</p>
+    <p style="margin:0 0 14px;color:#64748b;font-size:12px;line-height:1.5;">Ini proses di <b>server Fiberix yang sama</b> (kantor/LAN), <b>bukan VPS cloud</b>. Lewati seluruh pengaturan ini jika MikroTik sudah satu jaringan dengan Fiberix — pakai mode LAN. Isi endpoint hanya jika router di lokasi lain harus menembus ke server ini.</p>
     <label style="font-size:13px;">Aktifkan WireGuard</label>
     <select id="wgEnabled" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
       <option value="true">Aktif</option>
       <option value="false">Nonaktif</option>
     </select>
-    <label style="font-size:13px;">Endpoint Host (IP publik / domain server) *</label>
-    <input id="wgEndpointHost" placeholder="vpn.isp-anda.com atau 203.0.113.10" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <label style="font-size:13px;">Endpoint Host (IP server Fiberix / DNS) *</label>
+    <input id="wgEndpointHost" placeholder="192.168.22.9 atau fiberix.my.id" style="width:100%;margin:6px 0 4px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <p style="margin:0 0 10px;font-size:11px;color:#64748b;">IP LAN (192.168.x / 10.x) = benar untuk jaringan lokal. IP publik/DNS hanya jika router di luar LAN.</p>
     <div style="display:flex;gap:8px;">
       <div style="flex:1;"><label style="font-size:13px;">Listen Port</label>
         <input id="wgListenPort" value="51820" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;"></div>
@@ -290,12 +316,12 @@
       <button class="btn btn-sm btn-secondary" type="button" onclick="downloadRos()">Unduh .rsc</button>
     </div>
     <pre id="rosScript" class="radius-guide-pre" style="max-height:320px;background:#0f172a;color:#e2e8f0;border:none;"></pre>
-    <div style="margin-top:14px;padding:12px;border:1px dashed var(--border);border-radius:10px;background:var(--bg-hover);">
-      <strong style="font-size:13px;">Contoh Port Forward (belum dipasang)</strong>
+    <div id="rosPfBox" style="display:none;margin-top:14px;padding:12px;border:1px dashed var(--border);border-radius:10px;background:var(--bg-hover);">
+      <strong style="font-size:13px;">Lanjutan: contoh port-forward (opsional)</strong>
       <p id="rosPfNote" style="margin:6px 0 8px;font-size:12px;color:var(--text-secondary);"></p>
       <div class="table-scroll">
       <table class="data-table" style="margin:0;">
-        <thead><tr><th>Kegunaan</th><th>Publik (VPS)</th><th>Internal (tunnel)</th></tr></thead>
+        <thead><tr><th>Kegunaan</th><th>Publik (server Fiberix)</th><th>Internal (tunnel)</th></tr></thead>
         <tbody id="rosPfTable"></tbody>
       </table>
       </div>

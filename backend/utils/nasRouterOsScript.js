@@ -124,23 +124,38 @@ function isPrivateHost(host) {
 }
 
 function buildPortForwardExample(opts) {
-  const rawVps = opts.vpsHost || opts.wgEndpointHost || '';
-  const vps = isPrivateHost(rawVps) ? 'IP_PUBLIK_VPS' : rawVps;
+  const rawHost = opts.vpsHost || opts.wgEndpointHost || opts.serverHost || '';
   const tunnel = stripCidr(opts.tunnelAddress || opts.nasname || '10.10.0.2');
+  const lanOnly = opts.skipPortForward === true || isPrivateHost(rawHost);
+  if (lanOnly) {
+    return {
+      applied: false,
+      skipped: true,
+      note: 'Port-forward tidak diperlukan: server Fiberix di LAN. Hubungkan MikroTik langsung ke IP server (bukan lewat internet).',
+      vps_host: rawHost || null,
+      server_host: rawHost || null,
+      tunnel_ip: tunnel,
+      rules: [],
+      nft_example: ''
+    };
+  }
+  const host = rawHost;
   const id = parseInt(opts.nasId, 10) || 1;
   const apiPub = 28000 + (id % 1000);
   const winboxPub = 29000 + (id % 1000);
   return {
     applied: false,
-    note: 'Contoh saja — belum dipasang di VPS. Pakai jika Winbox/API tidak tembus dari internet.',
-    vps_host: vps,
+    skipped: false,
+    note: 'Contoh lanjutan — belum dipasang. Pakai hanya jika Winbox/API tidak tembus dari internet. Bukan langkah wajib.',
+    vps_host: host,
+    server_host: host,
     tunnel_ip: tunnel,
     rules: [
-      { use: 'API RouterOS', public: `${vps}:${apiPub}`, internal: `${tunnel}:8728` },
-      { use: 'Winbox', public: `${vps}:${winboxPub}`, internal: `${tunnel}:8291` }
+      { use: 'API RouterOS', public: `${host}:${apiPub}`, internal: `${tunnel}:8728` },
+      { use: 'Winbox', public: `${host}:${winboxPub}`, internal: `${tunnel}:8291` }
     ],
     nft_example: [
-      `# di VPS (nftables/iptables) — JANGAN dijalankan otomatis`,
+      `# di server Fiberix (nftables/iptables) — JANGAN dijalankan otomatis`,
       `iptables -t nat -A PREROUTING -p tcp --dport ${apiPub} -j DNAT --to-destination ${tunnel}:8728`,
       `iptables -t nat -A PREROUTING -p tcp --dport ${winboxPub} -j DNAT --to-destination ${tunnel}:8291`,
       `iptables -A FORWARD -p tcp -d ${tunnel} --dport 8728 -j ACCEPT`,
@@ -158,7 +173,9 @@ function buildNasRouterOsScript(opts) {
     `# FIBERIX — script NAS ${name}`,
     `# Radius: ${radiusHost}  secret: (terisi)  comment=FIBERIX`,
     `# Tidak menghapus object BILLINGRADIUS. Disable radius sewa secara manual jika auth hanya mau lewat Fiberix.`,
-    tunnel ? `# IP tunnel WireGuard router ini: ${tunnel}  ← pakai ini untuk API/sync, bukan wajib sewa VPN cloud.` : '# Mode public: RADIUS lewat IP LAN/publik.',
+    tunnel
+      ? `# IP tunnel WireGuard router ini: ${tunnel}  ← pakai ini untuk API/sync jika mode tunnel.`
+      : '# Mode LAN / langsung: RADIUS lewat IP lokal. WireGuard tidak wajib.',
     ''
   ];
 
@@ -170,7 +187,7 @@ function buildNasRouterOsScript(opts) {
       ''
     ];
     if (opts.vpnType === 'wireguard' && opts.wireguard) {
-      lines.push('# 2) WireGuard ke VPS billing (bukan L2TP sg12)');
+      lines.push('# 2) WireGuard ke server billing Fiberix (bukan L2TP)');
       lines.push(...buildWireguardBlock(version, opts.wireguard));
       lines.push('');
     } else if (opts.vpnType === 'l2tp' && opts.l2tp) {
@@ -178,7 +195,7 @@ function buildNasRouterOsScript(opts) {
       lines.push(...buildL2tpBlock(version, opts.l2tp));
       lines.push('');
     } else {
-      lines.push('# 2) VPN dilewati (mode public / belum digenerate)');
+      lines.push('# 2) Tunnel dilewati (mode LAN / langsung — disarankan jika satu jaringan)');
       lines.push('');
     }
     lines.push('# 3) RADIUS Fiberix + PPP AAA + profile isolir');
@@ -190,26 +207,32 @@ function buildNasRouterOsScript(opts) {
 
   const notes = [
     'Tempel di New Terminal MikroTik (RouterOS v7 atau v6 sesuai tab).',
-    'IP tunnel = alamat WireGuard yang sudah dialokasi Fiberix (mis. 10.10.0.2). Bukan sewa server VPN BillingRadius.',
+    'Jika MikroTik dan Fiberix satu jaringan, mode LAN cukup — WireGuard tidak wajib.',
+    'IP tunnel hanya dipakai jika mode tunnel (mis. 10.10.0.2). Bukan sewa server cloud.',
     'nas.nasname di billing harus sama dengan IP sumber yang dilihat FreeRADIUS (LAN atau IP tunnel).',
     'Object comment=BILLINGRADIUS tidak disentuh.'
   ];
+
+  const portForward = buildPortForwardExample({
+    vpsHost: opts.vpsHost,
+    wgEndpointHost: opts.wireguard && opts.wireguard.endpointHost,
+    serverHost: opts.serverHost,
+    skipPortForward: opts.skipPortForward,
+    tunnelAddress: opts.tunnelAddress,
+    nasname: opts.nasname,
+    nasId: opts.nasId
+  });
 
   return {
     radius_host: radiusHost,
     tunnel_address: tunnel || null,
     recommended_api_host: tunnel || opts.nasname || null,
     recommended_api_port: 8728,
+    skip_port_forward: !!portForward.skipped,
     v7: assemble('v7'),
     v6: assemble('v6'),
     notes,
-    port_forward_example: buildPortForwardExample({
-      vpsHost: opts.vpsHost,
-      wgEndpointHost: opts.wireguard && opts.wireguard.endpointHost,
-      tunnelAddress: opts.tunnelAddress,
-      nasname: opts.nasname,
-      nasId: opts.nasId
-    })
+    port_forward_example: portForward
   };
 }
 
@@ -228,6 +251,7 @@ module.exports = {
   buildNasRouterOsScript,
   buildPortForwardExample,
   radiusAllowedIps,
+  isPrivateHost,
   escapeRos,
   stripCidr
 };

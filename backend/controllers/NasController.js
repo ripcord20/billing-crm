@@ -7,7 +7,7 @@ const Wireguard = require('../services/WireguardService');
 const VpnProvision = require('../services/VpnProvisionService');
 const { getTenantId } = require('../middleware/tenantContext');
 const { decryptSecret } = require('../utils/secretBox');
-const { buildNasRouterOsScript, radiusAllowedIps } = require('../utils/nasRouterOsScript');
+const { buildNasRouterOsScript, radiusAllowedIps, isPrivateHost } = require('../utils/nasRouterOsScript');
 const { attachNasLinkStatus } = require('../utils/nasLinkStatus');
 
 // Push konfigurasi NAS ke server FreeRADIUS (tabel `nas`). Fungsi modul-level
@@ -269,10 +269,21 @@ class NasController {
         tunnelAddress: row.tunnel_address,
         vpnType,
         vpsHost: wgCfg.endpointHost,
+        serverHost: wgCfg.endpointHost,
+        skipPortForward: isPrivateHost(wgCfg.endpointHost),
         wireguard,
         l2tp
       });
-      res.json({ success: true, data: { ...data, generated, vpn_type: vpnType || null } });
+      res.json({
+        success: true,
+        data: {
+          ...data,
+          generated,
+          vpn_type: vpnType || null,
+          conn_mode: row.conn_mode,
+          endpoint_is_lan: isPrivateHost(wgCfg.endpointHost)
+        }
+      });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }
