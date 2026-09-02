@@ -13,7 +13,13 @@ const {
   alertAudience,
   alertRoles,
   mergeSettings,
-  parseServerList
+  parseServerList,
+  worstStatus,
+  parseMikrotikPing,
+  deviceCanApiProbe,
+  latestForDevice,
+  rollupMax,
+  cardFromMetric
 } = require('../utils/qosSla');
 
 assert.strictEqual(computeJitter([10, 12, 11, 40]), 10.67);
@@ -71,5 +77,31 @@ assert.deepStrictEqual(merged.ispDns, ['10.0.0.1', '10.0.0.2']);
 assert.strictEqual(merged.rttMs, 180);
 assert.deepStrictEqual(merged.publicDns, DEFAULTS.publicDns);
 assert.deepStrictEqual(parseServerList('1.1.1.1;8.8.8.8'), ['1.1.1.1', '8.8.8.8']);
+
+assert.strictEqual(worstStatus(['ok', 'warn', 'ok']), 'warn');
+assert.strictEqual(worstStatus(['ok', 'critical']), 'critical');
+assert.strictEqual(worstStatus([]), 'unknown');
+
+const parsed = parseMikrotikPing([
+  { status: 'ok', time: '18ms' },
+  { status: 'ok', time: '22ms' },
+  { status: 'timeout' }
+]);
+assert.strictEqual(parsed.success, true);
+assert.strictEqual(parsed.rtt_avg, 20);
+assert.strictEqual(parsed.loss, 33.33);
+
+assert.strictEqual(deviceCanApiProbe({ api_username: 'skynet', monitoring_type: 'api' }), true);
+assert.strictEqual(deviceCanApiProbe({ api_username: 'skynet', monitoring_type: 'snmp' }), false);
+assert.strictEqual(deviceCanApiProbe({ monitoring_type: 'api' }), false);
+
+const rows = [
+  { device_id: 3, value: 40, status: 'ok', target: '8.8.8.8' },
+  { device_id: 1, value: 12, status: 'ok', target: '1.1.1.1' }
+];
+assert.strictEqual(latestForDevice(rows, 1).value, 12);
+assert.strictEqual(latestForDevice(rows, 'all').value, 40);
+assert.strictEqual(rollupMax([19.3, 40, null]), 40);
+assert.strictEqual(cardFromMetric(rows[1]).device_id, 1);
 
 console.log('qosSla.test.js OK');

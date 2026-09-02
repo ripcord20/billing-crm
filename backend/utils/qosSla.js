@@ -138,6 +138,100 @@ function alertRoles(type) {
     : ['admin', 'superadmin', 'noc'];
 }
 
+function worstStatus(statuses) {
+  const s = (statuses || []).filter(Boolean);
+  if (s.includes('critical')) return 'critical';
+  if (s.includes('warn')) return 'warn';
+  if (s.includes('ok')) return 'ok';
+  return 'unknown';
+}
+
+function parseMs(raw) {
+  if (raw == null || raw === '') return null;
+  const n = parseFloat(String(raw).replace(/ms/i, '').trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Parse hasil /tool/ping MikroTik (REST atau binary) jadi rtt/loss/samples. */
+function parseMikrotikPing(pr) {
+  const rows = Array.isArray(pr) ? pr : (pr ? [pr] : []);
+  const times = [];
+  let sent = 0;
+  let received = 0;
+  for (const p of rows) {
+    if (!p || typeof p !== 'object') continue;
+    if ((p.sent != null || p['packet-sent'] != null) && p.received != null && rows.length === 1) {
+      sent = Number(p.sent || p['packet-sent']) || 0;
+      received = Number(p.received) || 0;
+      const avg = parseMs(p['avg-rtt'] || p.avg || p['rtt-avg']);
+      const lossN = sent ? Math.round((1 - received / sent) * 10000) / 100 : 100;
+      return {
+        success: received > 0,
+        rtt_avg: avg,
+        loss: lossN,
+        pings: avg != null ? [{ ms: avg }] : []
+      };
+    }
+    sent += 1;
+    const st = String(p.status || '').toLowerCase();
+    const ms = parseMs(p.time || p['response-time'] || p.ms || p.rtt);
+    const ok = (+p.received > 0)
+      || (ms != null && !st.includes('timeout') && !st.includes('fail'))
+      || st === 'ok' || st.includes('reply');
+    if (ok && ms != null) {
+      received += 1;
+      times.push(ms);
+    }
+  }
+  const loss = sent ? Math.round((1 - received / sent) * 10000) / 100 : 100;
+  const rtt_avg = times.length
+    ? Math.round((times.reduce((a, b) => a + b, 0) / times.length) * 100) / 100
+    : null;
+  return { success: received > 0, rtt_avg, loss, pings: times.map((ms) => ({ ms })) };
+}
+
+function deviceCanApiProbe(device) {
+  if (!device || !device.api_username) return false;
+  const mon = device.monitoring_type || 'snmp';
+  return mon === 'api' || mon === 'both';
+}
+
+function metricDeviceId(row) {
+  if (!row) return null;
+  if (row.device_id != null && row.device_id !== '') return Number(row.device_id);
+  const meta = row.metadata || {};
+  if (meta.device_id != null && meta.device_id !== '') return Number(meta.device_id);
+  return null;
+}
+
+function latestForDevice(rows, deviceId) {
+  const list = rows || [];
+  if (deviceId == null || deviceId === '' || deviceId === 'all') return list[0] || null;
+  const id = Number(deviceId);
+  return list.find((r) => metricDeviceId(r) === id) || null;
+}
+
+function rollupMax(values) {
+  const vals = (values || []).map(Number).filter((n) => Number.isFinite(n));
+  if (!vals.length) return null;
+  return Math.round(Math.max(...vals) * 100) / 100;
+}
+
+function emptyCard() {
+  return { status: 'unknown', value: null, target: null, recorded_at: null, device_id: null };
+}
+
+function cardFromMetric(row) {
+  if (!row) return emptyCard();
+  return {
+    status: row.status || 'unknown',
+    value: row.value == null ? null : Number(row.value),
+    target: row.target || null,
+    recorded_at: row.recorded_at || null,
+    device_id: metricDeviceId(row)
+  };
+}
+
 function mergeSettings(raw = {}) {
   return {
     ...DEFAULTS,
@@ -216,5 +310,14 @@ module.exports = {
   alertAudience,
   alertRoles,
   mergeSettings,
-  settingsToRows
+  settingsToRows,
+  worstStatus,
+  parseMs,
+  parseMikrotikPing,
+  deviceCanApiProbe,
+  metricDeviceId,
+  latestForDevice,
+  rollupMax,
+  emptyCard,
+  cardFromMetric
 };
