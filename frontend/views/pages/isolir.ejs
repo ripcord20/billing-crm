@@ -113,6 +113,8 @@
     .dev-act.primary:hover{background:#dcfce7;}
     .dev-act.info{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8;}
     .dev-act.info:hover{background:#dbeafe;}
+    .dev-act.warn{background:#fffbeb;border-color:#fcd34d;color:#b45309;}
+    .dev-act.warn:hover{background:#fef3c7;}
     .dev-act.danger{background:#fff0f2;border-color:#fca5a5;color:#dc2626;margin-left:auto;}
     .dev-act.danger:hover{background:#fee2e2;}
 
@@ -874,6 +876,46 @@
               </div>
 
               <button class="btn-primary btn-full" onclick="saveSettings()">Simpan Settings</button>
+            </div>
+          </div>
+
+          <div class="iso-sec-title" style="margin-top:22px;">IP Isolir PPPoE</div>
+          <div class="w-card">
+            <div class="w-card-hdr"><div style="font-size:13px;font-weight:700;color:var(--d-text);display:flex;align-items:center;gap:7px;"><span style="font-size:14px;">🌐</span> Gateway &amp; Pool Pelanggan Diisolir</div></div>
+            <div class="w-card-body">
+              <div class="pf-row2">
+                <div class="pf-field">
+                  <label class="pf-label">Gateway (PPP local-address)</label>
+                  <input type="text" class="pf-input" id="isolirPppoeLocalAddr" value="10.255.255.1" placeholder="10.255.255.1" style="font-family:'DM Mono',monospace;">
+                  <div style="font-size:11px;color:var(--d-muted);margin-top:3px;">IP ini dipasang di interface <code>fiberix-isolir</code> (/24).</div>
+                </div>
+                <div class="pf-field">
+                  <label class="pf-label">Range pool pelanggan</label>
+                  <input type="text" class="pf-input" id="isolirPppoePoolRange" value="10.255.255.2-10.255.255.254" placeholder="10.255.255.2-10.255.255.254" style="font-family:'DM Mono',monospace;">
+                  <div style="font-size:11px;color:var(--d-muted);margin-top:3px;">Harus satu /24 dengan gateway, tidak termasuk gateway.</div>
+                </div>
+              </div>
+              <div class="pf-row2">
+                <div class="pf-field">
+                  <label class="pf-label">Rate-limit isolir</label>
+                  <input type="text" class="pf-input" id="isolirPppoeRateLimit" value="128k/128k" placeholder="128k/128k" style="font-family:'DM Mono',monospace;">
+                </div>
+                <div class="pf-field">
+                  <label class="pf-label">Nama profile / pool</label>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <input type="text" class="pf-input" id="isolirPppoeProfileName" value="isolir-profile" placeholder="isolir-profile">
+                    <input type="text" class="pf-input" id="isolirPppoePoolName" value="isolir-pool" placeholder="isolir-pool">
+                  </div>
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--d-muted);line-height:1.55;margin:8px 0 12px;">
+                Subnet <code>10.255.255.0/24</code> terpisah dari LAN pelanggan dan overlay WireGuard <code>10.10.0.0/24</code>.
+                Setelah simpan, klik <strong>Buat IP Isolir</strong> di kartu router NAS (GANANET / NAGA).
+                Tombol itu hanya memasang IP + pool + profile — tidak mengubah firewall.
+              </div>
+              <button class="btn-primary btn-full" onclick="saveSettings()">Simpan IP Isolir</button>
+            </div>
+          </div>
             </div>
           </div>
         </div>

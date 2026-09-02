@@ -315,6 +315,9 @@ async function loadDevices() {
         <button class="dev-act" onclick="pingDevice(${dev.id})" title="Tes koneksi">
           <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Ping
         </button>
+        <button class="dev-act warn" onclick="setupIsolirIp(${dev.id})" title="Pasang gateway + pool isolir">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18z"/><path stroke-linecap="round" stroke-linejoin="round" d="M3.6 9h16.8M3.6 15h16.8M12 3c2.4 3.2 3.6 6.2 3.6 9s-1.2 5.8-3.6 9c-2.4-3.2-3.6-6.2-3.6-9s1.2-5.8 3.6-9z"/></svg> Buat IP Isolir
+        </button>
         <button class="dev-act primary" onclick="setupFirewall(${dev.id})" title="Pasang rule isolir">
           <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg> Setup Firewall
         </button>
@@ -343,6 +346,56 @@ window.pingDevice = async function(id) {
     loadDevices();
   }
   else App.showToast('❌ ' + (d?.message||'Gagal'), 'error');
+};
+
+window.setupIsolirIp = async function(id) {
+  let gw = '10.255.255.1';
+  let pool = '10.255.255.2-10.255.255.254';
+  let rate = '128k/128k';
+  try {
+    const s = await App.api('/isolir/settings');
+    if (s?.success && s.data) {
+      gw = s.data.isolir_pppoe_local_addr || gw;
+      pool = s.data.isolir_pppoe_pool_range || pool;
+      rate = s.data.isolir_pppoe_rate_limit || rate;
+    }
+  } catch (_) { /* pakai default */ }
+
+  const ok = await DigsDialog.confirm({
+    type: 'warning',
+    title: 'Buat IP Isolir',
+    message: 'Akan memasang gateway PPPoE isolir di router ini. Firewall / NAT tidak diubah.',
+    bullets: [
+      'Interface fiberix-isolir + IP ' + gw + '/24',
+      'Pool isolir-pool: ' + pool,
+      'PPP profile isolir-profile (' + rate + ')',
+      'Tidak menyentuh rule firewall'
+    ],
+    confirmText: 'Buat IP Isolir',
+    cancelText: 'Batal'
+  });
+  if (!ok) return;
+
+  App.showToast('Membuat IP Isolir...', 'info');
+  const d = await App.api('/isolir/devices/' + id + '/setup-ip', { method: 'POST', body: '{}' });
+
+  if (d?.success) {
+    DigsDialog.alert({
+      type: 'success',
+      title: 'IP Isolir Siap',
+      message: 'Pelanggan PPPoE yang diisolir akan dapat IP dari pool ' + pool + ' dengan gateway ' + gw + '.',
+      log: Array.isArray(d.details) ? d.details : null
+    });
+    App.showToast('✅ IP Isolir siap', 'success');
+  } else {
+    DigsDialog.alert({
+      type: 'error',
+      title: 'Gagal Membuat IP Isolir',
+      message: d?.message || d?.error || 'Terjadi kesalahan tidak diketahui.',
+      log: Array.isArray(d?.details) ? d.details : null
+    });
+    App.showToast('❌ Gagal membuat IP Isolir', 'error');
+  }
 };
 
 window.setupFirewall = async function(id) {
@@ -916,6 +969,11 @@ async function loadSettings() {
   if (el('isolirAutoHour'))   el('isolirAutoHour').value   = (cfg.isolir_auto_hour ?? '') === '' ? '-1' : cfg.isolir_auto_hour;
   // Template pesan WA saat diisolir
   if (el('isolirWaMessage'))  el('isolirWaMessage').value  = cfg.isolir_wa_message || '';
+  if (el('isolirPppoeLocalAddr'))   el('isolirPppoeLocalAddr').value   = cfg.isolir_pppoe_local_addr || '10.255.255.1';
+  if (el('isolirPppoePoolRange'))   el('isolirPppoePoolRange').value   = cfg.isolir_pppoe_pool_range || '10.255.255.2-10.255.255.254';
+  if (el('isolirPppoeRateLimit'))   el('isolirPppoeRateLimit').value   = cfg.isolir_pppoe_rate_limit || '128k/128k';
+  if (el('isolirPppoeProfileName')) el('isolirPppoeProfileName').value = cfg.isolir_pppoe_profile_name || 'isolir-profile';
+  if (el('isolirPppoePoolName'))    el('isolirPppoePoolName').value    = cfg.isolir_pppoe_pool_name || 'isolir-pool';
 
   // ── Customisasi halaman /p/isolir ──
   if (el('isolirPageTitle'))    el('isolirPageTitle').value    = cfg.isolir_page_title || '';
@@ -974,6 +1032,11 @@ window.saveSettings = async function() {
   put('isolir_auto_enable', 'isolirAutoEnable', e => e.checked ? '1' : '0');
   put('isolir_auto_hour',   'isolirAutoHour',   e => e.value ?? '-1');
   put('isolir_wa_message',  'isolirWaMessage',  e => e.value || '');
+  put('isolir_pppoe_local_addr',   'isolirPppoeLocalAddr',   e => e.value.trim());
+  put('isolir_pppoe_pool_range',   'isolirPppoePoolRange',   e => e.value.trim());
+  put('isolir_pppoe_rate_limit',   'isolirPppoeRateLimit',   e => e.value.trim());
+  put('isolir_pppoe_profile_name', 'isolirPppoeProfileName', e => e.value.trim());
+  put('isolir_pppoe_pool_name',    'isolirPppoePoolName',    e => e.value.trim());
 
   // Customisasi halaman /p/isolir — hanya jika field-nya masih ada
   put('isolir_page_title',    'isolirPageTitle',    e => e.value || '');
