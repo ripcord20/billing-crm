@@ -107,6 +107,8 @@ class DeviceController {
         payload.uplink_iface = String(payload.uplink_iface || '').trim() || null;
       }
       const device = await Device.create(payload);
+      await require('../utils/pinDeviceUplink').pinDeviceUplinkWithTimeout(device, 4000);
+      await device.reload().catch(() => {});
       res.status(201).json({ success: true, data: device });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
