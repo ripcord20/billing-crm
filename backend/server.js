@@ -482,8 +482,9 @@ const startServer = async () => {
       if (db.QosMetric) await db.QosMetric.sync();
       if (db.QosAlert) await db.QosAlert.sync();
       if (db.AuthFailEvent) await db.AuthFailEvent.sync();
+      if (db.PaymentDeferral) await db.PaymentDeferral.sync();
     } catch (e) {
-      logger.warn('Failed to sync qos tables: ' + (e.message || e));
+      logger.warn('Failed to sync qos/payment tables: ' + (e.message || e));
     }
 
     try {
