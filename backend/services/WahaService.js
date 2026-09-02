@@ -1426,6 +1426,30 @@ async function handleWebhook(payload, io) {
   return { ok: true };
 }
 
+async function listGroups(session) {
+  const { cfg, http } = api(session, 15000);
+  const tries = [
+    `/api/${encodeURIComponent(cfg.wahaSession)}/groups`,
+    `/api/groups?session=${encodeURIComponent(cfg.wahaSession)}`,
+  ];
+  for (const pathTry of tries) {
+    try {
+      const resp = await http.get(pathTry);
+      const raw = resp && resp.data;
+      const arr = Array.isArray(raw) ? raw : (raw && (raw.data || raw.groups)) || [];
+      if (!Array.isArray(arr)) continue;
+      return arr.map((g) => {
+        const jid = g.id || g.jid || g.chatId || g.groupId || '';
+        return {
+          jid: String(jid),
+          name: g.subject || g.name || g.title || jid,
+        };
+      }).filter(g => g.jid);
+    } catch (_) { /* coba path berikutnya */ }
+  }
+  return [];
+}
+
 module.exports = {
   sendMessage,
   sendMedia,
@@ -1446,4 +1470,5 @@ module.exports = {
   normalizeNumber,
   handleWebhook,
   mapStatus,
+  listGroups,
 };

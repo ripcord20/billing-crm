@@ -703,7 +703,7 @@
         </div>
         <div class="field">
           <label class="field-label">Tipe</label>
-          <select id="devType">
+          <select id="devType" onchange="onDevTypeChange()">
             <option value="router">Router</option>
             <option value="switch">Switch</option>
             <option value="olt">OLT</option>
@@ -800,6 +800,16 @@
               <div class="field-hint">Default: <code>80</code> (REST) atau <code>8728</code> (Binary). SSL: <code>443</code> atau <code>8729</code>.</div>
             </div>
           </div>
+        </div>
+
+        <div class="field cond-hide" id="uplinkPinGroup" style="margin-top:12px">
+          <label class="field-label">Uplink terpantau</label>
+          <select id="devUplinkIface" onchange="onUplinkPinChange()">
+            <option value="">— Tidak dipantau —</option>
+            <option value="__manual__">Ketik nama interface…</option>
+          </select>
+          <input type="text" id="devUplinkIfaceManual" class="cond-hide" placeholder="mis. sfp-sfpplus1" maxlength="80" style="margin-top:8px">
+          <div class="field-hint" id="uplinkPinHint">Pilih 1 interface fisik (ether/sfp) yang menuju ISP. Tanpa pin, dashboard &amp; NOC tidak memantau uplink.</div>
         </div>
       </div>
 
@@ -1156,6 +1166,7 @@
     document.getElementById('devNotes').value = '';
     hideTestResult();
     onMonTypeChange();
+    resetUplinkPinSelect('');
     loadPopOptions();
     document.getElementById('deviceModal').classList.add('active');
     setTimeout(() => document.getElementById('devName').focus(), 100);
@@ -1190,6 +1201,7 @@
     document.getElementById('devNotes').value         = d.notes || '';
     hideTestResult();
     onMonTypeChange();
+    loadUplinkPinOptions(d.id, d.uplink_iface || '');
     // Load POP options async, lalu set value berdasarkan device.pop_id
     loadPopOptions(d.pop_id || '');
     document.getElementById('deviceModal').classList.add('active');
@@ -1234,6 +1246,100 @@
     const apiWrap  = document.getElementById('apiFields');
     snmpWrap.classList.toggle('cond-hide', v === 'api');
     apiWrap.classList.toggle('cond-hide', v === 'snmp');
+    onDevTypeChange();
+  }
+
+  function onDevTypeChange() {
+    const type = document.getElementById('devType').value;
+    const mon = document.getElementById('devMonType').value;
+    const show = type === 'router' && (mon === 'api' || mon === 'both');
+    const grp = document.getElementById('uplinkPinGroup');
+    if (grp) grp.classList.toggle('cond-hide', !show);
+  }
+
+  function onUplinkPinChange() {
+    const sel = document.getElementById('devUplinkIface');
+    const man = document.getElementById('devUplinkIfaceManual');
+    if (!sel || !man) return;
+    man.classList.toggle('cond-hide', sel.value !== '__manual__');
+    if (sel.value === '__manual__') setTimeout(() => man.focus(), 50);
+  }
+
+  function resetUplinkPinSelect(selected) {
+    const sel = document.getElementById('devUplinkIface');
+    const man = document.getElementById('devUplinkIfaceManual');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— Tidak dipantau —</option>'
+      + '<option value="__manual__">Ketik nama interface…</option>';
+    if (man) man.value = selected || '';
+    if (selected) {
+      const o = document.createElement('option');
+      o.value = selected;
+      o.textContent = selected + ' (tersimpan)';
+      o.selected = true;
+      sel.insertBefore(o, sel.lastChild);
+    } else {
+      sel.value = '';
+    }
+    onUplinkPinChange();
+    onDevTypeChange();
+  }
+
+  async function loadUplinkPinOptions(deviceId, selected) {
+    resetUplinkPinSelect(selected);
+    const hint = document.getElementById('uplinkPinHint');
+    if (!deviceId) return;
+    try {
+      const res = await App.api('/noc/router/' + deviceId + '/interfaces');
+      const ifaces = (res && res.success && Array.isArray(res.data)) ? res.data : [];
+      const sel = document.getElementById('devUplinkIface');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">— Tidak dipantau —</option>';
+      const names = new Set();
+      ifaces.forEach(function (iface) {
+        const name = iface.name || '';
+        if (!name || names.has(name)) return;
+        names.add(name);
+        const o = document.createElement('option');
+        o.value = name;
+        const bits = [name];
+        if (iface.running) bits.push('running');
+        else bits.push('down');
+        if (iface.comment) bits.push(iface.comment);
+        else if (iface.type) bits.push(iface.type);
+        o.textContent = bits.join(' · ');
+        if (name === selected) o.selected = true;
+        sel.appendChild(o);
+      });
+      const manOpt = document.createElement('option');
+      manOpt.value = '__manual__';
+      manOpt.textContent = 'Ketik nama interface…';
+      sel.appendChild(manOpt);
+      if (selected && !names.has(selected)) {
+        const o = document.createElement('option');
+        o.value = selected;
+        o.textContent = selected + ' (tersimpan, tidak ada di live)';
+        o.selected = true;
+        sel.insertBefore(o, manOpt);
+      }
+      if (hint) {
+        hint.textContent = ifaces.length
+          ? 'Pilih 1 interface fisik (ether/sfp) yang menuju ISP. Tanpa pin, dashboard & NOC tidak memantau uplink.'
+          : 'Live interface kosong — ketik nama (mis. sfp-sfpplus1) lewat opsi “Ketik nama interface”.';
+      }
+    } catch (e) {
+      if (hint) hint.textContent = 'Live interface tidak tersedia. Simpan pin yang sudah ada, atau ketik nama secara manual.';
+    }
+    onUplinkPinChange();
+    onDevTypeChange();
+  }
+
+  function gatherUplinkIface() {
+    const sel = document.getElementById('devUplinkIface');
+    const man = document.getElementById('devUplinkIfaceManual');
+    const fromSel = (sel && sel.value && sel.value !== '__manual__') ? sel.value.trim() : '';
+    const fromMan = man ? man.value.trim() : '';
+    return fromSel || fromMan || null;
   }
 
   // ── Protokol API ↔ Port mapping ──
@@ -1338,6 +1444,7 @@
       api_password:    document.getElementById('devApiPass').value || null,
       api_port:        apiPort,
       api_protocol:    uiProtocolToDb(uiProto, apiPort),
+      uplink_iface:    gatherUplinkIface(),
       notes:           document.getElementById('devNotes').value.trim() || null,
       pop_id:          parseInt(document.getElementById('devPopId').value) || null
     };

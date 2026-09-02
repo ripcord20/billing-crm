@@ -866,6 +866,24 @@ const startServer = async () => {
       logger.warn('Failed to sync reminder_logs: ' + (e.message || e));
     }
 
+    // Port uplink terpin di Device Management (pantauan khusus, bukan semua ether).
+    try {
+      const [uplRows] = await db.sequelize.query(
+        `SELECT COUNT(*) AS c FROM information_schema.columns
+          WHERE table_schema = DATABASE()
+            AND table_name = 'devices'
+            AND column_name = 'uplink_iface'`
+      );
+      if (!(uplRows && uplRows[0] && parseInt(uplRows[0].c) > 0)) {
+        await db.sequelize.query(
+          `ALTER TABLE devices ADD COLUMN uplink_iface VARCHAR(80) NULL`
+        );
+        logger.info('Migrated: devices.uplink_iface column added');
+      }
+    } catch (e) {
+      logger.warn('Failed to migrate devices.uplink_iface: ' + (e.message || e));
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // SALES MODULE — auto-migration idempotent saat boot.
     // Membuat tabel sales (jika belum ada), kolom komisi di packages,
@@ -1110,6 +1128,13 @@ const startServer = async () => {
     const NocAlertsService = require('./services/NocAlertsService');
     NocAlertsService.start(io);
 
+    // Pantauan uplink terpin (Device Management) — independen dari Telegram.
+    try {
+      require('./services/UplinkMonitorService').start(io);
+    } catch (e) {
+      logger.warn('UplinkMonitorService.start gagal: ' + (e.message || e));
+    }
+
     // Restore WA sessions
     const WAService = require('./services/WAService');
     WAService.restoreAllSessions(io);
@@ -1127,6 +1152,7 @@ const startServer = async () => {
       CronService.stop();
       try { require('./services/TelegramBotService').stop(); } catch (_) {}
       NocAlertsService.stop();
+      try { require('./services/UplinkMonitorService').stop(); } catch (_) {}
       await db.sequelize.close();
       server.close(() => process.exit(0));
     });

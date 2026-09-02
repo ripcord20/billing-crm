@@ -391,6 +391,68 @@ input, select, textarea { font-family: inherit; }
 .sc-value { font-size: 36px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
 .sc-sub { font-size: 12px; opacity: 0.6; }
 
+/* ===== Uplink terpin strip (dashboard) ===== */
+.uplink-strip {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.uplink-strip-hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 20px 0;
+}
+.uplink-strip-hd h3 { font-size: 15px; font-weight: 600; }
+.uplink-strip-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  padding: 14px 20px 16px;
+}
+.uplink-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 10px 0 4px;
+}
+.uplink-empty a { color: var(--primary); font-weight: 600; }
+.ul-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-card);
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+  transition: border-color .15s, transform .15s;
+}
+.ul-card:hover { border-color: var(--primary-light); transform: translateY(-1px); }
+.ul-card.is-down { border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); background: color-mix(in srgb, var(--danger) 8%, var(--bg-card)); }
+.ul-card.is-unknown { border-color: color-mix(in srgb, #f59e0b 40%, var(--border)); }
+.ul-led {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 5px;
+}
+.ul-led.up { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.18); }
+.ul-led.down { background: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,.2); animation: ulPulse 1.4s ease-out infinite; }
+.ul-led.unknown, .ul-led.missing, .ul-led.disabled { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.18); }
+@keyframes ulPulse {
+  0%,100% { box-shadow: 0 0 0 3px rgba(239,68,68,.2); }
+  50% { box-shadow: 0 0 0 6px rgba(239,68,68,.08); }
+}
+.ul-body { min-width: 0; flex: 1; }
+.ul-name { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ul-port { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.ul-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+
 /* ===== Dashboard Grid ===== */
 .dashboard-grid {
   display: grid;

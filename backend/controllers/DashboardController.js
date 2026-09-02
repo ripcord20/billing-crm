@@ -1118,6 +1118,22 @@ class DashboardController {
         }));
       } catch (_) {}
 
+      // 5) Uplink terpin down (bukan tebakan semua port)
+      try {
+        const Uplink = require('../services/UplinkMonitorService');
+        (Uplink.getSnapshot() || []).filter(u => u.isDown && u.state !== 'unknown').forEach(u => {
+          alerts.push({
+            kind: 'uplink_down',
+            severity: 'critical',
+            icon: 'uplink',
+            title: `Uplink ${u.router_name}`,
+            detail: `${u.iface}${u.comment ? ' • ' + u.comment : ''} • ${u.label || 'down'}`,
+            time: u.polled_at,
+            link: '/noc',
+          });
+        });
+      } catch (_) {}
+
       // Urutkan: critical dulu, lalu terbaru
       const sevRank = { critical: 0, warning: 1, info: 2 };
       alerts.sort((a, b) => {
@@ -1133,6 +1149,7 @@ class DashboardController {
         ont_offline: alerts.filter(a => a.kind === 'ont_offline').length,
         customer_isolated: alerts.filter(a => a.kind === 'customer_isolated').length,
         ticket_urgent: alerts.filter(a => a.kind === 'ticket_urgent').length,
+        uplink_down: alerts.filter(a => a.kind === 'uplink_down').length,
       };
 
       res.json({ success: true, data: alerts.slice(0, 30), counts });

@@ -162,6 +162,27 @@ class NocController {
         created_at: ev.timestamp,
       }));
 
+      try {
+        const Uplink = require('../services/UplinkMonitorService');
+        const downs = (Uplink.getSnapshot() || []).filter(u => u.isDown && u.state !== 'unknown');
+        for (const u of downs) {
+          items.unshift({
+            id: 'uplink-' + u.ref_id,
+            type: 'uplink_down',
+            severity: 'danger',
+            title: `Uplink down · ${u.router_name}`,
+            detail: `${u.iface}${u.comment ? ' — ' + u.comment : ''}`,
+            description: u.label || 'Link down',
+            action: 'uplink_down',
+            module: 'noc',
+            target_type: 'router',
+            target_id: u.device_id,
+            router_name: u.router_name,
+            created_at: u.polled_at,
+          });
+        }
+      } catch (_) {}
+
       res.json({ success: true, data: items });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
