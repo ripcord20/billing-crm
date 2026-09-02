@@ -270,7 +270,8 @@ class NasController {
         vpnType,
         vpsHost: wgCfg.endpointHost,
         serverHost: wgCfg.endpointHost,
-        skipPortForward: isPrivateHost(wgCfg.endpointHost),
+        connMode: row.conn_mode,
+        skipPortForward: row.conn_mode !== 'vpn' || isPrivateHost(wgCfg.endpointHost),
         wireguard,
         l2tp
       });

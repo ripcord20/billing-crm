@@ -126,7 +126,8 @@ function isPrivateHost(host) {
 function buildPortForwardExample(opts) {
   const rawHost = opts.vpsHost || opts.wgEndpointHost || opts.serverHost || '';
   const tunnel = stripCidr(opts.tunnelAddress || opts.nasname || '10.10.0.2');
-  const lanOnly = opts.skipPortForward === true || isPrivateHost(rawHost);
+  const lanMode = opts.connMode === 'public' || opts.vpnType === 'public' || !opts.vpnType;
+  const lanOnly = opts.skipPortForward === true || lanMode || isPrivateHost(rawHost);
   if (lanOnly) {
     return {
       applied: false,
@@ -218,6 +219,8 @@ function buildNasRouterOsScript(opts) {
     wgEndpointHost: opts.wireguard && opts.wireguard.endpointHost,
     serverHost: opts.serverHost,
     skipPortForward: opts.skipPortForward,
+    connMode: opts.connMode,
+    vpnType: opts.vpnType,
     tunnelAddress: opts.tunnelAddress,
     nasname: opts.nasname,
     nasId: opts.nasId

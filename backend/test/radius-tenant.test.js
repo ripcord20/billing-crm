@@ -130,6 +130,19 @@ assert.strictEqual(lanRos.port_forward_example.skipped, true);
 assert.strictEqual(lanRos.port_forward_example.nft_example, '');
 assert.deepStrictEqual(lanRos.port_forward_example.rules, []);
 
+const lanDespiteDns = buildNasRouterOsScript({
+  nasId: 2,
+  nasname: '192.168.62.2',
+  shortname: 'NAGA',
+  secret: 'secret',
+  radiusHost: '192.168.22.9',
+  vpnType: 'public',
+  connMode: 'public',
+  vpsHost: 'fiberix.my.id'
+});
+assert.strictEqual(lanDespiteDns.port_forward_example.skipped, true);
+assert.ok(!/VPS/.test(lanDespiteDns.v7));
+
 const lanWg = buildNasRouterOsScript({
   nasId: 3,
   nasname: '192.168.61.2',
