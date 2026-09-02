@@ -8,7 +8,9 @@ const {
   scopeDeviceTraffic,
   parseRouteGatewayIface,
   pickActiveDefaultRouteIface,
-  aggregateDeviceTraffic
+  aggregateDeviceTraffic,
+  keepMonitorIface,
+  vlanParentIface
 } = require('../utils/deviceMetrics');
 
 assert.strictEqual(isIspClientIface('pppoe-out1'), true);
@@ -56,5 +58,23 @@ assert.strictEqual(pickActiveDefaultRouteIface([
   { 'dst-address': '0.0.0.0/0', active: 'false', gateway: 'ether2', distance: 1 },
   { 'dst-address': '0.0.0.0/0', active: 'true', 'immediate-gw': '8.8.8.8%pppoe-out1', distance: 2 }
 ]), 'pppoe-out1');
+
+const coreLan = { name: 'sfp+2', type: 'sfp-sfpplus', running: true, rxMbps: 33, txMbps: 500 };
+const coreWanPhy = { name: 'sfp+1', type: 'sfp-sfpplus', running: true, rxMbps: 495, txMbps: 32 };
+const coreVlan = { name: 'vlan420', type: 'vlan', running: true, rxMbps: 490, txMbps: 28 };
+const coreSumRx = coreLan.rxMbps + coreWanPhy.rxMbps;
+const coreSumTx = coreLan.txMbps + coreWanPhy.txMbps;
+assert.ok(Math.abs(coreSumRx - coreSumTx) < 10, 'sanity: summing both SFPs looks symmetric');
+const coreAuto = pickTrafficIfaces([coreLan, coreWanPhy], null);
+assert.strictEqual(coreAuto.length, 1);
+assert.strictEqual(coreAuto[0].name, 'sfp+1');
+assert.ok(Math.abs(coreAuto[0].rxMbps - coreAuto[0].txMbps) > 100);
+
+const corePinned = pickTrafficIfaces([coreLan, coreWanPhy, coreVlan], 'vlan420');
+assert.strictEqual(corePinned[0].name, 'vlan420');
+assert.strictEqual(keepMonitorIface(coreVlan, 'vlan420'), true);
+assert.strictEqual(keepMonitorIface(coreVlan, null), false);
+assert.strictEqual(keepMonitorIface(coreWanPhy, 'vlan420'), true);
+assert.strictEqual(vlanParentIface([{ name: 'vlan420', interface: 'sfp+1' }], 'vlan420'), 'sfp+1');
 
 console.log('device-traffic-uplink.test.js OK');

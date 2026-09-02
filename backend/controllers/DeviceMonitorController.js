@@ -11,8 +11,7 @@ const { SNMP_OIDS } = require('../config/constants');
 const {
   scopeDeviceTraffic,
   aggregateDeviceTraffic,
-  isCustomerTunnelIface,
-  isVirtualSwitchIface
+  keepMonitorIface
 } = require('../utils/deviceMetrics');
 const { pinDeviceUplinkIfEmpty, pinDeviceUplinkWithTimeout } = require('../utils/pinDeviceUplink');
 
@@ -249,13 +248,15 @@ async function _pollMikrotikApi(device) {
     }
 
     // Ambil semua data paralel
-    const [resResult, ifaceResult] = await Promise.allSettled([
+    const [resResult, ifaceResult, gwResult] = await Promise.allSettled([
       mt.getSystemResource(),
-      mt.getInterfaces()
+      mt.getInterfaces(),
+      mt.getDefaultRouteIface()
     ]);
 
     const sysRes   = resResult.status === 'fulfilled'   ? resResult.value   : {};
     const ifaceRaw = ifaceResult.status === 'fulfilled' ? ifaceResult.value : [];
+    const detectedGw = gwResult.status === 'fulfilled' ? gwResult.value : null;
 
     // CPU — langsung dari system resource
     const cpuLoad = sysRes.cpuLoad ?? 0;
@@ -266,19 +267,15 @@ async function _pollMikrotikApi(device) {
     const usedMem  = Math.max(0, totalMem - freeMem);
     const memPct   = totalMem > 0 ? Math.round((usedMem / totalMem) * 100) : 0;
 
-    // Byte-delta on physical / WAN ports. Jangan jumlahkan LAN+WAN
-    // (itu selalu simetris) dan jangan pakai monitor-traffic (FastTrack).
-    const monitorIfaces = ifaceRaw
-      .filter((i) => i && !i.disabled && i.running)
-      .filter((i) => !isCustomerTunnelIface(i.name, i.type) && !isVirtualSwitchIface(i.name, i.type))
-      .slice(0, 40);
+    // Byte-delta on WAN/uplink only. Pin (atau default-route) ikut diukur
+    // meski berupa VLAN — jangan jumlahkan sfp+1+sfp+2 (itu selalu RX≈TX).
+    const pin = String(device.uplink_iface || detectedGw || '').trim() || null;
+    const monitorIfaces = ifaceRaw.filter((i) => keepMonitorIface(i, pin)).slice(0, 40);
     let liveStats = [];
     try {
       liveStats = await mt.getInterfacesBulkStats(monitorIfaces.map((i) => i.name));
     } catch (_) { /* rates stay 0 on this tick */ }
 
-    const detectedGw = await mt.getDefaultRouteIface().catch(() => null);
-    const pin = device.uplink_iface || detectedGw || null;
     const scoped = scopeDeviceTraffic(monitorIfaces, liveStats, pin);
     if (!device.uplink_iface) {
       await pinDeviceUplinkIfEmpty(device, mt, scoped.trafficIfaces[0]);

@@ -164,6 +164,28 @@ function pickActiveDefaultRouteIface(routes) {
   return parseRouteGatewayIface(active[0] || null);
 }
 
+/** Parent port for a VLAN row (`interface` = sfp+1). */
+function vlanParentIface(vlanRows, name) {
+  const pin = String(name || '').trim();
+  if (!pin) return null;
+  const row = (vlanRows || []).find((v) => v && String(v.name || '').trim() === pin);
+  const parent = row ? String(row.interface || row['interface'] || '').trim() : '';
+  return parent || null;
+}
+
+/**
+ * Keep the pinned uplink even when it is a VLAN (default-route 10.x%vlan420).
+ * Other tunnels/bridges stay excluded so LAN+WAN are never summed.
+ */
+function keepMonitorIface(i, pinName) {
+  if (!i || !i.name) return false;
+  if (i.disabled === true) return false;
+  if (i.running === false) return false;
+  const pin = String(pinName || '').trim();
+  if (pin && i.name === pin) return true;
+  return !isCustomerTunnelIface(i.name, i.type) && !isVirtualSwitchIface(i.name, i.type);
+}
+
 /**
  * Always return 0 or 1 interface for device totals.
  * Pin (Device.uplink_iface) wins, then default-route iface, then heuristic.
@@ -298,6 +320,8 @@ module.exports = {
   pppoeIfaceMatchesUsername,
   parseRouteGatewayIface,
   pickActiveDefaultRouteIface,
+  vlanParentIface,
+  keepMonitorIface,
   pickTrafficIfaces,
   mergeIfaceRates,
   scopeDeviceTraffic,
