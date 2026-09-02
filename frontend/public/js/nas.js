@@ -11,12 +11,25 @@ function fmtSyncAt(s){
 }
 
 function modeBadge(n){
-  if(n.conn_mode==='vpn'){
-    const ok = n.wg_configured;
-    const t = (n.vpn_type||'wireguard').toUpperCase();
-    return `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:${ok?'#dcfce7':'#fef9c3'};color:${ok?'#166534':'#854d0e'};">VPN·${t}${ok?' ✓':' (belum gen)'}</span>`;
-  }
-  return `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:#e2e8f0;color:#475569;">Public IP</span>`;
+  const link = n.link || {};
+  const state = link.state === 'up' || link.state === 'pending' || link.state === 'down' ? link.state : 'down';
+  const kind = n.conn_mode === 'vpn'
+    ? `VPN · ${String(n.vpn_type || 'wireguard').toUpperCase()}`
+    : 'Public IP';
+  const label = link.label || (state === 'up' ? 'Terhubung' : 'Belum terhubung');
+  const age = link.age_label
+    ? `<span class="nas-link-age">${esc(link.age_label)}</span>`
+    : '';
+  return `<div class="nas-mode">
+    <div class="nas-mode-kind">${esc(kind)}</div>
+    <span class="nas-link ${state}" title="${esc(label)}">
+      <span class="nas-led"></span>
+      <span class="nas-link-copy">
+        <span class="nas-link-text">${esc(label)}</span>
+        ${age}
+      </span>
+    </span>
+  </div>`;
 }
 
 async function loadNas(){
@@ -317,4 +330,7 @@ window.downloadRos=()=>{
   URL.revokeObjectURL(a.href);
 };
 
-document.addEventListener('DOMContentLoaded', loadNas);
+document.addEventListener('DOMContentLoaded', () => {
+  loadNas();
+  setInterval(loadNas, 20000);
+});

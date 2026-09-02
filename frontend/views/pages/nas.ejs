@@ -40,8 +40,75 @@
       flex: 0 0 auto;
       margin-right: 4px;
     }
-    .nas-page .table-scroll .data-table td .empty-state,
-    .nas-page .table-scroll .data-table td[colspan] { white-space: normal; }
+    .nas-page .table-scroll .data-table td .nas-mode { white-space: normal; }
+    .nas-mode { display:flex; flex-direction:column; align-items:flex-start; gap:6px; min-width:148px; }
+    .nas-mode-kind {
+      font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+      color:#64748b;
+    }
+    .nas-link {
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 12px 6px 8px; border-radius:999px;
+      font-size:12px; font-weight:700; line-height:1.15;
+    }
+    .nas-led {
+      width:9px; height:9px; border-radius:50%; flex-shrink:0;
+      background:#94a3b8;
+    }
+    .nas-link-copy { display:flex; flex-direction:column; align-items:flex-start; gap:1px; }
+    .nas-link-age { font-size:10px; font-weight:600; opacity:.75; }
+    .nas-link.up {
+      color:#065f46;
+      background:linear-gradient(180deg,#ecfdf5 0%,#d1fae5 100%);
+      box-shadow:0 0 0 1px #6ee7b7, 0 8px 18px rgba(16,185,129,.16);
+    }
+    .nas-link.up .nas-led {
+      background:#22c55e;
+      box-shadow:0 0 0 4px rgba(34,197,94,.22), 0 0 12px rgba(34,197,94,.7);
+      animation:nasLedPulse 1.7s ease-in-out infinite;
+    }
+    .nas-link.pending {
+      color:#92400e;
+      background:linear-gradient(180deg,#fffbeb 0%,#fef3c7 100%);
+      box-shadow:0 0 0 1px #fcd34d;
+    }
+    .nas-link.pending .nas-led {
+      background:#f59e0b;
+      box-shadow:0 0 0 4px rgba(245,158,11,.2);
+      animation:nasLedPulse 2s ease-in-out infinite;
+    }
+    .nas-link.down {
+      color:#475569;
+      background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);
+      box-shadow:0 0 0 1px #cbd5e1;
+    }
+    .nas-link.down .nas-led {
+      background:#94a3b8;
+      box-shadow:inset 0 0 0 2px #e2e8f0;
+    }
+    @keyframes nasLedPulse {
+      0%,100% { transform:scale(1); opacity:1; }
+      50% { transform:scale(.72); opacity:.65; }
+    }
+    [data-theme="dark"] .nas-mode-kind { color:#94a3b8; }
+    [data-theme="dark"] .nas-link.up {
+      color:#bbf7d0; background:linear-gradient(180deg,#064e3b,#14532d);
+      box-shadow:0 0 0 1px #166534, 0 8px 18px rgba(16,185,129,.2);
+    }
+    [data-theme="dark"] .nas-link.pending {
+      color:#fde68a; background:linear-gradient(180deg,#451a03,#78350f);
+      box-shadow:0 0 0 1px #b45309;
+    }
+    [data-theme="dark"] .nas-link.down {
+      color:#cbd5e1; background:linear-gradient(180deg,#1e293b,#0f172a);
+      box-shadow:0 0 0 1px #334155;
+    }
+    .nas-legend {
+      display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+      margin-top:10px;
+    }
+    .nas-legend .nas-link { pointer-events:none; }
+    .nas-legend-note { margin:8px 2px 0; font-size:12px; color:var(--text-secondary); }
     .nas-swipe-hint {
       display: none;
       margin: 8px 2px 0;
@@ -81,6 +148,12 @@
         </table>
         </div>
         <p class="nas-swipe-hint">Geser tabel ke kanan untuk Mode, Sync, dan tombol Aksi.</p>
+        <div class="nas-legend" aria-label="Keterangan status Mode">
+          <span class="nas-link up"><span class="nas-led"></span><span class="nas-link-text">Terhubung</span></span>
+          <span class="nas-link down"><span class="nas-led"></span><span class="nas-link-text">Belum terhubung</span></span>
+          <span class="nas-link pending"><span class="nas-led"></span><span class="nas-link-text">Belum generate</span></span>
+        </div>
+        <p class="nas-legend-note">Mode VPN hijau hanya jika tunnel WireGuard handshake / IP tunnel merespons. Router online di Device Management tidak dihitung.</p>
       </div></div>
     </main>
   </div>

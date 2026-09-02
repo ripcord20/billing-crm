@@ -71,4 +71,12 @@ assert.ok(mt.includes('/interface/wireguard/add'));
 assert.ok(mt.includes('/interface/wireguard/peers/add'));
 assert.ok(mt.includes('endpoint-port=51820'));
 
+// 7) wg dump parser — skip header, map peer by public key
+const dump = wg.parseWgDump([
+  'ifacepriv\tifacepub\t51820\toff',
+  'peerPub\t(none)\t1.2.3.4:51820\t10.10.0.2/32\t1700000000\t10\t20\t25'
+].join('\n'));
+assert.strictEqual(dump.get('peerPub').handshake, 1700000000);
+assert.strictEqual(dump.get('peerPub').endpoint, '1.2.3.4:51820');
+
 console.log('wireguard.test.js OK');

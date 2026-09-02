@@ -288,6 +288,47 @@ function wgRemovePeer(iface, publicKey) {
 }
 
 /**
+ * `wg show <iface> dump` — baris 1 interface, baris berikutnya peer:
+ * public-key, psk, endpoint, allowed-ips, latest-handshake, rx, tx, keepalive
+ */
+function parseWgDump(text) {
+  const map = new Map();
+  const lines = String(text || '').trim().split('\n');
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split('\t');
+    if (cols.length < 5) continue;
+    const pub = cols[0];
+    if (!pub) continue;
+    map.set(pub, {
+      endpoint: cols[2] && cols[2] !== '(none)' ? cols[2] : '',
+      handshake: parseInt(cols[4], 10) || 0,
+      rx: parseInt(cols[5], 10) || 0,
+      tx: parseInt(cols[6], 10) || 0
+    });
+  }
+  return map;
+}
+
+async function dumpPeerMap(iface) {
+  let name = iface;
+  if (!name) {
+    try {
+      const cfg = await getServerConfig();
+      name = cfg.iface || 'wg0';
+    } catch (_) {
+      name = 'wg0';
+    }
+  }
+  if (!(await hasWgBinary())) return new Map();
+  return new Promise((resolve) => {
+    execFile('wg', ['show', name, 'dump'], { timeout: 2500 }, (err, stdout) => {
+      if (err) return resolve(new Map());
+      resolve(parseWgDump(stdout));
+    });
+  });
+}
+
+/**
  * Generate (atau regenerate) peer WireGuard untuk sebuah NAS. Menyimpan kunci
  * & alamat tunnel di record NAS, mengembalikan config klien lengkap (sekali
  * tampil) beserta blok server & perintah MikroTik.
@@ -398,6 +439,8 @@ module.exports = {
   buildMikrotikCommands,
   generatePeerForNas,
   removePeerForNas,
+  parseWgDump,
+  dumpPeerMap,
   // exported for tests
   _ipToInt: ipToInt,
   _intToIp: intToIp,
