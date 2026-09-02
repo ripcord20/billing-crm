@@ -981,14 +981,19 @@ async function activateRegistration(regId, { activated_by = null } = {}) {
 
     // Buat customer baru
     const newCid = await generateUniqueCustomerId(Customer);
+    const photoFields = require('../utils/customerDocuments').documentsFromRegistration(reg);
     const customer = await Customer.create({
       customer_id: newCid,
       name: reg.name, phone: reg.phone, email: reg.email,
+      nik: reg.id_card_number || null,
       address: reg.address, latitude: reg.latitude, longitude: reg.longitude,
       package_id: reg.package_id,
       status: 'active',
       installation_date: new Date(),
-      notes: `Dari registrasi ${reg.reg_number}` + (reg.referral_code ? ` (sales ${reg.referral_code})` : '')
+      notes: `Dari registrasi ${reg.reg_number}` + (reg.referral_code ? ` (sales ${reg.referral_code})` : ''),
+      ktp_photo: photoFields.ktp_photo,
+      house_photo: photoFields.house_photo,
+      documents: photoFields.documents
     }, { transaction: t });
 
     await reg.update({

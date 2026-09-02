@@ -13,6 +13,9 @@ let _pppoeManuallyEdited = false;
 // Direset ke '' setiap kali openAddCustomer() (tidak relevan di tambah baru).
 let _originalPppoeUsername = '';
 let _radiusEnabled = false;
+let _pendingPhotos = { ktp: null, house: null };
+let _photoObjectUrls = [];
+let _photosToDelete = { ktp: false, house: false };
 
 async function refreshRadiusStatus() {
   try {
@@ -24,21 +27,32 @@ async function refreshRadiusStatus() {
   const title = document.getElementById('pppoeCreateTitle');
   const hint = document.getElementById('pppoeCreateHint');
   const req = document.getElementById('pppoeRouterReq');
-  if (title) title.textContent = _radiusEnabled ? 'Buat Akun PPPoE di RADIUS' : 'Buat Akun PPPoE di MikroTik';
+  if (title) title.textContent = _radiusEnabled ? 'Sekalian buat user PPPoE di RADIUS' : 'Sekalian buat user PPPoE di MikroTik';
   if (hint) {
     hint.textContent = _radiusEnabled
-      ? 'User disimpan ke radcheck/radreply FreeRADIUS. MikroTik tidak perlu PPP Secret.'
-      : 'Otomatis tambahkan secret PPPoE ke router yang dipilih saat customer disimpan.';
+      ? 'Satu langkah: data pelanggan + user di radcheck/radreply FreeRADIUS. MikroTik tidak perlu PPP Secret.'
+      : 'Satu langkah: data pelanggan + secret PPPoE di router yang dipilih.';
   }
   if (req) req.style.display = _radiusEnabled ? 'none' : '';
 }
 const AVATAR_BG = ['#2563eb','#0891b2','#059669','#d97706','#dc2626','#0284c7','#16a34a','#ea580c','#0369a1','#0d9488'];
 
 // Toggle field MAC Address — hanya relevan untuk tipe koneksi Hotspot (IP Binding).
+// Saat tambah baru, tipe PPPoE (default) ikut membuka form user PPPoE.
 window.onConnTypeChange = function() {
   const ct  = document.getElementById('custConnType')?.value || '';
   const mac = document.getElementById('custMacField');
   if (mac) mac.style.display = (ct === 'hotspot') ? '' : 'none';
+  if (_custEditId) return;
+  const wantPppoe = (ct === 'pppoe' || ct === '');
+  const cb = document.getElementById('custCreatePppoe');
+  const formBox = document.getElementById('pppoeFormBox');
+  if (cb) cb.checked = wantPppoe;
+  if (formBox) formBox.style.display = wantPppoe ? '' : 'none';
+  if (wantPppoe) {
+    const pw = document.getElementById('custPppoePassword');
+    if (pw && !pw.value) generatePppoePassword();
+  }
 };
 
 // ── PPPoE Username slugify ────────────────────────────────────
@@ -122,9 +136,16 @@ window.openAddCustomer = async function () {
   if (emailBox) emailBox.style.display = '';
   const emailChk = document.getElementById('custSendEmailWelcome');
   if (emailChk) emailChk.checked = true;
-  // Show panel PPPoE create (hanya untuk tambah baru, default OFF)
+  // Show panel PPPoE create (default ON: pelanggan baru = user PPPoE juga)
   const ppBox = document.getElementById('pppoeCreateBox');
   if (ppBox) ppBox.style.display = '';
+  const cbPppoe = document.getElementById('custCreatePppoe');
+  if (cbPppoe) cbPppoe.checked = true;
+  const ppForm = document.getElementById('pppoeFormBox');
+  if (ppForm) ppForm.style.display = '';
+  generatePppoePassword();
+  loadPppoeRouters();
+  loadPppoeProfiles('');
   document.getElementById('customerModal').classList.add('active');
   custInitMap();
   await loadPackages();
@@ -190,6 +211,7 @@ window.editCustomer = async function (id) {
   // Pindahkan field PPPoE Username ke slot atas (di grid utama) supaya tetap
   // bisa di-edit user — karena pppoeCreateBox tertutup di mode edit.
   _movePppoeToEditSlot();
+  _fillCustomerPhotos(c);
 
   _setVal('custName',        c.name            || '');
   _setVal('custPhone',       c.phone           || '');
@@ -605,7 +627,7 @@ async function loadCustomers() {
   const countEl= document.getElementById('customerCount');
 
   if (!data?.success) {
-    if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><p style="color:var(--danger);">Gagal memuat data</p></td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="11" class="empty-state"><p style="color:var(--danger);">Gagal memuat data</p></td></tr>';
     return;
   }
 
@@ -614,7 +636,7 @@ async function loadCustomers() {
 
   if (!data.data?.length) {
     if (tbody) tbody.innerHTML =
-      '<tr><td colspan="9">' +
+      '<tr><td colspan="11">' +
         '<div class="empty-state" style="padding:48px 16px;text-align:center;color:#94a3b8;">' +
           '<svg width="56" height="56" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="display:block;margin:0 auto 12px;color:#cbd5e1;">' +
             '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/>' +
@@ -695,6 +717,8 @@ async function loadCustomers() {
           + '</div>'
         + '</div>'
       + '</td>'
+      + '<td class="col-hide-mob">'+_photoThumbHtml(_customerPhotoUrl(c,'ktp'),'Foto KTP')+'</td>'
+      + '<td class="col-hide-mob">'+_photoThumbHtml(_customerPhotoUrl(c,'house'),'Foto Rumah')+'</td>'
       + '<td style="color:#6b7fa8">'+_esc(c.phone||'–')+'</td>'
       + '<td>'
         + '<div style="font-weight:600;font-size:13px;color:#0d1b3e">'+pkgName+'</div>'
@@ -1090,6 +1114,16 @@ async function _saveCustomerInner() {
       return;
     }
 
+    const savedId = data.data && data.data.id;
+    if (savedId && (_pendingPhotos.ktp || _pendingPhotos.house || _photosToDelete.ktp || _photosToDelete.house)) {
+      btn.textContent = 'Mengunggah foto...';
+      const photoMsg = await _uploadPendingCustomerPhotos(savedId);
+      if (photoMsg) {
+        // photoMsg dipakai di toast di bawah
+        data._photoMsg = photoMsg;
+      }
+    }
+
     // Kalau modal hasil kredensial muncul, beri jeda kecil supaya admin lihat dulu
     const pwModalShown = !!document.getElementById('ppResultModal');
     if (!pwModalShown) {
@@ -1112,6 +1146,7 @@ async function _saveCustomerInner() {
     } else if (data.pppoe_status === 'mikrotik' || pppoeStatus === 'created') {
       msg += ' • Akun PPPoE dibuat ✓';
     }
+    if (data._photoMsg) msg += data._photoMsg;
 
     // Info status auto-sync ke peta infrastruktur
     if (data.infra_sync && data.infra_sync.action) {
@@ -1249,7 +1284,7 @@ function _clearForm() {
   } catch (_) {}
   custLoadProvinces();
   _setVal('custPackage', ''); _setVal('custDueDate', ''); _setVal('custStatus', 'active');
-  _setVal('custConnType', '');
+  _setVal('custConnType', _custEditId ? '' : 'pppoe');
   if (typeof onConnTypeChange === 'function') onConnTypeChange();
   _setVal('custInfraParentId', '');
   const mkSel2 = document.getElementById('custMikrotikId');
@@ -1257,12 +1292,19 @@ function _clearForm() {
 
   // Reset flag manual-edit PPPoE → auto-fill dari nama aktif kembali
   _pppoeManuallyEdited = false;
+  _resetCustomerPhotos();
 
-  // Reset PPPoE creation panel ke state default
+  // Reset PPPoE creation panel: default ON saat tambah baru
   const cbPppoe = document.getElementById('custCreatePppoe');
-  if (cbPppoe) cbPppoe.checked = false;
   const formBox = document.getElementById('pppoeFormBox');
-  if (formBox) formBox.style.display = 'none';
+  if (_custEditId) {
+    if (cbPppoe) cbPppoe.checked = false;
+    if (formBox) formBox.style.display = 'none';
+  } else {
+    if (cbPppoe) cbPppoe.checked = true;
+    if (formBox) formBox.style.display = '';
+    generatePppoePassword();
+  }
   _setVal('custPppoeService', 'pppoe');
   const routerSel = document.getElementById('custPppoeRouter');
   if (routerSel) routerSel.innerHTML = '<option value="">— Memuat daftar router —</option>';
@@ -1285,6 +1327,138 @@ function _setText(id, val) { const el = document.getElementById(id); if (el) el.
 function _setVal(id, val)  { const el = document.getElementById(id); if (el) el.value = val; }
 function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function _debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+// ── Foto KTP / Rumah ──────────────────────────────────────────
+
+function _customerPhotoUrl(c, slot) {
+  const docs = (c && c.documents && !Array.isArray(c.documents) && typeof c.documents === 'object') ? c.documents : {};
+  if (docs[slot] && docs[slot].url) return docs[slot].url;
+  if (slot === 'ktp') return (c && c.ktp_photo) || '';
+  if (slot === 'house') return (c && c.house_photo) || '';
+  return '';
+}
+
+function _photoThumbHtml(url, label) {
+  if (!url) return '<span class="cust-photo-none">—</span>';
+  return '<a href="'+_esc(url)+'" target="_blank" rel="noopener" class="cust-photo-thumb" title="'+_esc(label)+'"><img src="'+_esc(url)+'" alt="'+_esc(label)+'"></a>';
+}
+
+function _revokePhotoUrls() {
+  _photoObjectUrls.forEach(u => { try { URL.revokeObjectURL(u); } catch (_) {} });
+  _photoObjectUrls = [];
+}
+
+function _photoEmptyInner(slot) {
+  if (slot === 'ktp') {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 9h4M14 13h4M3 17l4-4 3 3"/></svg><span>Foto KTP</span>';
+  }
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Foto Rumah</span>';
+}
+
+function _renderPhotoBox(slot, url) {
+  const box = document.getElementById('custPhotoBox_' + slot);
+  const inner = document.getElementById('custPhotoInner_' + slot);
+  if (!box || !inner) return;
+  const fileInput = document.getElementById('custPhoto_' + slot);
+  if (url) {
+    box.classList.add('filled');
+    inner.innerHTML = '<img src="'+_esc(url)+'" alt="'+slot+'"><button type="button" class="cust-photo-clear" title="Hapus pilihan" onclick="custClearPhoto(event,\''+slot+'\')">×</button>';
+  } else {
+    box.classList.remove('filled');
+    inner.innerHTML = _photoEmptyInner(slot);
+    if (fileInput) fileInput.value = '';
+  }
+}
+
+function _resetCustomerPhotos() {
+  _pendingPhotos = { ktp: null, house: null };
+  _photosToDelete = { ktp: false, house: false };
+  _revokePhotoUrls();
+  _renderPhotoBox('ktp', null);
+  _renderPhotoBox('house', null);
+}
+
+function _fillCustomerPhotos(c) {
+  _pendingPhotos = { ktp: null, house: null };
+  _photosToDelete = { ktp: false, house: false };
+  _revokePhotoUrls();
+  _renderPhotoBox('ktp', _customerPhotoUrl(c, 'ktp') || null);
+  _renderPhotoBox('house', _customerPhotoUrl(c, 'house') || null);
+}
+
+window.custPickPhoto = function(slot) {
+  const el = document.getElementById('custPhoto_' + slot);
+  if (el) el.click();
+};
+
+window.custClearPhoto = function(ev, slot) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  _pendingPhotos[slot] = null;
+  _photosToDelete[slot] = true;
+  const el = document.getElementById('custPhoto_' + slot);
+  if (el) el.value = '';
+  _renderPhotoBox(slot, null);
+};
+
+window.custOnPhotoPick = function(slot, input) {
+  const f = input && input.files && input.files[0];
+  if (!f) return;
+  if (f.size > 8 * 1024 * 1024) {
+    App.showToast('Ukuran file maksimal 8MB', 'error');
+    input.value = '';
+    return;
+  }
+  _pendingPhotos[slot] = f;
+  _photosToDelete[slot] = false;
+  const url = URL.createObjectURL(f);
+  _photoObjectUrls.push(url);
+  _renderPhotoBox(slot, url);
+};
+
+async function _uploadPendingCustomerPhotos(customerId) {
+  const slots = ['ktp', 'house'];
+  const uploaded = [];
+  const failed = [];
+  const headersAuth = { 'X-Requested-With': 'XMLHttpRequest' };
+  if (App.token && App.token !== 'null') headersAuth.Authorization = 'Bearer ' + App.token;
+  for (const slot of slots) {
+    const file = _pendingPhotos[slot];
+    if (file) {
+      const fd = new FormData();
+      fd.append('photo', file);
+      try {
+        const r = await fetch('/api/customers/' + customerId + '/document/' + slot, {
+          method: 'POST',
+          credentials: 'include',
+          headers: headersAuth,
+          body: fd
+        });
+        const d = await r.json().catch(() => null);
+        if (r.ok && d && d.success) uploaded.push(slot === 'ktp' ? 'KTP' : 'Rumah');
+        else failed.push((slot === 'ktp' ? 'KTP' : 'Rumah') + ': ' + ((d && d.message) || ('HTTP ' + r.status)));
+      } catch (e) {
+        failed.push((slot === 'ktp' ? 'KTP' : 'Rumah') + ': ' + e.message);
+      }
+      continue;
+    }
+    if (_photosToDelete[slot]) {
+      try {
+        const r = await App.api('/customers/' + customerId + '/document/' + slot, { method: 'DELETE' });
+        if (!(r && r.success)) failed.push((slot === 'ktp' ? 'KTP' : 'Rumah') + ': gagal hapus');
+      } catch (e) {
+        failed.push((slot === 'ktp' ? 'KTP' : 'Rumah') + ': ' + e.message);
+      }
+    }
+  }
+  _pendingPhotos = { ktp: null, house: null };
+  _photosToDelete = { ktp: false, house: false };
+  if (!uploaded.length && !failed.length) return '';
+  if (failed.length) {
+    App.showToast('Foto gagal: ' + failed.join('; '), 'warning');
+    return ' • foto sebagian gagal';
+  }
+  return ' • Foto ' + uploaded.join(' & ') + ' tersimpan ✓';
+}
 
 // Note: tombol Simpan sudah punya inline onclick="saveCustomerBtn()" di customers.ejs
 // yang memanggil saveCustomer(). JANGAN tambahkan addEventListener('click', saveCustomer)
@@ -1454,13 +1628,14 @@ async function loadPppoeProfiles(deviceId) {
 }
 
 // Generate random password 10 chars (alfanumeric)
-window.generatePppoePassword = function() {
+function generatePppoePassword() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
   let pw = '';
   for (let i = 0; i < 10; i++) pw += chars.charAt(Math.floor(Math.random() * chars.length));
   const el = document.getElementById('custPppoePassword');
   if (el) el.value = pw;
-};
+}
+window.generatePppoePassword = generatePppoePassword;
 
 // Bind event listeners untuk panel PPPoE create
 // Pakai event delegation pada document supaya listener tetap berfungsi
@@ -1482,6 +1657,8 @@ window.generatePppoePassword = function() {
         loadPppoeProfiles(routerVal);
         const hint = document.getElementById('pppoeFormHint');
         if (hint) { hint.style.display = 'none'; hint.innerHTML = ''; }
+        const pw = document.getElementById('custPppoePassword');
+        if (pw && !pw.value) generatePppoePassword();
 
         // Auto-fill PPPoE Username dari nama (hanya di mode TAMBAH baru,
         // dan kalau user belum edit manual field PPPoE).

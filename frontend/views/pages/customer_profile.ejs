@@ -550,6 +550,8 @@ async function loadProfile() {
     // Normalisasi dokumen (kolom Customer.documents JSON). Default lama bisa
     // berupa array [] → kita pakai object {house,ktp}. Abaikan kalau array.
     var docs = (c.documents && !Array.isArray(c.documents) && typeof c.documents==='object') ? c.documents : {};
+    if (!docs.ktp && c.ktp_photo) docs.ktp = { url: c.ktp_photo };
+    if (!docs.house && c.house_photo) docs.house = { url: c.house_photo };
     var docCount = (docs.house?1:0) + (docs.ktp?1:0);
 
     // Assembe full HTML — Page header
