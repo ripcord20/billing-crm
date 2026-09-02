@@ -1,0 +1,13 @@
+{
+  "name": "FLAYNET ISP NetOps",
+  "user": "ubuntu",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "app",
+      "command": "node backend/server.js"
+    }
+  ],
+  "ports": [3003]
+}
