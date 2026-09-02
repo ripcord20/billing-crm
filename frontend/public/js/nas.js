@@ -14,8 +14,8 @@ function modeBadge(n){
   const link = n.link || {};
   const state = link.state === 'up' || link.state === 'pending' || link.state === 'down' ? link.state : 'down';
   const kind = n.conn_mode === 'vpn'
-    ? `VPN · ${String(n.vpn_type || 'wireguard').toUpperCase()}`
-    : 'Public IP';
+    ? `Tunnel · ${String(n.vpn_type || 'wireguard').toUpperCase()}`
+    : 'LAN / langsung';
   const label = link.label || (state === 'up' ? 'Terhubung' : 'Belum terhubung');
   const age = link.age_label
     ? `<span class="nas-link-age">${esc(link.age_label)}</span>`
@@ -60,6 +60,8 @@ async function loadNas(){
 
 window.onConnModeChange=()=>{
   const vpn=document.getElementById('nasConnMode').value==='vpn';
+  const lanHint=document.getElementById('nasLanHint');
+  if(lanHint) lanHint.style.display=vpn?'none':'block';
   document.getElementById('nasVpnHint').style.display=vpn?'block':'none';
   document.getElementById('nasVpnTypeWrap').style.display=vpn?'block':'none';
 };
@@ -234,7 +236,7 @@ function showWgQr(d, enabled){
     if(warn){
       if(d.endpoint_is_private){
         warn.style.display='block';
-        warn.textContent='Endpoint masih IP LAN. HP di data seluler tidak handshake. Isi dulu IP/DNS publik concentrator Fiberix.';
+        warn.textContent='Endpoint masih IP LAN server Fiberix (bukan VPS). HP di data seluler tidak handshake. Untuk tes di kantor, sambungkan HP ke Wi-Fi LAN yang sama.';
       }else{
         warn.style.display='none';
         warn.textContent='';
@@ -284,9 +286,18 @@ window.openRosScript=async(id,label)=>{
   __rosTab='v7';
   document.getElementById('rosNas').textContent=label||('#'+id);
   const apiHost=r.data.recommended_api_host||'—';
-  document.getElementById('rosHint').textContent='API/sync MikroTik: '+apiHost+':8728 (IP tunnel WireGuard). Bukan sewa VPN cloud. Radius: '+(r.data.radius_host||'192.168.22.9')+'.';
+  const radius=' Radius: '+(r.data.radius_host||'192.168.22.9')+'.';
+  const lanDirect=r.data.conn_mode!=='vpn';
+  document.getElementById('rosHint').textContent=lanDirect
+    ? 'API/sync: '+apiHost+':8728.'+radius+' Mode LAN: tempel script, tanpa VPS dan tanpa port-forward.'
+    : (r.data.endpoint_is_lan
+      ? 'API/sync: '+apiHost+':8728 (tunnel ke IP LAN Fiberix).'+radius+' Bukan VPS cloud. Port-forward tidak dipakai.'
+      : 'API/sync: '+apiHost+':8728 (IP tunnel).'+radius+' Server tunnel = Fiberix, bukan VPS cloud.');
   document.getElementById('rosNotes').textContent=(r.data.notes||[]).join(' ');
   const pf=r.data.port_forward_example||{};
+  const pfBox=document.getElementById('rosPfBox');
+  const showPf=!pf.skipped && Array.isArray(pf.rules) && pf.rules.length>0;
+  if(pfBox) pfBox.style.display=showPf?'block':'none';
   document.getElementById('rosPfNote').textContent=pf.note||'';
   document.getElementById('rosPfTable').innerHTML=(pf.rules||[]).map(x=>`<tr><td>${esc(x.use)}</td><td class="mono">${esc(x.public)}</td><td class="mono">${esc(x.internal)}</td></tr>`).join('');
   document.getElementById('rosPfNft').textContent=pf.nft_example||'';

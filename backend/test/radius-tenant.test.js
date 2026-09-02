@@ -67,7 +67,7 @@ assert.ok(!guide.ufw_cmd.includes('Anywhere'));
 assert.ok(guide.mikrotik.includes(FREERADIUS_HOST));
 assert.ok(guide.mikrotik.includes('192.168.61.2'));
 
-const { buildNasRouterOsScript, radiusAllowedIps, EXPIRED_NET } = require('../utils/nasRouterOsScript');
+const { buildNasRouterOsScript, radiusAllowedIps, EXPIRED_NET, isPrivateHost } = require('../utils/nasRouterOsScript');
 const ros = buildNasRouterOsScript({
   nasId: 3,
   nasname: '192.168.61.2',
@@ -97,11 +97,74 @@ assert.ok(ros.v7.includes('Tidak menghapus object BILLINGRADIUS'));
 assert.ok(ros.v7.includes('EXPIRED_FIBERIX'));
 assert.ok(ros.v7.includes(EXPIRED_NET));
 assert.ok(ros.v7.includes('wg-fiberix'));
+assert.ok(ros.v7.includes('WireGuard ke server billing Fiberix'));
+assert.ok(!/VPS/.test(ros.v7));
+assert.ok(!/VPS/.test(ros.v6));
 assert.ok(ros.v6.includes('/radius add'));
 assert.strictEqual(ros.recommended_api_host, '10.10.0.2');
 assert.strictEqual(ros.port_forward_example.applied, false);
+assert.strictEqual(ros.port_forward_example.skipped, false);
 assert.ok(ros.port_forward_example.nft_example.includes('10.10.0.2:8728'));
+assert.ok(ros.port_forward_example.nft_example.includes('server Fiberix'));
+assert.ok(!/VPS/.test(ros.port_forward_example.nft_example));
 assert.ok(ros.port_forward_example.rules[0].public.startsWith('vpn.example.com:'));
 assert.ok(radiusAllowedIps('10.10.0.1', '192.168.22.9').includes('192.168.22.9/32'));
+
+assert.strictEqual(isPrivateHost('192.168.22.9'), true);
+assert.strictEqual(isPrivateHost('vpn.example.com'), false);
+
+const lanRos = buildNasRouterOsScript({
+  nasId: 1,
+  nasname: '192.168.61.2',
+  shortname: 'LANNAS',
+  secret: 'secret',
+  radiusHost: '192.168.22.9',
+  vpnType: 'public',
+  vpsHost: '192.168.22.9'
+});
+assert.ok(lanRos.v7.includes('Tunnel dilewati (mode LAN'));
+assert.ok(lanRos.v7.includes('WireGuard tidak wajib'));
+assert.ok(!/VPS/.test(lanRos.v7));
+assert.strictEqual(lanRos.skip_port_forward, true);
+assert.strictEqual(lanRos.port_forward_example.skipped, true);
+assert.strictEqual(lanRos.port_forward_example.nft_example, '');
+assert.deepStrictEqual(lanRos.port_forward_example.rules, []);
+
+const lanDespiteDns = buildNasRouterOsScript({
+  nasId: 2,
+  nasname: '192.168.62.2',
+  shortname: 'NAGA',
+  secret: 'secret',
+  radiusHost: '192.168.22.9',
+  vpnType: 'public',
+  connMode: 'public',
+  vpsHost: 'fiberix.my.id'
+});
+assert.strictEqual(lanDespiteDns.port_forward_example.skipped, true);
+assert.ok(!/VPS/.test(lanDespiteDns.v7));
+
+const lanWg = buildNasRouterOsScript({
+  nasId: 3,
+  nasname: '192.168.61.2',
+  shortname: 'GANANET',
+  secret: 'secret',
+  radiusHost: '192.168.22.9',
+  tunnelAddress: '10.10.0.2/32',
+  vpnType: 'wireguard',
+  vpsHost: '192.168.22.9',
+  wireguard: {
+    privateKey: 'PRIV',
+    serverPublicKey: 'PUB',
+    presharedKey: '',
+    tunnelAddress: '10.10.0.2/32',
+    endpointHost: '192.168.22.9',
+    endpointPort: 51820,
+    allowedIps: '10.10.0.1/32,192.168.22.9/32',
+    keepalive: 25
+  }
+});
+assert.ok(lanWg.v7.includes('WireGuard ke server billing Fiberix'));
+assert.ok(!/VPS/.test(lanWg.v7));
+assert.strictEqual(lanWg.port_forward_example.skipped, true);
 
 console.log('radius-tenant.test.js OK');
