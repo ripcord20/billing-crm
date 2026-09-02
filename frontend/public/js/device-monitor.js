@@ -603,6 +603,7 @@ function openAddDevice() {
   $('fDeviceId').value           = '';
   $('fName').value = $('fIp').value = $('fBrand').value = $('fModel').value = $('fLocation').value = '';
   $('fApiPort').value   = '80';
+  $('fWinboxPort').value = '8291';
   $('fApiUser').value   = '';
   $('fApiPass').value   = '';
   $('fSnmpComm').value  = 'public';
@@ -631,6 +632,7 @@ async function openEditDevice(id) {
     $('fModel').value    = d.model || '';
     $('fLocation').value = d.location || '';
     $('fType').value     = d.type || 'router';
+    $('fWinboxPort').value = d.winbox_port || '8291';
     $('fPollInterval').value = d.poll_interval || '60';
 
     const proto = d.monitoring_type || 'api';
@@ -739,6 +741,7 @@ async function saveDevice() {
     brand:    $('fBrand').value    || null,
     model:    $('fModel').value    || null,
     location: $('fLocation').value || null,
+    winbox_port:      parseInt($('fWinboxPort').value, 10) || 8291,
     monitoring_type:  proto,
     api_port:         proto !== 'snmp' ? ($('fApiPort').value  || null) : null,
     api_username:     proto !== 'snmp' ? ($('fApiUser').value  || null) : null,

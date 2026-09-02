@@ -884,6 +884,23 @@ const startServer = async () => {
       logger.warn('Failed to migrate devices.uplink_iface: ' + (e.message || e));
     }
 
+    try {
+      const [wbRows] = await db.sequelize.query(
+        `SELECT COUNT(*) AS c FROM information_schema.columns
+          WHERE table_schema = DATABASE()
+            AND table_name = 'devices'
+            AND column_name = 'winbox_port'`
+      );
+      if (!(wbRows && wbRows[0] && parseInt(wbRows[0].c, 10) > 0)) {
+        await db.sequelize.query(
+          `ALTER TABLE devices ADD COLUMN winbox_port INT NULL DEFAULT 8291 COMMENT 'Port Winbox MikroTik (default 8291)'`
+        );
+        logger.info('Migrated: devices.winbox_port column added');
+      }
+    } catch (e) {
+      logger.warn('Failed to migrate devices.winbox_port: ' + (e.message || e));
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // SALES MODULE — auto-migration idempotent saat boot.
     // Membuat tabel sales (jika belum ada), kolom komisi di packages,
