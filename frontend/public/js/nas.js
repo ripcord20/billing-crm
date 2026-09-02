@@ -112,6 +112,7 @@ window.openNas=()=>{
   document.getElementById('nasVpnType').value='wireguard';
   document.getElementById('nasPppPool').value='10.20.0.2-10.20.0.254';
   document.getElementById('nasPppLocal').value='10.20.0.1';
+  __rosTab='v7';
   onConnModeChange();
   showNasDetail(true);
   const pre=document.getElementById('rosScript');
@@ -138,6 +139,7 @@ window.openNasDetail=async(id)=>{
   document.getElementById('nasVpnType').value=n.vpn_type||'wireguard';
   document.getElementById('nasPppPool').value=n.ppp_pool_ranges||'10.20.0.2-10.20.0.254';
   document.getElementById('nasPppLocal').value=n.ppp_local_address||'10.20.0.1';
+  __rosTab='v7';
   onConnModeChange();
   showNasDetail(true);
   window.scrollTo({top:0,behavior:'smooth'});
