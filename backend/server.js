@@ -225,6 +225,12 @@ const authLimiter = rateLimit({
   message: { success: false, message: 'Terlalu banyak percobaan login. Coba lagi nanti.' }
 });
 app.use(['/api/auth/login', '/api/auth/register', '/portal/api/auth/login', '/reseller/api/auth/login'], authLimiter);
+const portalOtpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 12,
+  message: { success: false, message: 'Terlalu banyak permintaan OTP. Coba lagi nanti.' }
+});
+app.use(['/portal/api/auth/otp/request', '/portal/api/auth/otp/verify'], portalOtpLimiter);
 app.use('/api', apiLimiter);
 
 // ── Demo-specific rate limiter (60 req/min untuk role demo) ─────────
@@ -1046,6 +1052,7 @@ const startServer = async () => {
       await safeSync(db.ResellerPromo,           'reseller_promos');
       await safeSync(db.ResellerPromoRedemption, 'reseller_promo_redemptions');
       await safeSync(db.EmailLog,                'email_logs');
+      await safeSync(db.PortalOtp,               'portal_otps');
       await safeSync(db.ReportLog,               'report_logs');
       await safeSync(db.MonitorState,            'monitor_states');
       await safeSync(db.NotifLog,                'notif_logs');
