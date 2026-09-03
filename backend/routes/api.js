@@ -376,6 +376,53 @@ router.get('/packages/:id', authenticate, demoGuard, PackageController.show);
 router.put('/packages/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'package'), PackageController.update);
 router.delete('/packages/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('delete', 'package'), PackageController.destroy);
 
+// ===== RADIUS / NAS (FreeRADIUS + WireGuard/OpenVPN/L2TP) =====
+let RadiusController, NasController, tenantContextMiddleware;
+try {
+  ({ tenantContextMiddleware } = require('../middleware/tenantContext'));
+  RadiusController = require('../controllers/RadiusController');
+  NasController = require('../controllers/NasController');
+} catch (e) {
+  console.warn('[api] Modul NAS/RADIUS tidak dimuat:', e.message);
+}
+if (NasController && RadiusController) {
+  const radiusStaff = authorize('superadmin', 'admin', 'tenant_owner', 'finance', 'noc');
+  const tc = tenantContextMiddleware || ((req, res, next) => next());
+  router.get('/radius/servers', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.listServers(r, s));
+  router.post('/radius/servers', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.createServer(r, s));
+  router.post('/radius/ensure-local', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.ensureLocal(r, s));
+  router.get('/radius/sql-guide', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.sqlGuide(r, s));
+  router.put('/radius/servers/:id', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.updateServer(r, s));
+  router.post('/radius/servers/:id/test', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.testServer(r, s));
+  router.get('/radius/sessions', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.sessions(r, s));
+  router.get('/radius/users', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.radiusUsers(r, s));
+  router.post('/radius/provision', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.provision(r, s));
+  router.post('/radius/customers/:customerId/isolir', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.isolate(r, s));
+  router.post('/radius/customers/:customerId/restore', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.restore(r, s));
+  router.get('/nas/wireguard/server', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.wgServerGet(r, s));
+  router.put('/nas/wireguard/server', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.wgServerSave(r, s));
+  router.post('/nas/wireguard/server/init-keys', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.wgServerInitKeys(r, s));
+  if (typeof NasController.wgServerApply === 'function') {
+    router.post('/nas/wireguard/server/apply', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.wgServerApply(r, s));
+  }
+  router.post('/nas/import', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.importFromRadius(r, s));
+  router.post('/nas/routeros-preview', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.routerosPreview(r, s));
+  if (typeof NasController.provisionRemoteWg === 'function') {
+    router.post('/nas/remote-wg/provision', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.provisionRemoteWg(r, s));
+  }
+  router.get('/nas', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.index(r, s));
+  router.post('/nas', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.create(r, s));
+  router.post('/nas/:id/sync', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.syncOne(r, s));
+  router.post('/nas/:id/wg/generate', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.wgGenerate(r, s));
+  router.post('/nas/:id/vpn/generate', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.vpnGenerate(r, s));
+  router.post('/nas/:id/routeros-script', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.routerosScript(r, s));
+  if (typeof NasController.remoteWgScript === 'function') {
+    router.post('/nas/:id/remote-wg/script', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.remoteWgScript(r, s));
+  }
+  router.put('/nas/:id', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.update(r, s));
+  router.delete('/nas/:id', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.destroy(r, s));
+}
+
 // ===== BILLING =====
 router.get('/billing/invoices', authenticate, demoGuard, BillingController.listInvoices);
 router.get('/billing/invoices/:id', authenticate, demoGuard, BillingController.showInvoice);
