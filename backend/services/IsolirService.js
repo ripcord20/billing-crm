@@ -1729,9 +1729,13 @@ async function ensureSchema() {
       const defaults = [
         ['isolir_pppoe_profile_name', 'isolir-profile', 'string', 'Nama PPP profile untuk pelanggan diisolir'],
         ['isolir_pppoe_pool_name',    'isolir-pool',    'string', 'Nama IP pool untuk pelanggan PPPoE diisolir'],
-        ['isolir_pppoe_pool_range',   '10.255.0.2-10.255.255.254', 'string', 'Range IP pool isolir PPPoE (10.255.0.0/16)'],
-        ['isolir_pppoe_local_addr',   '10.255.0.1',   'string', 'Local-address PPP profile isolir (gateway /16)'],
+        ['isolir_pppoe_pool_range',   '10.255.0.2-10.255.0.254', 'string', 'Range IP pool isolir PPPoE (10.255.0.0/24)'],
+        ['isolir_pppoe_local_addr',   '10.255.0.1',   'string', 'Local-address PPP profile isolir (gateway /24)'],
         ['isolir_pppoe_rate_limit',   '128k/128k',      'string', 'Rate-limit PPP profile isolir (rx/tx)'],
+        ['pppoe_client_profile_name', 'pppoe-client', 'string', 'Nama PPP profile klien PPPoE aktif'],
+        ['pppoe_client_pool_name',    'pppoe-pool',    'string', 'Nama IP pool klien PPPoE aktif'],
+        ['pppoe_client_pool_range',   '10.2.64.2-10.2.79.254', 'string', 'Range IP pool klien PPPoE'],
+        ['pppoe_client_local_addr',   '10.2.64.1',   'string', 'Local-address PPP profile klien (gateway)'],
       ];
       for (const [key, value, type, description] of defaults) {
         await sequelize.query(
@@ -1739,13 +1743,13 @@ async function ensureSchema() {
           { replacements: [key, value, type, description] }
         );
       }
-      // Naikkan pool lama /24 → /16 (hanya kalau masih default lama, jangan timpa custom).
       await sequelize.query(
-        `UPDATE app_settings SET value='10.255.0.2-10.255.255.254', description='Range IP pool isolir PPPoE (10.255.0.0/16)'
-          WHERE \`key\`='isolir_pppoe_pool_range' AND value IN ('10.255.255.2-10.255.255.254')`
+        `UPDATE app_settings SET value='10.255.0.2-10.255.0.254', description='Range IP pool isolir PPPoE (10.255.0.0/24)'
+          WHERE \`key\`='isolir_pppoe_pool_range'
+            AND value IN ('10.255.255.2-10.255.255.254','10.255.0.2-10.255.255.254')`
       );
       await sequelize.query(
-        `UPDATE app_settings SET value='10.255.0.1', description='Local-address PPP profile isolir (gateway /16)'
+        `UPDATE app_settings SET value='10.255.0.1', description='Local-address PPP profile isolir (gateway /24)'
           WHERE \`key\`='isolir_pppoe_local_addr' AND value IN ('10.255.255.1')`
       );
     } catch(e) { /* abaikan */ }

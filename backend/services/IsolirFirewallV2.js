@@ -607,7 +607,7 @@ async function setupFirewallV2(api, device) {
     errors.push('Filter DROP: ' + e.message);
   }
 
-  // ── 8. Auto-create PPP isolir-profile + IP pool /16 ──
+  // ── 8. Auto-create PPP isolir /24 + pool klien PPPoE ──
   // Best-effort: kalau gagal, isolir static masih jalan. Hanya isolir PPPoE
   // yang terganggu. Tampilkan warning di details.
   try {
@@ -618,6 +618,13 @@ async function setupFirewallV2(api, device) {
       results.push(`✓ Isolir profile PPPoE siap`);
     } else {
       results.push(`⚠ Setup profile PPPoE gagal: ${pppRes.error} (isolir static tetap berfungsi)`);
+    }
+    const clientRes = await IsolirPPPoE.setupClientPppoeProfile(api, sequelize);
+    if (clientRes.success) {
+      results.push(...(clientRes.details || []));
+      results.push(`✓ PPP klien (pppoe-client) siap`);
+    } else {
+      results.push(`⚠ Setup pool klien PPPoE gagal: ${clientRes.error}`);
     }
   } catch (e) {
     results.push(`⚠ Setup profile PPPoE error: ${e.message} (isolir static tetap berfungsi)`);

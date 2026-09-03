@@ -352,7 +352,7 @@ window.setupFirewall = async function(id) {
     message: 'Akan membuat rule <strong>NAT redirect + bypass + drop</strong> di router ini.',
     bullets: [
       'URL halaman isolir sudah diset (HTTP, IP LOKAL, bukan domain CDN)',
-      'Auto-buat IP pool isolir 10.255.0.0/16 + PPP profile isolir-profile',
+      'Auto-buat pool isolir 10.255.0.0/24 + pool klien PPPoE 10.2.64.2-10.2.79.254',
       'Rule lama FLAYNET/WAU dibersihkan, list pindah ke SKYNET-*'
     ],
     confirmText: 'Lanjutkan',
@@ -753,7 +753,7 @@ window.doIsolir = async function(id, name) {
   if (m === 'hotspot_binding') {
     bullets = ['IP Binding di MikroTik akan di-<strong>disable</strong> (sama seperti di /hotspot-binding)', 'Session hotspot pelanggan di-kick', 'Akses internet langsung terputus'];
   } else if (m === 'pppoe') {
-    bullets = ['Pool + profil isolir PPPoE auto-create (10.255.0.0/16) kalau belum ada', 'Profil PPPoE diganti ke profil isolir', 'Session PPPoE aktif di-kick', 'Saat reconnect, pelanggan dapat IP dari pool /16'];
+    bullets = ['Pool + profil isolir PPPoE auto-create (10.255.0.0/24) kalau belum ada', 'Profil PPPoE diganti ke profil isolir', 'Session PPPoE aktif di-kick', 'Saat reconnect, pelanggan dapat IP dari pool isolir /24'];
   } else {
     bullets = ['IP pelanggan ditambahkan ke address-list SKYNET-ISOLIR', 'Traffic HTTP di-redirect ke halaman isolir', 'HTTPS & traffic lain di-drop'];
   }
