@@ -607,7 +607,7 @@ async function setupFirewallV2(api, device) {
     errors.push('Filter DROP: ' + e.message);
   }
 
-  // ── 8. Setup PPPoE isolir-profile + IP pool (auto-create) ──
+  // ── 8. Auto-create PPP isolir-profile + IP pool /16 ──
   // Best-effort: kalau gagal, isolir static masih jalan. Hanya isolir PPPoE
   // yang terganggu. Tampilkan warning di details.
   try {
