@@ -195,15 +195,34 @@ async function destroyWilayah(id) {
   await sequelize.query('UPDATE customers SET wilayah_id = NULL WHERE wilayah_id = ?', {
     replacements: [id]
   });
+  try {
+    await sequelize.query('UPDATE packages SET wilayah_id = NULL WHERE wilayah_id = ?', {
+      replacements: [id]
+    });
+  } catch (_) {}
   await row.destroy();
   return true;
+}
+
+async function wilayahFromPackage(customer, wilayahList) {
+  const pkgId = customer && customer.package_id;
+  if (!pkgId || !Package) return null;
+  try {
+    const pkg = await Package.findByPk(pkgId, { attributes: ['id', 'wilayah_id'] });
+    if (!pkg || !pkg.wilayah_id) return null;
+    return wilayahList.find((w) => Number(w.id) === Number(pkg.wilayah_id)) || null;
+  } catch (_) {
+    return null;
+  }
 }
 
 async function assignCustomer(customer) {
   const Wilayah = safeWilayah();
   if (!Wilayah || !customer) return null;
   const list = await Wilayah.findAll();
-  const hit = pickWilayahForCustomer(customer, list.map((w) => w.toJSON()));
+  const plain = list.map((w) => w.toJSON());
+  let hit = pickWilayahForCustomer(customer, plain);
+  if (!hit) hit = await wilayahFromPackage(customer, plain);
   if (!hit) return null;
   if (Number(customer.wilayah_id) === Number(hit.id)) return hit;
   await Customer.update({ wilayah_id: hit.id }, { where: { id: customer.id } });
@@ -216,11 +235,20 @@ async function autoLinkAll() {
   const list = await Wilayah.findAll();
   if (!list.length) return { linked: 0 };
   const customers = await Customer.findAll({
-    attributes: ['id', 'name', 'village', 'district', 'address', 'wilayah_id']
+    attributes: ['id', 'name', 'village', 'district', 'address', 'wilayah_id', 'package_id']
   });
+  const plain = list.map((w) => w.toJSON());
+  let pkgMap = {};
+  try {
+    const pkgs = await Package.findAll({ attributes: ['id', 'wilayah_id'] });
+    pkgs.forEach((p) => { if (p.wilayah_id) pkgMap[p.id] = p.wilayah_id; });
+  } catch (_) {}
   let linked = 0;
   for (const c of customers) {
-    const hit = pickWilayahForCustomer(c, list.map((w) => w.toJSON()));
+    let hit = pickWilayahForCustomer(c, plain);
+    if (!hit && c.package_id && pkgMap[c.package_id]) {
+      hit = plain.find((w) => Number(w.id) === Number(pkgMap[c.package_id])) || null;
+    }
     if (hit && Number(c.wilayah_id) !== Number(hit.id)) {
       await c.update({ wilayah_id: hit.id });
       linked += 1;

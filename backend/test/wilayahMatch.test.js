@@ -35,4 +35,16 @@ assert.strictEqual(pickWilayahForCustomer({
   village: 'KAMPUNGMANDAR'
 }, [ltg, mdr]).code, 'MDR');
 
+const {
+  packageMatchesWilayah,
+  pickWilayahForPackage
+} = require('../utils/wilayahMatch');
+
+assert.ok(packageMatchesWilayah({ name: 'CORE 2 MDR STARTER/LITE/HEMAT 100k' }, mdr));
+assert.ok(!packageMatchesWilayah({ name: 'CORE 2 MDR STARTER/LITE/HEMAT 100k' }, ltg));
+assert.strictEqual(pickWilayahForPackage({
+  name: 'CORE 2 MDR STARTER/LITE/HEMAT 100k'
+}, [ltg, mdr]).code, 'MDR');
+assert.strictEqual(pickWilayahForPackage({ name: 'Paket Umum 50 Mbps' }, [ltg, mdr]), null);
+
 console.log('wilayahMatch.test.js OK');

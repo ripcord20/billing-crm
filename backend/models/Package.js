@@ -59,6 +59,13 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(64),
       allowNull: true,
       comment: 'Nama PPP profile di MikroTik untuk paket ini'
+    },
+    // Paket terikat ke satu wilayah operasional (Modul Wilayah).
+    // NULL = paket berlaku umum, tidak spesifik area.
+    wilayah_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: 'Wilayah operasional paket ini'
     }
   }, {
     tableName: 'packages',

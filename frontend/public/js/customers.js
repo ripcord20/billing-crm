@@ -784,7 +784,11 @@ async function loadPackages() {
   const sel  = document.getElementById('custPackage');
   if (!sel || !data?.success) return;
   sel.innerHTML = '<option value="">Pilih paket</option>' +
-    data.data.map(p => '<option value="' + p.id + '">' + _esc(p.name) + ' — Rp ' + Number(p.price).toLocaleString('id-ID') + '/bln</option>').join('');
+    data.data.map(p => {
+      const wl = p.wilayah && (p.wilayah.code || p.wilayah.name);
+      const suffix = wl ? ' · ' + wl : '';
+      return '<option value="' + p.id + '">' + _esc(p.name) + suffix + ' — Rp ' + Number(p.price).toLocaleString('id-ID') + '/bln</option>';
+    }).join('');
 }
 
 // ── Load Parent ODP/ODC/POP untuk dropdown ────────────────────

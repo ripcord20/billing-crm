@@ -206,6 +206,10 @@ Customer.belongsTo(Package, { foreignKey: 'package_id', as: 'package' });
 Wilayah.hasMany(Customer, { foreignKey: 'wilayah_id', as: 'customers' });
 Customer.belongsTo(Wilayah, { foreignKey: 'wilayah_id', as: 'wilayah' });
 
+// Package <-> Wilayah (setiap paket layanan bisa dikaitkan ke satu wilayah)
+Wilayah.hasMany(Package, { foreignKey: 'wilayah_id', as: 'packages' });
+Package.belongsTo(Wilayah, { foreignKey: 'wilayah_id', as: 'wilayah' });
+
 // Customer <-> Device (router MikroTik untuk PPPoE isolir)
 // Asosiasi ini opsional — customer.mikrotik_id boleh NULL (tidak semua
 // customer terhubung ke router tertentu). Alias 'mikrotik' dipakai agar
