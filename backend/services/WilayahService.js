@@ -22,7 +22,7 @@ function safeWilayah() {
 async function getIncludeInvoice() {
   try {
     const row = await AppSetting.findOne({ where: { key: SETTING_KEY } });
-    return row && String(row.value) === '1';
+    return !!(row && String(row.value) === '1');
   } catch (_) {
     return false;
   }
