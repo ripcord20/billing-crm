@@ -193,17 +193,17 @@
           <li>Klik <b>+ NAS</b> → isi Informasi NAS + Profile PPP → <b>Simpan &amp; sync</b>.</li>
           <li>Salin tab RouterOS v7 di bawah, tempel di New Terminal MikroTik.</li>
         </ol>
-        <p class="nas-easy-note">WireGuard / QR HP hanya jika router <em>tidak</em> satu LAN dengan Fiberix. Server tunnel = proses di server Fiberix yang sama, bukan VPS cloud.</p>
+        <p class="nas-easy-note">WireGuard hanya untuk router yang <em>tidak</em> satu LAN. Hub tunnel = CORE 1, bukan VPS dan bukan interface WG di Fiberix.</p>
       </div>
       <div class="nas-remote">
         <h2>MikroTik di luar jaringan lokal (beda kota / CGNAT)</h2>
         <ol>
-          <li>⚙ WireGuard Server → Aktif, endpoint = IP publik Fiberix. Jika CORE/gateway sudah memakai UDP <code>51820</code>, pakai port lain (mis. <code>51822</code>) lalu <b>dst-nat</b> ke IP LAN Fiberix, lalu <b>Aktifkan interface</b>.</li>
-          <li>+ NAS → mode <b>Tunnel WireGuard</b> → isi nama + secret → Simpan, lalu tombol <b>VPN</b> / Detail (script generate peer).</li>
-          <li>Salin script RouterOS v7, tempel di New Terminal MikroTik. Tunggu LED Mode <b>Terhubung</b>.</li>
-          <li>Device Management otomatis memakai IP tunnel <code>10.10.0.x</code> untuk API / isolir / Winbox — jangan isi IP publik router.</li>
+          <li>Peer ke CORE 1 <code>wg-core2</code> — endpoint <code>103.195.65.216:51823</code>, IP tunnel <code>10.202.0.x</code> (CORE 2 sudah <code>10.202.0.2</code>, cabang baru <code>.3</code>, <code>.4</code>, …).</li>
+          <li>Di MikroTik baru: buat <code>wg-core1</code>, isi public-key CORE 1, lalu <code>/interface wireguard print</code> — salin public-key klien.</li>
+          <li>Di CORE 1: <code>/interface wireguard peers add interface=wg-core2 public-key="..." allowed-address=10.202.0.X/32 comment="NAMA"</code></li>
+          <li>Device Management + NAS: mode <b>LAN / langsung</b>, IP = <code>10.202.0.X</code> (bukan IP publik, bukan <code>10.10.0.x</code>). Jangan tombol VPN Fiberix.</li>
         </ol>
-        <p class="nas-easy-note">MikroTik yang inisiasi tunnel (keluar). Fiberix di belakang NAT harus di-forward UDP-nya di CORE — kalau tidak, peer hanya TX tanpa handshake.</p>
+        <p class="nas-easy-note">Public key CORE 1 <code>wg-core2</code>: <code>wpS/pSEUnACQEkEeS7lzNh4IDxSsoOW+ZdWP2ehi1DA=</code>. Allowed-address klien: <code>10.202.0.1/32,192.168.22.99/32,192.168.22.9/32,192.168.91.1/32</code>.</p>
       </div>
       <div class="card nas-table-card"><div class="card-body">
         <div class="table-scroll" id="nasTableScroll">
@@ -254,7 +254,7 @@
               </select>
             </div>
             <div id="nasVpnHint" style="display:none;background:#fff7ed;border:1px dashed #fdba74;border-radius:8px;padding:10px;font-size:12px;color:#9a3412;margin:0 0 12px;">
-              Pakai jika MikroTik <b>tidak</b> satu LAN (CGNAT / kota lain). Endpoint = IP publik Fiberix. Port UDP harus sampai ke Fiberix (bukan ke WG CORE). Setelah generate, IP NAS = IP tunnel.
+              Router luar LAN: peer ke CORE 1 <code>wg-core2</code> (<code>103.195.65.216:51823</code>), lalu di form ini pilih <b>LAN / langsung</b> dengan IP tunnel <code>10.202.0.x</code>. Jangan generate VPN Fiberix.
             </div>
             <label>Host RADIUS Fiberix</label>
             <input id="nasRadiusHost" value="192.168.22.9" readonly>
