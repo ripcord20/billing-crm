@@ -10,6 +10,8 @@ const { decryptSecret } = require('../utils/secretBox');
 const { buildNasRouterOsScript, radiusAllowedIps, isPrivateHost, DEFAULT_PPP_POOL, DEFAULT_PPP_LOCAL } = require('../utils/nasRouterOsScript');
 const { attachNasLinkStatus } = require('../utils/nasLinkStatus');
 const { upsertTunnelDevice, applyTunnelNasname } = require('../utils/nasRemoteDevice');
+const Core1RemoteWg = require('../services/Core1RemoteWgService');
+const { isCore1TunnelHost } = require('../utils/core1RemoteWg');
 
 // Push konfigurasi NAS ke server FreeRADIUS (tabel `nas`). Fungsi modul-level
 // supaya tidak bergantung pada `this` (handler dipasang unbound di router).
@@ -139,6 +141,9 @@ class NasController {
       // Best-effort: cabut peer WireGuard dari interface lokal bila ada.
       if (row.conn_mode === 'vpn' && row.wg_public_key) {
         try { await Wireguard.removePeerForNas(row); } catch (_) {}
+      }
+      if (row.wg_public_key && (isCore1TunnelHost(row.nasname) || isCore1TunnelHost(row.tunnel_address))) {
+        try { await Core1RemoteWg.removePeerByPublicKey(row.wg_public_key); } catch (_) {}
       }
       await row.destroy();
       res.json({ success: true, message: 'NAS dihapus dari billing (dan diupayakan dari FreeRADIUS)' });
@@ -380,6 +385,40 @@ class NasController {
           endpoint_is_lan: true
         }
       });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  // ── Cabang remote: peer otomatis di CORE 1 wg-core2 + script tempel ──
+  async provisionRemoteWg(req, res) {
+    try {
+      const b = req.body || {};
+      const out = await Core1RemoteWg.provision({
+        name: b.name || b.shortname,
+        secret: b.secret,
+        location: b.location,
+        apiPort: b.api_port,
+        apiUsername: b.api_username,
+        apiPassword: b.api_password,
+        pppPool: b.ppp_pool_ranges,
+        pppLocal: b.ppp_local_address,
+        tenantId: getTenantId() || b.tenant_id || null
+      });
+      res.status(201).json({ success: true, data: out });
+    } catch (e) {
+      const msg = e.message || 'Gagal membuat cabang remote';
+      const status = /wajib|tidak ditemukan|penuh|sudah ada|tidak valid|tidak ada di CORE/i.test(msg) ? 400 : 500;
+      res.status(status).json({ success: false, message: msg });
+    }
+  }
+
+  async remoteWgScript(req, res) {
+    try {
+      const row = await NasDevice.findByPk(req.params.id);
+      if (!row) return res.status(404).json({ success: false, message: 'NAS tidak ditemukan' });
+      const out = await Core1RemoteWg.scriptForNas(row);
+      res.json({ success: true, data: out });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }

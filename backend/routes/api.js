@@ -399,12 +399,14 @@ router.post('/nas/wireguard/server/init-keys', authenticate, demoGuard, tenantCo
 router.post('/nas/wireguard/server/apply', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.wgServerApply(r, s));
 router.post('/nas/import', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.importFromRadius(r, s));
 router.post('/nas/routeros-preview', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.routerosPreview(r, s));
+router.post('/nas/remote-wg/provision', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.provisionRemoteWg(r, s));
 router.get('/nas', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.index(r, s));
 router.post('/nas', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.create(r, s));
 router.post('/nas/:id/sync', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.syncOne(r, s));
 router.post('/nas/:id/wg/generate', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.wgGenerate(r, s));
 router.post('/nas/:id/vpn/generate', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.vpnGenerate(r, s));
 router.post('/nas/:id/routeros-script', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.routerosScript(r, s));
+router.post('/nas/:id/remote-wg/script', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.remoteWgScript(r, s));
 router.put('/nas/:id', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.update(r, s));
 router.delete('/nas/:id', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.destroy(r, s));
 

@@ -183,6 +183,7 @@
           <button class="btn btn-secondary" onclick="openPhoneQr()">QR HP</button>
           <button class="btn btn-secondary" onclick="openWgServer()">⚙ WireGuard Server</button>
           <button class="btn btn-secondary" onclick="importNas()">Import dari RADIUS</button>
+          <button class="btn btn-secondary" onclick="openRemoteWg()" style="background:#fff7ed;border-color:#fdba74;color:#9a3412;">Cabang remote</button>
           <button class="btn btn-primary" onclick="openNas()">+ NAS</button>
         </div>
       </div>
@@ -198,12 +199,11 @@
       <div class="nas-remote">
         <h2>MikroTik di luar jaringan lokal (beda kota / CGNAT)</h2>
         <ol>
-          <li>Peer ke CORE 1 <code>wg-core2</code> — endpoint <code>103.195.65.216:51823</code>, IP tunnel <code>10.202.0.x</code> (CORE 2 sudah <code>10.202.0.2</code>, cabang baru <code>.3</code>, <code>.4</code>, …).</li>
-          <li>Di MikroTik baru: buat <code>wg-core1</code>, isi public-key CORE 1, lalu <code>/interface wireguard print</code> — salin public-key klien.</li>
-          <li>Di CORE 1: <code>/interface wireguard peers add interface=wg-core2 public-key="..." allowed-address=10.202.0.X/32 comment="NAMA"</code></li>
-          <li>Device Management + NAS: mode <b>LAN / langsung</b>, IP = <code>10.202.0.X</code> (bukan IP publik, bukan <code>10.10.0.x</code>). Jangan tombol VPN Fiberix.</li>
+          <li>Klik <b>Cabang remote</b> → isi nama + secret RADIUS → <b>Buat &amp; salin script</b>.</li>
+          <li>Fiberix mengalokasi IP <code>10.202.0.x</code> dan memasang peer di CORE 1 <code>wg-core2</code> (tidak perlu salin public-key ke CORE 1).</li>
+          <li>Salin script, tempel di <b>New Terminal</b> MikroTik cabang. Handshake ke <code>103.195.65.216:51823</code>.</li>
         </ol>
-        <p class="nas-easy-note">Public key CORE 1 <code>wg-core2</code>: <code>wpS/pSEUnACQEkEeS7lzNh4IDxSsoOW+ZdWP2ehi1DA=</code>. Allowed-address klien: <code>10.202.0.1/32,192.168.22.99/32,192.168.22.9/32,192.168.91.1/32</code>.</p>
+        <p class="nas-easy-note">Jangan tombol VPN Fiberix (<code>10.10.0.x</code>). Mode NAS = LAN / langsung, IP = tunnel <code>10.202.0.x</code>. Manual (jika API CORE 1 down): public key hub <code>wpS/pSEUnACQEkEeS7lzNh4IDxSsoOW+ZdWP2ehi1DA=</code>.</p>
       </div>
       <div class="card nas-table-card"><div class="card-body">
         <div class="table-scroll" id="nasTableScroll">
@@ -398,6 +398,64 @@
     <div id="wgApplyNote" style="font-size:12px;color:#64748b;margin:6px 0 12px;"></div>
     <div style="display:flex;justify-content:flex-end;">
       <button class="btn btn-primary" onclick="document.getElementById('wgConfigModal').style.display='none'">Selesai</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cabang remote: auto peer CORE 1 + script tempel MikroTik -->
+<div id="remoteWgModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1002;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:640px;max-height:92vh;overflow:auto;">
+    <h3 style="margin:0 0 4px;">Cabang remote — peer CORE 1</h3>
+    <p style="margin:0 0 14px;color:#9a3412;font-size:12px;line-height:1.5;">Satu klik: Fiberix pasang peer di CORE 1 <code>wg-core2</code>, lalu Anda tempel script di terminal MikroTik cabang. Bukan VPN Fiberix.</p>
+
+    <div id="remoteWgForm">
+      <label style="font-size:13px;">Nama cabang *</label>
+      <input id="rwgName" placeholder="contoh: CORE 3 PINRANG" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+      <label style="font-size:13px;">Secret RADIUS *</label>
+      <input id="rwgSecret" type="password" placeholder="secret yang sama di /radius add" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+      <label style="font-size:13px;">Lokasi (Device Management)</label>
+      <input id="rwgLocation" placeholder="opsional" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;"><label style="font-size:13px;">API port</label>
+          <input id="rwgApiPort" value="80" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;"></div>
+        <div style="flex:1;"><label style="font-size:13px;">API user</label>
+          <input id="rwgApiUser" value="admin" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;"></div>
+      </div>
+      <label style="font-size:13px;">API password (Device Management)</label>
+      <input id="rwgApiPass" type="password" placeholder="opsional, bisa diisi nanti" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;"><label style="font-size:13px;">PPP pool</label>
+          <input id="rwgPppPool" value="10.20.0.2-10.20.0.254" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;"></div>
+        <div style="flex:1;"><label style="font-size:13px;">PPP local</label>
+          <input id="rwgPppLocal" value="10.20.0.1" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;"></div>
+      </div>
+      <p id="rwgFormErr" style="display:none;margin:0 0 10px;font-size:12px;color:#b91c1c;"></p>
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-secondary" type="button" onclick="closeRemoteWg()">Batal</button>
+        <button class="btn btn-primary" type="button" id="rwgSubmit" onclick="submitRemoteWg()">Buat &amp; salin script</button>
+      </div>
+    </div>
+
+    <div id="remoteWgResult" style="display:none;">
+      <p style="margin:0 0 10px;font-size:13px;color:#14532d;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;">
+        Peer CORE 1 siap. IP tunnel: <b id="rwgTunnelIp" class="mono"></b>
+        · endpoint <span id="rwgEndpoint" class="mono"></span>
+        · NAS #<span id="rwgNasId"></span>
+      </p>
+      <p style="margin:0 0 8px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px;">Private key ada di script ini. Simpan / tempel sekarang. Generate ulang membuat kunci baru.</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 4px;">
+        <b style="font-size:13px;">Script MikroTik (tempel di New Terminal)</b>
+        <span>
+          <button class="btn btn-sm btn-secondary" type="button" onclick="copyRemoteWg()">Salin</button>
+          <button class="btn btn-sm btn-secondary" type="button" onclick="downloadRemoteWg()">Unduh .rsc</button>
+        </span>
+      </div>
+      <pre id="rwgScript" style="background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:360px;overflow:auto;"></pre>
+      <p id="rwgNotes" style="margin:8px 0 12px;font-size:12px;color:#64748b;"></p>
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-secondary" type="button" onclick="openRemoteWg()">Cabang lain</button>
+        <button class="btn btn-primary" type="button" onclick="closeRemoteWg()">Selesai</button>
+      </div>
     </div>
   </div>
 </div>
