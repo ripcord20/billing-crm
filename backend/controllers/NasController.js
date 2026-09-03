@@ -9,6 +9,9 @@ const { getTenantId } = require('../middleware/tenantContext');
 const { decryptSecret } = require('../utils/secretBox');
 const { buildNasRouterOsScript, radiusAllowedIps, isPrivateHost, DEFAULT_PPP_POOL, DEFAULT_PPP_LOCAL } = require('../utils/nasRouterOsScript');
 const { attachNasLinkStatus } = require('../utils/nasLinkStatus');
+const { upsertTunnelDevice, applyTunnelNasname } = require('../utils/nasRemoteDevice');
+const Core1RemoteWg = require('../services/Core1RemoteWgService');
+const { isCore1TunnelHost } = require('../utils/core1RemoteWg');
 
 // Push konfigurasi NAS ke server FreeRADIUS (tabel `nas`). Fungsi modul-level
 // supaya tidak bergantung pada `this` (handler dipasang unbound di router).
@@ -44,6 +47,15 @@ function pickPpp(row, b) {
     pppPool: String(pool).trim() || DEFAULT_PPP_POOL,
     pppLocal: String(local).trim() || DEFAULT_PPP_LOCAL
   };
+}
+
+async function afterTunnelReady(row) {
+  try { await Wireguard.ensureServerInterface(); } catch (_) {}
+  const renamed = await applyTunnelNasname(row);
+  await row.reload();
+  const device = await upsertTunnelDevice(Device, row);
+  if (renamed) await pushNas(row);
+  return device;
 }
 
 class NasController {
@@ -130,6 +142,9 @@ class NasController {
       if (row.conn_mode === 'vpn' && row.wg_public_key) {
         try { await Wireguard.removePeerForNas(row); } catch (_) {}
       }
+      if (row.wg_public_key && (isCore1TunnelHost(row.nasname) || isCore1TunnelHost(row.tunnel_address))) {
+        try { await Core1RemoteWg.removePeerByPublicKey(row.wg_public_key); } catch (_) {}
+      }
       await row.destroy();
       res.json({ success: true, message: 'NAS dihapus dari billing (dan diupayakan dari FreeRADIUS)' });
     } catch (e) {
@@ -182,7 +197,9 @@ class NasController {
   async wgServerGet(req, res) {
     try {
       const cfg = await Wireguard.getServerConfigPublic();
-      res.json({ success: true, data: cfg });
+      let runtime = { up: false, has_binary: false, message: '' };
+      try { runtime = await Wireguard.probeInterface(); } catch (_) {}
+      res.json({ success: true, data: { ...cfg, runtime } });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
     }
@@ -191,7 +208,13 @@ class NasController {
   async wgServerSave(req, res) {
     try {
       const cfg = await Wireguard.saveServerConfig(req.body || {});
-      res.json({ success: true, data: cfg });
+      let applied = null;
+      if (cfg.enabled) {
+        try { applied = await Wireguard.ensureServerInterface(); } catch (e) {
+          applied = { ok: false, message: e.message };
+        }
+      }
+      res.json({ success: true, data: cfg, applied });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }
@@ -207,6 +230,17 @@ class NasController {
     }
   }
 
+  async wgServerApply(req, res) {
+    try {
+      const applied = await Wireguard.ensureServerInterface();
+      const runtime = await Wireguard.probeInterface();
+      const status = applied.ok ? 200 : 400;
+      res.status(status).json({ success: !!applied.ok, data: { ...applied, runtime }, message: applied.message });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
   // ── WireGuard: generate peer + config untuk satu NAS ───────────────────
   async wgGenerate(req, res) {
     try {
@@ -216,7 +250,19 @@ class NasController {
         reallocate: !!(req.body && req.body.reallocate),
         allowedIps: req.body && req.body.allowed_ips
       });
-      res.json({ success: true, data: { vpn_type: 'wireguard', ...out } });
+      await row.reload();
+      const device = await afterTunnelReady(row);
+      res.json({
+        success: true,
+        data: {
+          vpn_type: 'wireguard',
+          ...out,
+          nasname: row.nasname,
+          device_id: device ? device.id : row.device_id,
+          device_name: device ? device.name : null,
+          device_ip: device ? device.ip_address : null
+        }
+      });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }
@@ -241,6 +287,8 @@ class NasController {
           await Wireguard.generatePeerForNas(row, {
             allowedIps: radiusAllowedIps(wgCfg.serverAddress, radiusHost)
           });
+          await row.reload();
+          await afterTunnelReady(row);
           await row.reload();
           generated = true;
         }
@@ -278,6 +326,8 @@ class NasController {
         shortname: row.shortname,
         secret: row.secret,
         radiusHost,
+        isolirHost: row.conn_mode === 'vpn' ? wgCfg.serverAddress : radiusHost,
+        wgServerAddress: wgCfg.serverAddress,
         tunnelAddress: row.tunnel_address,
         vpnType,
         vpsHost: wgCfg.endpointHost,
@@ -340,17 +390,69 @@ class NasController {
     }
   }
 
+  // ── Cabang remote: peer otomatis di CORE 1 wg-core2 + script tempel ──
+  async provisionRemoteWg(req, res) {
+    try {
+      const b = req.body || {};
+      const out = await Core1RemoteWg.provision({
+        name: b.name || b.shortname,
+        secret: b.secret,
+        location: b.location,
+        apiPort: b.api_port,
+        apiUsername: b.api_username,
+        apiPassword: b.api_password,
+        pppPool: b.ppp_pool_ranges,
+        pppLocal: b.ppp_local_address,
+        tenantId: getTenantId() || b.tenant_id || null
+      });
+      res.status(201).json({ success: true, data: out });
+    } catch (e) {
+      const msg = e.message || 'Gagal membuat cabang remote';
+      const status = /wajib|tidak ditemukan|penuh|sudah ada|tidak valid|tidak ada di CORE/i.test(msg) ? 400 : 500;
+      res.status(status).json({ success: false, message: msg });
+    }
+  }
+
+  async remoteWgScript(req, res) {
+    try {
+      const row = await NasDevice.findByPk(req.params.id);
+      if (!row) return res.status(404).json({ success: false, message: 'NAS tidak ditemukan' });
+      const out = await Core1RemoteWg.scriptForNas(row);
+      res.json({ success: true, data: out });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
   // ── VPN generik: dispatch by vpn_type (wireguard/l2tp/openvpn) ──────────
   async vpnGenerate(req, res) {
     try {
       const row = await NasDevice.findByPk(req.params.id);
       if (!row) return res.status(404).json({ success: false, message: 'NAS tidak ditemukan' });
+      const server = await RadiusProv.resolveServer(row.radius_server_id);
+      const radiusHost = (server && server.host) || process.env.RADIUS_HOST || '192.168.22.9';
+      const wgCfg = await Wireguard.getServerConfig();
       const out = await VpnProvision.generate(row, {
         vpn_type: req.body && req.body.vpn_type,
         reallocate: !!(req.body && req.body.reallocate),
-        allowedIps: req.body && req.body.allowed_ips
+        allowedIps: (req.body && req.body.allowed_ips) || radiusAllowedIps(wgCfg.serverAddress, radiusHost)
       });
-      res.json({ success: true, data: out });
+      await row.reload();
+      let device = null;
+      if ((out.vpn_type || '').toLowerCase() === 'wireguard') {
+        device = await afterTunnelReady(row);
+        await row.reload();
+      }
+      res.json({
+        success: true,
+        data: {
+          ...out,
+          nasname: row.nasname,
+          device_id: device ? device.id : row.device_id,
+          device_name: device ? device.name : null,
+          device_ip: device ? device.ip_address : null
+        }
+      });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }

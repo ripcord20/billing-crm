@@ -58,6 +58,7 @@ async function loadNas(){
     <td>${n.last_error?`<span style="color:#dc2626;">${esc(n.last_error)}</span>`:fmtSyncAt(n.last_sync_at)}</td>
     <td class="nas-aksi" style="white-space:nowrap;">
       <button class="btn btn-sm btn-primary" onclick="openNasDetail(${n.id})" title="Detail NAS + script RouterOS">Detail</button>
+      ${isRemoteCore1Nas(n)?`<button class="btn btn-sm btn-secondary" onclick="reprintRemoteWg(${n.id})" title="Salin ulang script tunnel CORE 1">Script WG</button>`:''}
       ${n.conn_mode==='vpn'?`<button class="btn btn-sm btn-secondary" onclick="wgGen(${n.id},'${esc(n.shortname||n.nasname)}')" title="Generate/regenerate config VPN saja">VPN</button>`:''}
       <button class="btn btn-sm btn-secondary" onclick="syncNas(${n.id})">Sync</button>
       <button class="btn btn-sm btn-danger" onclick="delNas(${n.id})">Hapus</button>
@@ -193,6 +194,14 @@ window.openWgServer=async()=>{
     document.getElementById('wgSubnet').value=c.tunnelSubnet||'10.10.0.0/24';
     document.getElementById('wgServerAddr').value=c.serverAddress||'10.10.0.1';
     document.getElementById('wgServerPub').value=c.serverPublicKey||'';
+    const rt=document.getElementById('wgRuntime');
+    if(rt){
+      const r=c.runtime||{};
+      rt.textContent=r.up
+        ? ('Interface '+ (r.iface||'') +' hidup, UDP '+(r.listen_port||'51820'))
+        : (r.message||'Interface belum hidup. Klik Aktifkan interface setelah install wireguard-tools.');
+      rt.style.color=r.up?'#166534':'#9a3412';
+    }
   }
   document.getElementById('wgServerModal').style.display='flex';
 };
@@ -207,8 +216,23 @@ window.saveWgServer=async()=>{
   };
   const r=await App.api('/nas/wireguard/server',{method:'PUT',body:JSON.stringify(body)});
   if(!r?.success) return App.showToast(r?.message||'Gagal simpan','error');
-  App.showToast('Pengaturan WireGuard tersimpan','success');
+  if(r.applied && r.applied.ok) App.showToast('Tersimpan. Interface WireGuard hidup.','success');
+  else if(r.applied && r.applied.message) App.showToast(r.applied.message,'error');
+  else App.showToast('Pengaturan WireGuard tersimpan','success');
   document.getElementById('wgServerModal').style.display='none';
+};
+window.wgApplyServer=async()=>{
+  const r=await App.api('/nas/wireguard/server/apply',{method:'POST',body:JSON.stringify({})});
+  if(!r?.success) return App.showToast(r?.message||'Gagal mengaktifkan interface','error');
+  const rt=document.getElementById('wgRuntime');
+  const run=r.data && r.data.runtime;
+  if(rt && run){
+    rt.textContent=run.up
+      ? ('Interface '+ (run.iface||'') +' hidup, UDP '+(run.listen_port||'51820'))
+      : (run.message||'');
+    rt.style.color=run.up?'#166534':'#9a3412';
+  }
+  App.showToast(r.message||'Interface WireGuard diaktifkan','success');
 };
 window.wgInitKeys=async()=>{
   const r=await App.api('/nas/wireguard/server/init-keys',{method:'POST',body:JSON.stringify({})});
@@ -431,6 +455,90 @@ window.downloadRos=()=>{
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download='fiberix-'+(__rosLast.label||'nas')+'-'+__rosTab+'.rsc';
+  document.body.appendChild(a);a.click();a.remove();
+  URL.revokeObjectURL(a.href);
+};
+
+function isRemoteCore1Nas(n){
+  const ip=String((n&&n.nasname)||'')+' '+String((n&&n.tunnel_address)||'');
+  return /10\.202\.0\.(?:[2-9]|\d{2}|1\d{2}|2[0-4]\d|25[0-4])/.test(ip);
+}
+
+let __rwgLast=null;
+function showRemoteWgPanel(result){
+  const form=document.getElementById('remoteWgForm');
+  const res=document.getElementById('remoteWgResult');
+  if(form) form.style.display=result?'none':'block';
+  if(res) res.style.display=result?'block':'none';
+}
+window.openRemoteWg=()=>{
+  showRemoteWgPanel(false);
+  const err=document.getElementById('rwgFormErr');
+  if(err){ err.style.display='none'; err.textContent=''; }
+  const name=document.getElementById('rwgName');
+  if(name) name.value='';
+  const secret=document.getElementById('rwgSecret');
+  if(secret) secret.value='';
+  document.getElementById('remoteWgModal').style.display='flex';
+};
+window.closeRemoteWg=()=>{
+  document.getElementById('remoteWgModal').style.display='none';
+};
+function applyRemoteWgResult(d){
+  __rwgLast=d;
+  document.getElementById('rwgTunnelIp').textContent=d.tunnel_ip||'—';
+  document.getElementById('rwgEndpoint').textContent=d.endpoint||'—';
+  document.getElementById('rwgNasId').textContent=d.nas_id||'—';
+  document.getElementById('rwgScript').textContent=d.mikrotik_script||'';
+  document.getElementById('rwgNotes').textContent=(d.notes||[]).join(' ');
+  showRemoteWgPanel(true);
+}
+window.submitRemoteWg=async()=>{
+  const err=document.getElementById('rwgFormErr');
+  const btn=document.getElementById('rwgSubmit');
+  const name=(document.getElementById('rwgName').value||'').trim();
+  const secret=(document.getElementById('rwgSecret').value||'').trim();
+  if(!name||!secret){
+    if(err){ err.style.display='block'; err.textContent='Nama cabang dan secret RADIUS wajib.'; }
+    return;
+  }
+  if(btn){ btn.disabled=true; btn.textContent='Memasang peer CORE 1…'; }
+  if(err){ err.style.display='none'; }
+  const r=await App.api('/nas/remote-wg/provision',{method:'POST',body:JSON.stringify({
+    name,
+    secret,
+    location:(document.getElementById('rwgLocation').value||'').trim(),
+    api_port:document.getElementById('rwgApiPort').value,
+    api_username:document.getElementById('rwgApiUser').value,
+    api_password:document.getElementById('rwgApiPass').value,
+    ppp_pool_ranges:document.getElementById('rwgPppPool').value,
+    ppp_local_address:document.getElementById('rwgPppLocal').value
+  })});
+  if(btn){ btn.disabled=false; btn.textContent='Buat & salin script'; }
+  if(!r?.success){
+    if(err){ err.style.display='block'; err.textContent=r?.message||'Gagal membuat cabang remote'; }
+    return App.showToast(r?.message||'Gagal','error');
+  }
+  applyRemoteWgResult(r.data||{});
+  App.showToast('Peer CORE 1 siap. Salin script, tempel di MikroTik cabang.','success');
+  loadNas();
+};
+window.reprintRemoteWg=async(id)=>{
+  const r=await App.api('/nas/'+id+'/remote-wg/script',{method:'POST',body:JSON.stringify({})});
+  if(!r?.success) return App.showToast(r?.message||'Gagal mengambil script','error');
+  document.getElementById('remoteWgModal').style.display='flex';
+  applyRemoteWgResult(r.data||{});
+};
+window.copyRemoteWg=()=>{
+  const el=document.getElementById('rwgScript');
+  copyText(el&&el.textContent);
+};
+window.downloadRemoteWg=()=>{
+  if(!__rwgLast||!__rwgLast.mikrotik_script) return;
+  const blob=new Blob([__rwgLast.mikrotik_script],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='fiberix-core1-'+( __rwgLast.tunnel_ip||'cabang')+'.rsc';
   document.body.appendChild(a);a.click();a.remove();
   URL.revokeObjectURL(a.href);
 };

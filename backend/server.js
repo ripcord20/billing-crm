@@ -1094,6 +1094,20 @@ const startServer = async () => {
     try { await require('./services/TelegramBotService').start(); }
     catch (e) { logger.warn('TelegramBotService.start gagal: ' + (e.message || e)); }
 
+    // WireGuard server (MikroTik di luar LAN). Best-effort: kalau paket
+    // wireguard-tools belum ada, app tetap jalan; Device Management LAN tidak terganggu.
+    try {
+      const Wireguard = require('./services/WireguardService');
+      const cfg = await Wireguard.getServerConfigPublic();
+      if (cfg.enabled) {
+        const up = await Wireguard.ensureServerInterface();
+        if (up.ok) logger.info(`[WireGuard] ${up.iface} ${up.address} udp/${up.listen_port}`);
+        else if (!up.skipped) logger.warn('[WireGuard] interface: ' + (up.message || 'gagal'));
+      }
+    } catch (e) {
+      logger.warn('WireGuard ensureServerInterface: ' + (e.message || e));
+    }
+
     // Pulihkan job bulk PPPoE yang terputus saat restart.
     // Worker hidup di memori proses, jadi job yang sedang jalan saat PM2
     // restart akan tertinggal di status 'running' selamanya kalau tidak
