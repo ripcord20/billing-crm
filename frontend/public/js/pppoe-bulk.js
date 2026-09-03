@@ -31,7 +31,17 @@
   'use strict';
 
   var API = '/api/pppoe/bulk';
-  var LS_KEY = 'flaynet_pppoe_bulk_active_job';
+  var LS_KEY = 'skynet_pppoe_bulk_active_job';
+  var LS_KEY_LEGACY = 'flaynet_pppoe_bulk_active_job';
+  function lsJobGet() {
+    try { return localStorage.getItem(LS_KEY) || localStorage.getItem(LS_KEY_LEGACY); } catch (_) { return null; }
+  }
+  function lsJobSet(id) {
+    try { localStorage.setItem(LS_KEY, id); localStorage.removeItem(LS_KEY_LEGACY); } catch (_) {}
+  }
+  function lsJobClear() {
+    try { localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_KEY_LEGACY); } catch (_) {}
+  }
 
   var state = {
     step: 1,              // 1=upload, 2=preview, 3=progress
@@ -678,7 +688,7 @@
       var resp = await api(API + '/' + state.jobId + '/start', {
         method: 'POST', body: JSON.stringify(body)
       });
-      localStorage.setItem(LS_KEY, state.jobId);
+      lsJobSet(state.jobId);
 
       // Job dijadwalkan (belum jalan) — beri tahu, jangan buka layar progress
       // seolah-olah sedang berjalan.
@@ -742,7 +752,7 @@
 
       if (d.status === 'done' || d.status === 'failed') {
         stopPolling();
-        localStorage.removeItem(LS_KEY);
+        lsJobClear();
         loadItems();
         if (d.status === 'done') {
           toast('Provisioning selesai: ' + d.succeeded + ' berhasil, ' + d.failed + ' gagal', 'success');
@@ -943,7 +953,7 @@
         method: 'POST', body: JSON.stringify({ includeSkipped: false })
       });
       toast(j.message || 'Mengulang item gagal', 'success');
-      localStorage.setItem(LS_KEY, state.jobId);
+      lsJobSet(state.jobId);
       startPolling();
     } catch (e) { toast(e.message, 'error'); }
   }
@@ -1069,7 +1079,7 @@
    */
   function resumeIfAny() {
     ensureDom();
-    var id = localStorage.getItem(LS_KEY);
+    var id = lsJobGet();
     if (!id) return;
     state.jobId = parseInt(id);
     state.step = 3;
@@ -1078,12 +1088,12 @@
       if (d.status === 'running' || d.status === 'paused' || d.status === 'scheduled') {
         startPolling();
       } else {
-        localStorage.removeItem(LS_KEY);
+        lsJobClear();
         state.jobId = null;
         state.step = 1;
       }
     }).catch(function () {
-      localStorage.removeItem(LS_KEY);
+      lsJobClear();
       state.jobId = null;
       state.step = 1;
     });

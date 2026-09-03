@@ -3,7 +3,10 @@ const _esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
 const _dev = () => document.getElementById('routerSel')?.value || '';
 const _q = id => document.getElementById(id);
 let _routers = [], _ipCache = [], _ifaceCache = [], _ipFilter = 'all';
-const LS_KEY = 'flaynet:ipaddr:router_id';
+const LS_KEY = 'skynet:ipaddr:router_id';
+const LS_KEY_LEGACY = 'flaynet:ipaddr:router_id';
+const lsGet = () => { try { return localStorage.getItem(LS_KEY) || localStorage.getItem(LS_KEY_LEGACY) || ''; } catch (_) { return ''; } };
+const lsSet = (id) => { try { if (id) { localStorage.setItem(LS_KEY, id); localStorage.removeItem(LS_KEY_LEGACY); } } catch (_) {} };
 const dev = (sep = '?') => _dev() ? `${sep}device_id=${_dev()}` : '';
 
 document.addEventListener('DOMContentLoaded', loadRouters);
@@ -14,13 +17,13 @@ async function loadRouters(){
   const sel = _q('routerSel');
   if(!d?.success || !d.data?.length){ sel.innerHTML='<option value="">— Tidak ada router —</option>'; return; }
   _routers = d.data;
-  const saved = localStorage.getItem(LS_KEY);
+  const saved = lsGet();
   sel.innerHTML = _routers.map(r=>`<option value="${r.id}" ${String(r.id)===String(saved)?'selected':''}>${_esc(r.name)} — ${_esc(r.ip_address)}</option>`).join('');
   if(!saved && _routers[0]) sel.value = _routers[0].id;
   onRouterChange();
 }
 function onRouterChange(){
-  const id=_dev(); if(id) localStorage.setItem(LS_KEY,id);
+  const id=_dev(); if(id) lsSet(id);
   const r=_routers.find(x=>String(x.id)===String(id));
   const pill=_q('routerProto');
   if(r&&pill){ pill.textContent=(r.api_protocol||'auto').toUpperCase(); pill.style.display='inline-flex'; }

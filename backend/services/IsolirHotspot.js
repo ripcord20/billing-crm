@@ -1,19 +1,19 @@
 /**
  * IsolirHotspot.js
  * ────────────────────────────────────────────────────────────────────
- * Manage Hotspot server "FLAYNET-ISOLIR-HS" untuk captive portal isolir.
+ * Manage Hotspot server "SKYNET-ISOLIR-HS" untuk captive portal isolir.
  *
  * Strategi:
  *   - Buat hotspot server terpisah dari hotspot voucher (kalau ada)
  *   - Hotspot mengintercept traffic dari interface yang di-bind
  *   - Browser modern auto-detect captive portal saat HTTPS gagal handshake
  *     → trigger "Sign in to network" notification → buka halaman isolir
- *   - Walled garden: IP server DIGSnet, gateway payment, DNS, LAN private
+ *   - Walled garden: IP server Skynet, gateway payment, DNS, LAN private
  *
  * Pendekatan tepat untuk MikroTik:
  *   1. /ip pool isolir-pool (sudah ada dari IsolirPPPoE.js)
- *   2. /ip hotspot profile "flaynet-isolir-profile" - login page custom
- *   3. /ip hotspot server "FLAYNET-ISOLIR-HS" bound ke interface
+ *   2. /ip hotspot profile "skynet-isolir-profile" - login page custom
+ *   3. /ip hotspot server "SKYNET-ISOLIR-HS" bound ke interface
  *   4. /ip hotspot walled-garden: domains/IPs yang boleh diakses tanpa login
  *   5. /ip hotspot walled-garden ip: address-list bypass
  *   6. Bind hotspot ke interface "<all-ppp>" supaya PPPoE customers ter-handle
@@ -32,15 +32,41 @@
 const { sequelize } = require('../models');
 
 // ── Konstanta ──
-const HOTSPOT_SERVER_NAME  = 'FLAYNET-ISOLIR-HS';
-const HOTSPOT_PROFILE_NAME = 'flaynet-isolir-profile';
-const HOTSPOT_USER_PROFILE = 'flaynet-isolir-user';
-const HOTSPOT_HTML_DIR     = 'flaynet-isolir';        // /flaynet-isolir/ di MikroTik filesystem
+const HOTSPOT_SERVER_NAME  = 'SKYNET-ISOLIR-HS';
+const HOTSPOT_PROFILE_NAME = 'skynet-isolir-profile';
+const HOTSPOT_USER_PROFILE = 'skynet-isolir-user';
+const HOTSPOT_HTML_DIR     = 'skynet-isolir';        // /skynet-isolir/ di MikroTik filesystem
 const HOTSPOT_LOGIN_USER   = 'isolir-guest';          // Auto-login user supaya tidak butuh password
-const HOTSPOT_TAG          = 'FLAYNET-ISOLIR-HS-TAG';
+const HOTSPOT_TAG          = 'SKYNET-ISOLIR-HS-TAG';
+const LIST_BYPASS          = 'SKYNET-BYPASS';
+const LEGACY_HOTSPOT_SERVER_NAME  = 'FLAYNET-ISOLIR-HS';
+const LEGACY_HOTSPOT_PROFILE_NAME = 'flaynet-isolir-profile';
+const LEGACY_HOTSPOT_USER_PROFILE = 'flaynet-isolir-user';
+const LEGACY_HOTSPOT_HTML_DIR     = 'flaynet-isolir';
+const LEGACY_HOTSPOT_TAG          = 'FLAYNET-ISOLIR-HS-TAG';
 // Bridge interface untuk hotspot — bisa di-override via app_settings.
 // Default "all" = bind ke semua interface kecuali yang di-explicitly excluded.
 const DEFAULT_BRIDGE = 'bridge';
+
+function isHotspotTag(comment) {
+  return !!comment && (comment.startsWith(HOTSPOT_TAG) || comment.startsWith(LEGACY_HOTSPOT_TAG));
+}
+
+async function renameOrDropNamed(api, printPath, setPath, removePath, oldName, newName) {
+  if (!oldName || oldName === newName) return;
+  try {
+    const olds = await runWithRetry(api, [printPath, '?name=' + oldName]);
+    if (!olds.length) return;
+    const news = await runWithRetry(api, [printPath, '?name=' + newName]);
+    if (!news.length && olds[0]['.id']) {
+      await runWithRetry(api, [setPath, '=.id=' + olds[0]['.id'], '=name=' + newName]);
+    } else {
+      for (const s of olds) {
+        if (s['.id']) await runWithRetry(api, [removePath, '=.id=' + s['.id']]);
+      }
+    }
+  } catch (_) { /* objek lama mungkin tidak ada */ }
+}
 
 // ════════════════════════════════════════════════════════════════════════
 // HELPER untuk akses settings dari DB
@@ -58,14 +84,14 @@ async function getHotspotSettings() {
     return {
       enabled:   map.isolir_hotspot_enabled === '1',
       interface: map.isolir_hotspot_interface || DEFAULT_BRIDGE,
-      dnsName:   map.isolir_hotspot_dns_name || 'isolir.flaynet.local',
+      dnsName:   map.isolir_hotspot_dns_name || 'isolir.skynet.local',
       pageUrl:   map.isolir_page_url || '',
     };
   } catch (e) {
     return {
       enabled: false,
       interface: DEFAULT_BRIDGE,
-      dnsName: 'isolir.flaynet.local',
+      dnsName: 'isolir.skynet.local',
       pageUrl: '',
     };
   }
@@ -93,8 +119,8 @@ async function runWithRetry(api, params, maxRetry = 2) {
 // 1. SETUP HOTSPOT untuk isolir
 // ════════════════════════════════════════════════════════════════════════
 /**
- * Setup hotspot server FLAYNET-ISOLIR-HS lengkap dengan profile, walled-garden,
- * dan auto-bind ke address-list FLAYNET-ISOLIR via interface "<all-ppp>" + bridge.
+ * Setup hotspot server SKYNET-ISOLIR-HS lengkap dengan profile, walled-garden,
+ * dan auto-bind ke address-list SKYNET-ISOLIR via interface "<all-ppp>" + bridge.
  *
  * @param {Object} api - MikroTik API client
  * @param {Object} device - row dari mikrotik_devices (untuk per-device settings)
@@ -115,6 +141,13 @@ async function setupIsolirHotspot(api, device) {
       warnings: [],
     };
   }
+
+  await renameOrDropNamed(api, '/ip/hotspot/print', '/ip/hotspot/set', '/ip/hotspot/remove',
+    LEGACY_HOTSPOT_SERVER_NAME, HOTSPOT_SERVER_NAME);
+  await renameOrDropNamed(api, '/ip/hotspot/profile/print', '/ip/hotspot/profile/set', '/ip/hotspot/profile/remove',
+    LEGACY_HOTSPOT_PROFILE_NAME, HOTSPOT_PROFILE_NAME);
+  await renameOrDropNamed(api, '/ip/hotspot/user/profile/print', '/ip/hotspot/user/profile/set', '/ip/hotspot/user/profile/remove',
+    LEGACY_HOTSPOT_USER_PROFILE, HOTSPOT_USER_PROFILE);
 
   // ── 1. Resolve target URL untuk halaman isolir ──
   // Halaman ini akan jadi tujuan login-redirect setelah user masuk hotspot
@@ -239,7 +272,7 @@ async function setupIsolirHotspot(api, device) {
   // Termasuk halaman isolir itu sendiri supaya user bisa lihat info tagihan
   try {
     const wgEntries = [
-      // Halaman isolir di server DIGSnet (target redirect)
+      // Halaman isolir di server Skynet (target redirect)
       { 'dst-host': target.host, comment: HOTSPOT_TAG + ':isolir-page' },
       // Domain payment gateway (kalau pakai)
       { 'dst-host': '*.midtrans.com', comment: HOTSPOT_TAG + ':midtrans' },
@@ -252,7 +285,7 @@ async function setupIsolirHotspot(api, device) {
     ]);
     let removed = 0;
     for (const e of existing) {
-      if (e.comment && e.comment.startsWith(HOTSPOT_TAG)) {
+      if (isHotspotTag(e.comment)) {
         try {
           await runWithRetry(api, ['/ip/hotspot/walled-garden/remove', '=.id=' + e['.id']]);
           removed++;
@@ -278,7 +311,7 @@ async function setupIsolirHotspot(api, device) {
     warnings.push(`Walled-garden: ${e.message}`);
   }
 
-  // ── 6. Walled garden IP: sync dari bypass list FLAYNET-BYPASS ──
+  // ── 6. Walled garden IP: sync dari bypass list SKYNET-BYPASS ──
   // Hotspot punya rule walled-garden-ip terpisah yang accept by address-list.
   // Kalau IP target di address-list BYPASS → diizinkan lewat tanpa login.
   try {
@@ -287,7 +320,7 @@ async function setupIsolirHotspot(api, device) {
     ]);
     let removed = 0;
     for (const e of existing) {
-      if (e.comment && e.comment.startsWith(HOTSPOT_TAG)) {
+      if (isHotspotTag(e.comment)) {
         try {
           await runWithRetry(api, ['/ip/hotspot/walled-garden/ip/remove', '=.id=' + e['.id']]);
           removed++;
@@ -295,14 +328,14 @@ async function setupIsolirHotspot(api, device) {
       }
     }
 
-    // Allow semua traffic ke address-list FLAYNET-BYPASS (gateway, DNS, LAN)
+    // Allow semua traffic ke address-list SKYNET-BYPASS (gateway, DNS, LAN)
     await runWithRetry(api, [
       '/ip/hotspot/walled-garden/ip/add',
-      '=dst-address-list=' + 'FLAYNET-BYPASS',
+      '=dst-address-list=' + LIST_BYPASS,
       '=action=accept',
       '=comment=' + HOTSPOT_TAG + ':bypass-list'
     ]);
-    results.push(`✓ Walled-garden-IP: traffic ke FLAYNET-BYPASS diizinkan (removed ${removed} lama)`);
+    results.push(`✓ Walled-garden-IP: traffic ke ${LIST_BYPASS} diizinkan (removed ${removed} lama)`);
   } catch (e) {
     warnings.push(`Walled-garden-IP: ${e.message}`);
   }
@@ -337,11 +370,20 @@ async function setupIsolirHotspot(api, device) {
       '/file/print',
       '?name=' + HOTSPOT_HTML_DIR + '/login.html'
     ]);
-    if (files.length === 0) {
+    const legacyFiles = files.length ? [] : await runWithRetry(api, [
+      '/file/print',
+      '?name=' + LEGACY_HOTSPOT_HTML_DIR + '/login.html'
+    ]).catch(() => []);
+    if (files.length === 0 && (!legacyFiles || legacyFiles.length === 0)) {
       warnings.push(
         `⚠ File "${HOTSPOT_HTML_DIR}/login.html" belum ada di MikroTik. ` +
         `Upload via Winbox: Files → drag template HTML → rename ke "${HOTSPOT_HTML_DIR}/login.html". ` +
         `Tanpa file ini, MikroTik akan tampilkan halaman default.`
+      );
+    } else if (files.length === 0) {
+      warnings.push(
+        `⚠ login.html masih di folder lama "${LEGACY_HOTSPOT_HTML_DIR}/". ` +
+        `Pindahkan ke "${HOTSPOT_HTML_DIR}/login.html" supaya nama FLAYNET hilang.`
       );
     } else {
       results.push(`✓ login.html ditemukan di ${HOTSPOT_HTML_DIR}/`);
@@ -372,43 +414,49 @@ async function setupIsolirHotspot(api, device) {
 async function teardownIsolirHotspot(api) {
   const results = [];
 
-  // Hapus hotspot server
-  try {
-    const servers = await runWithRetry(api, ['/ip/hotspot/print', '?name=' + HOTSPOT_SERVER_NAME]);
-    for (const s of servers) {
-      await runWithRetry(api, ['/ip/hotspot/remove', '=.id=' + s['.id']]);
-      results.push(`✓ Hotspot server "${HOTSPOT_SERVER_NAME}" dihapus`);
-    }
-  } catch (e) { results.push(`⚠ Hotspot server: ${e.message}`); }
+  // Hapus hotspot server (nama baru + FLAYNET)
+  for (const name of [HOTSPOT_SERVER_NAME, LEGACY_HOTSPOT_SERVER_NAME]) {
+    try {
+      const servers = await runWithRetry(api, ['/ip/hotspot/print', '?name=' + name]);
+      for (const s of servers) {
+        await runWithRetry(api, ['/ip/hotspot/remove', '=.id=' + s['.id']]);
+        results.push(`✓ Hotspot server "${name}" dihapus`);
+      }
+    } catch (e) { results.push(`⚠ Hotspot server ${name}: ${e.message}`); }
+  }
 
   // Hapus hotspot profile
-  try {
-    const profiles = await runWithRetry(api, ['/ip/hotspot/profile/print', '?name=' + HOTSPOT_PROFILE_NAME]);
-    for (const p of profiles) {
-      await runWithRetry(api, ['/ip/hotspot/profile/remove', '=.id=' + p['.id']]);
-      results.push(`✓ Hotspot profile dihapus`);
-    }
-  } catch (_) {}
+  for (const name of [HOTSPOT_PROFILE_NAME, LEGACY_HOTSPOT_PROFILE_NAME]) {
+    try {
+      const profiles = await runWithRetry(api, ['/ip/hotspot/profile/print', '?name=' + name]);
+      for (const p of profiles) {
+        await runWithRetry(api, ['/ip/hotspot/profile/remove', '=.id=' + p['.id']]);
+        results.push(`✓ Hotspot profile "${name}" dihapus`);
+      }
+    } catch (_) {}
+  }
 
   // Hapus user-profile
-  try {
-    const ups = await runWithRetry(api, ['/ip/hotspot/user/profile/print', '?name=' + HOTSPOT_USER_PROFILE]);
-    for (const u of ups) {
-      await runWithRetry(api, ['/ip/hotspot/user/profile/remove', '=.id=' + u['.id']]);
-    }
-  } catch (_) {}
+  for (const name of [HOTSPOT_USER_PROFILE, LEGACY_HOTSPOT_USER_PROFILE]) {
+    try {
+      const ups = await runWithRetry(api, ['/ip/hotspot/user/profile/print', '?name=' + name]);
+      for (const u of ups) {
+        await runWithRetry(api, ['/ip/hotspot/user/profile/remove', '=.id=' + u['.id']]);
+      }
+    } catch (_) {}
+  }
 
   // Hapus walled-garden entries
   try {
     const wg = await runWithRetry(api, ['/ip/hotspot/walled-garden/print']);
     for (const e of wg) {
-      if (e.comment && e.comment.startsWith(HOTSPOT_TAG)) {
+      if (isHotspotTag(e.comment)) {
         await runWithRetry(api, ['/ip/hotspot/walled-garden/remove', '=.id=' + e['.id']]);
       }
     }
     const wgIp = await runWithRetry(api, ['/ip/hotspot/walled-garden/ip/print']);
     for (const e of wgIp) {
-      if (e.comment && e.comment.startsWith(HOTSPOT_TAG)) {
+      if (isHotspotTag(e.comment)) {
         await runWithRetry(api, ['/ip/hotspot/walled-garden/ip/remove', '=.id=' + e['.id']]);
       }
     }
@@ -443,7 +491,10 @@ async function getHotspotStatus(api) {
   };
 
   try {
-    const servers = await runWithRetry(api, ['/ip/hotspot/print', '?name=' + HOTSPOT_SERVER_NAME]);
+    let servers = await runWithRetry(api, ['/ip/hotspot/print', '?name=' + HOTSPOT_SERVER_NAME]);
+    if (!servers.length) {
+      servers = await runWithRetry(api, ['/ip/hotspot/print', '?name=' + LEGACY_HOTSPOT_SERVER_NAME]);
+    }
     if (servers.length) {
       status.server_exists = true;
       status.server_disabled = servers[0].disabled === 'true' || servers[0].disabled === true;
@@ -453,12 +504,14 @@ async function getHotspotStatus(api) {
 
   try {
     const profiles = await runWithRetry(api, ['/ip/hotspot/profile/print', '?name=' + HOTSPOT_PROFILE_NAME]);
-    status.profile_exists = profiles.length > 0;
+    const legacy = profiles.length ? [] : await runWithRetry(api, ['/ip/hotspot/profile/print', '?name=' + LEGACY_HOTSPOT_PROFILE_NAME]);
+    status.profile_exists = profiles.length > 0 || legacy.length > 0;
   } catch (_) {}
 
   try {
     const ups = await runWithRetry(api, ['/ip/hotspot/user/profile/print', '?name=' + HOTSPOT_USER_PROFILE]);
-    status.user_profile_exists = ups.length > 0;
+    const legacy = ups.length ? [] : await runWithRetry(api, ['/ip/hotspot/user/profile/print', '?name=' + LEGACY_HOTSPOT_USER_PROFILE]);
+    status.user_profile_exists = ups.length > 0 || legacy.length > 0;
   } catch (_) {}
 
   try {
@@ -468,17 +521,18 @@ async function getHotspotStatus(api) {
 
   try {
     const files = await runWithRetry(api, ['/file/print', '?name=' + HOTSPOT_HTML_DIR + '/login.html']);
-    status.login_html_exists = files.length > 0;
+    const legacy = files.length ? [] : await runWithRetry(api, ['/file/print', '?name=' + LEGACY_HOTSPOT_HTML_DIR + '/login.html']).catch(() => []);
+    status.login_html_exists = files.length > 0 || (legacy && legacy.length > 0);
   } catch (_) {}
 
   try {
     const wg = await runWithRetry(api, ['/ip/hotspot/walled-garden/print']);
-    status.walled_garden_count = wg.filter(e => e.comment && e.comment.startsWith(HOTSPOT_TAG)).length;
+    status.walled_garden_count = wg.filter(e => isHotspotTag(e.comment)).length;
   } catch (_) {}
 
   try {
     const wgIp = await runWithRetry(api, ['/ip/hotspot/walled-garden/ip/print']);
-    status.walled_garden_ip_count = wgIp.filter(e => e.comment && e.comment.startsWith(HOTSPOT_TAG)).length;
+    status.walled_garden_ip_count = wgIp.filter(e => isHotspotTag(e.comment)).length;
   } catch (_) {}
 
   return status;

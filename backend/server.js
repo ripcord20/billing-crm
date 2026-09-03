@@ -330,7 +330,7 @@ app.use(async (req, res, next) => {
     }
     res.locals.appSettings = cfg;
     res.locals.brandMode   = cfg.brand_mode  || 'name_tagline';
-    res.locals.appName     = cfg.app_name    || 'DIGSnet';
+    res.locals.appName     = cfg.app_name    || 'Skynet';
     res.locals.appTagline  = cfg.app_tagline || '';
     res.locals.logoUrl     = cfg.logo_url    || '';
     res.locals.faviconUrl  = cfg.favicon_url || '';
@@ -342,7 +342,7 @@ app.use(async (req, res, next) => {
   } catch(e) {
     res.locals.appSettings = {};
     res.locals.brandMode   = 'name_tagline';
-    res.locals.appName     = 'DIGSnet';
+    res.locals.appName     = 'Skynet';
     res.locals.appTagline  = '';
     res.locals.logoUrl     = '';
     res.locals.faviconUrl  = '';
@@ -1141,8 +1141,8 @@ const startServer = async () => {
 
     // Start main HTTP server
     server.listen(PORT, () => {
-      logger.info(`FLAYNET.COM CRM running on http://localhost:${PORT}`);
-      console.log(`\n FLAYNET.COM CRM running on http://localhost:${PORT}\n`);
+      logger.info(`Skynet CRM running on http://localhost:${PORT}`);
+      console.log(`\n Skynet CRM running on http://localhost:${PORT}\n`);
     });
 
     // Graceful shutdown

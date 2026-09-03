@@ -219,7 +219,7 @@ class MikrotikBackupService {
       // 2) Binary backup (.backup) — opsional
       if (cfg.include_binary) {
         try {
-          const remoteName = 'flaynet-auto';
+          const remoteName = 'skynet-auto';
           await sshExec(conn, `/system backup save name=${remoteName} dont-encrypt=yes`, 60000);
           // Tunggu sebentar — router menulis file async
           await new Promise(r => setTimeout(r, 2500));

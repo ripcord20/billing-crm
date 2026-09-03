@@ -1,4 +1,4 @@
-// FLAYNET.Com mikrotik-backup.js — Backup Konfigurasi MikroTik → Email
+// Skynet mikrotik-backup.js — Backup Konfigurasi MikroTik → Email
 // Halaman: pengaturan jadwal, daftar router target, run-now (semua / per
 // device), daftar file backup dengan download/hapus.
 

@@ -18,7 +18,7 @@
  *   /ppp profile add name=isolir-profile
  *     local-address=10.255.255.1
  *     remote-address=isolir-pool
- *     address-list=FLAYNET-ISOLIR
+ *     address-list=SKYNET-ISOLIR
  *     rate-limit=128k/128k
  * ────────────────────────────────────────────────────────────────────
  */
@@ -29,6 +29,7 @@ const DEFAULT_ISOLIR_POOL    = 'isolir-pool';
 const DEFAULT_POOL_RANGES    = '10.255.255.2-10.255.255.254';
 const DEFAULT_LOCAL_ADDR     = '10.255.255.1';
 const DEFAULT_RATE_LIMIT     = '128k/128k';
+const LIST_ISOLIR            = 'SKYNET-ISOLIR';
 
 // Runner dengan retry (sama seperti di IsolirFirewallV2)
 async function runWithRetry(api, words, maxRetry = 2) {
@@ -116,7 +117,7 @@ async function setupIsolirProfile(api, sequelize) {
       '=name=' + cfg.profileName,
       '=local-address=' + cfg.localAddr,
       '=remote-address=' + cfg.poolName,
-      '=address-list=FLAYNET-ISOLIR',
+      '=address-list=' + LIST_ISOLIR,
       '=rate-limit=' + cfg.rateLimit
     ];
     if (existing.length === 0) {
@@ -129,7 +130,7 @@ async function setupIsolirProfile(api, sequelize) {
         '=.id=' + existing[0]['.id'],
         '=local-address=' + cfg.localAddr,
         '=remote-address=' + cfg.poolName,
-        '=address-list=FLAYNET-ISOLIR',
+        '=address-list=' + LIST_ISOLIR,
         '=rate-limit=' + cfg.rateLimit
       ]);
       results.push(`• PPP profile "${cfg.profileName}" sudah ada (sinkron field)`);

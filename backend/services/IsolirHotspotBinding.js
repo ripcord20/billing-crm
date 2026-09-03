@@ -15,8 +15,14 @@
  * ────────────────────────────────────────────────────────────────────
  */
 
-const BINDING_COMMENT_PREFIX = 'FLAYNET-HS-BIND';
+const BINDING_COMMENT_PREFIX = 'SKYNET-HS-BIND';
+const LEGACY_BINDING_PREFIXES = ['FLAYNET-HS-BIND', 'WAU-HS-BIND'];
 const BINDING_PATH = '/ip/hotspot/ip-binding';
+
+function bindingCommentsFor(customerId) {
+  if (!customerId) return [];
+  return [BINDING_COMMENT_PREFIX, ...LEGACY_BINDING_PREFIXES].map(p => `${p}-${customerId}`);
+}
 
 function normalizeMac(mac) {
   if (!mac) return '';
@@ -40,11 +46,11 @@ async function mtListBindings(mt) {
 function mtMatch(bindings, { mac, address, customerId }) {
   const macN = normalizeMac(mac);
   const addr = (address || '').trim();
-  const cmt  = customerId ? `${BINDING_COMMENT_PREFIX}-${customerId}` : null;
+  const cmt  = customerId ? bindingCommentsFor(customerId) : [];
   return bindings.filter(b =>
     (macN && b.mac === macN) ||
     (addr && b.address === addr) ||
-    (cmt && b.comment === cmt)
+    (cmt.length && cmt.includes(b.comment))
   );
 }
 
@@ -96,7 +102,9 @@ async function mtSetDisabled(mt, { mac, address, customerId, disabled, create })
     try { await mt.delete(`${BINDING_PATH}/${encodeURIComponent(matched[i].id)}`); } catch (_) {}
   }
 
-  await mt.patch(`${BINDING_PATH}/${encodeURIComponent(keep.id)}`, { disabled: disabled ? 'true' : 'false' });
+  const patch = { disabled: disabled ? 'true' : 'false' };
+  if (customerId) patch.comment = `${BINDING_COMMENT_PREFIX}-${customerId}`;
+  await mt.patch(`${BINDING_PATH}/${encodeURIComponent(keep.id)}`, patch);
 
   try {
     const after = await mtListBindings(mt);

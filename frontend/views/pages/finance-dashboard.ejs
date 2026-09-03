@@ -4395,7 +4395,7 @@
   //               - User ganti tab bucket
   //               - User ubah page size
   //               - Data baru di-load dari server
-  let _pageSize    = parseInt(localStorage.getItem('flaynet_finance_pagesize') || '20', 10);
+  let _pageSize    = parseInt(localStorage.getItem('skynet_finance_pagesize') || localStorage.getItem('flaynet_finance_pagesize') || '20', 10);
   if (![10,20,30,50].includes(_pageSize)) _pageSize = 20;
   let _currentPage = 1;
 
@@ -4420,7 +4420,7 @@
       if (!Number.isFinite(newSize) || newSize <= 0) return;
       _pageSize = newSize;
       _currentPage = 1;
-      try { localStorage.setItem('flaynet_finance_pagesize', String(newSize)); } catch(_){}
+      try { localStorage.setItem('skynet_finance_pagesize', String(newSize)); localStorage.removeItem('flaynet_finance_pagesize'); } catch(_){}
       if (_dueListsCache) renderCustomerList(_currentBucket, _dueListsCache);
     });
   })();

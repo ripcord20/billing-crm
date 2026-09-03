@@ -1581,7 +1581,7 @@ router.get('/app-settings/backup', authenticate, demoGuard, async (req, res) => 
 
     const payload = {
       _meta: {
-        app: 'FLAYNET-CRM',
+        app: 'Skynet-CRM',
         type: 'settings-backup',
         version: 1,
         exported_at: new Date().toISOString(),
@@ -1595,7 +1595,7 @@ router.get('/app-settings/backup', authenticate, demoGuard, async (req, res) => 
 
     const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="flaynet-settings-backup-${stamp}.json"`);
+    res.setHeader('Content-Disposition', `attachment; filename="skynet-settings-backup-${stamp}.json"`);
     res.send(JSON.stringify(payload, null, 2));
   } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });

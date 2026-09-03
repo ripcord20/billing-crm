@@ -14,13 +14,12 @@ const crypto   = require('crypto');
 const { sequelize } = require('../models');
 const { getCompanyName } = require('../utils/companyInfo');
 
-const ADDRLIST    = 'FLAYNET-ISOLIR';
-const COMMENT_SRC = 'FLAYNET-BLOCK-SRC';
-const COMMENT_DST = 'FLAYNET-BLOCK-DST';
+const ADDRLIST    = 'SKYNET-ISOLIR';
+const COMMENT_SRC = 'SKYNET-BLOCK-SRC';
+const COMMENT_DST = 'SKYNET-BLOCK-DST';
 
-// Legacy comment patterns — supaya tetap kompatibel dengan rule lama yang dibuat
-// versi sebelumnya (WAU). Setup firewall akan otomatis hapus rule legacy ini.
-const LEGACY_ADDRLIST    = 'WAU-ISOLIR';
+// Legacy comment patterns — kompatibel dengan rule FLAYNET / WAU lama.
+const LEGACY_ADDRLISTS   = ['FLAYNET-ISOLIR', 'WAU-ISOLIR'];
 const LEGACY_COMMENT_SRC = 'WAU-BLOCK-SRC';
 const LEGACY_COMMENT_DST = 'WAU-BLOCK-DST';
 
@@ -720,28 +719,7 @@ async function setupFirewall(deviceId) {
   const api = await connectDevice(device);
   const results = [];
   try {
-    // ── Migrasi address-list legacy WAU-ISOLIR → FLAYNET-ISOLIR ──
-    // Tetap dipertahankan supaya upgrade dari versi lama tidak kehilangan
-    // pelanggan yang sudah ter-isolir di address-list lama.
-    let migrated = 0;
-    try {
-      const legacyEntries = await api.run(['/ip/firewall/address-list/print', '?list=' + LEGACY_ADDRLIST]);
-      for (const e of legacyEntries) {
-        if (!e.address) continue;
-        const existsInNew = await api.run(['/ip/firewall/address-list/print',
-          '?list=' + ADDRLIST, '?address=' + e.address]);
-        if (existsInNew.length === 0) {
-          await api.run(['/ip/firewall/address-list/add',
-            '=list=' + ADDRLIST, '=address=' + e.address,
-            '=comment=' + (e.comment || '').replace(/^WAU-/, 'FLAYNET-')]);
-          migrated++;
-        }
-        if (e['.id']) await api.run(['/ip/firewall/address-list/remove', '=.id=' + e['.id']]);
-      }
-      if (migrated > 0) results.push(`✓ ${migrated} IP dimigrasi dari ${LEGACY_ADDRLIST} → ${ADDRLIST}`);
-    } catch(e) { /* legacy list mungkin tidak ada — abaikan */ }
-
-    // ── Delegate ke V2: DST-NAT + bypass + drop ──
+    // Migrasi list lama dikerjakan di IsolirFirewallV2.setupFirewallV2
     const v2Result = await FirewallV2.setupFirewallV2(api, device);
     results.push(...(v2Result.details || []));
 
@@ -785,7 +763,7 @@ async function isolirCustomer(customerId, triggerBy = 'admin', adminUserId = nul
   // ── Auto-detect method: hotspot binding / static IP / PPPoE ──
   // Penentu utama: customers.connection_type (eksplisit, kalau diisi).
   //   'hotspot' → IP Binding disable/enable (butuh mac_address ATAU static_ip)
-  //   'static'  → firewall address-list FLAYNET-ISOLIR
+  //   'static'  → firewall address-list SKYNET-ISOLIR
   //   'pppoe'   → switch profile + kick session
   // Fallback (data lama tanpa connection_type): prioritas static_ip → pppoe.
   const connType = (cust.connection_type || '').toLowerCase();
@@ -826,7 +804,7 @@ async function isolirCustomer(customerId, triggerBy = 'admin', adminUserId = nul
         addrlistId = result.bindingId;
         methodDetail = result.message;
       } else if (method === 'static') {
-        // ── Method static: tambah IP ke address-list FLAYNET-ISOLIR ──
+        // ── Method static: tambah IP ke address-list SKYNET-ISOLIR ──
         const existing = await api.run(['/ip/firewall/address-list/print',
           '?list=' + ADDRLIST, '?address=' + ip]);
         if (existing.length > 0) {
@@ -834,7 +812,7 @@ async function isolirCustomer(customerId, triggerBy = 'admin', adminUserId = nul
           await api.run(['/ip/firewall/address-list/enable', '=.id=' + addrlistId]);
         } else {
           const res = await api.run(['/ip/firewall/address-list/add',
-            '=list=' + ADDRLIST, '=address=' + ip, '=comment=FLAYNET-ISOLIR-' + customerId]);
+            '=list=' + ADDRLIST, '=address=' + ip, '=comment=SKYNET-ISOLIR-' + customerId]);
           addrlistId = res[0]?.ret || null;
         }
         methodDetail = `IP ${ip} ditambahkan ke ${ADDRLIST}`;
@@ -939,7 +917,7 @@ async function restoreCustomer(customerId, triggerBy = 'admin', adminUserId = nu
         methodDetail = result.message;
       } else if (method === 'static') {
         // ── Method static: hapus dari address-list ──
-        for (const list of [ADDRLIST, LEGACY_ADDRLIST]) {
+        for (const list of [ADDRLIST, ...LEGACY_ADDRLISTS]) {
           const existing = await api.run(['/ip/firewall/address-list/print',
             '?list=' + list, '?address=' + ip]);
           for (const e of existing) {

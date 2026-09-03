@@ -1,5 +1,5 @@
 // ============================================
-// FLAYNET.Com - Dashboard Analytics
+// Skynet - Dashboard Analytics
 // New Features: Top Customers, Network Uptime, 
 // Ticket Stats, Bandwidth Trends, Customer Growth, Revenue Forecast
 // ============================================

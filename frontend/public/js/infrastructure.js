@@ -1,5 +1,5 @@
 /**
- * infrastructure.js — DIGSnet Map Infrastructure
+ * infrastructure.js — Skynet Map Infrastructure
  * Tile: Streets / Satellite / Dark
  * Add: ODC, ODP, Tower, Customer
  * Manual Draw Link: klik titik A → klik titik B → simpan ke DB

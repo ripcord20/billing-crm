@@ -1,5 +1,5 @@
 // ============================================================
-// FLAYNET — Shared MikroTik Selector
+// Skynet — Shared MikroTik Selector
 // ============================================================
 // Dropdown selector MikroTik yang konsisten antar halaman
 // (Dashboard, PPPoE, Queue, IP Pool, Firewall, Traffic, Resource).
@@ -12,20 +12,26 @@
 //   4. Untuk request API: window.MikrotikSelector.withDevice('/mikrotik/pppoe/active')
 //        → menambahkan ?device_id=N otomatis
 //
-// localStorage key dipakai bersama: 'flaynet:dashboard:mikrotik_id'
+// localStorage key dipakai bersama (baca key lama flaynet: supaya pilihan router tidak hilang)
 // ============================================================
 
 (function () {
-  const STORAGE_KEY = 'flaynet:dashboard:mikrotik_id';
+  const STORAGE_KEY = 'skynet:dashboard:mikrotik_id';
+  const STORAGE_KEY_LEGACY = 'flaynet:dashboard:mikrotik_id';
 
   function getStored() {
-    try { return localStorage.getItem(STORAGE_KEY) || ''; } catch (_) { return ''; }
+    try { return localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_LEGACY) || ''; } catch (_) { return ''; }
   }
 
   function setStored(id) {
     try {
-      if (id) localStorage.setItem(STORAGE_KEY, id);
-      else    localStorage.removeItem(STORAGE_KEY);
+      if (id) {
+        localStorage.setItem(STORAGE_KEY, id);
+        localStorage.removeItem(STORAGE_KEY_LEGACY);
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(STORAGE_KEY_LEGACY);
+      }
     } catch (_) {}
   }
 
