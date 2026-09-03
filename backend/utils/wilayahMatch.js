@@ -83,6 +83,31 @@ function pickWilayahForCustomer(customer, wilayahList) {
   return list.find((w) => customerMatchesWilayah(customer, w)) || null;
 }
 
+function packageMatchesWilayah(pkg, wilayah) {
+  if (!pkg || !wilayah) return false;
+  const name = String(pkg.name || '').toUpperCase();
+  const compactName = compact(pkg.name);
+  const code = String(wilayah.code || '').toUpperCase().trim();
+  if (code && code.length >= 2) {
+    const token = new RegExp('(^|[^A-Z0-9])' + code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^A-Z0-9]|$)');
+    if (token.test(name)) return true;
+    if (compactName.includes(code)) return true;
+  }
+  const wName = compact(wilayah.name);
+  const wVillage = compact(wilayah.village);
+  if (wName && wName.length >= 4 && compactName.includes(wName)) return true;
+  if (wVillage && wVillage.length >= 4 && compactName.includes(wVillage)) return true;
+  return false;
+}
+
+function pickWilayahForPackage(pkg, wilayahList) {
+  const list = Array.isArray(wilayahList) ? wilayahList : [];
+  const named = list.filter((w) => packageMatchesWilayah(pkg, w));
+  if (!named.length) return null;
+  named.sort((a, b) => String(b.code || '').length - String(a.code || '').length);
+  return named[0];
+}
+
 module.exports = {
   KNOWN_CODES,
   normalize,
@@ -90,5 +115,7 @@ module.exports = {
   generateCode,
   prettyVillageName,
   customerMatchesWilayah,
-  pickWilayahForCustomer
+  pickWilayahForCustomer,
+  packageMatchesWilayah,
+  pickWilayahForPackage
 };

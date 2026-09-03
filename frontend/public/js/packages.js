@@ -6,6 +6,7 @@
 const TOKEN = localStorage.getItem('token');
 const API   = '/api';
 let allPackages  = [];
+let allWilayah   = [];
 let editingId    = null;
 let deletingId   = null;
 let activeFilter = 'all'; // 'all' | 'active' | 'inactive'
@@ -47,9 +48,56 @@ function showToast(id, msg) {
   setTimeout(function(){ el.style.display = 'none'; }, 3500);
 }
 
+function wilayahOf(p) {
+  if (!p) return null;
+  if (p.wilayah && (p.wilayah.name || p.wilayah.code)) return p.wilayah;
+  if (!p.wilayah_id) return null;
+  return allWilayah.find(function(w){ return Number(w.id) === Number(p.wilayah_id); }) || null;
+}
+function wilayahLabel(p) {
+  var w = wilayahOf(p);
+  if (!w) return '';
+  if (w.code && w.name) return w.name + ' (' + w.code + ')';
+  return w.name || w.code || '';
+}
+
 /* ════ LOAD ════ */
+async function loadWilayah() {
+  try {
+    var r = await fetch(API + '/wilayah', { headers: authH() });
+    var j = await r.json();
+    allWilayah = (j && j.success && Array.isArray(j.data)) ? j.data : [];
+  } catch (_) {
+    allWilayah = [];
+  }
+  fillWilayahSelects();
+}
+function fillWilayahSelects() {
+  var filter = document.getElementById('filterWilayah');
+  var form   = document.getElementById('f_wilayah_id');
+  var opts = '<option value="">Semua Wilayah</option>' + allWilayah.map(function(w){
+    var label = (w.name || '') + (w.code ? ' (' + w.code + ')' : '');
+    return '<option value="' + w.id + '">' + esc(label) + '</option>';
+  }).join('');
+  if (filter) {
+    var keep = filter.value;
+    filter.innerHTML = opts;
+    if (keep) filter.value = keep;
+  }
+  if (form) {
+    var keepF = form.value;
+    form.innerHTML = '<option value="">Semua wilayah / umum</option>' + allWilayah.map(function(w){
+      var label = (w.name || '') + (w.code ? ' (' + w.code + ')' : '');
+      var inactive = w.status === 'inactive' ? ' — nonaktif' : '';
+      return '<option value="' + w.id + '">' + esc(label + inactive) + '</option>';
+    }).join('');
+    if (keepF) form.value = keepF;
+  }
+}
+
 async function loadPackages() {
   try {
+    if (!allWilayah.length) await loadWilayah();
     var r = await fetch(API + '/packages', { headers: authH() });
     var j = await r.json();
     if (!j.success) throw new Error(j.message);
@@ -89,6 +137,8 @@ function renderCards() {
   var search   = searchEl ? searchEl.value.toLowerCase().trim() : '';
   var catEl    = document.getElementById('filterCat');
   var cat      = catEl ? catEl.value : '';
+  var wlEl     = document.getElementById('filterWilayah');
+  var wilayah  = wlEl ? wlEl.value : '';
   var statusEl = document.getElementById('filterStatus');
   var status   = statusEl ? statusEl.value : '';
   var sortEl   = document.getElementById('filterSort');
@@ -102,14 +152,17 @@ function renderCards() {
 
   // Dropdown filters
   if (cat)                     list = list.filter(function(p){ return (p.category || detectCat(p)) === cat; });
+  if (wilayah)                 list = list.filter(function(p){ return String(p.wilayah_id || (p.wilayah && p.wilayah.id) || '') === String(wilayah); });
   if (status === 'active')     list = list.filter(function(p){ return p.is_active; });
   if (status === 'inactive')   list = list.filter(function(p){ return !p.is_active; });
 
   // Search
   if (search) {
     list = list.filter(function(p){
+      var wl = wilayahLabel(p).toLowerCase();
       return (p.name||'').toLowerCase().indexOf(search) !== -1 ||
              (p.description||'').toLowerCase().indexOf(search) !== -1 ||
+             wl.indexOf(search) !== -1 ||
              String(p.speed_down).indexOf(search) !== -1 ||
              String(p.price).indexOf(search) !== -1;
     });
@@ -140,6 +193,7 @@ function buildCard(p) {
   var cat    = p.category || detectCat(p);
   var active = p.is_active;
   var cc     = p.customer_count || 0;
+  var wl     = wilayahLabel(p);
   return '<div class="pkg-card ' + (active ? '' : 'inactive') + '">' +
     '<div class="pkg-card-header ' + cat + '">' +
       (!active ? '<span class="pkg-inactive-tag">Non-Aktif</span>' : '') +
@@ -157,6 +211,10 @@ function buildCard(p) {
       '</div>' +
       '<div class="pkg-desc">' + esc(p.description || 'Tidak ada deskripsi') + '</div>' +
       '<div class="pkg-meta">' +
+        '<div class="pkg-meta-pill' + (wl ? '' : ' pkg-wl-empty') + '">' +
+          '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
+          (wl ? esc(wl) : 'Belum ada wilayah') +
+        '</div>' +
         '<div class="pkg-meta-pill">' +
           '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>' +
           ' DL ' + fmtSpd(p.speed_down) +
@@ -266,6 +324,8 @@ function clearForm() {
   });
   var catEl = document.getElementById('f_category');
   if (catEl) catEl.value = 'home';
+  var wlEl = document.getElementById('f_wilayah_id');
+  if (wlEl) wlEl.value = '';
   var actEl = document.getElementById('f_is_active');
   if (actEl) actEl.value = '1';
   syncColor('home');
@@ -280,6 +340,7 @@ function fillForm(p) {
   setVal('f_description', p.description || '');
   var cat = p.category || detectCat(p);
   setVal('f_category',    cat);
+  setVal('f_wilayah_id',  p.wilayah_id || (p.wilayah && p.wilayah.id) || '');
   setVal('f_is_active',   p.is_active ? '1' : '0');
   syncColor(cat);
 }
@@ -303,6 +364,8 @@ async function savePkg() {
   var description= descEl ? descEl.value.trim() : '';
   var catEl      = document.getElementById('f_category');
   var category   = catEl ? catEl.value : 'home';
+  var wlEl       = document.getElementById('f_wilayah_id');
+  var wilayah_id = wlEl && wlEl.value ? parseInt(wlEl.value, 10) : null;
   var actEl      = document.getElementById('f_is_active');
   var is_active  = actEl ? actEl.value === '1' : true;
 
@@ -319,7 +382,7 @@ async function savePkg() {
   try {
     var url    = editingId ? API + '/packages/' + editingId : API + '/packages';
     var method = editingId ? 'PUT' : 'POST';
-    var r      = await fetch(url, { method: method, headers: authH(), body: JSON.stringify({ name: name, speed_down: speed_down, speed_up: speed_up, price: price, description: description, category: category, is_active: is_active }) });
+    var r      = await fetch(url, { method: method, headers: authH(), body: JSON.stringify({ name: name, speed_down: speed_down, speed_up: speed_up, price: price, description: description, category: category, wilayah_id: wilayah_id, is_active: is_active }) });
     var j      = await r.json();
     if (!j.success) throw new Error(j.message);
     closeModal();
@@ -397,7 +460,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Dropdown filters
-  ['filterCat', 'filterStatus', 'filterSort'].forEach(function(id){
+  ['filterCat', 'filterWilayah', 'filterStatus', 'filterSort'].forEach(function(id){
     var el = document.getElementById(id);
     if (el) el.addEventListener('change', renderCards);
   });
@@ -416,5 +479,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  loadPackages();
+  loadWilayah().then(loadPackages);
 });

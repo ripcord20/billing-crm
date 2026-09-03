@@ -951,6 +951,33 @@ const startServer = async () => {
         await db.sequelize.query(`ALTER TABLE customers ADD COLUMN wilayah_id INT NULL`);
         logger.info('Migrated: customers.wilayah_id added');
       }
+      if (!(await hasColumn('packages', 'wilayah_id'))) {
+        await db.sequelize.query(`ALTER TABLE packages ADD COLUMN wilayah_id INT NULL`);
+        logger.info('Migrated: packages.wilayah_id added');
+      }
+      try {
+        const { pickWilayahForPackage } = require('./utils/wilayahMatch');
+        if (db.Package && db.Wilayah) {
+          const pkgs = await db.Package.findAll({
+            attributes: ['id', 'name', 'wilayah_id'],
+            where: { wilayah_id: null }
+          });
+          if (pkgs.length) {
+            const wilayahs = await db.Wilayah.findAll({ attributes: ['id', 'name', 'code', 'village'] });
+            const list = wilayahs.map((w) => (w.toJSON ? w.toJSON() : w));
+            let linked = 0;
+            for (const pkg of pkgs) {
+              const hit = pickWilayahForPackage(pkg, list);
+              if (!hit) continue;
+              await pkg.update({ wilayah_id: hit.id });
+              linked += 1;
+            }
+            if (linked) logger.info(`Backfilled: packages.wilayah_id for ${linked} paket`);
+          }
+        }
+      } catch (pkgWlErr) {
+        logger.warn('Backfill packages.wilayah_id skipped: ' + pkgWlErr.message);
+      }
 
       // 3b) Backfill created_at/updated_at yang NULL (penyebab "Invalid Date").
       //     Pakai updated_at bila ada, jika tidak pakai NOW().
