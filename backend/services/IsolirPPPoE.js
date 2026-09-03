@@ -5,7 +5,7 @@
  *
  * Strategi:
  *   1. Backup profile asli dari /ppp/secret/print
- *   2. Set profile=isolir-profile (rate-limit rendah, IP dari pool isolir)
+ *   2. Set profile=SKYNET-ISOLIR (rate-limit rendah, IP dari pool isolir)
  *   3. Kick session aktif /ppp/active/remove → user disconnect & reconnect
  *      dengan profile baru → dapat IP dari pool isolir → DST-NAT redirect bekerja
  *
@@ -17,21 +17,21 @@
  *
  * Isolir PPPoE — 10.255.0.0/24
  *   /ip pool add name=isolir-pool ranges=10.255.0.2-10.255.0.254
- *   /ppp profile add name=isolir-profile
+ *   /ppp profile add name=SKYNET-ISOLIR
  *     local-address=10.255.0.1
  *     remote-address=isolir-pool
  *     address-list=SKYNET-ISOLIR
  *
  * Klien PPPoE aktif — 10.2.64.2-10.2.79.254
  *   /ip pool add name=pppoe-pool ranges=10.2.64.2-10.2.79.254
- *   /ppp profile add name=pppoe-client
+ *   /ppp profile add name=SKYNET
  *     local-address=10.2.64.1
  *     remote-address=pppoe-pool
  * ────────────────────────────────────────────────────────────────────
  */
 
 // Isolir PPPoE — 10.255.0.0/24
-const DEFAULT_ISOLIR_PROFILE = 'isolir-profile';
+const DEFAULT_ISOLIR_PROFILE = 'SKYNET-ISOLIR';
 const DEFAULT_ISOLIR_POOL    = 'isolir-pool';
 const ISOLIR_NETWORK_CIDR    = '10.255.0.0/24';
 const DEFAULT_POOL_RANGES    = '10.255.0.2-10.255.0.254';
@@ -39,6 +39,7 @@ const DEFAULT_LOCAL_ADDR     = '10.255.0.1';
 const DEFAULT_RATE_LIMIT     = '128k/128k';
 const LIST_ISOLIR            = 'SKYNET-ISOLIR';
 const POOL_COMMENT           = 'SKYNET-ISOLIR-PPP /24';
+const LEGACY_ISOLIR_PROFILES = ['isolir-profile'];
 
 // Range isolir lama yang harus dinaikkan/diturunkan ke 10.255.0.0/24.
 const LEGACY_POOL_RANGES = [
@@ -48,8 +49,9 @@ const LEGACY_POOL_RANGES = [
 const LEGACY_LOCAL_ADDR  = '10.255.255.1';
 
 // Klien PPPoE aktif (bukan isolir)
-const DEFAULT_CLIENT_PROFILE = 'pppoe-client';
+const DEFAULT_CLIENT_PROFILE = 'SKYNET';
 const DEFAULT_CLIENT_POOL    = 'pppoe-pool';
+const LEGACY_CLIENT_PROFILES = ['pppoe-client'];
 const CLIENT_NETWORK_CIDR    = '10.2.64.0/20';
 const DEFAULT_CLIENT_RANGES  = '10.2.64.2-10.2.79.254';
 const DEFAULT_CLIENT_LOCAL   = '10.2.64.1';
@@ -64,6 +66,32 @@ function normalizePoolRange(range) {
 function normalizeLocalAddr(addr) {
   const v = String(addr || '').trim();
   if (!v || v === LEGACY_LOCAL_ADDR) return DEFAULT_LOCAL_ADDR;
+  return v;
+}
+
+function normalizeIsolirProfileName(name) {
+  const v = String(name || '').trim();
+  if (!v || LEGACY_ISOLIR_PROFILES.includes(v)) return DEFAULT_ISOLIR_PROFILE;
+  return v;
+}
+
+function normalizeClientProfileName(name) {
+  const v = String(name || '').trim();
+  if (!v || LEGACY_CLIENT_PROFILES.includes(v)) return DEFAULT_CLIENT_PROFILE;
+  return v;
+}
+
+function isIsolirProfileName(name, currentIsolirName) {
+  const v = String(name || '').trim();
+  return v === currentIsolirName || LEGACY_ISOLIR_PROFILES.includes(v);
+}
+
+function mapOriginalProfileForRestore(originalProfile) {
+  const v = String(originalProfile || '').trim();
+  if (!v) return DEFAULT_CLIENT_PROFILE;
+  if (LEGACY_CLIENT_PROFILES.includes(v) || LEGACY_ISOLIR_PROFILES.includes(v)) {
+    return DEFAULT_CLIENT_PROFILE;
+  }
   return v;
 }
 
@@ -125,6 +153,70 @@ async function ensurePppProfile(api, { name, localAddr, poolName, addressList, r
   return { created: false, updated: false };
 }
 
+async function reassignPppoeServerDefault(api, fromName, toName) {
+  if (!fromName || fromName === toName) return 0;
+  const servers = await runWithRetry(api, ['/interface/pppoe-server/server/print']).catch(() => []);
+  let n = 0;
+  for (const s of servers) {
+    const cur = String(s['default-profile'] || s.defaultProfile || '').trim();
+    if (cur === fromName && s['.id']) {
+      await runWithRetry(api, [
+        '/interface/pppoe-server/server/set',
+        '=.id=' + s['.id'],
+        '=default-profile=' + toName
+      ]);
+      n++;
+    }
+  }
+  return n;
+}
+
+/**
+ * Pindahkan secret + default-profile PPPoE server dari nama lama, lalu hapus profile lama.
+ * Tidak me-kick session (reconnect berikutnya sudah pakai nama baru).
+ */
+async function migrateLegacyPppProfile(api, fromNames, toName) {
+  const notes = [];
+  for (const fromName of fromNames) {
+    if (!fromName || fromName === toName) continue;
+    const existing = await runWithRetry(api, ['/ppp/profile/print', '?name=' + fromName]).catch(() => []);
+    if (!existing.length) continue;
+
+    let moved = 0;
+    const secrets = await runWithRetry(api, ['/ppp/secret/print', '?profile=' + fromName]).catch(() => []);
+    for (const s of secrets) {
+      if (!s['.id']) continue;
+      try {
+        await runWithRetry(api, ['/ppp/secret/set', '=.id=' + s['.id'], '=profile=' + toName]);
+        moved++;
+      } catch (e) {
+        notes.push(`⚠ Gagal pindah secret "${s.name || s['.id']}" ${fromName} → ${toName}: ${e.message}`);
+      }
+    }
+
+    let servers = 0;
+    try {
+      servers = await reassignPppoeServerDefault(api, fromName, toName);
+    } catch (e) {
+      notes.push(`⚠ Gagal update PPPoE server default-profile ${fromName}: ${e.message}`);
+    }
+
+    const leftover = await runWithRetry(api, ['/ppp/secret/print', '?profile=' + fromName]).catch(() => []);
+    if (leftover.length === 0 && existing[0]['.id']) {
+      try {
+        await runWithRetry(api, ['/ppp/profile/remove', '=.id=' + existing[0]['.id']]);
+        notes.push(`✓ PPP profile "${fromName}" → "${toName}" (${moved} secret${servers ? ', ' + servers + ' PPPoE server' : ''})`);
+      } catch (e) {
+        notes.push(`⚠ Profile "${fromName}" masih ada (tidak bisa dihapus): ${e.message}`);
+        if (moved) notes.push(`✓ ${moved} secret dipindah ${fromName} → ${toName}`);
+      }
+    } else if (moved) {
+      notes.push(`✓ ${moved} secret dipindah ${fromName} → ${toName} (${leftover.length} masih di nama lama)`);
+    }
+  }
+  return notes;
+}
+
 /**
  * Ambil setting isolir profile/pool dari app_settings dengan fallback default.
  */
@@ -141,13 +233,13 @@ async function getPPPoESettings(sequelize) {
   const map = {};
   rows.forEach(r => { map[r.key] = r.value; });
   return {
-    profileName: map.isolir_pppoe_profile_name || DEFAULT_ISOLIR_PROFILE,
+    profileName: normalizeIsolirProfileName(map.isolir_pppoe_profile_name),
     poolName:    map.isolir_pppoe_pool_name    || DEFAULT_ISOLIR_POOL,
     poolRange:   normalizePoolRange(map.isolir_pppoe_pool_range),
     localAddr:   normalizeLocalAddr(map.isolir_pppoe_local_addr),
     rateLimit:   map.isolir_pppoe_rate_limit   || DEFAULT_RATE_LIMIT,
     networkCidr: ISOLIR_NETWORK_CIDR,
-    clientProfileName: map.pppoe_client_profile_name || DEFAULT_CLIENT_PROFILE,
+    clientProfileName: normalizeClientProfileName(map.pppoe_client_profile_name),
     clientPoolName:    map.pppoe_client_pool_name    || DEFAULT_CLIENT_POOL,
     clientPoolRange:   String(map.pppoe_client_pool_range || '').trim() || DEFAULT_CLIENT_RANGES,
     clientLocalAddr:   String(map.pppoe_client_local_addr || '').trim() || DEFAULT_CLIENT_LOCAL,
@@ -187,6 +279,13 @@ async function setupIsolirProfile(api, sequelize) {
     return { success: false, error: `Profile isolir: ${e.message}`, details: results };
   }
 
+  try {
+    const migrated = await migrateLegacyPppProfile(api, LEGACY_ISOLIR_PROFILES, cfg.profileName);
+    results.push(...migrated);
+  } catch (e) {
+    results.push(`⚠ Migrasi profile isolir lama: ${e.message}`);
+  }
+
   return { success: true, details: results };
 }
 
@@ -220,11 +319,18 @@ async function setupClientPppoeProfile(api, sequelize) {
     return { success: false, error: `Profile klien: ${e.message}`, details: results };
   }
 
+  try {
+    const migrated = await migrateLegacyPppProfile(api, LEGACY_CLIENT_PROFILES, cfg.clientProfileName);
+    results.push(...migrated);
+  } catch (e) {
+    results.push(`⚠ Migrasi profile klien lama: ${e.message}`);
+  }
+
   return { success: true, details: results };
 }
 
 /**
- * Isolir customer PPPoE: backup profile asli → switch ke isolir-profile → kick.
+ * Isolir customer PPPoE: backup profile asli → switch ke SKYNET-ISOLIR → kick.
  *
  * @param {object} api - MikroTik API client
  * @param {string} pppoeUsername - nama PPP secret
@@ -236,7 +342,7 @@ async function isolirPPPoEUser(api, pppoeUsername, sequelize, customerId) {
   if (!pppoeUsername) throw new Error('PPPoE username kosong');
   const cfg = await getPPPoESettings(sequelize);
 
-  // Auto-create pool /24 + isolir-profile kalau belum ada di router.
+  // Auto-create pool /24 + SKYNET-ISOLIR kalau belum ada di router.
   try {
     await setupIsolirProfile(api, sequelize);
   } catch (e) {
@@ -251,16 +357,16 @@ async function isolirPPPoEUser(api, pppoeUsername, sequelize, customerId) {
   const secret = secrets[0];
   const originalProfile = String(secret.profile || 'default');
 
-  // Hindari self-overwrite kalau sudah ter-isolir (re-isolir)
-  if (originalProfile !== cfg.profileName) {
+  // Hindari self-overwrite kalau sudah ter-isolir (re-isolir), termasuk nama lama isolir-profile.
+  if (!isIsolirProfileName(originalProfile, cfg.profileName)) {
     // Backup ke DB SEBELUM switch — supaya restore selalu punya referensi
     await sequelize.query(
       'UPDATE customers SET pppoe_profile_original=? WHERE id=?',
-      { replacements: [originalProfile, customerId] }
+      { replacements: [mapOriginalProfileForRestore(originalProfile), customerId] }
     );
   }
 
-  // ── 2. Switch profile ke isolir-profile ──
+  // ── 2. Switch profile ke SKYNET-ISOLIR ──
   if (!secret['.id']) throw new Error('PPP secret tidak punya ID');
   await runWithRetry(api, [
     '/ppp/secret/set',
@@ -298,7 +404,7 @@ async function isolirPPPoEUser(api, pppoeUsername, sequelize, customerId) {
  */
 async function restorePPPoEUser(api, pppoeUsername, originalProfile) {
   if (!pppoeUsername) throw new Error('PPPoE username kosong');
-  const targetProfile = originalProfile || 'default';
+  const targetProfile = mapOriginalProfileForRestore(originalProfile);
 
   const secrets = await runWithRetry(api, ['/ppp/secret/print', '?name=' + pppoeUsername]);
   if (secrets.length === 0) {
@@ -344,6 +450,8 @@ module.exports = {
   DEFAULT_CLIENT_RANGES,
   DEFAULT_CLIENT_LOCAL,
   CLIENT_NETWORK_CIDR,
+  LEGACY_ISOLIR_PROFILES,
+  LEGACY_CLIENT_PROFILES,
   getPPPoESettings,
   setupIsolirProfile,
   setupClientPppoeProfile,

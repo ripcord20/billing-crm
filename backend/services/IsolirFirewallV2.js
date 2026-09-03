@@ -622,7 +622,7 @@ async function setupFirewallV2(api, device) {
     const clientRes = await IsolirPPPoE.setupClientPppoeProfile(api, sequelize);
     if (clientRes.success) {
       results.push(...(clientRes.details || []));
-      results.push(`✓ PPP klien (pppoe-client) siap`);
+      results.push(`✓ PPP klien (SKYNET) siap`);
     } else {
       results.push(`⚠ Setup pool klien PPPoE gagal: ${clientRes.error}`);
     }
