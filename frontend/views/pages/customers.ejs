@@ -115,6 +115,8 @@
     /* Status badges */
     .sb { font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;border:1px solid transparent; }
     .sb-active    { background:#f0fdf9;color:#059669;border-color:#c6f6d5; }
+    .sb-offline   { background:#f8fafc;color:#64748b;border-color:#e2e8f0; }
+    .sb-checking  { background:#f8fafc;color:#94a3b8;border-color:#e2e8f0; }
     .sb-inactive  { background:#f7f8fc;color:var(--d-muted);border-color:#e2e8f0; }
     .sb-suspended { background:#fff4f5;color:var(--d-red);border-color:#fecdd3; }
     .sb-overdue   { background:#fff4f5;color:var(--d-red);border-color:#fecdd3; }
@@ -494,7 +496,7 @@
                 <th class="col-hide-mob">Biaya/Bln</th>
                 <th class="col-hide-mob">Aktivasi</th>
                 <th>Jatuh Tempo</th>
-                <th>Status</th>
+                <th>Koneksi</th>
                 <th style="text-align:right;padding-right:20px">Aksi</th>
               </tr>
             </thead>
@@ -907,7 +909,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/customers.js?v=1779700000"></script>
+<script src="/js/customers.js?v=1779900100"></script>
 <script>
 /* ── Extra stat update from loadCustomerStats ── */
 const _origStats = window.loadCustomerStats;

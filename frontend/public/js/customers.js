@@ -477,6 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadCustomers();
   setupSearch();
   loadFilterProvinces();
+  startLiveConnMonitor();
 });
 
 window.applyFilter = function(status) {
@@ -558,6 +559,85 @@ function _setPct(id, text) {
   if (el) el.textContent = text;
 }
 
+// Status kolom = koneksi realtime (sesi PPPoE), bukan status billing "active".
+const _liveOnline = {}; // id -> { online, uptime }
+
+function _liveStatusParts(c) {
+  var billing = String(c.status || '').toLowerCase();
+  if (billing === 'isolated') return { cls: 'sb-suspended', dot: '#dc2626', label: 'Isolir' };
+  if (billing === 'suspended') return { cls: 'sb-suspended', dot: '#dc2626', label: 'Suspended' };
+  if (billing === 'inactive') return { cls: 'sb-inactive', dot: '#94a3b8', label: 'Nonaktif' };
+
+  var live = _liveOnline[c.id];
+  if (live && live.online === true) return { cls: 'sb-active', dot: '#16a34a', label: 'Terhubung' };
+  if (live && live.online === false) return { cls: 'sb-offline', dot: '#94a3b8', label: 'Offline' };
+  return { cls: 'sb-checking', dot: '#cbd5e1', label: 'Cek…' };
+}
+
+function _statusCellHtml(c, isOv, isDs) {
+  var live = _liveStatusParts(c);
+  var html = '<span class="sb ' + live.cls + '"><span class="sb-dot" style="background:' + live.dot + '"></span>' + live.label + '</span>';
+  if (c.status === 'isolated' || c.status === 'suspended' || c.status === 'inactive') return html;
+  if (isOv) html += '<div style="margin-top:4px"><span class="sb sb-overdue"><span class="sb-dot" style="background:#dc2626"></span>Overdue</span></div>';
+  else if (isDs) html += '<div style="margin-top:4px"><span class="sb sb-due-soon"><span class="sb-dot" style="background:#ea580c"></span>Due Soon</span></div>';
+  return html;
+}
+
+function _paintLiveStatus() {
+  var rows = document.querySelectorAll('#customerTable tr[data-id]');
+  rows.forEach(function(tr) {
+    var id = parseInt(tr.getAttribute('data-id'), 10);
+    var cell = tr.querySelector('.cust-status-cell');
+    if (!cell || !id) return;
+    var c = {
+      id: id,
+      status: tr.getAttribute('data-billing') || 'active'
+    };
+    var isOv = tr.getAttribute('data-overdue') === '1';
+    var isDs = tr.getAttribute('data-duesoon') === '1';
+    cell.innerHTML = _statusCellHtml(c, isOv, isDs);
+  });
+}
+
+function startLiveConnMonitor() {
+  if (window._custLiveStarted) return;
+  window._custLiveStarted = true;
+
+  function ingest(snap) {
+    if (!snap || !snap.success || !Array.isArray(snap.data)) return;
+    snap.data.forEach(function(r) {
+      _liveOnline[r.id] = { online: !!r.online, uptime: r.uptime || null };
+    });
+    _paintLiveStatus();
+  }
+
+  function bindSocket() {
+    var s = (typeof App !== 'undefined') && App.socket;
+    if (!s || s._custLiveBound) return !!s;
+    s._custLiveBound = true;
+    s.on('traffic:update', ingest);
+    var sub = function() { try { s.emit('traffic:subscribe'); } catch (_) {} };
+    if (s.connected) sub();
+    s.on('connect', sub);
+    return true;
+  }
+
+  bindSocket();
+  if (typeof App !== 'undefined' && App.api) {
+    App.api('/mikrotik/customer-traffic').then(ingest).catch(function() {});
+  }
+  setTimeout(bindSocket, 800);
+  setTimeout(function() {
+    var s = (typeof App !== 'undefined') && App.socket;
+    if (s && s.connected) return;
+    if (window._custLivePoll) return;
+    window._custLivePoll = setInterval(function() {
+      if (typeof App === 'undefined' || !App.api) return;
+      App.api('/mikrotik/customer-traffic').then(ingest).catch(function() {});
+    }, 4000);
+  }, 2000);
+}
+
 // ── LIST ──────────────────────────────────────────────────────
 async function loadCustomers() {
   const search = document.getElementById('searchCustomer')?.value || '';
@@ -635,13 +715,6 @@ async function loadCustomers() {
     var isOv = (c.latest_invoice_status === 'overdue') && c.status === 'active';
     var isDs = (c.latest_invoice_status === 'unpaid')  && c.status === 'active' && diffCk !== null && diffCk >= 0 && diffCk <= 3;
 
-    var stCls = 'sb-inactive', stDot = '#94a3b8', stLabel = c.status||'–';
-    if      (isOv)                   { stCls='sb-overdue';  stDot='#dc2626'; stLabel='Overdue'; }
-    else if (isDs)                   { stCls='sb-due-soon'; stDot='#ea580c'; stLabel='Due Soon'; }
-    else if (c.status==='active')    { stCls='sb-active';   stDot='#16a34a'; stLabel='Aktif'; }
-    else if (c.status==='isolated')  { stCls='sb-suspended';stDot='#dc2626'; stLabel='Isolir'; }
-    else if (c.status==='suspended') { stCls='sb-suspended';stDot='#dc2626'; stLabel='Suspended'; }
-
     var price = (c.package && c.package.price)
       ? 'Rp '+Number(c.package.price).toLocaleString('id-ID')
       : (c.monthly_fee ? 'Rp '+Number(c.monthly_fee).toLocaleString('id-ID') : '–');
@@ -654,7 +727,7 @@ async function loadCustomers() {
     var pkgName   = (c.package && c.package.name) ? _esc(c.package.name) : (c.package_name ? _esc(c.package_name) : '–');
     var actDate   = c.installation_date ? new Date(c.installation_date).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'}) : '–';
 
-    return '<tr data-id="'+c.id+'">'
+    return '<tr data-id="'+c.id+'" data-billing="'+_esc(c.status||'')+'" data-overdue="'+(isOv?'1':'0')+'" data-duesoon="'+(isDs?'1':'0')+'">'
       + '<td><span class="cid-badge">'+_esc(c.customer_id)+'</span></td>'
       + '<td>'
         + '<div style="display:flex;align-items:center;gap:11px">'
@@ -674,7 +747,7 @@ async function loadCustomers() {
       + '<td style="font-weight:700;color:#1a6ef5;font-size:13px">'+price+'</td>'
       + '<td style="color:#6b7fa8">'+actDate+'</td>'
       + '<td><div style="line-height:1.5">'+dueDateHtml+'</div></td>'
-      + '<td><span class="sb '+stCls+'"><span class="sb-dot" style="background:'+stDot+'"></span>'+stLabel+'</span></td>'
+      + '<td class="cust-status-cell">'+_statusCellHtml(c, isOv, isDs)+'</td>'
       + '<td style="text-align:right;padding-right:18px">'
         + '<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">'
           + '<button class="rb rb-wa" onclick="sendWA(\''+_esc(c.phone||'')+'\')" >WA</button>'
@@ -690,6 +763,7 @@ async function loadCustomers() {
   }).join('');
 
   _renderPagination(total, 20);
+  _paintLiveStatus();
 }
 
 function sendWA(phone) {

@@ -81,6 +81,7 @@
     .cust-meta{font-size:11.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .badge{display:inline-block;padding:4px 10px;border-radius:100px;font-size:10px;font-weight:800;flex-shrink:0;}
     .b-active{background:#dcf7ec;color:#0f9d63;}
+    .b-offline{background:#eef2f7;color:#64748b;}
     .b-isolir{background:#fde5e6;color:#d13b42;}
     .b-suspend{background:#fef1db;color:#c67d0a;}
     .b-inactive{background:#e2eefb;color:#6b7a97;}
@@ -316,7 +317,31 @@
     async function api(url){ const t=getToken(); const headers=Object.assign({'Content-Type':'application/json'}, t?{'Authorization':'Bearer '+t}:{}); try{ const r=await fetch(url,{credentials:'include',headers}); if(r.status===401){location.href='/login';return null;} const x=await r.text(); try{return x?JSON.parse(x):null;}catch(_){return null;} }catch(e){return null;} }
     function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
     let _status='',_search='',_page=1,_loading=false; const PAGE_SIZE=20;
-    function statusBadge(st){ st=(st||'').toLowerCase(); if(st==='active')return '<span class="badge b-active">Aktif</span>'; if(st==='isolated'||st==='isolir')return '<span class="badge b-isolir">Isolir</span>'; if(st==='suspended')return '<span class="badge b-suspend">Suspend</span>'; return '<span class="badge b-inactive">Nonaktif</span>'; }
+    const _liveOnline = {};
+    function paintLiveBadges(){
+      document.querySelectorAll('#custList .cust[data-id]').forEach(function(el){
+        const id=parseInt(el.getAttribute('data-id'),10);
+        const billing=el.getAttribute('data-billing')||'';
+        const slot=el.querySelector('.cust-live-badge');
+        if(!slot||!id)return;
+        slot.innerHTML=statusBadge(billing, _liveOnline[id]);
+      });
+    }
+    async function refreshLiveConn(){
+      const j=await api('/api/mikrotik/customer-traffic');
+      const rows=(j&&j.success&&Array.isArray(j.data))?j.data:[];
+      rows.forEach(function(r){ _liveOnline[r.id]=!!r.online; });
+      paintLiveBadges();
+    }
+    function statusBadge(st, live){
+      st=(st||'').toLowerCase();
+      if(st==='isolated'||st==='isolir')return '<span class="badge b-isolir">Isolir</span>';
+      if(st==='suspended')return '<span class="badge b-suspend">Suspend</span>';
+      if(st==='inactive')return '<span class="badge b-inactive">Nonaktif</span>';
+      if(live===true)return '<span class="badge b-active">Terhubung</span>';
+      if(live===false)return '<span class="badge b-offline">Offline</span>';
+      return '<span class="badge b-inactive">Cek…</span>';
+    }
     function fmtRpShort(n){ n=Number(n)||0; if(n>=1000000)return 'Rp '+(n/1000000).toFixed(n%1000000?1:0).replace('.0','')+'jt'; if(n>=1000)return 'Rp '+Math.round(n/1000)+'rb'; return 'Rp '+n.toLocaleString('id-ID'); }
     function overdueDays(dueStr){
       if(!dueStr)return 0;
@@ -328,7 +353,7 @@
       const nm=c.name||'Pelanggan'; const cid=c.customer_id||c.cid||('#'+(c.id||'')); const pkg=(c.package&&c.package.name)||c.package_name||'';
       const init=(nm[0]||'?').toUpperCase(); const meta=[cid,pkg].filter(Boolean).join(' · ');
       const isOverdue=(c.latest_invoice_status==='overdue');
-      let extra='', badge=statusBadge(c.status);
+      let extra='', badge=statusBadge(c.status, _liveOnline[c.id]);
       if(isOverdue){
         const days=overdueDays(c.latest_due_date);
         const inv=c.latest_invoice||{};
@@ -337,9 +362,8 @@
         if(days>0)parts.push('Telat '+days+' hari');
         if(amt)parts.push(fmtRpShort(amt));
         extra='<div class="cust-due"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'+esc(parts.join(' · ')||'Menunggak')+'</div>';
-        badge='<span class="badge b-overdue">Nunggak</span>';
       }
-      return '<div class="cust" onclick="openDetail('+c.id+')"><div class="cust-av">'+esc(init)+'</div><div class="cust-body"><div class="cust-name">'+esc(nm)+'</div><div class="cust-meta">'+esc(meta)+'</div>'+extra+'</div>'+badge+'</div>';
+      return '<div class="cust" data-id="'+c.id+'" data-billing="'+esc(c.status||'')+'" onclick="openDetail('+c.id+')"><div class="cust-av">'+esc(init)+'</div><div class="cust-body"><div class="cust-name">'+esc(nm)+'</div><div class="cust-meta">'+esc(meta)+'</div>'+extra+'</div><span class="cust-live-badge">'+badge+'</span></div>';
     }
     async function loadCustomers(reset){
       if(_loading)return; _loading=true; if(reset){_page=1;}
@@ -364,6 +388,7 @@
         document.getElementById('custCount').textContent='0 pelanggan';
       }
       _loading=false;
+      paintLiveBadges();
     }
 
     // Sinkronkan status filter di chip + highlight KPI, lalu muat ulang.
@@ -384,7 +409,21 @@
     // ── Detail pelanggan (popup) ──
     function fmtRp(n){ n=Number(n)||0; return 'Rp '+n.toLocaleString('id-ID'); }
     function fmtDateLong(s){ if(!s)return'–'; const d=new Date(s); if(isNaN(d))return String(s).slice(0,10); return d.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}); }
-    function stBadgeBig(st){ st=(st||'').toLowerCase(); const map={active:['Aktif','#dcf7ec','#0f9d63'],isolated:['Isolir','#fde5e6','#d13b42'],isolir:['Isolir','#fde5e6','#d13b42'],suspended:['Suspend','#fef1db','#c67d0a']}; const v=map[st]||['Nonaktif','#e2eefb','#6b7a97']; return '<span class="dm-badge" style="background:'+v[1]+';color:'+v[2]+';">'+v[0]+'</span>'; }
+    function stBadgeBig(st, live){
+      st=(st||'').toLowerCase();
+      if(st==='isolated'||st==='isolir') return '<span class="dm-badge" style="background:#fde5e6;color:#d13b42;">Isolir</span>';
+      if(st==='suspended') return '<span class="dm-badge" style="background:#fef1db;color:#c67d0a;">Suspend</span>';
+      if(st==='inactive') return '<span class="dm-badge" style="background:#e2eefb;color:#6b7a97;">Nonaktif</span>';
+      if(live===true) return '<span class="dm-badge" style="background:#dcf7ec;color:#0f9d63;">Terhubung</span>';
+      if(live===false) return '<span class="dm-badge" style="background:#eef2f7;color:#64748b;">Offline</span>';
+      return '<span class="dm-badge" style="background:#e2eefb;color:#6b7a97;">Cek…</span>';
+    }
+    function stBillBadge(st){
+      st=(st||'').toLowerCase();
+      const map={active:['Lunas / aktif','#dcf7ec','#0f9d63'],isolated:['Isolir','#fde5e6','#d13b42'],isolir:['Isolir','#fde5e6','#d13b42'],suspended:['Suspend','#fef1db','#c67d0a'],overdue:['Nunggak','#fde5e6','#d13b42'],unpaid:['Belum lunas','#fef1db','#c67d0a']};
+      const v=map[st]||['–','#e2eefb','#6b7a97'];
+      return '<span class="dm-badge" style="background:'+v[1]+';color:'+v[2]+';">'+v[0]+'</span>';
+    }
 
     function openDetail(id){
       document.getElementById('dmContent').innerHTML='<div class="dm-skel">Memuat detail…</div>';
@@ -420,7 +459,7 @@
       function row(k,v){ return '<div class="dm-row"><span class="dm-k">'+k+'</span><span class="dm-v">'+v+'</span></div>'; }
 
       let html='';
-      html+='<div class="dm-hero"><div class="dm-av">'+esc(init)+'</div><div style="min-width:0;"><div class="dm-name">'+esc(nm)+'</div><div class="dm-cid">'+esc(c.customer_id||('#'+c.id))+'</div><div style="margin-top:6px;">'+stBadgeBig(c.status)+'</div></div></div>';
+      html+='<div class="dm-hero"><div class="dm-av">'+esc(init)+'</div><div style="min-width:0;"><div class="dm-name">'+esc(nm)+'</div><div class="dm-cid">'+esc(c.customer_id||('#'+c.id))+'</div><div style="margin-top:6px;">'+stBadgeBig(c.status, _liveOnline[c.id])+'</div></div></div>';
 
       html+='<div class="dm-body">';
 
@@ -453,7 +492,7 @@
       const installDate=c.installation_date||c.created_at;
       if(installDate) html+=row('Tgl. Aktivasi / Instalasi', fmtDateLong(installDate));
       html+=row('Aktif sampai', '<span style="color:#0f9d63;">'+aktifSampai+'</span>');
-      html+=row('Status tagihan', stBadgeBig(dueStatus==='active'?'active':dueStatus));
+      html+=row('Status tagihan', stBillBadge(dueStatus==='active'?'active':dueStatus));
       html+='</div>';
 
       // Riwayat pembayaran (diisi async)
@@ -1050,6 +1089,8 @@
     loadCustStats();
     loadGrowth();
     loadCustomers(true);
+    refreshLiveConn();
+    setInterval(refreshLiveConn, 4000);
 
     // Buka detail langsung bila datang dari pencarian global (?focus=ID)
     (function(){
