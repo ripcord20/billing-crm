@@ -390,12 +390,30 @@ class NasController {
     try {
       const row = await NasDevice.findByPk(req.params.id);
       if (!row) return res.status(404).json({ success: false, message: 'NAS tidak ditemukan' });
+      const server = await RadiusProv.resolveServer(row.radius_server_id);
+      const radiusHost = (server && server.host) || process.env.RADIUS_HOST || '192.168.22.9';
+      const wgCfg = await Wireguard.getServerConfig();
       const out = await VpnProvision.generate(row, {
         vpn_type: req.body && req.body.vpn_type,
         reallocate: !!(req.body && req.body.reallocate),
-        allowedIps: req.body && req.body.allowed_ips
+        allowedIps: (req.body && req.body.allowed_ips) || radiusAllowedIps(wgCfg.serverAddress, radiusHost)
       });
-      res.json({ success: true, data: out });
+      await row.reload();
+      let device = null;
+      if ((out.vpn_type || '').toLowerCase() === 'wireguard') {
+        device = await afterTunnelReady(row);
+        await row.reload();
+      }
+      res.json({
+        success: true,
+        data: {
+          ...out,
+          nasname: row.nasname,
+          device_id: device ? device.id : row.device_id,
+          device_name: device ? device.name : null,
+          device_ip: device ? device.ip_address : null
+        }
+      });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }

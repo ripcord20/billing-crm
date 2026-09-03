@@ -271,7 +271,13 @@ function hasWgBinary() {
 
 function runFile(cmd, args, timeout = 12000) {
   return new Promise((resolve) => {
-    execFile(cmd, args, { timeout }, (err, stdout, stderr) => {
+    execFile(cmd, args, {
+      timeout,
+      env: {
+        ...process.env,
+        PATH: process.env.PATH || '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+      }
+    }, (err, stdout, stderr) => {
       resolve({
         ok: !err,
         stdout: String(stdout || '').trim(),
