@@ -70,7 +70,7 @@ function peerRestId(peer) {
 }
 
 async function addPeerOnHub(mt, { iface, publicKey, allowedAddress, comment, keepalive }) {
-  const peers = await listHubPeers(mt);
+  const peers = (await listHubPeers(mt)).filter((p) => (p.interface || '') === iface);
   const existing = findExistingPeer(peers, { publicKey, allowedHost: allowedAddress });
   if (existing) {
     return { created: false, existing: true, peer: existing };
@@ -89,7 +89,7 @@ async function removePeerByPublicKey(publicKey) {
   if (!publicKey) return { removed: false };
   const hub = getHubConfig();
   const { mt } = await core1Mikrotik(hub);
-  const peers = await listHubPeers(mt);
+  const peers = (await listHubPeers(mt)).filter((p) => (p.interface || '') === hub.iface);
   const peer = findExistingPeer(peers, { publicKey });
   const id = peerRestId(peer);
   if (!id) return { removed: false };
@@ -98,10 +98,11 @@ async function removePeerByPublicKey(publicKey) {
 }
 
 async function usedHostsFromDbAndHub(mt) {
+  const hub = getHubConfig();
   const [nasRows, devices, peers] = await Promise.all([
     NasDevice.findAll({ attributes: ['nasname', 'tunnel_address'] }),
     Device.findAll({ attributes: ['ip_address'] }),
-    mt ? listHubPeers(mt) : Promise.resolve([])
+    mt ? listHubPeers(mt).then((rows) => rows.filter((p) => (p.interface || '') === hub.iface)) : Promise.resolve([])
   ]);
   return collectUsedHosts({
     nasRows: nasRows.map((r) => r.get({ plain: true })),
