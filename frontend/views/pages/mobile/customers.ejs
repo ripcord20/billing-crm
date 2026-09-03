@@ -129,6 +129,14 @@
     .as-maphint{font-size:11px;color:var(--muted);margin-bottom:9px;}
     .af-map{width:100%;height:200px;border-radius:14px;border:1px solid #e6ebf3;overflow:hidden;margin-bottom:12px;z-index:1;}
     .af-map .leaflet-control-attribution{display:none;}
+    .af-photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+    .af-photo{border:1.5px dashed #bcd0f7;background:#f8fbff;border-radius:14px;min-height:104px;cursor:pointer;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;}
+    .af-photo.filled{border-style:solid;border-color:var(--blue);}
+    .af-photo img{width:100%;height:104px;object-fit:cover;display:block;pointer-events:none;}
+    .af-photo-inner{display:flex;flex-direction:column;align-items:center;gap:6px;color:#7c93a0;font-size:12px;font-weight:700;padding:12px;text-align:center;pointer-events:none;width:100%;}
+    .af-photo-inner svg{width:22px;height:22px;}
+    .af-photo-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2;font-size:100px;margin:0;padding:0;border:0;}
+    .af-photo-clear{position:absolute;top:6px;right:6px;width:22px;height:22px;border:none;border-radius:7px;background:rgba(15,23,42,.7);color:#fff;font-size:13px;cursor:pointer;line-height:22px;padding:0;z-index:3;}
     .as-check{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:#3a4a68;cursor:pointer;padding:9px 0;}
     .as-check input{display:none;}
     .as-cbox{width:22px;height:22px;border-radius:7px;border:2px solid #cdd6e4;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .12s;}
@@ -831,6 +839,84 @@
     }
     function selName(id){ const el=document.getElementById(id); const o=el.options[el.selectedIndex]; return o?(o.getAttribute('data-name')||''):''; }
 
+    var _afPendingPhotos={ktp:null,house:null};
+    var _afPhotosToDelete={ktp:false,house:false};
+    var _afPhotoUrls=[];
+    function afPhotoUrl(c,slot){
+      const docs=(c&&c.documents&&!Array.isArray(c.documents)&&typeof c.documents==='object')?c.documents:{};
+      if(docs[slot]&&docs[slot].url) return docs[slot].url;
+      if(slot==='ktp') return (c&&c.ktp_photo)||'';
+      if(slot==='house') return (c&&c.house_photo)||'';
+      return '';
+    }
+    function afRenderPhoto(slot,url){
+      const box=document.getElementById('afPhotoBox_'+slot);
+      const inner=document.getElementById('afPhotoInner_'+slot);
+      const clearBtn=document.getElementById('afPhotoClear_'+slot);
+      if(!box||!inner) return;
+      if(url){
+        box.classList.add('filled');
+        inner.innerHTML='<img src="'+esc(url)+'" alt="'+slot+'">';
+        if(clearBtn) clearBtn.hidden=false;
+      } else {
+        box.classList.remove('filled');
+        inner.innerHTML=slot==='ktp'
+          ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 9h4M14 13h4M3 17l4-4 3 3"/></svg><span>Foto KTP</span>'
+          : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Foto Rumah</span>';
+        const inp=document.getElementById('afPhoto_'+slot); if(inp) inp.value='';
+        if(clearBtn) clearBtn.hidden=true;
+      }
+    }
+    function afResetPhotos(){
+      _afPendingPhotos={ktp:null,house:null};
+      _afPhotosToDelete={ktp:false,house:false};
+      _afPhotoUrls.forEach(function(u){ try{ URL.revokeObjectURL(u); }catch(_){} });
+      _afPhotoUrls=[];
+      afRenderPhoto('ktp',null); afRenderPhoto('house',null);
+    }
+    function afOnPhotoPick(slot,inp){
+      const f=inp&&inp.files&&inp.files[0]; if(!f) return;
+      if(f.size>8*1024*1024){ toast('Ukuran file maksimal 8MB','err'); inp.value=''; return; }
+      _afPendingPhotos[slot]=f;
+      _afPhotosToDelete[slot]=false;
+      const url=URL.createObjectURL(f); _afPhotoUrls.push(url);
+      afRenderPhoto(slot,url);
+    }
+    function afClearPhoto(ev,slot){
+      if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+      _afPendingPhotos[slot]=null;
+      _afPhotosToDelete[slot]=true;
+      const el=document.getElementById('afPhoto_'+slot); if(el) el.value='';
+      afRenderPhoto(slot,null);
+    }
+    async function afUploadPhotos(customerId){
+      const t=getToken();
+      const headers=Object.assign({'X-Requested-With':'XMLHttpRequest'}, t?{'Authorization':'Bearer '+t}:{});
+      const slots=['ktp','house'];
+      for(let i=0;i<slots.length;i++){
+        const slot=slots[i]; const file=_afPendingPhotos[slot];
+        if(file){
+          const fd=new FormData(); fd.append('photo',file);
+          try{
+            await fetch('/api/customers/'+customerId+'/document/'+slot,{
+              method:'POST', credentials:'include', headers:headers, body:fd
+            });
+          }catch(_){}
+          continue;
+        }
+        if(_afPhotosToDelete[slot]){
+          try{
+            await fetch('/api/customers/'+customerId+'/document/'+slot,{
+              method:'DELETE', credentials:'include',
+              headers:Object.assign({'Content-Type':'application/json'}, t?{'Authorization':'Bearer '+t}:{})
+            });
+          }catch(_){}
+        }
+      }
+      _afPendingPhotos={ktp:null,house:null};
+      _afPhotosToDelete={ktp:false,house:false};
+    }
+
     // Saat kelurahan/desa dipilih → geocode otomatis, pindahkan marker (seperti desktop)
     function onVillageChange(){ geocodeWilayah(true); }
     async function geocodeWilayah(force){
@@ -972,7 +1058,7 @@
       const isEdit=!!_editId;
       btn.disabled=true; btn.textContent='Menyimpan…';
       const t=getToken();
-      let ok=false, msg='';
+      let ok=false, msg='', saved=null;
       try{
         const url=isEdit ? ('/api/customers/'+encodeURIComponent(_editId)) : '/api/customers';
         const r=await fetch(url,{
@@ -982,10 +1068,14 @@
           body:JSON.stringify(body)
         });
         const d=await r.json().catch(()=>null);
-        ok=(r.ok && d && d.success); msg=(d&&d.message)||'';
+        ok=(r.ok && d && d.success); msg=(d&&d.message)||''; saved=d;
       }catch(e){ msg=e.message; }
       btn.disabled=false; btn.textContent = isEdit ? 'Simpan Perubahan' : 'Simpan Pelanggan';
       if(ok){
+        const savedId=(saved&&saved.data&&saved.data.id)||_editId;
+        if(savedId && (_afPendingPhotos.ktp||_afPendingPhotos.house||_afPhotosToDelete.ktp||_afPhotosToDelete.house)){
+          await afUploadPhotos(savedId);
+        }
         toast(isEdit?'Perubahan tersimpan':'Pelanggan berhasil ditambahkan','ok');
         closeAdd(); clearAddForm(); _editId=null;
         loadCustStats(); loadGrowth(); loadCustomers(true);
@@ -1016,6 +1106,9 @@
       document.getElementById('afStaticIp').value=c.static_ip||'';
       document.getElementById('afMac').value=c.mac_address||'';
       document.getElementById('afNotes').value=c.notes||'';
+      afResetPhotos();
+      afRenderPhoto('ktp', afPhotoUrl(c,'ktp')||null);
+      afRenderPhoto('house', afPhotoUrl(c,'house')||null);
       document.getElementById('afPppoeUser').value=c.pppoe_username||'';
       document.getElementById('afPppoePass').value=c.pppoe_password||'';
       // Tanggal aktivasi & jatuh tempo (DATEONLY dari server → potong ke YYYY-MM-DD)
@@ -1084,6 +1177,7 @@
       const pp=document.getElementById('afPppoeProfile'); if(pp){pp.innerHTML='<option value="">Pilih router dulu…</option>';pp.disabled=true;} const rr=document.getElementById('afRouter'); if(rr)rr.value='';
       if(_afMap&&_afMarker){ _afMarker.setLatLng(AF_DEFAULT); _afMap.setView(AF_DEFAULT,13); }
       const gh=document.getElementById('afGeoHint'); if(gh)gh.textContent='';
+      afResetPhotos();
     }
 
     loadCustStats();
@@ -1179,6 +1273,26 @@
       <div class="as-row">
         <div><label class="as-lbl">IP Static</label><input class="as-in" id="afStaticIp" inputmode="decimal" placeholder="10.10.x.x"></div>
         <div><label class="as-lbl">MAC Address</label><input class="as-in" id="afMac" placeholder="AA:BB:CC:.."></div>
+      </div>
+      <div class="as-sec">Dokumen Foto</div>
+      <div class="as-hint">Foto KTP dan foto rumah (opsional, max 8MB). Ketuk kotak untuk pilih foto.</div>
+      <div class="af-photo-grid">
+        <div class="af-photo" id="afPhotoBox_ktp">
+          <input type="file" accept="image/png,image/jpeg,image/webp,image/*" capture="environment" id="afPhoto_ktp" class="af-photo-input" aria-label="Pilih foto KTP" onchange="afOnPhotoPick('ktp',this)">
+          <div class="af-photo-inner" id="afPhotoInner_ktp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 9h4M14 13h4M3 17l4-4 3 3"/></svg>
+            <span>Foto KTP</span>
+          </div>
+          <button type="button" class="af-photo-clear" id="afPhotoClear_ktp" hidden title="Hapus foto" onclick="afClearPhoto(event,'ktp')">×</button>
+        </div>
+        <div class="af-photo" id="afPhotoBox_house">
+          <input type="file" accept="image/png,image/jpeg,image/webp,image/*" capture="environment" id="afPhoto_house" class="af-photo-input" aria-label="Pilih foto rumah" onchange="afOnPhotoPick('house',this)">
+          <div class="af-photo-inner" id="afPhotoInner_house">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>Foto Rumah</span>
+          </div>
+          <button type="button" class="af-photo-clear" id="afPhotoClear_house" hidden title="Hapus foto" onclick="afClearPhoto(event,'house')">×</button>
+        </div>
       </div>
       <label class="as-lbl">Catatan</label>
       <textarea class="as-in" id="afNotes" rows="2" placeholder="Catatan opsional"></textarea>

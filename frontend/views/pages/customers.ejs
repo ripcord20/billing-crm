@@ -271,6 +271,36 @@
     .form-badge { font-size: 10px; color: #0891b2; font-weight: 600; }
     .form-meta  { font-size: 10px; font-weight: 400; text-transform: none; color: var(--d-muted); }
 
+    /* Foto KTP / rumah di form pelanggan — input file menutupi kotak agar selalu bisa diklik */
+    .cust-photo-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .cust-photo-box {
+      border:1.5px dashed #c7d2fe; border-radius:12px; background:#f8faff;
+      min-height:112px; cursor:pointer; overflow:hidden; display:flex;
+      align-items:center; justify-content:center; position:relative;
+    }
+    .cust-photo-box:hover { border-color:#2563eb; background:#eef2ff; }
+    .cust-photo-box.filled { border-style:solid; border-color:#2563eb; }
+    .cust-photo-box img { width:100%; height:112px; object-fit:cover; display:block; pointer-events:none; }
+    .cust-photo-inner {
+      display:flex; flex-direction:column; align-items:center; gap:6px;
+      color:#64748b; font-size:12px; font-weight:600; padding:14px 10px; text-align:center;
+      pointer-events:none; width:100%;
+    }
+    .cust-photo-inner svg { width:22px; height:22px; }
+    .cust-photo-input {
+      position:absolute; inset:0; width:100%; height:100%;
+      opacity:0; cursor:pointer; z-index:2; font-size:100px;
+      margin:0; padding:0; border:0;
+    }
+    .cust-photo-clear {
+      position:absolute; top:6px; right:6px; width:22px; height:22px; border:none; border-radius:7px;
+      background:rgba(15,23,42,.7); color:#fff; font-size:13px; cursor:pointer; line-height:22px; padding:0;
+      z-index:3;
+    }
+    .cust-photo-thumb { width:42px; height:42px; border-radius:8px; overflow:hidden; display:inline-block; border:1px solid #e2e8f0; vertical-align:middle; }
+    .cust-photo-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .cust-photo-none { color:#cbd5e1; font-size:12px; }
+
     /* ── Section header dalam modal (gaya seperti Registrasi Sales) ── */
     .form-sec {
       grid-column: 1 / -1;
@@ -620,6 +650,28 @@
           <div class="form-hint">Nomor KTP pelanggan (opsional)</div>
         </div>
 
+        <div class="form-sec"><span class="form-sec-t">Dokumen Foto</span><span class="form-sec-hint">Foto KTP dan foto rumah (opsional, max 8MB). Ketuk kotak untuk pilih foto.</span></div>
+        <div class="form-field span-all">
+          <div class="cust-photo-grid">
+            <div class="cust-photo-box" id="custPhotoBox_ktp">
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/*" id="custPhoto_ktp" class="cust-photo-input" aria-label="Pilih foto KTP" onchange="custOnPhotoPick('ktp', this)">
+              <div class="cust-photo-inner" id="custPhotoInner_ktp">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 9h4M14 13h4M3 17l4-4 3 3"/></svg>
+                <span>Foto KTP</span>
+              </div>
+              <button type="button" class="cust-photo-clear" id="custPhotoClear_ktp" hidden title="Hapus foto" onclick="custClearPhoto(event,'ktp')">×</button>
+            </div>
+            <div class="cust-photo-box" id="custPhotoBox_house">
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/*" id="custPhoto_house" class="cust-photo-input" aria-label="Pilih foto rumah" onchange="custOnPhotoPick('house', this)">
+              <div class="cust-photo-inner" id="custPhotoInner_house">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <span>Foto Rumah</span>
+              </div>
+              <button type="button" class="cust-photo-clear" id="custPhotoClear_house" hidden title="Hapus foto" onclick="custClearPhoto(event,'house')">×</button>
+            </div>
+          </div>
+        </div>
+
         <!-- ═══ Alamat berjenjang (Provinsi → Kab → Kec → Desa, dari API wilayah) ═══ -->
         <div class="form-field">
           <label class="flbl">Provinsi</label>
@@ -909,7 +961,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/customers.js?v=1779900100"></script>
+<script src="/js/customers.js?v=1779900300"></script>
 <script>
 /* ── Extra stat update from loadCustomerStats ── */
 const _origStats = window.loadCustomerStats;

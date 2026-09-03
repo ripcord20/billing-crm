@@ -921,6 +921,7 @@ router.post('/upload/payment-logo', authenticate, demoGuard, paymentLogoUpload.s
 // Disimpan di frontend/public/uploads/customer (di-serve via /uploads/customer/...).
 // Metadata path disimpan di kolom Customer.documents (JSON) dengan struktur:
 //   { house: { url, name, size, uploaded_at }, ktp: { url, ... } }
+// Kolom VARCHAR ktp_photo / house_photo ikut di-update untuk listing cepat.
 const customerDocStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = path.join(__dirname, '../../frontend/public/uploads/customer');
@@ -928,7 +929,13 @@ const customerDocStorage = multer.diskStorage({
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    const ext  = path.extname(file.originalname).toLowerCase();
+    const allowed = ['.png', '.jpg', '.jpeg', '.webp'];
+    let ext  = path.extname(file.originalname || '').toLowerCase();
+    if (!allowed.includes(ext)) {
+      if (file.mimetype === 'image/png') ext = '.png';
+      else if (file.mimetype === 'image/webp') ext = '.webp';
+      else ext = '.jpg';
+    }
     const slot = (req.params.slot || 'doc').replace(/[^a-z0-9_]/gi, '');
     const cid  = (req.params.id || 'x').replace(/[^a-z0-9_]/gi, '');
     cb(null, 'cust_' + cid + '_' + slot + '_' + Date.now() + ext);
@@ -939,12 +946,14 @@ const customerDocUpload = multer({
   limits: { fileSize: 8 * 1024 * 1024 }, // max 8MB
   fileFilter: (req, file, cb) => {
     const allowed = ['.png', '.jpg', '.jpeg', '.webp'];
-    if (allowed.includes(path.extname(file.originalname).toLowerCase())) cb(null, true);
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const mimeOk = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(String(file.mimetype || '').toLowerCase());
+    if (allowed.includes(ext) || mimeOk) cb(null, true);
     else cb(new Error('Format tidak didukung. Gunakan PNG/JPG/WebP'));
   }
 });
 
-const CUST_DOC_SLOTS = ['house', 'ktp'];
+const { SLOTS: CUST_DOC_SLOTS, applyDocumentSlot, normalizeCustomerDocuments } = require('../utils/customerDocuments');
 
 // Upload / replace satu dokumen (slot = 'house' atau 'ktp')
 router.post('/customers/:id/document/:slot',
@@ -966,30 +975,29 @@ router.post('/customers/:id/document/:slot',
         return res.status(404).json({ success: false, message: 'Customer tidak ditemukan' });
       }
 
-      // documents bisa null / array (default lama) → normalisasi jadi object
-      let docs = customer.documents;
-      if (!docs || Array.isArray(docs) || typeof docs !== 'object') docs = {};
-
-      // Hapus file lama di slot ini (kalau ada) supaya tidak menumpuk
-      const old = docs[slot];
-      if (old && old.url) {
+      const currentDocs = normalizeCustomerDocuments(customer);
+      const old = currentDocs[slot];
+      if (old && old.url && String(old.url).startsWith('/uploads/customer/')) {
         const resolved = path.join(__dirname, '../../frontend/public', old.url.replace(/^\/+/, ''));
         try { if (fs.existsSync(resolved)) fs.unlinkSync(resolved); } catch (e) { /* ignore */ }
       }
 
-      docs[slot] = {
+      const entry = {
         url:         '/uploads/customer/' + req.file.filename,
         name:        req.file.originalname,
         size:        req.file.size,
         uploaded_at: new Date().toISOString()
       };
+      const patch = applyDocumentSlot(customer, slot, entry);
 
       // changed() perlu di-flag karena Sequelize tidak selalu deteksi mutasi JSON in-place
-      customer.documents = docs;
+      customer.documents = patch.documents;
       customer.changed('documents', true);
+      if (Object.prototype.hasOwnProperty.call(patch, 'ktp_photo')) customer.ktp_photo = patch.ktp_photo;
+      if (Object.prototype.hasOwnProperty.call(patch, 'house_photo')) customer.house_photo = patch.house_photo;
       await customer.save();
 
-      res.json({ success: true, data: docs[slot], documents: docs, message: 'Dokumen berhasil diupload' });
+      res.json({ success: true, data: patch.documents[slot], documents: patch.documents, message: 'Dokumen berhasil diupload' });
     } catch (e) {
       if (req.file) { try { fs.unlinkSync(req.file.path); } catch (er) {} }
       res.status(500).json({ success: false, message: e.message });
@@ -1010,21 +1018,21 @@ router.delete('/customers/:id/document/:slot',
       const customer = await Customer.findByPk(req.params.id);
       if (!customer) return res.status(404).json({ success: false, message: 'Customer tidak ditemukan' });
 
-      let docs = customer.documents;
-      if (!docs || Array.isArray(docs) || typeof docs !== 'object') docs = {};
-
-      const entry = docs[slot];
-      if (entry && entry.url) {
-        const resolved = path.join(__dirname, '../../frontend/public', entry.url.replace(/^\/+/, ''));
+      const currentDocs = normalizeCustomerDocuments(customer);
+      const entry = currentDocs[slot];
+      if (entry && entry.url && String(entry.url).startsWith('/uploads/customer/')) {
+        const resolved = path.join(__dirname, '../../frontend/public', String(entry.url).replace(/^\/+/, ''));
         try { if (fs.existsSync(resolved)) fs.unlinkSync(resolved); } catch (e) { /* ignore */ }
       }
-      delete docs[slot];
 
-      customer.documents = docs;
+      const patch = applyDocumentSlot(customer, slot, null);
+      customer.documents = patch.documents;
       customer.changed('documents', true);
+      if (Object.prototype.hasOwnProperty.call(patch, 'ktp_photo')) customer.ktp_photo = patch.ktp_photo;
+      if (Object.prototype.hasOwnProperty.call(patch, 'house_photo')) customer.house_photo = patch.house_photo;
       await customer.save();
 
-      res.json({ success: true, documents: docs, message: 'Dokumen dihapus' });
+      res.json({ success: true, documents: patch.documents, message: 'Dokumen dihapus' });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
     }

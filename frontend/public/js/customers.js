@@ -12,6 +12,9 @@ let _pppoeManuallyEdited = false;
 // → kalau berubah, tampilkan modal konfirmasi sync ke router.
 // Direset ke '' setiap kali openAddCustomer() (tidak relevan di tambah baru).
 let _originalPppoeUsername = '';
+let _pendingPhotos = { ktp: null, house: null };
+let _photoObjectUrls = [];
+let _photosToDelete = { ktp: false, house: false };
 const AVATAR_BG = ['#2563eb','#0891b2','#059669','#d97706','#dc2626','#0284c7','#16a34a','#ea580c','#0369a1','#0d9488'];
 
 // Toggle field MAC Address — hanya relevan untuk tipe koneksi Hotspot (IP Binding).
@@ -205,6 +208,7 @@ window.editCustomer = async function (id) {
   // Load Parent ODP dropdown + preselect dari c.infra_parent_id
   loadInfraParents(c.infra_parent_id);
   _updateAutoInfraBanner();
+  _fillCustomerPhotos(c);
 
   // Tampilkan panel akses portal & load creds (hanya di mode edit)
   const portalBox = document.getElementById('portalPanelBox');
@@ -1138,6 +1142,13 @@ async function _saveCustomerInner() {
   const data   = await App.api(url, { method, body: JSON.stringify(body) });
 
   if (data?.success) {
+    const savedId = (data.data && data.data.id) || _custEditId;
+    if (savedId && (_pendingPhotos.ktp || _pendingPhotos.house || _photosToDelete.ktp || _photosToDelete.house)) {
+      btn.textContent = 'Mengunggah foto...';
+      const photoMsg = await _uploadPendingCustomerPhotos(savedId);
+      if (photoMsg) data._photoMsg = photoMsg;
+    }
+
     // Sync kredensial portal (cuma jalan di mode edit, panel hidden = no-op)
     const ppRes = await ppSaveCredentials();
     if (!ppRes.ok) {
@@ -1216,6 +1227,7 @@ async function _saveCustomerInner() {
         toastType = 'warning';
       }
     }
+    if (data._photoMsg) msg += data._photoMsg;
     App.showToast(msg, toastType);
   } else {
     // Customer gagal disimpan tapi PPPoE sudah dibuat — beri warning supaya admin tahu
@@ -1335,11 +1347,142 @@ function _clearForm() {
   _setVal('custInstallDate', todayStr);
   if (typeof onActivationDateChange === 'function') onActivationDateChange();
   const idStatus = document.getElementById('custIdStatus'); if (idStatus) idStatus.innerHTML = '';
+  _resetCustomerPhotos();
 }
 function _setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 function _setVal(id, val)  { const el = document.getElementById(id); if (el) el.value = val; }
 function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function _debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+// ── Foto KTP / Rumah ──────────────────────────────────────────
+
+function _customerPhotoUrl(c, slot) {
+  const docs = (c && c.documents && !Array.isArray(c.documents) && typeof c.documents === 'object') ? c.documents : {};
+  if (docs[slot] && docs[slot].url) return docs[slot].url;
+  if (slot === 'ktp') return (c && c.ktp_photo) || '';
+  if (slot === 'house') return (c && c.house_photo) || '';
+  return '';
+}
+
+function _revokePhotoUrls() {
+  _photoObjectUrls.forEach(u => { try { URL.revokeObjectURL(u); } catch (_) {} });
+  _photoObjectUrls = [];
+}
+
+function _photoEmptyInner(slot) {
+  if (slot === 'ktp') {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 9h4M14 13h4M3 17l4-4 3 3"/></svg><span>Foto KTP</span>';
+  }
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Foto Rumah</span>';
+}
+
+function _renderPhotoBox(slot, url) {
+  const box = document.getElementById('custPhotoBox_' + slot);
+  const inner = document.getElementById('custPhotoInner_' + slot);
+  const clearBtn = document.getElementById('custPhotoClear_' + slot);
+  if (!box || !inner) return;
+  const fileInput = document.getElementById('custPhoto_' + slot);
+  if (url) {
+    box.classList.add('filled');
+    inner.innerHTML = '<img src="'+_esc(url)+'" alt="'+slot+'">';
+    if (clearBtn) clearBtn.hidden = false;
+  } else {
+    box.classList.remove('filled');
+    inner.innerHTML = _photoEmptyInner(slot);
+    if (fileInput) fileInput.value = '';
+    if (clearBtn) clearBtn.hidden = true;
+  }
+}
+
+function _resetCustomerPhotos() {
+  _pendingPhotos = { ktp: null, house: null };
+  _photosToDelete = { ktp: false, house: false };
+  _revokePhotoUrls();
+  _renderPhotoBox('ktp', null);
+  _renderPhotoBox('house', null);
+}
+
+function _fillCustomerPhotos(c) {
+  _pendingPhotos = { ktp: null, house: null };
+  _photosToDelete = { ktp: false, house: false };
+  _revokePhotoUrls();
+  _renderPhotoBox('ktp', _customerPhotoUrl(c, 'ktp') || null);
+  _renderPhotoBox('house', _customerPhotoUrl(c, 'house') || null);
+}
+
+window.custPickPhoto = function(slot) {
+  const el = document.getElementById('custPhoto_' + slot);
+  if (el) el.click();
+};
+
+window.custClearPhoto = function(ev, slot) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  _pendingPhotos[slot] = null;
+  _photosToDelete[slot] = true;
+  const el = document.getElementById('custPhoto_' + slot);
+  if (el) el.value = '';
+  _renderPhotoBox(slot, null);
+};
+
+window.custOnPhotoPick = function(slot, input) {
+  const f = input && input.files && input.files[0];
+  if (!f) return;
+  if (f.size > 8 * 1024 * 1024) {
+    App.showToast('Ukuran file maksimal 8MB', 'error');
+    input.value = '';
+    return;
+  }
+  _pendingPhotos[slot] = f;
+  _photosToDelete[slot] = false;
+  const url = URL.createObjectURL(f);
+  _photoObjectUrls.push(url);
+  _renderPhotoBox(slot, url);
+};
+
+async function _uploadPendingCustomerPhotos(customerId) {
+  const slots = ['ktp', 'house'];
+  const uploaded = [];
+  const failed = [];
+  const headersAuth = { 'X-Requested-With': 'XMLHttpRequest' };
+  if (App.token && App.token !== 'null') headersAuth.Authorization = 'Bearer ' + App.token;
+  for (const slot of slots) {
+    const file = _pendingPhotos[slot];
+    if (file) {
+      const fd = new FormData();
+      fd.append('photo', file);
+      try {
+        const r = await fetch('/api/customers/' + customerId + '/document/' + slot, {
+          method: 'POST',
+          credentials: 'include',
+          headers: headersAuth,
+          body: fd
+        });
+        const d = await r.json().catch(() => null);
+        if (r.ok && d && d.success) uploaded.push(slot === 'ktp' ? 'KTP' : 'Rumah');
+        else failed.push((slot === 'ktp' ? 'KTP' : 'Rumah') + ': ' + ((d && d.message) || ('HTTP ' + r.status)));
+      } catch (e) {
+        failed.push((slot === 'ktp' ? 'KTP' : 'Rumah') + ': ' + e.message);
+      }
+      continue;
+    }
+    if (_photosToDelete[slot]) {
+      try {
+        const r = await App.api('/customers/' + customerId + '/document/' + slot, { method: 'DELETE' });
+        if (!(r && r.success)) failed.push((slot === 'ktp' ? 'KTP' : 'Rumah') + ': gagal hapus');
+      } catch (e) {
+        failed.push((slot === 'ktp' ? 'KTP' : 'Rumah') + ': ' + e.message);
+      }
+    }
+  }
+  _pendingPhotos = { ktp: null, house: null };
+  _photosToDelete = { ktp: false, house: false };
+  if (!uploaded.length && !failed.length) return '';
+  if (failed.length) {
+    App.showToast('Foto gagal: ' + failed.join('; '), 'warning');
+    return ' • foto sebagian gagal';
+  }
+  return ' • Foto ' + uploaded.join(' & ') + ' tersimpan ✓';
+}
 
 // Note: tombol Simpan sudah punya inline onclick="saveCustomerBtn()" di customers.ejs
 // yang memanggil saveCustomer(). JANGAN tambahkan addEventListener('click', saveCustomer)
