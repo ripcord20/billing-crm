@@ -1143,6 +1143,13 @@ class PaymentController {
       ? (addOneMonthKeepDay(rowWithPay.due_date) || rowWithPay.due_date)
       : rowWithPay.due_date;
 
+    try {
+      rowWithPay.cust_address = await require('../services/WilayahService').formatInvoiceAddress(
+        rowWithPay.cust_address,
+        { customer_id: rowWithPay.cid, address: rowWithPay.cust_address }
+      );
+    } catch (_) {}
+
     return {
       ...rowWithPay,
       amount,

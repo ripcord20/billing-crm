@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    :root {
+      --d-bg:#eef2f9; --d-card:#fff; --d-border:#e0e7f3;
+      --d-text:#0d1b3e; --d-muted:#6b7fa8;
+      --d-blue1:#1a6ef5; --d-blue2:#0047cc;
+      --d-green:#00c896; --d-red:#f5365c; --d-orange:#fb8c00;
+    }
+    .wl-page { font-family:'DM Sans',sans-serif; background:var(--d-bg) !important; }
+    .btn-outline { background:#fff; border:1.5px solid var(--d-border); color:#374151; padding:8px 16px; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-family:inherit; transition:all .15s; }
+    .btn-outline:hover { background:#f8fafc; border-color:#cbd5e1; }
+    .btn-info { background:#fff; border:1.5px solid #fde68a; color:#b45309; padding:8px 16px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-family:inherit; }
+    .btn-info:hover { background:#fffbeb; }
+    .btn-black { background:#0f172a; border:none; color:#fff; padding:8px 16px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-family:inherit; }
+    .btn-black:hover { opacity:.92; }
+    .wl-crumb { font-size:12px; color:var(--d-muted); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+    .wl-crumb a { color:var(--d-muted); text-decoration:none; }
+    .wl-crumb a:hover { color:var(--d-blue1); }
+    .wl-toggle { display:flex; align-items:center; gap:10px; font-size:12.5px; font-weight:600; color:var(--d-text); }
+    .wl-switch { position:relative; width:42px; height:24px; flex-shrink:0; }
+    .wl-switch input { opacity:0; width:0; height:0; }
+    .wl-slider { position:absolute; inset:0; background:#cbd5e1; border-radius:99px; cursor:pointer; transition:.2s; }
+    .wl-slider:before { content:''; position:absolute; height:18px; width:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+    .wl-switch input:checked + .wl-slider { background:#16a34a; }
+    .wl-switch input:checked + .wl-slider:before { transform:translateX(18px); }
+    .wl-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:16px; }
+    .wl-card { background:#fff; border:1.5px solid var(--d-border); border-radius:18px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.04); display:flex; flex-direction:column; }
+    .wl-card.inactive { opacity:.7; }
+    .wl-card-head { padding:16px 18px 12px; display:flex; justify-content:space-between; gap:10px; align-items:flex-start; cursor:pointer; }
+    .wl-name { font-size:15px; font-weight:800; letter-spacing:.04em; color:var(--d-text); margin:0 0 8px; }
+    .wl-pills { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+    .wl-code { background:#e2e8f0; color:#334155; font-size:11px; font-weight:800; padding:3px 9px; border-radius:99px; }
+    .wl-badge { font-size:11px; font-weight:800; padding:3px 10px; border-radius:99px; }
+    .wl-badge.on { background:#dcfce7; color:#15803d; }
+    .wl-badge.off { background:#fee2e2; color:#b91c1c; }
+    .wl-brand { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:800; color:#64748b; }
+    .wl-brand img { height:22px; object-fit:contain; }
+    .wl-body { padding:0 18px 14px; display:grid; grid-template-columns:1fr 1fr; gap:8px 16px; }
+    .wl-stat { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:var(--d-text); }
+    .wl-stat svg, .wl-geo svg { color:#64748b; flex-shrink:0; }
+    .wl-geo { display:flex; align-items:flex-start; gap:8px; font-size:12px; color:#475569; }
+    .wl-geo b { color:#94a3b8; font-weight:600; min-width:78px; display:inline-block; }
+    .wl-foot { margin-top:auto; padding:12px 18px 16px; border-top:1px solid var(--d-border); }
+    .wl-foot-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+    .wl-icons { display:flex; gap:6px; }
+    .wl-iconbtn { width:32px; height:32px; border-radius:8px; border:1.5px solid var(--d-border); background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#64748b; }
+    .wl-iconbtn:hover { border-color:#93c5fd; color:var(--d-blue1); }
+    .wl-iconbtn.del:hover { border-color:#fecdd3; color:var(--d-red); }
+    .wl-danger { width:100%; background:#e11d48; color:#fff; border:none; border-radius:10px; padding:10px 14px; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+    .wl-danger:hover { background:#be123c; }
+    .wl-restore { width:100%; background:#16a34a; color:#fff; border:none; border-radius:10px; padding:10px 14px; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+    .wl-empty { text-align:center; padding:60px 20px; color:var(--d-muted); }
+    .modal-ov { display:none; position:fixed; inset:0; background:rgba(13,27,62,.55); z-index:9999; align-items:flex-start; justify-content:center; overflow-y:auto; padding:28px 16px; backdrop-filter:blur(3px); }
+    .modal-ov.active { display:flex; }
+    .modal-bx { background:#fff; border-radius:22px; width:560px; max-width:100%; padding:28px; position:relative; margin:auto; box-shadow:0 24px 60px rgba(0,0,0,.18); }
+    .modal-ttl { font-size:17px; font-weight:800; color:var(--d-text); margin:0 0 18px; }
+    .modal-cls { position:absolute; top:16px; right:16px; background:var(--d-bg); border:none; width:30px; height:30px; border-radius:50%; cursor:pointer; color:var(--d-muted); }
+    .flbl { display:block; font-size:11.5px; font-weight:700; color:var(--d-muted); margin-bottom:5px; letter-spacing:.04em; text-transform:uppercase; }
+    .finput { width:100%; box-sizing:border-box; padding:10px 12px; border:1.5px solid var(--d-border); border-radius:10px; font-family:'DM Sans',sans-serif; font-size:13.5px; color:var(--d-text); outline:none; background:#fff; }
+    .finput:focus { border-color:var(--d-blue1); box-shadow:0 0 0 3px rgba(26,110,245,.1); }
+    .toast-ok  { background:#e6fff7;border:1px solid #a7f3d0;color:#00875a;padding:12px 16px;border-radius:12px;margin-bottom:16px;font-size:13.5px; }
+    .toast-err { background:#fff0f2;border:1px solid #fecdd3;color:var(--d-red);padding:12px 16px;border-radius:12px;margin-bottom:16px;font-size:13.5px; }
+    .wl-user { display:flex; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid #f1f5f9; }
+    .wl-user:last-child { border-bottom:none; }
+    .chip { font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:99px; }
+    .chip-on { background:#dcfce7; color:#15803d; }
+    .chip-off { background:#e2e8f0; color:#475569; }
+    .chip-iso { background:#fee2e2; color:#b91c1c; }
+    .tab { border:1.5px solid var(--d-border); background:#fff; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; color:#475569; }
+    .tab.on { background:#1a6ef5; color:#fff; border-color:#1a6ef5; }
+    @media(max-width:700px){ .wl-grid{grid-template-columns:1fr;} .wl-body{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+<div class="app-layout wl-page" id="wlRoot"
+     data-app="<%= typeof appName !== 'undefined' ? appName : 'Skynet' %>"
+     data-logo="<%= typeof logoUrl !== 'undefined' ? (logoUrl || '') : '' %>"
+     data-admin="<%= (user && user.role && (user.role.name === 'admin' || user.role.name === 'superadmin')) ? '1' : '0' %>">
+  <%- include('../partials/sidebar') %>
+  <div class="main-content">
+    <%- include('../partials/topbar') %>
+    <main class="page-content">
+      <div id="toastOk" class="toast-ok" style="display:none"></div>
+      <div id="toastErr" class="toast-err" style="display:none"></div>
+
+      <div class="wl-crumb">
+        <a href="/dashboard">Dashboard</a>
+        <span>›</span>
+        <span>Wilayah</span>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-size:22px;font-weight:800;color:var(--d-text)">Wilayah</div>
+          <div style="font-size:13px;color:var(--d-muted);margin-top:2px" id="wlSub">Kelola area, user disconnect, dan isolir per wilayah</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button type="button" class="btn-info" onclick="openInfo()">Informasi</button>
+          <button type="button" class="btn-outline" onclick="loadWilayah()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L4 10m16 4l-1.64 4.36A9 9 0 013.51 15"/></svg>
+            Refresh
+          </button>
+          <button type="button" class="btn-black" id="btnAddWl" onclick="openForm()">+ Tambah</button>
+          <label class="wl-toggle">
+            <span class="wl-switch"><input type="checkbox" id="wlInvToggle" onchange="saveInvToggle()"><span class="wl-slider"></span></span>
+            Sertakan Data Wilayah ke Invoice
+          </label>
+        </div>
+      </div>
+
+      <div id="wlGrid" class="wl-grid"></div>
+      <div id="wlEmpty" class="wl-empty" style="display:none">
+        <div style="font-size:42px;margin-bottom:10px;opacity:.35">🗺️</div>
+        <h3 style="margin:0 0 6px;color:var(--d-text)">Belum ada wilayah</h3>
+        <p style="margin:0">Tambah wilayah (contoh KAMPUNG MANDAR / MDR) lalu tautkan pelanggan lewat desa atau prefix nama.</p>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div id="formModal" class="modal-ov">
+  <div class="modal-bx">
+    <button class="modal-cls" type="button" onclick="closeForm()">✕</button>
+    <div class="modal-ttl" id="formTitle">Tambah Wilayah</div>
+    <input type="hidden" id="wlId">
+    <div style="display:grid;grid-template-columns:1fr 140px;gap:10px;margin-bottom:10px">
+      <div><label class="flbl">Nama</label><input class="finput" id="wlName" placeholder="KAMPUNG MANDAR"></div>
+      <div><label class="flbl">Kode</label><input class="finput" id="wlCode" placeholder="MDR" maxlength="8"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div><label class="flbl">Provinsi</label><input class="finput" id="wlProv" placeholder="JAWA TIMUR"></div>
+      <div><label class="flbl">Kota / Kab</label><input class="finput" id="wlReg" placeholder="BANYUWANGI"></div>
+      <div><label class="flbl">Kecamatan</label><input class="finput" id="wlDist" placeholder="BANYUWANGI"></div>
+      <div><label class="flbl">Desa / Kelurahan</label><input class="finput" id="wlVil" placeholder="MANDAR"></div>
+    </div>
+    <div style="margin-bottom:16px"><label class="flbl">Telepon</label><input class="finput" id="wlPhone" placeholder="+62 ..."></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button type="button" class="btn-outline" onclick="closeForm()">Batal</button>
+      <button type="button" class="btn-black" onclick="saveForm()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<div id="infoModal" class="modal-ov">
+  <div class="modal-bx" style="max-width:480px">
+    <button class="modal-cls" type="button" onclick="closeInfo()">✕</button>
+    <div class="modal-ttl">Modul Wilayah</div>
+    <p style="font-size:13.5px;color:#475569;line-height:1.6;margin:0 0 10px">Kelompokkan pelanggan per desa/kampung. Klik kartu untuk melihat siapa yang <b>Terhubung</b>, <b>Offline</b>, dan <b>Isolir</b>.</p>
+    <p style="font-size:13.5px;color:#475569;line-height:1.6;margin:0">Tombol merah <b>Nonaktifkan Wilayah</b> mengisolir semua pelanggan di area itu (profil SKYNET-ISOLIR). Pelanggan ditautkan otomatis dari desa atau prefix nama (contoh MDR-).</p>
+  </div>
+</div>
+
+<div id="detailModal" class="modal-ov">
+  <div class="modal-bx" style="width:640px">
+    <button class="modal-cls" type="button" onclick="closeDetail()">✕</button>
+    <div class="modal-ttl" id="detTitle">Wilayah</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px" id="detTabs"></div>
+    <div id="detList"></div>
+  </div>
+</div>
+
+<div id="confirmModal" class="modal-ov">
+  <div class="modal-bx" style="max-width:420px;text-align:center">
+    <button class="modal-cls" type="button" onclick="closeConfirm()">✕</button>
+    <div class="modal-ttl" id="cfTitle">Konfirmasi</div>
+    <p id="cfMsg" style="font-size:13.5px;color:#475569;line-height:1.6"></p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:16px">
+      <button type="button" class="btn-outline" onclick="closeConfirm()">Batal</button>
+      <button type="button" id="cfOk" class="wl-danger" style="width:auto;min-width:140px">Lanjut</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/wilayah.js?v=1779900400"></script>
+</body>
+</html>

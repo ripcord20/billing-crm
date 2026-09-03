@@ -37,6 +37,7 @@ const UserController = require('../controllers/UserController');
 const CustomerController = require('../controllers/CustomerController');
 const RegionController = require('../controllers/RegionController');
 const PackageController = require('../controllers/PackageController');
+const WilayahController = require('../controllers/WilayahController');
 const BillingController = require('../controllers/BillingController');
 const DeviceController = require('../controllers/DeviceController');
 const InfrastructureController     = require('../controllers/InfrastructureController');
@@ -375,6 +376,18 @@ router.post('/packages', authenticate, demoGuard, authorize('superadmin', 'admin
 router.get('/packages/:id', authenticate, demoGuard, PackageController.show);
 router.put('/packages/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'package'), PackageController.update);
 router.delete('/packages/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('delete', 'package'), PackageController.destroy);
+
+// ===== WILAYAH (disconnect + isolir per area) =====
+router.get('/wilayah/settings', authenticate, demoGuard, (r, s) => WilayahController.settings(r, s));
+router.put('/wilayah/settings', authenticate, demoGuard, authorize('superadmin', 'admin'), (r, s) => WilayahController.saveSettings(r, s));
+router.post('/wilayah/relink', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'wilayah'), (r, s) => WilayahController.relink(r, s));
+router.get('/wilayah', authenticate, demoGuard, (r, s) => WilayahController.index(r, s));
+router.post('/wilayah', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('create', 'wilayah'), (r, s) => WilayahController.create(r, s));
+router.get('/wilayah/:id', authenticate, demoGuard, (r, s) => WilayahController.show(r, s));
+router.put('/wilayah/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'wilayah'), (r, s) => WilayahController.update(r, s));
+router.delete('/wilayah/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('delete', 'wilayah'), (r, s) => WilayahController.destroy(r, s));
+router.post('/wilayah/:id/isolir', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('isolir', 'wilayah'), (r, s) => WilayahController.isolir(r, s));
+router.post('/wilayah/:id/restore', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('restore', 'wilayah'), (r, s) => WilayahController.restore(r, s));
 
 // ===== RADIUS / NAS (FreeRADIUS + WireGuard/OpenVPN/L2TP) =====
 let RadiusController, NasController, tenantContextMiddleware;

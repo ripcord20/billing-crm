@@ -169,6 +169,10 @@ class CustomerController {
         include: [{ model: Package, as: 'package' }]
       });
 
+      try {
+        require('../services/WilayahService').assignCustomer(full).catch(() => {});
+      } catch (_) {}
+
       // Auto-sync ke InfrastructurePoint type='customer' kalau ada lat/lng.
       // Best-effort — gagal sync di sini tidak membatalkan create customer.
       const infraResult = await InfraSync.syncCustomerToInfra(full);
@@ -276,6 +280,10 @@ class CustomerController {
       const full = await Customer.findByPk(customer.id, {
         include: [{ model: Package, as: 'package' }]
       });
+
+      try {
+        require('../services/WilayahService').assignCustomer(full).catch(() => {});
+      } catch (_) {}
 
       // Auto-sync ke InfrastructurePoint. Full sync mode:
       //   - lat/lng ada → create / update point

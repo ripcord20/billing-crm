@@ -41,6 +41,11 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(100),
       allowNull: true
     },
+    wilayah_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: { model: 'wilayah', key: 'id' }
+    },
     phone: {
       type: DataTypes.STRING(20),
       allowNull: true

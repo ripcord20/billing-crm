@@ -117,10 +117,10 @@ router.use((req, res, next) => {
 
 const _tenantAllowedPaths = new Set([
   '/tenant', '/customers', '/billing', '/payments', '/packages',
-  '/nas', '/radius', '/isolir',
+  '/nas', '/radius', '/isolir', '/wilayah',
   '/login', '/logout'
 ]);
-const _tenantAllowedPrefixes = ['/customers/', '/billing/', '/payments/', '/packages/', '/nas/', '/radius/', '/isolir/'];
+const _tenantAllowedPrefixes = ['/customers/', '/billing/', '/payments/', '/packages/', '/nas/', '/radius/', '/isolir/', '/wilayah/'];
 router.use((req, res, next) => {
   if (req.method !== 'GET') return next();
   const token = req.cookies && req.cookies.token;
@@ -290,6 +290,19 @@ router.get('/customers', authenticate, allowFinanceArea, (req, res) => {
 
 router.get('/customers/profile/:id', authenticate, allowFinanceArea, (req, res) => {
   res.render('pages/customer_profile', { title: 'Profil Pelanggan', user: req.user, active: 'customers', custId: req.params.id });
+});
+
+router.get('/wilayah', authenticate, (req, res, next) => {
+  const r = (req.user?.role?.name || '').toLowerCase();
+  if (['superadmin', 'admin', 'finance', 'tenant_owner', 'noc'].includes(r)) return next();
+  if (r === 'technician') return res.redirect('/technician');
+  return res.status(403).render('pages/403', {
+    title: 'Akses Ditolak',
+    layout: false,
+    message: 'Anda tidak punya akses ke modul Wilayah.'
+  });
+}, (req, res) => {
+  res.render('pages/wilayah', { title: 'Wilayah', user: req.user, active: 'wilayah' });
 });
 
 router.get('/whatsapp', authenticate, blockFinanceArea, blockNocArea, (req, res) => {

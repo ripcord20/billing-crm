@@ -938,6 +938,20 @@ const startServer = async () => {
         logger.info('Migrated: customers.house_photo added');
       }
 
+      // Modul Wilayah (kartu area + isolir massal) — tabel baru, tidak mengubah skema lama
+      try {
+        if (db.Wilayah) {
+          await db.Wilayah.sync();
+          logger.info('Migrated: wilayah table synced');
+        }
+      } catch (e) {
+        logger.warn('Failed to sync wilayah: ' + (e.message || e));
+      }
+      if (!(await hasColumn('customers', 'wilayah_id'))) {
+        await db.sequelize.query(`ALTER TABLE customers ADD COLUMN wilayah_id INT NULL`);
+        logger.info('Migrated: customers.wilayah_id added');
+      }
+
       // 3b) Backfill created_at/updated_at yang NULL (penyebab "Invalid Date").
       //     Pakai updated_at bila ada, jika tidak pakai NOW().
       try {
