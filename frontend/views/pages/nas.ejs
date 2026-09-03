@@ -198,12 +198,12 @@
       <div class="nas-remote">
         <h2>MikroTik di luar jaringan lokal (beda kota / CGNAT)</h2>
         <ol>
-          <li>⚙ WireGuard Server → Aktif, endpoint = IP publik/DNS Fiberix, UDP <code>51820</code> terbuka, lalu <b>Aktifkan interface</b>.</li>
+          <li>⚙ WireGuard Server → Aktif, endpoint = IP publik Fiberix. Jika CORE/gateway sudah memakai UDP <code>51820</code>, pakai port lain (mis. <code>51822</code>) lalu <b>dst-nat</b> ke IP LAN Fiberix, lalu <b>Aktifkan interface</b>.</li>
           <li>+ NAS → mode <b>Tunnel WireGuard</b> → isi nama + secret → Simpan, lalu tombol <b>VPN</b> / Detail (script generate peer).</li>
           <li>Salin script RouterOS v7, tempel di New Terminal MikroTik. Tunggu LED Mode <b>Terhubung</b>.</li>
           <li>Device Management otomatis memakai IP tunnel <code>10.10.0.x</code> untuk API / isolir / Winbox — jangan isi IP publik router.</li>
         </ol>
-        <p class="nas-easy-note">MikroTik yang inisiasi tunnel (keluar). Fiberix tidak perlu menembus NAT pelanggan.</p>
+        <p class="nas-easy-note">MikroTik yang inisiasi tunnel (keluar). Fiberix di belakang NAT harus di-forward UDP-nya di CORE — kalau tidak, peer hanya TX tanpa handshake.</p>
       </div>
       <div class="card nas-table-card"><div class="card-body">
         <div class="table-scroll" id="nasTableScroll">
@@ -254,7 +254,7 @@
               </select>
             </div>
             <div id="nasVpnHint" style="display:none;background:#fff7ed;border:1px dashed #fdba74;border-radius:8px;padding:10px;font-size:12px;color:#9a3412;margin:0 0 12px;">
-              Pakai jika MikroTik <b>tidak</b> satu LAN (CGNAT / kota lain). Endpoint = IP publik Fiberix, UDP 51820. Setelah generate, IP NAS diganti ke IP tunnel dan Device Management dibuat otomatis.
+              Pakai jika MikroTik <b>tidak</b> satu LAN (CGNAT / kota lain). Endpoint = IP publik Fiberix. Port UDP harus sampai ke Fiberix (bukan ke WG CORE). Setelah generate, IP NAS = IP tunnel.
             </div>
             <label>Host RADIUS Fiberix</label>
             <input id="nasRadiusHost" value="192.168.22.9" readonly>
