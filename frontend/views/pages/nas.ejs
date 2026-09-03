@@ -119,12 +119,28 @@
     .nas-easy h2 { margin:0 0 6px; font-size:15px; color:#065f46; }
     .nas-easy ol { margin:0; padding-left:18px; color:#14532d; font-size:13px; line-height:1.55; }
     .nas-easy .nas-easy-note { margin:8px 0 0; font-size:12px; color:#3f6212; }
+    .nas-remote {
+      margin: 0 0 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid #fdba74;
+      background: linear-gradient(180deg,#fff7ed 0%,#ffedd5 100%);
+    }
+    .nas-remote h2 { margin:0 0 6px; font-size:15px; color:#9a3412; }
+    .nas-remote ol { margin:0; padding-left:18px; color:#9a3412; font-size:13px; line-height:1.55; }
+    .nas-remote .nas-easy-note { margin:8px 0 0; font-size:12px; color:#b45309; }
     [data-theme="dark"] .nas-easy {
       border-color:#166534; background:linear-gradient(180deg,#052e16,#14532d);
     }
     [data-theme="dark"] .nas-easy h2 { color:#bbf7d0; }
     [data-theme="dark"] .nas-easy ol { color:#d1fae5; }
     [data-theme="dark"] .nas-easy .nas-easy-note { color:#a3e635; }
+    [data-theme="dark"] .nas-remote {
+      border-color:#9a3412; background:linear-gradient(180deg,#431407,#7c2d12);
+    }
+    [data-theme="dark"] .nas-remote h2 { color:#fed7aa; }
+    [data-theme="dark"] .nas-remote ol { color:#ffedd5; }
+    [data-theme="dark"] .nas-remote .nas-easy-note { color:#fdba74; }
     .nas-swipe-hint {
       display: none;
       margin: 8px 2px 0;
@@ -179,6 +195,16 @@
         </ol>
         <p class="nas-easy-note">WireGuard / QR HP hanya jika router <em>tidak</em> satu LAN dengan Fiberix. Server tunnel = proses di server Fiberix yang sama, bukan VPS cloud.</p>
       </div>
+      <div class="nas-remote">
+        <h2>MikroTik di luar jaringan lokal (beda kota / CGNAT)</h2>
+        <ol>
+          <li>⚙ WireGuard Server → Aktif, endpoint = IP publik/DNS Fiberix, UDP <code>51820</code> terbuka, lalu <b>Aktifkan interface</b>.</li>
+          <li>+ NAS → mode <b>Tunnel WireGuard</b> → isi nama + secret → Simpan, lalu tombol <b>VPN</b> / Detail (script generate peer).</li>
+          <li>Salin script RouterOS v7, tempel di New Terminal MikroTik. Tunggu LED Mode <b>Terhubung</b>.</li>
+          <li>Device Management otomatis memakai IP tunnel <code>10.10.0.x</code> untuk API / isolir / Winbox — jangan isi IP publik router.</li>
+        </ol>
+        <p class="nas-easy-note">MikroTik yang inisiasi tunnel (keluar). Fiberix tidak perlu menembus NAT pelanggan.</p>
+      </div>
       <div class="card nas-table-card"><div class="card-body">
         <div class="table-scroll" id="nasTableScroll">
         <table class="data-table">
@@ -228,7 +254,7 @@
               </select>
             </div>
             <div id="nasVpnHint" style="display:none;background:#fff7ed;border:1px dashed #fdba74;border-radius:8px;padding:10px;font-size:12px;color:#9a3412;margin:0 0 12px;">
-              Pakai hanya jika MikroTik <b>tidak</b> satu LAN dengan Fiberix. Endpoint = IP/DNS server Fiberix — bukan VPS cloud.
+              Pakai jika MikroTik <b>tidak</b> satu LAN (CGNAT / kota lain). Endpoint = IP publik Fiberix, UDP 51820. Setelah generate, IP NAS diganti ke IP tunnel dan Device Management dibuat otomatis.
             </div>
             <label>Host RADIUS Fiberix</label>
             <input id="nasRadiusHost" value="192.168.22.9" readonly>
@@ -294,6 +320,7 @@
   <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:520px;max-height:90vh;overflow:auto;">
     <h3 style="margin:0 0 4px;">Pengaturan WireGuard Server</h3>
     <p style="margin:0 0 14px;color:#64748b;font-size:12px;line-height:1.5;">Ini proses di <b>server Fiberix yang sama</b> (kantor/LAN), <b>bukan VPS cloud</b>. Lewati seluruh pengaturan ini jika MikroTik sudah satu jaringan dengan Fiberix — pakai mode LAN. Isi endpoint hanya jika router di lokasi lain harus menembus ke server ini.</p>
+    <p id="wgRuntime" style="margin:0 0 12px;font-size:12px;color:#64748b;"></p>
     <label style="font-size:13px;">Aktifkan WireGuard</label>
     <select id="wgEnabled" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
       <option value="true">Aktif</option>
@@ -316,7 +343,8 @@
     </div>
     <label style="font-size:13px;">Public Key Server</label>
     <input id="wgServerPub" readonly placeholder="(belum digenerate)" style="width:100%;margin:6px 0 6px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;font-family:monospace;font-size:11px;">
-    <button class="btn btn-sm btn-secondary" onclick="wgInitKeys()" style="margin:0 0 14px;">Generate/keys server</button>
+    <button class="btn btn-sm btn-secondary" onclick="wgInitKeys()" style="margin:0 0 8px;">Generate/keys server</button>
+    <button class="btn btn-sm btn-primary" onclick="wgApplyServer()" style="margin:0 0 14px;">Aktifkan interface di server ini</button>
     <div style="display:flex;justify-content:flex-end;gap:8px;">
       <button class="btn btn-secondary" onclick="document.getElementById('wgServerModal').style.display='none'">Tutup</button>
       <button class="btn btn-primary" onclick="saveWgServer()">Simpan</button>

@@ -85,12 +85,21 @@ function buildPppProfile(pool, local) {
   ];
 }
 
-function buildWireguardBlock(wg) {
+function buildApiAllowFromTunnel(serverIp) {
+  const src = stripCidr(serverIp);
+  if (!src) return [];
+  return [
+    `/ip firewall filter add chain=input action=accept protocol=tcp dst-port=80,443,8728,8729,8291 src-address=${src} comment="FIBERIX"`
+  ];
+}
+
+function buildWireguardBlock(wg, wgServerAddress) {
   if (!wg || !wg.privateKey || !wg.serverPublicKey || !wg.endpointHost) return [];
   const addr = stripCidr(wg.tunnelAddress);
   const bits = String(wg.tunnelAddress || '').split('/')[1] || '32';
   const pskLine = wg.presharedKey ? `    preshared-key="${escapeRos(wg.presharedKey)}" \\` : null;
   const firstHop = String(wg.allowedIps || '').split(',')[0].trim() || '10.10.0.1/32';
+  const serverIp = stripCidr(wgServerAddress) || stripCidr(firstHop);
   return [
     `/interface wireguard add name=wg-fiberix private-key="${escapeRos(wg.privateKey)}" listen-port=0 comment="FIBERIX"`,
     `/ip address add address=${addr}/${bits} interface=wg-fiberix comment="FIBERIX"`,
@@ -99,7 +108,8 @@ function buildWireguardBlock(wg) {
     pskLine,
     `    endpoint-address=${wg.endpointHost} endpoint-port=${wg.endpointPort || 51820} \\`,
     `    allowed-address=${wg.allowedIps} persistent-keepalive=${wg.keepalive || 25}s comment="FIBERIX"`,
-    `/ip route add dst-address=${firstHop} gateway=wg-fiberix comment="FIBERIX"`
+    `/ip route add dst-address=${firstHop} gateway=wg-fiberix comment="FIBERIX"`,
+    ...buildApiAllowFromTunnel(serverIp)
   ].filter(Boolean);
 }
 
@@ -240,7 +250,7 @@ function buildNasRouterOsScript(opts) {
     }
     if (opts.vpnType === 'wireguard' && opts.wireguard) {
       body.push('# WireGuard ke server billing Fiberix (bukan L2TP/PPTP)');
-      body.push(...buildWireguardBlock(opts.wireguard));
+      body.push(...buildWireguardBlock(opts.wireguard, opts.wgServerAddress));
     } else if (opts.vpnType === 'l2tp' && opts.l2tp) {
       body.push('# L2TP ke server VPN Anda (bukan concentrator sewa)');
       body.push(...buildL2tpBlock(opts.l2tp));
@@ -270,8 +280,9 @@ function buildNasRouterOsScript(opts) {
   const notes = [
     'Tempel di New Terminal MikroTik (RouterOS v7 atau v6 sesuai tab).',
     'Jika MikroTik dan Fiberix satu jaringan, mode LAN cukup — WireGuard tidak wajib.',
-    'IP tunnel hanya dipakai jika mode tunnel. Bukan sewa server cloud.',
-    'nas.nasname di billing harus sama dengan IP sumber yang dilihat FreeRADIUS (LAN atau IP tunnel).',
+    'Router di luar LAN: MikroTik keluar ke Fiberix (UDP 51820). Setelah handshake, Device Management memakai IP tunnel.',
+    'IP NAS (nasname) = IP tunnel. Jangan isi IP publik MikroTik.',
+    'Bila RADIUS di mesin lain, tambah route subnet tunnel via IP LAN Fiberix.',
     'Object comment=BILLINGRADIUS tidak disentuh.'
   ];
 
@@ -321,6 +332,7 @@ module.exports = {
   PROXY_PORT,
   buildNasRouterOsScript,
   buildPortForwardExample,
+  buildApiAllowFromTunnel,
   radiusAllowedIps,
   isPrivateHost,
   escapeRos,

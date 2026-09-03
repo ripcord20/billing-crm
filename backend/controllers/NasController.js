@@ -9,6 +9,7 @@ const { getTenantId } = require('../middleware/tenantContext');
 const { decryptSecret } = require('../utils/secretBox');
 const { buildNasRouterOsScript, radiusAllowedIps, isPrivateHost, DEFAULT_PPP_POOL, DEFAULT_PPP_LOCAL } = require('../utils/nasRouterOsScript');
 const { attachNasLinkStatus } = require('../utils/nasLinkStatus');
+const { upsertTunnelDevice, applyTunnelNasname } = require('../utils/nasRemoteDevice');
 
 // Push konfigurasi NAS ke server FreeRADIUS (tabel `nas`). Fungsi modul-level
 // supaya tidak bergantung pada `this` (handler dipasang unbound di router).
@@ -44,6 +45,15 @@ function pickPpp(row, b) {
     pppPool: String(pool).trim() || DEFAULT_PPP_POOL,
     pppLocal: String(local).trim() || DEFAULT_PPP_LOCAL
   };
+}
+
+async function afterTunnelReady(row) {
+  try { await Wireguard.ensureServerInterface(); } catch (_) {}
+  const renamed = await applyTunnelNasname(row);
+  await row.reload();
+  const device = await upsertTunnelDevice(Device, row);
+  if (renamed) await pushNas(row);
+  return device;
 }
 
 class NasController {
@@ -182,7 +192,9 @@ class NasController {
   async wgServerGet(req, res) {
     try {
       const cfg = await Wireguard.getServerConfigPublic();
-      res.json({ success: true, data: cfg });
+      let runtime = { up: false, has_binary: false, message: '' };
+      try { runtime = await Wireguard.probeInterface(); } catch (_) {}
+      res.json({ success: true, data: { ...cfg, runtime } });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
     }
@@ -191,7 +203,13 @@ class NasController {
   async wgServerSave(req, res) {
     try {
       const cfg = await Wireguard.saveServerConfig(req.body || {});
-      res.json({ success: true, data: cfg });
+      let applied = null;
+      if (cfg.enabled) {
+        try { applied = await Wireguard.ensureServerInterface(); } catch (e) {
+          applied = { ok: false, message: e.message };
+        }
+      }
+      res.json({ success: true, data: cfg, applied });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }
@@ -207,6 +225,17 @@ class NasController {
     }
   }
 
+  async wgServerApply(req, res) {
+    try {
+      const applied = await Wireguard.ensureServerInterface();
+      const runtime = await Wireguard.probeInterface();
+      const status = applied.ok ? 200 : 400;
+      res.status(status).json({ success: !!applied.ok, data: { ...applied, runtime }, message: applied.message });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
   // ── WireGuard: generate peer + config untuk satu NAS ───────────────────
   async wgGenerate(req, res) {
     try {
@@ -216,7 +245,19 @@ class NasController {
         reallocate: !!(req.body && req.body.reallocate),
         allowedIps: req.body && req.body.allowed_ips
       });
-      res.json({ success: true, data: { vpn_type: 'wireguard', ...out } });
+      await row.reload();
+      const device = await afterTunnelReady(row);
+      res.json({
+        success: true,
+        data: {
+          vpn_type: 'wireguard',
+          ...out,
+          nasname: row.nasname,
+          device_id: device ? device.id : row.device_id,
+          device_name: device ? device.name : null,
+          device_ip: device ? device.ip_address : null
+        }
+      });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }
@@ -241,6 +282,8 @@ class NasController {
           await Wireguard.generatePeerForNas(row, {
             allowedIps: radiusAllowedIps(wgCfg.serverAddress, radiusHost)
           });
+          await row.reload();
+          await afterTunnelReady(row);
           await row.reload();
           generated = true;
         }
@@ -278,6 +321,8 @@ class NasController {
         shortname: row.shortname,
         secret: row.secret,
         radiusHost,
+        isolirHost: row.conn_mode === 'vpn' ? wgCfg.serverAddress : radiusHost,
+        wgServerAddress: wgCfg.serverAddress,
         tunnelAddress: row.tunnel_address,
         vpnType,
         vpsHost: wgCfg.endpointHost,

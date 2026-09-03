@@ -20,6 +20,8 @@
 
 const crypto = require('crypto');
 const { execFile } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 const { AppSetting } = require('../models');
 const { encryptSecret, decryptSecret } = require('../utils/secretBox');
 const logger = require('../utils/logger');
@@ -267,6 +269,123 @@ function hasWgBinary() {
   });
 }
 
+function runFile(cmd, args, timeout = 12000) {
+  return new Promise((resolve) => {
+    execFile(cmd, args, { timeout }, (err, stdout, stderr) => {
+      resolve({
+        ok: !err,
+        stdout: String(stdout || '').trim(),
+        stderr: String(stderr || '').trim(),
+        message: err ? String((stderr || err.message || '')).slice(0, 240) : ''
+      });
+    });
+  });
+}
+
+async function probeInterface(ifaceName) {
+  let iface = ifaceName;
+  if (!iface) {
+    try {
+      const cfg = await getServerConfig();
+      iface = cfg.iface || 'wg_fiberix';
+    } catch (_) {
+      iface = 'wg_fiberix';
+    }
+  }
+  const hasBin = await hasWgBinary();
+  const show = await runFile('ip', ['-brief', 'link', 'show', iface]);
+  const up = show.ok && /\bUP\b/.test(show.stdout);
+  let listenPort = null;
+  if (hasBin) {
+    const wg = await runFile('wg', ['show', iface, 'listen-port']);
+    if (wg.ok) listenPort = parseInt(wg.stdout, 10) || null;
+  }
+  return {
+    iface,
+    has_binary: hasBin,
+    up,
+    listen_port: listenPort,
+    message: hasBin
+      ? (up ? 'Interface WireGuard hidup' : 'Interface belum UP')
+      : 'Paket wireguard-tools belum terpasang di server Fiberix'
+  };
+}
+
+/**
+ * Hidupkan interface WireGuard di server Fiberix ini (idempotent).
+ * Node billing di produksi jalan sebagai root, jadi ip/wg bisa dipanggil langsung.
+ */
+async function ensureServerInterface() {
+  const cfg = await getServerConfig();
+  if (!cfg.enabled) {
+    return { ok: false, skipped: true, message: 'WireGuard server nonaktif di pengaturan' };
+  }
+  if (!cfg.serverPrivateKey) {
+    await ensureServerKeys();
+  }
+  const server = await getServerConfig();
+  if (!server.serverPrivateKey) {
+    return { ok: false, message: 'Kunci server WireGuard belum ada — generate keys dulu.' };
+  }
+  const iface = server.iface || 'wg_fiberix';
+  const listen = server.listenPort || 51820;
+  const cidrBits = String(server.tunnelSubnet || '10.10.0.0/24').split('/')[1] || '24';
+  const addr = `${stripCidr(server.serverAddress)}/${cidrBits}`;
+
+  await runFile('modprobe', ['wireguard']);
+  if (!(await hasWgBinary())) {
+    return { ok: false, message: 'Install paket wireguard-tools di server Fiberix, lalu klik Aktifkan interface.' };
+  }
+
+  const exists = await runFile('ip', ['link', 'show', 'dev', iface]);
+  if (!exists.ok) {
+    const add = await runFile('ip', ['link', 'add', 'dev', iface, 'type', 'wireguard']);
+    if (!add.ok) {
+      return { ok: false, message: 'Gagal membuat interface: ' + add.message };
+    }
+  }
+
+  const keyDir = '/etc/wireguard';
+  try { fs.mkdirSync(keyDir, { recursive: true, mode: 0o700 }); } catch (_) {}
+  const keyPath = path.join(keyDir, `${iface}.pkey`);
+  try {
+    fs.writeFileSync(keyPath, `${server.serverPrivateKey}\n`, { mode: 0o600 });
+  } catch (e) {
+    return { ok: false, message: 'Tidak bisa menulis kunci: ' + e.message };
+  }
+
+  const set = await runFile('wg', ['set', iface, 'listen-port', String(listen), 'private-key', keyPath]);
+  if (!set.ok) return { ok: false, message: 'wg set gagal: ' + set.message };
+
+  const hasAddr = await runFile('ip', ['-4', 'addr', 'show', 'dev', iface]);
+  if (!hasAddr.stdout.includes(stripCidr(server.serverAddress))) {
+    const addIp = await runFile('ip', ['address', 'add', addr, 'dev', iface]);
+    if (!addIp.ok && !/File exists/i.test(addIp.message)) {
+      logger.warn('[WireGuard] add address: ' + addIp.message);
+    }
+  }
+  const up = await runFile('ip', ['link', 'set', 'dev', iface, 'up']);
+  if (!up.ok) return { ok: false, message: 'Gagal UP interface: ' + up.message };
+
+  await runFile('sysctl', ['-w', 'net.ipv4.ip_forward=1']);
+
+  try {
+    const { NasDevice } = require('../models');
+    if (NasDevice) {
+      const rows = await NasDevice.findAll({ where: { conn_mode: 'vpn' } });
+      for (const row of rows) {
+        if (!row.wg_public_key || !row.tunnel_address) continue;
+        await wgSetPeer(iface, row.wg_public_key, '', row.tunnel_address);
+      }
+    }
+  } catch (e) {
+    logger.warn('[WireGuard] sync peer: ' + (e.message || e));
+  }
+
+  logger.info(`[WireGuard] interface ${iface} UP ${addr} udp/${listen}`);
+  return { ok: true, iface, listen_port: listen, address: addr };
+}
+
 function wgSetPeer(iface, publicKey, presharedKey, allowedIp) {
   return new Promise((resolve) => {
     const args = ['set', iface, 'peer', publicKey, 'allowed-ips', `${stripCidr(allowedIp)}/32`];
@@ -366,11 +485,14 @@ async function generatePeerForNas(nas, opts = {}) {
     wg_keepalive: server.keepalive
   });
 
-  // Best-effort apply peer ke interface lokal (kalau server ini yang jadi WG server).
+  // Hidupkan interface server lalu pasang peer (best-effort).
   let applied = { attempted: false };
-  if (await hasWgBinary()) {
+  const iface = await ensureServerInterface();
+  if (iface.ok && (await hasWgBinary())) {
     applied = { attempted: true, ...(await wgSetPeer(server.iface, kp.publicKey, psk, tunnelAddress)) };
     if (applied.ok) await nas.update({ wg_last_applied_at: new Date() });
+  } else if (!iface.ok && !iface.skipped) {
+    applied = { attempted: true, ok: false, message: iface.message };
   }
 
   const [endpointHost, endpointPort] = endpoint.split(':');
@@ -441,6 +563,8 @@ module.exports = {
   removePeerForNas,
   parseWgDump,
   dumpPeerMap,
+  ensureServerInterface,
+  probeInterface,
   // exported for tests
   _ipToInt: ipToInt,
   _intToIp: intToIp,

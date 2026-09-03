@@ -193,6 +193,14 @@ window.openWgServer=async()=>{
     document.getElementById('wgSubnet').value=c.tunnelSubnet||'10.10.0.0/24';
     document.getElementById('wgServerAddr').value=c.serverAddress||'10.10.0.1';
     document.getElementById('wgServerPub').value=c.serverPublicKey||'';
+    const rt=document.getElementById('wgRuntime');
+    if(rt){
+      const r=c.runtime||{};
+      rt.textContent=r.up
+        ? ('Interface '+ (r.iface||'') +' hidup, UDP '+(r.listen_port||'51820'))
+        : (r.message||'Interface belum hidup. Klik Aktifkan interface setelah install wireguard-tools.');
+      rt.style.color=r.up?'#166534':'#9a3412';
+    }
   }
   document.getElementById('wgServerModal').style.display='flex';
 };
@@ -207,8 +215,23 @@ window.saveWgServer=async()=>{
   };
   const r=await App.api('/nas/wireguard/server',{method:'PUT',body:JSON.stringify(body)});
   if(!r?.success) return App.showToast(r?.message||'Gagal simpan','error');
-  App.showToast('Pengaturan WireGuard tersimpan','success');
+  if(r.applied && r.applied.ok) App.showToast('Tersimpan. Interface WireGuard hidup.','success');
+  else if(r.applied && r.applied.message) App.showToast(r.applied.message,'error');
+  else App.showToast('Pengaturan WireGuard tersimpan','success');
   document.getElementById('wgServerModal').style.display='none';
+};
+window.wgApplyServer=async()=>{
+  const r=await App.api('/nas/wireguard/server/apply',{method:'POST',body:JSON.stringify({})});
+  if(!r?.success) return App.showToast(r?.message||'Gagal mengaktifkan interface','error');
+  const rt=document.getElementById('wgRuntime');
+  const run=r.data && r.data.runtime;
+  if(rt && run){
+    rt.textContent=run.up
+      ? ('Interface '+ (run.iface||'') +' hidup, UDP '+(run.listen_port||'51820'))
+      : (run.message||'');
+    rt.style.color=run.up?'#166534':'#9a3412';
+  }
+  App.showToast(r.message||'Interface WireGuard diaktifkan','success');
 };
 window.wgInitKeys=async()=>{
   const r=await App.api('/nas/wireguard/server/init-keys',{method:'POST',body:JSON.stringify({})});
