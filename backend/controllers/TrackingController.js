@@ -7,28 +7,17 @@ const {
   User,
   sequelize 
 } = require('../models');
+    const { roundCoord, evaluateFix } = require('../utils/gpsPrecision');
 
-// ══════════════════════════════════════════════════════════════
-// HELPER FUNCTIONS
-// ══════════════════════════════════════════════════════════════
-
-/**
- * Hitung jarak antara 2 koordinat GPS (Haversine formula)
- * @returns {number} jarak dalam meter
- */
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371000; // Radius bumi dalam meter
-  const φ1 = lat1 * Math.PI / 180;
-  const φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lon2 - lon1) * Math.PI / 180;
-
-  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-            Math.cos(φ1) * Math.cos(φ2) *
-            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c; // Jarak dalam meter
+function readFix(body) {
+  const latitude = roundCoord(body.latitude, 7);
+  const longitude = roundCoord(body.longitude, 7);
+  const accuracy = body.accuracy == null || body.accuracy === '' ? null : Number(body.accuracy);
+  return {
+    latitude,
+    longitude,
+    accuracy: Number.isFinite(accuracy) ? accuracy : null
+  };
 }
 
 /**
@@ -48,14 +37,16 @@ function broadcastLocationUpdate(io, data) {
 exports.startTracking = async (req, res) => {
   try {
     const technician_id = req.user.id;
-    const { ticket_id, latitude, longitude, device_info } = req.body;
+    const { ticket_id, device_info } = req.body;
+    const fix = readFix(req.body);
 
-    if (!ticket_id || !latitude || !longitude) {
+    if (!ticket_id || fix.latitude == null || fix.longitude == null) {
       return res.status(400).json({ 
         success: false, 
         message: 'ticket_id, latitude, dan longitude wajib diisi' 
       });
     }
+    const { latitude, longitude } = fix;
 
     // Validasi ticket exists
     const ticket = await Ticket.findByPk(ticket_id);
@@ -111,7 +102,7 @@ exports.startTracking = async (req, res) => {
       ticket_id,
       latitude,
       longitude,
-      accuracy: req.body.accuracy || null,
+      accuracy: fix.accuracy,
       speed: req.body.speed || null,
       heading: req.body.heading || null,
       altitude: req.body.altitude || null,
@@ -136,6 +127,7 @@ exports.startTracking = async (req, res) => {
         location: {
           latitude,
           longitude,
+          accuracy: fix.accuracy,
           timestamp: location.recorded_at
         }
       });
@@ -167,16 +159,15 @@ exports.updateLocation = async (req, res) => {
     const technician_id = req.user.id;
     const { 
       session_id, 
-      latitude, 
-      longitude, 
-      accuracy, 
       speed, 
       heading, 
       altitude,
       battery_level 
     } = req.body;
+    const fix = readFix(req.body);
+    const { latitude, longitude, accuracy } = fix;
 
-    if (!session_id || !latitude || !longitude) {
+    if (!session_id || latitude == null || longitude == null) {
       return res.status(400).json({ 
         success: false, 
         message: 'session_id, latitude, dan longitude wajib diisi' 
@@ -208,15 +199,29 @@ exports.updateLocation = async (req, res) => {
       order: [['recorded_at', 'DESC']]
     });
 
-    let additionalDistance = 0;
-    if (lastLocation) {
-      additionalDistance = calculateDistance(
-        parseFloat(lastLocation.latitude),
-        parseFloat(lastLocation.longitude),
-        parseFloat(latitude),
-        parseFloat(longitude)
-      );
+    const verdict = evaluateFix(
+      lastLocation
+        ? {
+            latitude: lastLocation.latitude,
+            longitude: lastLocation.longitude,
+            accuracy: lastLocation.accuracy
+          }
+        : null,
+      latitude,
+      longitude,
+      accuracy
+    );
+    if (!verdict.accept) {
+      return res.json({
+        success: true,
+        skipped: true,
+        reason: verdict.reason,
+        message: verdict.reason === 'gps_jump'
+          ? 'Titik GPS diabaikan (lompatan tidak wajar)'
+          : 'Titik GPS diabaikan (akurasi rendah)'
+      });
     }
+    const additionalDistance = verdict.distance;
 
     // Simpan lokasi baru
     const location = await TechnicianLocation.create({
@@ -268,7 +273,12 @@ exports.updateLocation = async (req, res) => {
       success: true, 
       message: 'Lokasi berhasil diupdate',
       location,
-      distance_traveled: additionalDistance
+      distance_traveled: additionalDistance,
+      session: {
+        total_distance: session.total_distance,
+        total_duration: session.total_duration,
+        points_count: session.points_count
+      }
     });
 
   } catch (error) {
@@ -313,10 +323,11 @@ exports.stopTracking = async (req, res) => {
     }
 
     // Update session
+    const endFix = readFix(req.body);
     await session.update({
       status: 'completed',
-      end_latitude: latitude || session.start_latitude,
-      end_longitude: longitude || session.start_longitude,
+      end_latitude: endFix.latitude != null ? endFix.latitude : session.start_latitude,
+      end_longitude: endFix.longitude != null ? endFix.longitude : session.start_longitude,
       ended_at: new Date(),
       total_duration: Math.floor((new Date() - new Date(session.started_at)) / 1000),
       notes: notes || null
