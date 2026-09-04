@@ -581,7 +581,6 @@ function initRefresh() {
       loadDevices();
       loadBillingStats();
       pollRealtimeTraffic();
-      if (typeof window.loadUplinkStrip === 'function') window.loadUplinkStrip();
       if (typeof window.loadAlerts === 'function') window.loadAlerts();
     });
   }

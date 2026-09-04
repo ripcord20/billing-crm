@@ -112,7 +112,6 @@ function initAnalyticsControls() {
       loadBwInterfaceList().then(() => loadBandwidthTrends());
       loadCustomerGrowth();
       loadRevenueForecast();
-      if (typeof loadUplinkStrip === 'function') loadUplinkStrip();
       if (typeof loadAlerts === 'function') loadAlerts();
     });
   }
@@ -876,65 +875,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   setInterval(()=>{ if(typeof loadAlerts==='function') loadAlerts(); }, 60000);
 });
 
-// ═══════════════════════════════════════════════════════════════
-// STRIP UPLINK TERPIN — poll /api/uplinks/status (pin-only)
-// ═══════════════════════════════════════════════════════════════
-function _ulLedClass(row){
-  if (!row) return 'unknown';
-  if (row.state === 'unknown' || row.state === 'missing' || row.state === 'disabled') return row.state;
-  if (row.isDown) return 'down';
-  return 'up';
-}
-function _ulLabel(row){
-  if (row.label) return row.label;
-  if (row.isDown) return 'Down';
-  if (row.state === 'unknown') return 'Router tidak terjangkau';
-  return 'Up';
-}
-async function loadUplinkStrip(){
-  const body = document.getElementById('uplinkStripBody');
-  if (!body) return;
-  try{
-    const j = await App.api('/uplinks/status');
-    const rows = (j && j.success && Array.isArray(j.data)) ? j.data : [];
-    const down = j && typeof j.down === 'number' ? j.down : rows.filter(r => r.isDown && r.state !== 'unknown').length;
-    const badge = document.getElementById('uplinkStripBadge');
-    if (badge){
-      const unknown = rows.filter(r => r.state === 'unknown').length;
-      if (down){ badge.style.display='inline-block'; badge.textContent=down+' down'; badge.style.background='#f5365c'; }
-      else if (unknown && unknown === rows.length){ badge.style.display='inline-block'; badge.textContent=rows.length+' dipantau'; badge.style.background='#f59e0b'; }
-      else if (rows.length){ badge.style.display='inline-block'; badge.textContent=rows.length+' up'; badge.style.background='#16a34a'; }
-      else badge.style.display='none';
-    }
-    if (!rows.length){
-      body.innerHTML='<div class="uplink-empty">Belum ada uplink yang di-pin. <a href="/devices">Pin uplink di Device Management</a>.</div>';
-      return;
-    }
-    body.innerHTML=rows.map(r=>{
-      const led=_ulLedClass(r);
-      const cls='ul-card'+(r.isDown && r.state!=='unknown'?' is-down':'')+(r.state==='unknown'?' is-unknown':'');
-      const rate=(!r.isDown && r.state!=='unknown')
-        ? (`RX ${Number(r.rx_mbps||0).toFixed(1)} / TX ${Number(r.tx_mbps||0).toFixed(1)} Mbps`)
-        : _ulLabel(r);
-      return `<a class="${cls}" href="/noc">
-        <span class="ul-led ${led}"></span>
-        <span class="ul-body">
-          <span class="ul-name">${escHtml(r.router_name||'Router')}</span>
-          <span class="ul-port">${escHtml(r.iface||'')}${r.comment? ' · '+escHtml(r.comment):''}</span>
-          <span class="ul-meta">${escHtml(rate)}</span>
-        </span>
-      </a>`;
-    }).join('');
-  }catch(e){
-    body.innerHTML='<div class="uplink-empty">Gagal memuat status uplink.</div>';
-  }
-}
-window.loadUplinkStrip = loadUplinkStrip;
 window.loadAlerts = loadAlerts;
-document.addEventListener('DOMContentLoaded', ()=>{
-  loadUplinkStrip();
-  setInterval(()=>{ if(typeof loadUplinkStrip==='function') loadUplinkStrip(); }, 15000);
-});
 
 window.addEventListener('themechange', () => {
   if (typeof loadBandwidthTrends === 'function') loadBandwidthTrends();

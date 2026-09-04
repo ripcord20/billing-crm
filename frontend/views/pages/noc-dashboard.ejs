@@ -271,46 +271,6 @@
     .nc-router-card .rc-status.offline { background:rgba(239,68,68,.12);  color:#ef4444; }
     .nc-router-card .rc-status .d { width:6px; height:6px; border-radius:50%; background:currentColor; }
 
-    /* ── Uplink terpin (selalu tampil) ──────────────────── */
-    .nc-uplink-panel {
-      background:var(--nc-card); border:1px solid var(--nc-border);
-      border-radius:14px; padding:16px 18px; margin-bottom:14px;
-    }
-    .nc-uplink-hd {
-      display:flex; align-items:flex-start; justify-content:space-between;
-      gap:10px; flex-wrap:wrap; margin-bottom:12px;
-    }
-    .nc-uplink-sub { font-size:11.5px; color:var(--nc-muted); margin-top:3px; }
-    .nc-uplink-link {
-      font-size:12px; font-weight:700; color:var(--nc-accent); text-decoration:none;
-      white-space:nowrap;
-    }
-    .nc-uplink-link:hover { text-decoration:underline; }
-    .nc-uplink-grid {
-      display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
-      gap:10px;
-    }
-    .nc-ul-card {
-      display:flex; align-items:flex-start; gap:10px;
-      padding:12px 14px; min-height:78px;
-      background:var(--nc-panel); border:1px solid var(--nc-border);
-      border-radius:12px; text-decoration:none; color:inherit;
-      transition:border-color .15s, transform .15s;
-    }
-    .nc-ul-card:hover { border-color:var(--nc-accent); transform:translateY(-1px); }
-    .nc-ul-card.is-down { border-color:rgba(239,68,68,.45); background:rgba(239,68,68,.06); }
-    .nc-ul-card.is-unknown { border-color:rgba(245,158,11,.4); }
-    .nc-ul-led { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:4px; }
-    .nc-ul-led.up { background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.18); }
-    .nc-ul-led.down { background:#ef4444; box-shadow:0 0 0 3px rgba(239,68,68,.2); }
-    .nc-ul-led.unknown, .nc-ul-led.missing, .nc-ul-led.disabled { background:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.18); }
-    .nc-ul-body { min-width:0; }
-    .nc-ul-name { font-size:13px; font-weight:700; color:var(--nc-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .nc-ul-port { font-size:11.5px; color:var(--nc-muted); margin-top:2px; font-family:'JetBrains Mono',monospace; }
-    .nc-ul-meta { font-size:11px; color:var(--nc-muted); margin-top:3px; }
-    .nc-uplink-empty { font-size:13px; color:var(--nc-muted); padding:8px 2px; }
-    .nc-uplink-empty a { color:var(--nc-accent); font-weight:700; text-decoration:none; }
-
     /* ── Grids ──────────────────────────────────────────── */
     .nc-grid-top    { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:14px; }
     .nc-grid-mid    { display:grid; grid-template-columns:2fr 1fr;       gap:14px; margin-bottom:14px; }
@@ -761,7 +721,6 @@
 
       /* Status bar → 2 kolom kartu kompak */
       .nc-status-bar { grid-template-columns:repeat(2,1fr); gap:10px; }
-      .nc-uplink-grid { grid-template-columns:1fr; }
       .nc-stat-cell { min-height:auto; padding:13px 14px; gap:10px; border-radius:14px; }
       .nc-stat-val { font-size:22px; }
       .nc-stat-val.small { font-size:15px; }
@@ -872,20 +831,6 @@
       <div id="ncErrorBanner" class="nc-error-banner" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".5"/></svg>
         <span id="ncErrorText">—</span>
-      </div>
-
-      <!-- ═══ UPLINK TERPIN — selalu tampil, tidak tergantung router terpilih ═══ -->
-      <div class="nc-uplink-panel" id="ncUplinkPanel">
-        <div class="nc-uplink-hd">
-          <div>
-            <div class="nc-panel-title" style="margin:0;">Uplink Terpin</div>
-            <div class="nc-uplink-sub" id="ncUplinkSub">Port yang di-pin di Device Management</div>
-          </div>
-          <a href="/devices" class="nc-uplink-link">Kelola pin →</a>
-        </div>
-        <div class="nc-uplink-grid" id="ncUplinkGrid">
-          <div class="nc-uplink-empty">Memuat status uplink…</div>
-        </div>
       </div>
 
       <!-- ═══ EMPTY STATE — belum pilih router ═══ -->
@@ -1738,50 +1683,6 @@
   async function loadAlerts() {
     const j = await api('/api/noc/alerts?limit=15');
     return (j && j.success) ? j.data : [];
-  }
-  async function loadUplinks() {
-    const j = await api('/api/noc/uplinks');
-    return (j && j.success) ? (j.data || []) : [];
-  }
-  function renderUplinks(rows) {
-    const wrap = $('ncUplinkGrid');
-    const sub = $('ncUplinkSub');
-    if (!wrap) return;
-    const list = Array.isArray(rows) ? rows : [];
-    const down = list.filter(r => r.isDown && r.state !== 'unknown').length;
-    const unknown = list.filter(r => r.state === 'unknown').length;
-    if (sub) {
-      sub.textContent = list.length
-        ? (down
-            ? (down + ' uplink down dari ' + list.length + ' terpin')
-            : (unknown
-                ? (list.length + ' uplink terpin · router tidak terjangkau')
-                : (list.length + ' uplink terpin · semua up')))
-        : 'Port yang di-pin di Device Management';
-    }
-    if (!list.length) {
-      wrap.innerHTML = '<div class="nc-uplink-empty">Belum ada uplink yang di-pin. <a href="/devices">Pin di Device Management</a>.</div>';
-      return;
-    }
-    wrap.innerHTML = list.map(r => {
-      const led = (r.state === 'unknown' || r.state === 'missing' || r.state === 'disabled')
-        ? r.state
-        : (r.isDown ? 'down' : 'up');
-      const cls = 'nc-ul-card'
-        + (r.isDown && r.state !== 'unknown' ? ' is-down' : '')
-        + (r.state === 'unknown' ? ' is-unknown' : '');
-      const rate = (!r.isDown && r.state !== 'unknown')
-        ? ('RX ' + Number(r.rx_mbps || 0).toFixed(1) + ' / TX ' + Number(r.tx_mbps || 0).toFixed(1) + ' Mbps')
-        : (r.label || (r.isDown ? 'Down' : 'Up'));
-      return `<a class="${cls}" href="#" onclick="event.preventDefault();if(${Number(r.device_id)||0})ncSelectRouter('${Number(r.device_id)}')">
-        <span class="nc-ul-led ${escHtml(led)}"></span>
-        <div class="nc-ul-body">
-          <div class="nc-ul-name">${escHtml(r.router_name || 'Router')}</div>
-          <div class="nc-ul-port">${escHtml(r.iface || '')}${r.comment ? ' · ' + escHtml(r.comment) : ''}</div>
-          <div class="nc-ul-meta">${escHtml(rate)}</div>
-        </div>
-      </a>`;
-    }).join('');
   }
 
   // Clear semua alert dari log NocAlertsService (in-memory). State router
@@ -2724,7 +2625,7 @@
     btn.classList.add('spin');
     try {
       // Always loaded: overview, alerts, ticket stats, ONT stats, PPPoE users
-      const tasks = [loadOverview(), loadAlerts(), loadTicketStats(), loadOntStats(), loadPppoeUsers(), loadUplinks()];
+      const tasks = [loadOverview(), loadAlerts(), loadTicketStats(), loadOntStats(), loadPppoeUsers()];
       // Router-specific data hanya kalau ada selectedRouterId
       if (selectedRouterId) {
         // realtime (untuk gauges + status bar)
@@ -2741,11 +2642,10 @@
       renderTickets(results[2]);
       renderOntStats(results[3]);
       renderPppoeUsers(results[4]);
-      renderUplinks(results[5]);
       if (selectedRouterId) {
-        renderRealtime(results[6]);
-        renderHistory(results[7]);
-        renderTrafficSummary(results[8]);
+        renderRealtime(results[5]);
+        renderHistory(results[6]);
+        renderTrafficSummary(results[7]);
         // Refresh setiap monitor card (parallel internal)
         refreshAllMonitors();
       }
@@ -2779,9 +2679,6 @@
   // ─── Init ────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', async () => {
     initCharts();
-    // Uplink terpin: load mandiri supaya tidak tertahan loader GenieACS/PPPoE.
-    loadUplinks().then(renderUplinks).catch(() => renderUplinks([]));
-    setInterval(() => { loadUplinks().then(renderUplinks).catch(() => {}); }, 15000);
     // Load list router untuk selector & empty state cards
     routers = await loadRouters();
     renderRouterSelect(routers);
