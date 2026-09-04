@@ -160,6 +160,7 @@ window.loadAlignment = async () => {
       <td>${r.order}</td>
       <td class="mono">${esc(r.address)}</td>
       <td>${esc(roleLabel(r.role))}</td>
+      <td>${r.disabled ? 'mati' : 'hidup'}</td>
       <td>${esc(r.timeout || '—')}</td>
       <td class="mono">${esc(r.srcAddress || 'auto')}</td>
       <td>${esc(r.comment || '—')}</td>
@@ -171,7 +172,7 @@ window.loadAlignment = async () => {
       ${c.use_radius === false ? ' · use-radius=no' : (c.use_radius ? ' · use-radius=yes' : '')}
       <div style="margin-top:6px;font-size:13px;">${esc(c.title || '')}</div>
       <p class="rd-note" style="margin:6px 0 0;color:inherit;">${esc(c.summary || '')}</p>
-      ${rows ? `<table class="rd-tbl" style="margin-top:10px;background:#fff;border-radius:8px;overflow:hidden;"><thead><tr><th>#</th><th>Address</th><th>Peran</th><th>Timeout</th><th>src-address</th><th>Komentar</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
+      ${rows ? `<table class="rd-tbl" style="margin-top:10px;background:#fff;border-radius:8px;overflow:hidden;"><thead><tr><th>#</th><th>Address</th><th>Peran</th><th>Status</th><th>Timeout</th><th>src-address</th><th>Komentar</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
       ${issues ? `<ul style="margin:10px 0 0;padding-left:18px;font-size:12.5px;">${issues}</ul>` : ''}
       ${next ? `<ol style="margin:10px 0 0;padding-left:18px;font-size:12.5px;">${next}</ol>` : ''}
     </div>`;

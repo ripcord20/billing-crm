@@ -41,23 +41,28 @@ function isSrcPinned(src) {
   return !!normalizeIp(src);
 }
 
+function isClientDisabled(c) {
+  return !!(c && (c.disabled === true || c.disabled === 'true' || c.disabled === 'yes'));
+}
+
 function classifyCoreAlignment(clients, opts = {}) {
   const fiberixHosts = hostSet(opts.fiberixHosts);
   const billingHosts = hostSet([...(opts.billingHosts || []), ...DEFAULT_BILLING_HOSTS]);
-  const rows = (Array.isArray(clients) ? clients : [])
-    .filter((c) => c && c.disabled !== true && c.disabled !== 'true' && c.disabled !== 'yes')
-    .map((c, i) => {
-      const src = c.srcAddress || c['src-address'] || '';
-      return {
-        order: i + 1,
-        address: String(c.address || ''),
-        comment: String(c.comment || ''),
-        timeout: String(c.timeout || ''),
-        srcAddress: normalizeIp(src),
-        role: classifyClientRole(c, fiberixHosts, billingHosts),
-        srcPinned: isSrcPinned(src)
-      };
-    });
+  const all = (Array.isArray(clients) ? clients : []).filter(Boolean).map((c, i) => {
+    const src = c.srcAddress || c['src-address'] || '';
+    return {
+      order: i + 1,
+      address: String(c.address || ''),
+      comment: String(c.comment || ''),
+      timeout: String(c.timeout || ''),
+      srcAddress: normalizeIp(src),
+      role: classifyClientRole(c, fiberixHosts, billingHosts),
+      srcPinned: isSrcPinned(src),
+      disabled: isClientDisabled(c)
+    };
+  });
+  const rows = all.filter((c) => !c.disabled);
+  const disabledFx = all.filter((c) => c.disabled && c.role === 'fiberix');
 
   const issues = [];
   const next = [];
@@ -79,7 +84,7 @@ function classifyCoreAlignment(clients, opts = {}) {
       status: 'critical',
       title: 'CORE belum punya server RADIUS',
       summary: 'PPPoE tidak bisa auth lewat RADIUS sampai /radius diisi.',
-      clients: rows,
+      clients: all,
       issues,
       next: ['Jangan matikan BillingRadius. Pasang FreeRADIUS Fiberix sebagai cadangan, lalu proxy user yang tidak ada ke BillingRadius sebelum jadi satu-satunya server.']
     };
@@ -115,15 +120,22 @@ function classifyCoreAlignment(clients, opts = {}) {
     phase = 'br_only';
     status = brPinned.length || opts.useRadius === false ? 'critical' : 'warn';
     title = 'CORE hanya ke BillingRadius';
-    summary = 'User yang hanya ditulis ke radcheck Fiberix tidak akan pernah online.';
-    next.push('Tambah FreeRADIUS Fiberix sebagai server kedua (bukan pertama) sampai proxy siap.');
+    summary = disabledFx.length
+      ? 'Entri Fiberix ada di /radius tapi disabled. User radcheck Fiberix tidak pernah ditanya.'
+      : 'User yang hanya ditulis ke radcheck Fiberix tidak akan pernah online.';
+    if (disabledFx.length) {
+      issues.push('Aktifkan entri Fiberix di /radius sebagai server kedua. Jangan naikkan ke urutan pertama, jangan pin src-address BillingRadius.');
+      next.push('Enable /radius Fiberix (urutan kedua). BillingRadius tetap pertama dan src-address-nya auto.');
+    } else {
+      next.push('Tambah FreeRADIUS Fiberix sebagai server kedua (bukan pertama) sampai proxy siap.');
+    }
   } else {
     next.push('Isi host FreeRADIUS di Fiberix agar IP-nya bisa dicocokkan otomatis dengan CORE.');
   }
 
   if (opts.useRadius === false && status !== 'critical') status = 'critical';
 
-  return { phase, status, title, summary, clients: rows, issues, next };
+  return { phase, status, title, summary, clients: all, issues, next };
 }
 
 function summarizeNetwork(cores) {

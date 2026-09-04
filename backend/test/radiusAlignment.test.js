@@ -64,6 +64,14 @@ const disabled = classifyCoreAlignment([
 ]);
 assert.strictEqual(disabled.phase, 'none');
 
+const fxOff = classifyCoreAlignment([
+  { address: '172.20.1.1', comment: 'BILLINGRADIUS' },
+  { address: '192.168.22.9', comment: 'FIBERIX', disabled: true }
+], { fiberixHosts: ['192.168.22.9'] });
+assert.strictEqual(fxOff.phase, 'br_only');
+assert.ok(fxOff.clients.some((c) => c.role === 'fiberix' && c.disabled));
+assert.ok(fxOff.issues.some((s) => /disabled|Aktifkan/i.test(s)));
+
 const noRadius = classifyCoreAlignment([
   { address: '172.20.1.1', comment: 'BILLINGRADIUS' }
 ], { fiberixHosts: ['192.168.22.9'], useRadius: false });
