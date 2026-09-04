@@ -495,10 +495,11 @@ async function loadProfile() {
     }
 
     // Teknis card — always shown jika ada data teknis atau ont_sn
-    var hasTeknis = !!(c.pppoe_username||c.ont_sn||c.static_ip);
+    var hasTeknis = !!(c.pppoe_username||c.pppoe_password||c.ont_sn||c.static_ip);
     var teknisHtml = '<div class="cp-card" id="teknisCrd">'
       +'<div class="cp-card-title"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>Teknis</div>'
-      +(c.pppoe_username ? '<div class="info-row"><span class="ilbl">PPPoE</span><span class="ival" style="font-family:monospace;font-size:12px">'+esc(c.pppoe_username)+'</span></div>' : '')
+      +(c.pppoe_username ? '<div class="info-row"><span class="ilbl">PPPoE User</span><span class="ival" style="font-family:monospace;font-size:12px">'+esc(c.pppoe_username)+'</span></div>' : '')
+      +(c.pppoe_password ? '<div class="info-row"><span class="ilbl">PPPoE Pass</span><span class="ival" style="font-family:monospace;font-size:12px">'+esc(c.pppoe_password)+'</span></div>' : '')
       +(c.static_ip      ? '<div class="info-row"><span class="ilbl">Static IP</span><span class="ival" style="font-family:monospace;font-size:12px">'+esc(c.static_ip)+'</span></div>' : '')
       +(c.ont_sn         ? '<div class="info-row"><span class="ilbl">ONT SN</span><span class="ival" style="font-family:monospace;font-size:12px">'+esc(c.ont_sn)+'</span></div>' : '')
       // ODP row — diisi async
@@ -1163,6 +1164,7 @@ function openEditModal(cust) {
   set('ep-install-date', (cust.installation_date||'').substring(0,10));
   set('ep-status',       cust.status||'active');
   set('ep-pppoe',        cust.pppoe_username);
+  set('ep-pppoe-pass',   cust.pppoe_password);
   set('ep-ont-sn',       cust.ont_sn);
   set('ep-static-ip',    cust.static_ip);
   document.getElementById('ep-msg').textContent = '';
@@ -1591,6 +1593,7 @@ async function saveEditProfile() {
       installation_date: val('ep-install-date') || null,
       status:            val('ep-status') || 'active',
       pppoe_username:    val('ep-pppoe'),
+      pppoe_password:    val('ep-pppoe-pass'),
       ont_sn:            val('ep-ont-sn'),
       static_ip:         val('ep-static-ip') || null,
       mikrotik_id:       val('ep-mikrotik') || null
@@ -2150,6 +2153,10 @@ loadProfile();
         <div>
           <label class="efl">PPPoE Username</label>
           <input class="efc" id="ep-pppoe" placeholder="pppoe-username">
+        </div>
+        <div>
+          <label class="efl">Password PPPoE</label>
+          <input class="efc" id="ep-pppoe-pass" placeholder="Password PPPoE" autocomplete="off">
         </div>
         <div>
           <label class="efl">ONT Serial Number</label>

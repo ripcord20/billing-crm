@@ -143,6 +143,12 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(100),
       allowNull: true
     },
+    // Password secret PPPoE (disimpan plaintext agar staf bisa lihat/salin
+    // ke ONT / MikroTik). Bukan password portal pelanggan.
+    pppoe_password: {
+      type: DataTypes.STRING(128),
+      allowNull: true
+    },
     billing_date: {
       type: DataTypes.INTEGER,
       defaultValue: 1,

@@ -17,7 +17,8 @@ class CustomerController {
           { name: { [Op.like]: `%${search}%` } },
           { customer_id: { [Op.like]: `%${search}%` } },
           { phone: { [Op.like]: `%${search}%` } },
-          { address: { [Op.like]: `%${search}%` } }
+          { address: { [Op.like]: `%${search}%` } },
+          { pppoe_username: { [Op.like]: `%${search}%` } }
         ];
       }
       // overdue & due_soon adalah filter virtual — tidak set where.status
@@ -151,6 +152,20 @@ class CustomerController {
         }
       }
 
+      // Mobile form mengirim router_id/device_id; desktop memakai mikrotik_id.
+      if (!data.mikrotik_id && (data.router_id || data.device_id)) {
+        data.mikrotik_id = data.router_id || data.device_id;
+      }
+      delete data.router_id;
+      delete data.device_id;
+      delete data.pppoe_profile; // bukan kolom customers
+      if (data.pppoe_username !== undefined) {
+        data.pppoe_username = String(data.pppoe_username || '').trim() || null;
+      }
+      if (data.pppoe_password !== undefined) {
+        data.pppoe_password = String(data.pppoe_password || '').trim() || null;
+      }
+
       // Jangan izinkan field internal di-set dari input bebas.
       delete data.public_link_token;
 
@@ -271,6 +286,18 @@ class CustomerController {
       delete sanitized.customer_id;           // hanya boleh diubah via updatePortalCredentials (validasi unique)
       delete sanitized.last_portal_login;     // diset otomatis oleh sistem saat login
       delete sanitized.public_link_token;     // hanya via endpoint payment-link (generate/revoke)
+      if (!sanitized.mikrotik_id && (sanitized.router_id || sanitized.device_id)) {
+        sanitized.mikrotik_id = sanitized.router_id || sanitized.device_id;
+      }
+      delete sanitized.router_id;
+      delete sanitized.device_id;
+      delete sanitized.pppoe_profile;
+      if (sanitized.pppoe_username !== undefined) {
+        sanitized.pppoe_username = String(sanitized.pppoe_username || '').trim() || null;
+      }
+      if (sanitized.pppoe_password !== undefined) {
+        sanitized.pppoe_password = String(sanitized.pppoe_password || '').trim() || null;
+      }
 
       await customer.update(sanitized);
       const full = await Customer.findByPk(customer.id, {

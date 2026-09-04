@@ -772,6 +772,24 @@ const startServer = async () => {
       logger.warn('Failed to migrate customers area columns: ' + (e.message || e));
     }
 
+    // ── Migrasi: customers.pppoe_password (kredensial PPPoE di modul customer)
+    try {
+      const [ppRows] = await db.sequelize.query(
+        `SELECT COUNT(*) AS c FROM information_schema.columns
+          WHERE table_schema = DATABASE()
+            AND table_name = 'customers'
+            AND column_name = 'pppoe_password'`
+      );
+      if (!(ppRows && ppRows[0] && parseInt(ppRows[0].c) > 0)) {
+        await db.sequelize.query(
+          `ALTER TABLE customers ADD COLUMN pppoe_password VARCHAR(128) NULL AFTER pppoe_username`
+        );
+        logger.info('Migrated: customers.pppoe_password column added');
+      }
+    } catch (e) {
+      logger.warn('Failed to migrate customers.pppoe_password: ' + (e.message || e));
+    }
+
     // ── Migrasi: customers.public_link_token (link pembayaran permanen) ─────
     // Token acak per-pelanggan untuk /pub/cust/:token. Bisa di-revoke. Idempotent.
     try {
