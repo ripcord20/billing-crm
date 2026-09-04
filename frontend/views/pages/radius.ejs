@@ -37,7 +37,17 @@
       <div class="page-header" style="margin-bottom:18px;">
         <div>
           <h1 style="margin:0 0 4px;font-size:22px;font-weight:800;color:var(--d-text);">RADIUS / FreeRADIUS</h1>
-          <p class="rd-note">User PPPoE dari modul <strong>Pelanggan</strong> dan <strong>PPPoE Sessions</strong> disimpan ke <code>radcheck</code> / <code>radreply</code>, sama seperti BillingRadius — bukan ke PPP Secret MikroTik. Di CORE 1/2: <code>/radius</code> harus mengarah ke FreeRADIUS Fiberix (bukan host BillingRadius), lalu <code>/ppp aaa set use-radius=yes</code>.</p>
+          <p class="rd-note">User baru dari <strong>Pelanggan</strong> / <strong>PPPoE Sessions</strong> ditulis ke <code>radcheck</code> Fiberix — bukan <code>/ppp/secret</code>. Pelanggan lama masih auth di BillingRadius (<code>172.20.1.1</code>). Jangan pindah CORE ke Fiberix saja sebelum FreeRADIUS mem-proxy user yang tidak ada ke BillingRadius: Reject dari server pertama menghentikan pencarian.</p>
+        </div>
+      </div>
+
+      <div class="rd-card" id="alignCard">
+        <div class="rd-card-hdr">
+          <strong>Selaras CORE ↔ Fiberix ↔ BillingRadius</strong>
+          <button class="rd-btn rd-btn-outline" type="button" onclick="loadAlignment()">Cek CORE</button>
+        </div>
+        <div class="rd-card-body" id="alignBody">
+          <p class="rd-note">Membaca <code>/radius</code> dan <code>/ppp aaa</code> di router CORE. Tidak mengubah urutan server dan tidak mematikan BillingRadius.</p>
         </div>
       </div>
 
@@ -107,6 +117,6 @@
   </div>
 </div>
 <script src="/js/app.js"></script>
-<script src="/js/radius.js"></script>
+<script src="/js/radius.js?v=align1"></script>
 </body>
 </html>

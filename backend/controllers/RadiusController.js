@@ -30,6 +30,16 @@ class RadiusController {
     }
   }
 
+  async alignment(req, res) {
+    try {
+      const RadiusAlign = require('../services/RadiusAlignmentService');
+      const data = await RadiusAlign.inspect(getTenantId(req));
+      res.json({ success: true, data });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  }
+
   async listServers(req, res) {
     try {
       const rows = await RadiusServer.findAll({ where: serverWhere(req), order: [['id', 'ASC']] });

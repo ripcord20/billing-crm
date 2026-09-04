@@ -365,6 +365,33 @@ class MikrotikService {
     }));
   }
 
+  // /radius — daftar server AAA. Secret tidak dikembalikan.
+  async getRadiusClients() {
+    const rows = await this.get('/radius');
+    return (Array.isArray(rows) ? rows : []).map(r => ({
+      id: r['.id'],
+      address: r.address || '',
+      authPort: r['authentication-port'] || r['auth-port'] || '1812',
+      acctPort: r['accounting-port'] || r['acct-port'] || '1813',
+      timeout: r.timeout || '',
+      srcAddress: r['src-address'] || '',
+      comment: r.comment || '',
+      disabled: r.disabled === 'true' || r.disabled === true,
+      service: r.service || ''
+    }));
+  }
+
+  async getPppAaa() {
+    const row = await this.get('/ppp/aaa');
+    const rec = Array.isArray(row) ? (row[0] || {}) : (row || {});
+    const flag = rec['use-radius'];
+    return {
+      useRadius: flag === 'true' || flag === true || flag === 'yes',
+      accounting: rec.accounting === 'true' || rec.accounting === true,
+      interimUpdate: rec['interim-update'] || ''
+    };
+  }
+
   // Disconnect (kick) sesi PPP aktif berdasarkan internal ID (mis. "*80000002").
   //
   // RouterOS v7 REST API tidak konsisten antar-build untuk perintah `remove`
