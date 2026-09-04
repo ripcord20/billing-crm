@@ -1178,7 +1178,7 @@
   async function deleteSecret(id, name) {
     var ok = await showConfirm({
       title:   'Hapus User PPPoE?',
-      message: 'User "' + name + '" akan dihapus permanen dari MikroTik.',
+      message: 'User "' + name + '" akan dihapus dari RADIUS Fiberix dan secret di router (kalau ada).',
       detail:  'Tindakan ini tidak dapat dibatalkan.',
       okText:  'Hapus',
       variant: 'danger',
@@ -1186,7 +1186,7 @@
     });
     if (!ok) return;
     try {
-      var r = await App.api(_withDev('/mikrotik/pppoe/secrets/' + encodeURIComponent(id)), { method:'DELETE' });
+      var r = await App.api(_withDev('/mikrotik/pppoe/secrets/' + encodeURIComponent(id) + (name ? ('?username=' + encodeURIComponent(name)) : '')), { method:'DELETE' });
       if (r && r.success) {
         showToast('User "' + name + '" dihapus', 'success');
         await loadSecrets();
