@@ -114,6 +114,16 @@ module.exports = (sequelize) => {
       allowNull: true,
       defaultValue: []
     },
+    ktp_photo: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'URL foto KTP pelanggan'
+    },
+    house_photo: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'URL foto rumah / lokasi pemasangan'
+    },
     static_ip: {
       type: DataTypes.STRING(20),
       allowNull: true

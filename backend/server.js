@@ -928,6 +928,16 @@ const startServer = async () => {
         logger.info('Migrated: registration_requests.installed_photo added');
       }
 
+      // Foto KTP & rumah di tabel customers (form tambah/edit pelanggan)
+      if (!(await hasColumn('customers', 'ktp_photo'))) {
+        await db.sequelize.query(`ALTER TABLE customers ADD COLUMN ktp_photo VARCHAR(255) NULL`);
+        logger.info('Migrated: customers.ktp_photo added');
+      }
+      if (!(await hasColumn('customers', 'house_photo'))) {
+        await db.sequelize.query(`ALTER TABLE customers ADD COLUMN house_photo VARCHAR(255) NULL`);
+        logger.info('Migrated: customers.house_photo added');
+      }
+
       // 3b) Backfill created_at/updated_at yang NULL (penyebab "Invalid Date").
       //     Pakai updated_at bila ada, jika tidak pakai NOW().
       try {
@@ -1050,6 +1060,8 @@ const startServer = async () => {
       await safeSync(db.MonitorState,            'monitor_states');
       await safeSync(db.NotifLog,                'notif_logs');
       await safeSync(db.BotCommand,              'bot_commands');
+      await safeSync(db.RadiusServer,            'radius_servers');
+      await safeSync(db.RadiusAccount,           'radius_accounts');
       // Seed perintah bot bawaan (idempotent — hanya menambah yang belum ada).
       try { await require('./services/BotCommandSeed').seedDefaults(); }
       catch (e) { logger.warn('Seed bot_commands skipped: ' + e.message); }

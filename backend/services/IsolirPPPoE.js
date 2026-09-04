@@ -200,6 +200,23 @@ async function isolirPPPoEUser(api, pppoeUsername, sequelize, customerId) {
 }
 
 /**
+ * Kick sesi PPPoE aktif tanpa mengubah /ppp/secret.
+ * Dipakai isolir RADIUS: user di-reject di AAA, session lama harus diputus.
+ */
+async function kickActiveSessions(api, pppoeUsername) {
+  if (!pppoeUsername) return 0;
+  let kicked = 0;
+  const active = await runWithRetry(api, ['/ppp/active/print', '?name=' + pppoeUsername]);
+  for (const sess of active) {
+    if (sess['.id']) {
+      await runWithRetry(api, ['/ppp/active/remove', '=.id=' + sess['.id']]);
+      kicked++;
+    }
+  }
+  return kicked;
+}
+
+/**
  * Restore customer PPPoE: kembalikan profile asli + kick session.
  *
  * @param {object} api - MikroTik API client
@@ -251,4 +268,5 @@ module.exports = {
   setupIsolirProfile,
   isolirPPPoEUser,
   restorePPPoEUser,
+  kickActiveSessions,
 };

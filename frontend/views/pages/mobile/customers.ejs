@@ -124,6 +124,12 @@
     textarea.as-in{resize:vertical;}
     .as-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
     .as-hint{font-size:11.5px;color:#7c93a0;line-height:1.5;margin:-4px 0 12px;}
+    .af-photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+    .af-photo{border:1.5px dashed #bcd0f7;background:#f8fbff;border-radius:14px;min-height:104px;cursor:pointer;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;}
+    .af-photo.filled{border-style:solid;border-color:var(--blue);}
+    .af-photo img{width:100%;height:104px;object-fit:cover;display:block;}
+    .af-photo-inner{display:flex;flex-direction:column;align-items:center;gap:6px;color:#7c93a0;font-size:12px;font-weight:700;padding:12px;text-align:center;}
+    .af-photo-inner svg{width:22px;height:22px;}
     .as-geo{width:100%;padding:11px;border:1px dashed #bcd0f7;background:#f2f6ff;color:var(--blue);border-radius:12px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px;} .as-geo svg{width:16px;height:16px;}
     .as-maphint{font-size:11px;color:var(--muted);margin-bottom:9px;}
     .af-map{width:100%;height:200px;border-radius:14px;border:1px solid #e6ebf3;overflow:hidden;margin-bottom:12px;z-index:1;}
@@ -723,20 +729,26 @@
       // Dipanggil tanpa argumen (dari FAB) = mode TAMBAH → pastikan form bersih.
       if(!isEdit){
         _editId=null;
+        _afPppoeManual=false;
         clearAddForm();
         var t1=document.getElementById('asTitle'); if(t1) t1.textContent='Tambah Pelanggan';
         document.getElementById('afSave').textContent='Simpan Pelanggan';
         var sw=document.getElementById('afStatusWrap'); if(sw) sw.style.display='none';
         var nw=document.getElementById('afNotifWrap'); if(nw) nw.style.display='block';
         setDefaultDates();   // aktivasi = hari ini, jatuh tempo = +1 bulan
+        document.getElementById('afConnType').value='pppoe';
+        onConnTypeChange();
+        genAfPppoePass();
       }
       document.getElementById('addOverlay').classList.add('open');
       document.getElementById('addSheet').classList.add('open');
+      await refreshRadiusStatus();
       // Tunggu opsi selesai dimuat — penting untuk mode edit (agar nilai bisa dipilih).
       if(!_addLoaded){
         _addLoaded=true;
         try{ await Promise.all([loadAddOptions(), loadProvinces()]); }catch(_){ }
       }
+      if(!_editId) onRouterChange();
       setTimeout(initAfMap, 350);
     }
     function closeAdd(){
@@ -824,6 +836,76 @@
       rtSel.innerHTML='<option value="">Pilih router…</option>'+rts.map(d=>'<option value="'+d.id+'">'+esc(d.name||('Router #'+d.id))+'</option>').join('');
     }
     function onConnTypeChange(){ const t=document.getElementById('afConnType').value; document.getElementById('pppoeFields').style.display=(t==='pppoe')?'block':'none'; }
+    var _afPppoeManual=false;
+    var _afPendingPhotos={ktp:null,house:null};
+    var _afPhotoUrls=[];
+    function slugifyPppoe(name){
+      if(!name) return '';
+      let s=String(name).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      return s.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,32);
+    }
+    function onAfNameInput(){
+      if(_editId||_afPppoeManual) return;
+      const el=document.getElementById('afPppoeUser');
+      if(el) el.value=slugifyPppoe(document.getElementById('afName').value);
+    }
+    function genAfPppoePass(){
+      const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+      let pw=''; for(let i=0;i<10;i++) pw+=chars.charAt(Math.floor(Math.random()*chars.length));
+      const el=document.getElementById('afPppoePass'); if(el) el.value=pw;
+    }
+    function afPhotoUrl(c,slot){
+      const docs=(c&&c.documents&&!Array.isArray(c.documents)&&typeof c.documents==='object')?c.documents:{};
+      if(docs[slot]&&docs[slot].url) return docs[slot].url;
+      if(slot==='ktp') return (c&&c.ktp_photo)||'';
+      if(slot==='house') return (c&&c.house_photo)||'';
+      return '';
+    }
+    function afRenderPhoto(slot,url){
+      const box=document.getElementById('afPhotoBox_'+slot);
+      const inner=document.getElementById('afPhotoInner_'+slot);
+      if(!box||!inner) return;
+      if(url){
+        box.classList.add('filled');
+        inner.innerHTML='<img src="'+esc(url)+'" alt="'+slot+'">';
+      } else {
+        box.classList.remove('filled');
+        inner.innerHTML=slot==='ktp'
+          ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 9h4M14 13h4M3 17l4-4 3 3"/></svg><span>Foto KTP</span>'
+          : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Foto Rumah</span>';
+        const inp=document.getElementById('afPhoto_'+slot); if(inp) inp.value='';
+      }
+    }
+    function afResetPhotos(){
+      _afPendingPhotos={ktp:null,house:null};
+      _afPhotoUrls.forEach(function(u){ try{ URL.revokeObjectURL(u); }catch(_){} });
+      _afPhotoUrls=[];
+      afRenderPhoto('ktp',null); afRenderPhoto('house',null);
+    }
+    function afPickPhoto(slot){ const el=document.getElementById('afPhoto_'+slot); if(el) el.click(); }
+    function afOnPhotoPick(slot,inp){
+      const f=inp&&inp.files&&inp.files[0]; if(!f) return;
+      if(f.size>8*1024*1024){ toast('Ukuran file maksimal 8MB','err'); inp.value=''; return; }
+      _afPendingPhotos[slot]=f;
+      const url=URL.createObjectURL(f); _afPhotoUrls.push(url);
+      afRenderPhoto(slot,url);
+    }
+    async function afUploadPhotos(customerId){
+      const t=getToken();
+      const slots=['ktp','house'];
+      for(let i=0;i<slots.length;i++){
+        const slot=slots[i]; const file=_afPendingPhotos[slot]; if(!file) continue;
+        const fd=new FormData(); fd.append('photo',file);
+        try{
+          await fetch('/api/customers/'+customerId+'/document/'+slot,{
+            method:'POST', credentials:'include',
+            headers:Object.assign({'X-Requested-With':'XMLHttpRequest'}, t?{'Authorization':'Bearer '+t}:{}),
+            body:fd
+          });
+        }catch(_){}
+      }
+      _afPendingPhotos={ktp:null,house:null};
+    }
 
     /* Jatuh tempo otomatis = tanggal aktivasi + 1 bulan (tanggal sama).
        Meniru onActivationDateChange() di desktop: hanya auto-isi saat MODE
@@ -864,12 +946,31 @@
     async function onRouterChange(){
       const dev=document.getElementById('afRouter').value;
       const sel=document.getElementById('afPppoeProfile');
-      if(!dev){ sel.innerHTML='<option value="">Pilih router dulu…</option>'; sel.disabled=true; return; }
+      const groups=await fetchRadiusGroups();
+      if(!dev && !groups.length && !_radiusEnabled){
+        sel.innerHTML='<option value="">Pilih router dulu…</option>'; sel.disabled=true; return;
+      }
       sel.innerHTML='<option value="">Memuat profil…</option>'; sel.disabled=true;
-      const j=await api('/api/mikrotik/pppoe/profiles?device_id='+encodeURIComponent(dev));
-      const rows=(j&&j.success)?(Array.isArray(j.data)?j.data:[]):[];
-      if(rows.length){ sel.innerHTML='<option value="">Pilih profil…</option>'+rows.map(p=>{ const nm=p.name||p; return '<option value="'+esc(nm)+'">'+esc(nm)+(p.rateLimit?(' ('+esc(p.rateLimit)+')'):'')+'</option>'; }).join(''); sel.disabled=false; }
-      else{ sel.innerHTML='<option value="">Tidak ada profil</option>'; sel.disabled=true; }
+      let rows=[];
+      if(dev){
+        const j=await api('/api/mikrotik/pppoe/profiles?device_id='+encodeURIComponent(dev));
+        rows=(j&&j.success)?(Array.isArray(j.data)?j.data:[]):[];
+      }
+      const seen={};
+      let html='<option value="">Opsional (paket / group RADIUS)…</option>';
+      rows.forEach(p=>{
+        const nm=p.name||p;
+        if(!nm||seen[nm]) return;
+        seen[nm]=true;
+        html+='<option value="'+esc(nm)+'">'+esc(nm)+(p.rateLimit?(' ('+esc(p.rateLimit)+')'):'')+'</option>';
+      });
+      groups.forEach(nm=>{
+        if(!nm||seen[nm]) return;
+        seen[nm]=true;
+        html+='<option value="'+esc(nm)+'">'+esc(nm)+' (RADIUS)</option>';
+      });
+      sel.innerHTML=html;
+      sel.disabled=false;
     }
     function getMyLocation(){
       const lbl=document.getElementById('geoLbl');
@@ -886,6 +987,33 @@
     function fmtRp(n){ return 'Rp '+Math.round(Number(n)||0).toLocaleString('id-ID'); }
     // ID pelanggan yang sedang diedit. null = mode tambah.
     var _editId = null;
+    var _radiusEnabled = false;
+    async function refreshRadiusStatus(){
+      try{
+        const d=await api('/api/radius/status');
+        _radiusEnabled=!!(d&&d.success&&d.data&&d.data.enabled);
+      }catch(_){ _radiusEnabled=false; }
+      const hint=document.getElementById('afPppoeRadiusHint');
+      if(hint){
+        hint.style.display='block';
+        hint.textContent=_radiusEnabled
+          ? 'User PPPoE disimpan ke RADIUS (radcheck) saat pelanggan disimpan.'
+          : 'Secret PPPoE dibuat di router yang dipilih saat pelanggan disimpan.';
+      }
+      const rtLbl=document.getElementById('afRouterLbl');
+      if(rtLbl) rtLbl.textContent=_radiusEnabled ? 'Router / MikroTik (opsional)' : 'Router / MikroTik';
+    }
+
+    async function fetchRadiusGroups(){
+      if(!_radiusEnabled) return [];
+      try{
+        const d=await api('/api/radius/groups');
+        if(d&&d.success&&Array.isArray(d.data)){
+          return d.data.map(g=>typeof g==='string'?g:(g.groupname||g.name||'')).filter(Boolean);
+        }
+      }catch(_){}
+      return [];
+    }
 
     async function saveCustomer(){
       const name=document.getElementById('afName').value.trim();
@@ -919,6 +1047,13 @@
         body.pppoe_username=document.getElementById('afPppoeUser').value.trim()||null;
         body.pppoe_password=document.getElementById('afPppoePass').value.trim()||null;
         body.pppoe_profile=document.getElementById('afPppoeProfile').value||null;
+        if(!_editId){
+          if(!body.pppoe_username){ toast('Username PPPoE wajib diisi','err'); document.getElementById('afPppoeUser').focus(); return; }
+          if(!body.pppoe_password){ toast('Password PPPoE wajib diisi','err'); document.getElementById('afPppoePass').focus(); return; }
+          if(!_radiusEnabled && !body.device_id){ toast('Pilih router MikroTik','err'); return; }
+          body.create_pppoe=true;
+          body.pppoe_backend='auto';
+        }
       }
       // Status hanya dikirim saat edit (di form tambah, default 'active' dari server)
       if(_editId){
@@ -944,10 +1079,13 @@
         });
         const d=await r.json().catch(()=>null);
         ok=(r.ok && d && d.success); msg=(d&&d.message)||'';
+        if(ok && d.data && d.data.id) await afUploadPhotos(d.data.id);
+        if(ok && d.pppoe_status==='radius') msg = (isEdit?'Perubahan tersimpan':'Pelanggan ditambahkan') + ' • akun PPPoE di RADIUS';
+        else if(ok && d.pppoe_status==='mikrotik') msg = (isEdit?'Perubahan tersimpan':'Pelanggan ditambahkan') + ' • akun PPPoE di MikroTik';
       }catch(e){ msg=e.message; }
       btn.disabled=false; btn.textContent = isEdit ? 'Simpan Perubahan' : 'Simpan Pelanggan';
       if(ok){
-        toast(isEdit?'Perubahan tersimpan':'Pelanggan berhasil ditambahkan','ok');
+        toast(msg||(isEdit?'Perubahan tersimpan':'Pelanggan berhasil ditambahkan'),'ok');
         closeAdd(); clearAddForm(); _editId=null;
         loadCustStats(); loadGrowth(); loadCustomers(true);
       }
@@ -979,6 +1117,10 @@
       document.getElementById('afNotes').value=c.notes||'';
       document.getElementById('afPppoeUser').value=c.pppoe_username||'';
       document.getElementById('afPppoePass').value=c.pppoe_password||'';
+      _afPppoeManual=true;
+      afResetPhotos();
+      afRenderPhoto('ktp', afPhotoUrl(c,'ktp')||null);
+      afRenderPhoto('house', afPhotoUrl(c,'house')||null);
       // Tanggal aktivasi & jatuh tempo (DATEONLY dari server → potong ke YYYY-MM-DD)
       var d10=function(v){ return v?String(v).slice(0,10):''; };
       var idEl=document.getElementById('afInstallDate'); if(idEl) idEl.value=d10(c.installation_date);
@@ -1042,9 +1184,12 @@
     }
     function clearAddForm(){ ['afName','afPhone','afEmail','afAddress','afLat','afLng','afPppoeUser','afPppoePass','afStaticIp','afMac','afNotes','afInstallDate','afDueDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); const _dh=document.getElementById('afDueHint'); if(_dh)_dh.textContent='Jatuh tempo otomatis 1 bulan setelah tanggal aktivasi. Bisa diubah manual.'; document.getElementById('afSendWa').checked=false; document.getElementById('afSendEmail').checked=false; 
       ['afRegency','afDistrict','afVillage'].forEach(id=>{const el=document.getElementById(id);if(el){el.innerHTML='<option value="">-</option>';el.disabled=true;}}); const pv=document.getElementById('afProvince'); if(pv)pv.value='';
-      const pp=document.getElementById('afPppoeProfile'); if(pp){pp.innerHTML='<option value="">Pilih router dulu…</option>';pp.disabled=true;} const rr=document.getElementById('afRouter'); if(rr)rr.value='';
+      const pp=document.getElementById('afPppoeProfile'); if(pp){pp.innerHTML='<option value="">Opsional…</option>';pp.disabled=false;} const rr=document.getElementById('afRouter'); if(rr)rr.value='';
       if(_afMap&&_afMarker){ _afMarker.setLatLng(AF_DEFAULT); _afMap.setView(AF_DEFAULT,13); }
       const gh=document.getElementById('afGeoHint'); if(gh)gh.textContent='';
+      _afPppoeManual=false;
+      afResetPhotos();
+      const ct=document.getElementById('afConnType'); if(ct){ ct.value='pppoe'; onConnTypeChange(); }
     }
 
     loadCustStats();
@@ -1065,7 +1210,7 @@
     <div class="as-body">
       <div class="as-sec">Data Pelanggan</div>
       <label class="as-lbl">Nama <span class="req">*</span></label>
-      <input class="as-in" id="afName" placeholder="Nama lengkap pelanggan">
+      <input class="as-in" id="afName" placeholder="Nama lengkap pelanggan" oninput="onAfNameInput()">
       <div class="as-row">
         <div><label class="as-lbl">No. HP / WhatsApp</label><input class="as-in" id="afPhone" inputmode="numeric" placeholder="08xxxx"></div>
         <div><label class="as-lbl">Email</label><input class="as-in" id="afEmail" placeholder="email@contoh.com"></div>
@@ -1124,20 +1269,43 @@
         <option value="static">IP Static</option>
         <option value="hotspot">Hotspot</option>
       </select>
-      <label class="as-lbl">Router / MikroTik</label>
+      <label class="as-lbl" id="afRouterLbl">Router / MikroTik</label>
       <select class="as-in" id="afRouter" onchange="onRouterChange()"><option value="">Pilih router…</option></select>
 
       <div id="pppoeFields">
-        <label class="as-lbl">Profil PPPoE</label>
-        <select class="as-in" id="afPppoeProfile" disabled><option value="">Pilih router dulu…</option></select>
+        <div class="as-hint" id="afPppoeRadiusHint" style="margin-bottom:8px;">User PPPoE dibuat otomatis ke RADIUS saat pelanggan disimpan.</div>
+        <label class="as-lbl">Profil / Group RADIUS</label>
+        <select class="as-in" id="afPppoeProfile"><option value="">Opsional…</option></select>
         <div class="as-row">
-          <div><label class="as-lbl">PPPoE Username</label><input class="as-in" id="afPppoeUser" placeholder="username"></div>
-          <div><label class="as-lbl">PPPoE Password</label><input class="as-in" id="afPppoePass" placeholder="password"></div>
+          <div><label class="as-lbl">PPPoE Username <span class="req">*</span></label><input class="as-in" id="afPppoeUser" placeholder="username" oninput="_afPppoeManual=true"></div>
+          <div>
+            <label class="as-lbl">PPPoE Password <span class="req">*</span></label>
+            <input class="as-in" id="afPppoePass" placeholder="password" style="margin-bottom:6px">
+            <button type="button" class="as-geo" style="margin-bottom:13px;padding:8px" onclick="genAfPppoePass()">Generate</button>
+          </div>
         </div>
       </div>
       <div class="as-row">
         <div><label class="as-lbl">IP Static</label><input class="as-in" id="afStaticIp" inputmode="decimal" placeholder="10.10.x.x"></div>
         <div><label class="as-lbl">MAC Address</label><input class="as-in" id="afMac" placeholder="AA:BB:CC:.."></div>
+      </div>
+      <div class="as-sec">Dokumen Foto</div>
+      <div class="as-hint">Foto KTP dan foto rumah (opsional)</div>
+      <div class="af-photo-grid">
+        <div class="af-photo" id="afPhotoBox_ktp" onclick="afPickPhoto('ktp')">
+          <input type="file" accept="image/*" capture="environment" id="afPhoto_ktp" style="display:none" onchange="afOnPhotoPick('ktp',this)">
+          <div class="af-photo-inner" id="afPhotoInner_ktp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 9h4M14 13h4M3 17l4-4 3 3"/></svg>
+            <span>Foto KTP</span>
+          </div>
+        </div>
+        <div class="af-photo" id="afPhotoBox_house" onclick="afPickPhoto('house')">
+          <input type="file" accept="image/*" capture="environment" id="afPhoto_house" style="display:none" onchange="afOnPhotoPick('house',this)">
+          <div class="af-photo-inner" id="afPhotoInner_house">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>Foto Rumah</span>
+          </div>
+        </div>
       </div>
       <label class="as-lbl">Catatan</label>
       <textarea class="as-in" id="afNotes" rows="2" placeholder="Catatan opsional"></textarea>

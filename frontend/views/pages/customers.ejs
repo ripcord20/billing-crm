@@ -269,6 +269,26 @@
     .form-badge { font-size: 10px; color: #0891b2; font-weight: 600; }
     .form-meta  { font-size: 10px; font-weight: 400; text-transform: none; color: var(--d-muted); }
 
+    /* Foto KTP / rumah di form pelanggan */
+    .cust-photo-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .cust-photo-box {
+      border:1.5px dashed #c7d2fe; border-radius:12px; background:#f8faff;
+      min-height:112px; cursor:pointer; overflow:hidden; display:flex;
+      align-items:center; justify-content:center; position:relative;
+    }
+    .cust-photo-box:hover { border-color:#2563eb; background:#eef2ff; }
+    .cust-photo-box.filled { border-style:solid; border-color:#2563eb; }
+    .cust-photo-box img { width:100%; height:112px; object-fit:cover; display:block; }
+    .cust-photo-inner { display:flex; flex-direction:column; align-items:center; gap:6px; color:#64748b; font-size:12px; font-weight:600; padding:14px 10px; text-align:center; }
+    .cust-photo-inner svg { width:22px; height:22px; }
+    .cust-photo-clear {
+      position:absolute; top:6px; right:6px; width:22px; height:22px; border:none; border-radius:7px;
+      background:rgba(15,23,42,.7); color:#fff; font-size:13px; cursor:pointer; line-height:22px; padding:0;
+    }
+    .cust-photo-thumb { width:42px; height:42px; border-radius:8px; overflow:hidden; display:inline-block; border:1px solid #e2e8f0; vertical-align:middle; }
+    .cust-photo-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .cust-photo-none { color:#cbd5e1; font-size:12px; }
+
     /* ── Section header dalam modal (gaya seperti Registrasi Sales) ── */
     .form-sec {
       grid-column: 1 / -1;
@@ -489,6 +509,8 @@
               <tr>
                 <th>CID</th>
                 <th>Nama</th>
+                <th class="col-hide-mob">KTP</th>
+                <th class="col-hide-mob">Rumah</th>
                 <th class="col-hide-mob">No HP</th>
                 <th>Paket</th>
                 <th class="col-hide-mob">Biaya/Bln</th>
@@ -591,8 +613,8 @@
         <div class="form-field">
           <label class="flbl">Tipe Koneksi <span class="form-badge">(isolir)</span></label>
           <select class="finput" id="custConnType" onchange="onConnTypeChange()">
-            <option value="">— Auto-detect —</option>
             <option value="pppoe">PPPoE</option>
+            <option value="">— Auto-detect —</option>
             <option value="static">Static IP (Firewall)</option>
             <option value="hotspot">Hotspot (IP Binding)</option>
           </select>
@@ -616,6 +638,26 @@
           <label class="flbl">No. KTP / NIK</label>
           <input type="text" class="finput" id="custNik" placeholder="16 digit" maxlength="16" inputmode="numeric" style="font-family:'DM Mono',monospace">
           <div class="form-hint">Nomor KTP pelanggan (opsional)</div>
+        </div>
+
+        <div class="form-sec"><span class="form-sec-t">Dokumen Foto</span><span class="form-sec-hint">Foto KTP dan foto rumah (opsional, max 8MB)</span></div>
+        <div class="form-field span-all">
+          <div class="cust-photo-grid">
+            <div class="cust-photo-box" id="custPhotoBox_ktp" onclick="custPickPhoto('ktp')">
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/*" id="custPhoto_ktp" style="display:none" onchange="custOnPhotoPick('ktp', this)">
+              <div class="cust-photo-inner" id="custPhotoInner_ktp">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 9h4M14 13h4M3 17l4-4 3 3"/></svg>
+                <span>Foto KTP</span>
+              </div>
+            </div>
+            <div class="cust-photo-box" id="custPhotoBox_house" onclick="custPickPhoto('house')">
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/*" id="custPhoto_house" style="display:none" onchange="custOnPhotoPick('house', this)">
+              <div class="cust-photo-inner" id="custPhotoInner_house">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <span>Foto Rumah</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- ═══ Alamat berjenjang (Provinsi → Kab → Kec → Desa, dari API wilayah) ═══ -->
@@ -710,40 +752,40 @@
       <!-- ═══ PPPoE Account Creation Panel ═══ -->
       <div id="pppoeCreateBox" style="margin-top:18px;padding:14px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;">
         <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin:0;">
-          <input type="checkbox" id="custCreatePppoe" style="width:18px;height:18px;accent-color:#2563eb;cursor:pointer;flex-shrink:0;margin-top:2px;">
+          <input type="checkbox" id="custCreatePppoe" checked style="width:18px;height:18px;accent-color:#2563eb;cursor:pointer;flex-shrink:0;margin-top:2px;">
           <div style="flex:1;min-width:0;">
             <div style="font-size:13px;font-weight:700;color:#1e40af;display:flex;align-items:center;gap:6px;">
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
-              Buat Akun PPPoE di MikroTik
+              <span id="pppoeCreateTitle">Sekalian buat user PPPoE</span>
             </div>
-            <div style="font-size:11px;color:#1d4ed8;margin-top:2px;line-height:1.4;">
-              Otomatis tambahkan secret PPPoE ke router yang dipilih saat customer disimpan.
+            <div id="pppoeCreateHint" style="font-size:11px;color:#1d4ed8;margin-top:2px;line-height:1.4;">
+              Satu langkah: data pelanggan + akun PPPoE. Jika RADIUS aktif, user masuk ke radcheck (bukan PPP Secret MikroTik).
             </div>
           </div>
         </label>
 
-        <!-- Form PPPoE — muncul saat checkbox aktif -->
-        <div id="pppoeFormBox" style="display:none;margin-top:14px;padding-top:14px;border-top:1px dashed #93c5fd;">
+        <!-- Form PPPoE — default tampil saat tambah pelanggan baru -->
+        <div id="pppoeFormBox" style="margin-top:14px;padding-top:14px;border-top:1px dashed #93c5fd;">
           <div class="form-grid-2">
             <div class="form-field span-all">
               <label class="flbl" style="display:flex;align-items:center;gap:6px;">
-                Router MikroTik untuk PPPoE *
+                Router MikroTik <span id="pppoeRouterReq" style="display:none">*</span>
                 <span id="pppoeRouterSpinner" style="display:none;font-size:10px;color:#64748b;font-weight:400;text-transform:none">⏳ memuat...</span>
               </label>
               <select class="finput" id="custPppoeRouter">
                 <option value="">— Memuat daftar router —</option>
               </select>
-              <div class="form-hint">Daftar router diambil dari halaman <strong>/devices</strong> (tipe Router, status aktif)</div>
+              <div class="form-hint" id="pppoeRouterHint">Opsional jika RADIUS aktif (untuk isolir/kick sesi). Wajib jika user dibuat sebagai secret lokal.</div>
             </div>
             <div class="form-field span-all">
               <label class="flbl" style="display:flex;align-items:center;gap:6px;">
-                Profile PPPoE *
+                Profile / Group RADIUS
                 <span id="pppoeProfileSpinner" style="display:none;font-size:10px;color:#64748b;font-weight:400;text-transform:none">⏳ memuat...</span>
               </label>
               <select class="finput" id="custPppoeProfile">
-                <option value="">— Pilih router dulu —</option>
+                <option value="">— Opsional (dari paket / group RADIUS) —</option>
               </select>
-              <div class="form-hint">Daftar profile diambil langsung dari router yang dipilih</div>
+              <div class="form-hint" id="pppoeProfileHint">Nama group FreeRADIUS atau PPP profile. Rate-limit juga diambil dari paket pelanggan.</div>
             </div>
             <div id="custPPPoEAddSlot" class="form-field span-all">
               <label class="flbl" style="display:flex;align-items:center;gap:6px;">
@@ -907,7 +949,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/customers.js?v=1779700000"></script>
+<script src="/js/customers.js?v=1788359101"></script>
 <script>
 /* ── Extra stat update from loadCustomerStats ── */
 const _origStats = window.loadCustomerStats;

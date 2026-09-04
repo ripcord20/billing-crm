@@ -1927,13 +1927,20 @@ async function _wizCreatePppoeExecute(chatId, allowControl) {
   const d = w.data;
   _wizClear(chatId);
   try {
-    const { getMikrotikInstanceByDevice } = require('./MikrotikService');
-    const mt = await getMikrotikInstanceByDevice(d.deviceId);
-    await mt.createPPPoESecret({ name: d.username, password: d.password, profile: d.profile, service: 'pppoe' });
-    await _audit(chatId, 'pppoe_create', `Buat PPPoE user ${d.username} (profile ${d.profile}) di ${d.deviceName}`, { targetType: 'device', targetId: d.deviceId, newData: { username: d.username, profile: d.profile } });
+    const PppoeAccount = require('./PppoeAccountService');
+    const result = await PppoeAccount.provisionStandalone({
+      username: d.username,
+      password: d.password,
+      profile: d.profile,
+      deviceId: d.deviceId,
+      backend: 'auto',
+      failIfExists: true
+    });
+    if (!result.success) throw new Error(result.message || 'Gagal membuat user');
+    const where = result.backend === 'radius' ? 'RADIUS' : d.deviceName;
+    await _audit(chatId, 'pppoe_create', `Buat PPPoE user ${d.username} (profile ${d.profile}) di ${where}`, { targetType: 'device', targetId: d.deviceId, newData: { username: d.username, profile: d.profile, backend: result.backend } });
     await _reply(chatId,
-      `<b>PPPoE user berhasil dibuat.</b>\n\n` +
-      `Router   : <b>${esc(d.deviceName)}</b>\n` +
+      `<b>PPPoE user berhasil dibuat di ${esc(where)}.</b>\n\n` +
       `Username : <code>${esc(d.username)}</code>\n` +
       `Profile  : <b>${esc(d.profile)}</b>`);
   } catch (e) {
