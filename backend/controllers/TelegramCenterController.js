@@ -69,6 +69,9 @@ const TPL_KEYS = [
   'device_down', 'device_recover', 'ont_down', 'ont_recover',
   'ip_down', 'ip_recover', 'pppoe_down', 'pppoe_recover',
   'pppoe_connect', 'pppoe_disconnect',
+  'router_down', 'router_recover', 'resource_down', 'resource_recover',
+  'iface_down', 'iface_recover', 'uplink_down', 'uplink_recover',
+  'alert_offline', 'alert_offline_ok',
 ];
 
 async function _loadCfg() {
@@ -101,6 +104,7 @@ module.exports = {
         defaults = { ...(mon.TPL_DEFAULTS || {}) };
       } catch (_) { defaults = {}; }
       try { Object.assign(defaults, require('../services/NetworkHealthService').TPL_DEFAULTS || {}); } catch (_) {}
+      try { Object.assign(defaults, require('../services/UplinkMonitorService').TPL_DEFAULTS || {}); } catch (_) {}
       try { Object.assign(defaults, require('../services/PppoeFeedService').FEED_TPL_DEFAULTS || {}); } catch (_) {}
       try { Object.assign(defaults, require('../services/ThresholdAlertService').TPL_DEFAULTS || {}); } catch (_) {}
 
