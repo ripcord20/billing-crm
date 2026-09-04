@@ -213,7 +213,7 @@ exports.exportExcel = async (req, res) => {
     );
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'DIGSnet';
+    workbook.creator = 'Skynet';
     workbook.created = new Date();
     const sheet = workbook.addWorksheet('Customers');
 
@@ -283,7 +283,7 @@ exports.exportExcel = async (req, res) => {
 exports.downloadTemplate = async (req, res) => {
   try {
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'DIGSnet';
+    workbook.creator = 'Skynet';
     const sheet = workbook.addWorksheet('Customers');
 
     sheet.columns = COLUMNS.map(c => ({
@@ -626,7 +626,7 @@ exports.importPreview = async (req, res) => {
           }
         });
       } else {
-        routerCheckWarnings.push('Tidak ada router MikroTik aktif yang terdaftar di FLAYNET. Validasi PPPoE/IP ke router di-skip.');
+        routerCheckWarnings.push('Tidak ada router MikroTik aktif yang terdaftar di Skynet. Validasi PPPoE/IP ke router di-skip.');
       }
     } catch (err) {
       // Fail-soft: kalau seluruh proses fetch gagal, lanjut tanpa validation

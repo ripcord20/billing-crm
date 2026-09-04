@@ -12,6 +12,9 @@ let _pppoeManuallyEdited = false;
 // → kalau berubah, tampilkan modal konfirmasi sync ke router.
 // Direset ke '' setiap kali openAddCustomer() (tidak relevan di tambah baru).
 let _originalPppoeUsername = '';
+let _pendingPhotos = { ktp: null, house: null };
+let _photoObjectUrls = [];
+let _photosToDelete = { ktp: false, house: false };
 const AVATAR_BG = ['#2563eb','#0891b2','#059669','#d97706','#dc2626','#0284c7','#16a34a','#ea580c','#0369a1','#0d9488'];
 
 // Toggle field MAC Address — hanya relevan untuk tipe koneksi Hotspot (IP Binding).
@@ -205,6 +208,7 @@ window.editCustomer = async function (id) {
   // Load Parent ODP dropdown + preselect dari c.infra_parent_id
   loadInfraParents(c.infra_parent_id);
   _updateAutoInfraBanner();
+  _fillCustomerPhotos(c);
 
   // Tampilkan panel akses portal & load creds (hanya di mode edit)
   const portalBox = document.getElementById('portalPanelBox');
@@ -227,8 +231,8 @@ window.toggleIsolate = async function (id, action) {
 // Modal konfirmasi hapus customer dengan opsi sync ke router MikroTik.
 //
 // Dipanggil oleh deleteCustomer(). Return Promise<'sync' | 'db_only' | 'cancel'>:
-//   - 'sync'    : hapus customer di FLAYNET + hapus secret PPPoE di router
-//   - 'db_only' : hapus customer di FLAYNET saja (secret router tidak disentuh)
+//   - 'sync'    : hapus customer di Skynet + hapus secret PPPoE di router
+//   - 'db_only' : hapus customer di Skynet saja (secret router tidak disentuh)
 //   - 'cancel'  : batalkan, tidak menghapus apa-apa
 //
 // Param `customer` adalah object minimal { id, name, pppoe_username, mikrotik_id, mikrotik_name }.
@@ -271,7 +275,7 @@ function _confirmCustomerDelete(customer) {
         ${canSync ? `
           <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:12px;color:#92400e;line-height:1.5;margin-bottom:6px;">
             <strong>Apa yang ingin Anda lakukan?</strong><br>
-            Tanpa hapus secret di router, customer mungkin masih bisa login PPPoE meski sudah dihapus di FLAYNET.
+            Tanpa hapus secret di router, customer mungkin masih bisa login PPPoE meski sudah dihapus di Skynet.
           </div>` : `
           <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:10px 12px;font-size:12px;color:#475569;line-height:1.5;margin-bottom:6px;">
             ${syncDisabledReason}, jadi tidak ada secret di router yang perlu dihapus.
@@ -285,7 +289,7 @@ function _confirmCustomerDelete(customer) {
         </button>
         <button id="__custDelDbOnly" style="background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:8px;padding:11px 14px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;line-height:1.4;">
           <div>Hapus dari database saja (tanpa sentuh router)</div>
-          <div style="font-size:11px;font-weight:400;color:#64748b;margin-top:2px;">${hasPppoe ? 'Pilih ini kalau Anda sudah hapus secret manual via Winbox.' : 'Hanya hapus record di database FLAYNET.'}</div>
+          <div style="font-size:11px;font-weight:400;color:#64748b;margin-top:2px;">${hasPppoe ? 'Pilih ini kalau Anda sudah hapus secret manual via Winbox.' : 'Hanya hapus record di database Skynet.'}</div>
         </button>
         <button id="__custDelCancel" style="background:#fff;color:#64748b;border:1px solid #e2e8f0;border-radius:8px;padding:9px 14px;font-size:12.5px;font-weight:500;cursor:pointer;margin-top:2px;">
           Batal
@@ -477,6 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadCustomers();
   setupSearch();
   loadFilterProvinces();
+  startLiveConnMonitor();
 });
 
 window.applyFilter = function(status) {
@@ -558,6 +563,85 @@ function _setPct(id, text) {
   if (el) el.textContent = text;
 }
 
+// Status kolom = koneksi realtime (sesi PPPoE), bukan status billing "active".
+const _liveOnline = {}; // id -> { online, uptime }
+
+function _liveStatusParts(c) {
+  var billing = String(c.status || '').toLowerCase();
+  if (billing === 'isolated') return { cls: 'sb-suspended', dot: '#dc2626', label: 'Isolir' };
+  if (billing === 'suspended') return { cls: 'sb-suspended', dot: '#dc2626', label: 'Suspended' };
+  if (billing === 'inactive') return { cls: 'sb-inactive', dot: '#94a3b8', label: 'Nonaktif' };
+
+  var live = _liveOnline[c.id];
+  if (live && live.online === true) return { cls: 'sb-active', dot: '#16a34a', label: 'Terhubung' };
+  if (live && live.online === false) return { cls: 'sb-offline', dot: '#94a3b8', label: 'Offline' };
+  return { cls: 'sb-checking', dot: '#cbd5e1', label: 'Cek…' };
+}
+
+function _statusCellHtml(c, isOv, isDs) {
+  var live = _liveStatusParts(c);
+  var html = '<span class="sb ' + live.cls + '"><span class="sb-dot" style="background:' + live.dot + '"></span>' + live.label + '</span>';
+  if (c.status === 'isolated' || c.status === 'suspended' || c.status === 'inactive') return html;
+  if (isOv) html += '<div style="margin-top:4px"><span class="sb sb-overdue"><span class="sb-dot" style="background:#dc2626"></span>Overdue</span></div>';
+  else if (isDs) html += '<div style="margin-top:4px"><span class="sb sb-due-soon"><span class="sb-dot" style="background:#ea580c"></span>Due Soon</span></div>';
+  return html;
+}
+
+function _paintLiveStatus() {
+  var rows = document.querySelectorAll('#customerTable tr[data-id]');
+  rows.forEach(function(tr) {
+    var id = parseInt(tr.getAttribute('data-id'), 10);
+    var cell = tr.querySelector('.cust-status-cell');
+    if (!cell || !id) return;
+    var c = {
+      id: id,
+      status: tr.getAttribute('data-billing') || 'active'
+    };
+    var isOv = tr.getAttribute('data-overdue') === '1';
+    var isDs = tr.getAttribute('data-duesoon') === '1';
+    cell.innerHTML = _statusCellHtml(c, isOv, isDs);
+  });
+}
+
+function startLiveConnMonitor() {
+  if (window._custLiveStarted) return;
+  window._custLiveStarted = true;
+
+  function ingest(snap) {
+    if (!snap || !snap.success || !Array.isArray(snap.data)) return;
+    snap.data.forEach(function(r) {
+      _liveOnline[r.id] = { online: !!r.online, uptime: r.uptime || null };
+    });
+    _paintLiveStatus();
+  }
+
+  function bindSocket() {
+    var s = (typeof App !== 'undefined') && App.socket;
+    if (!s || s._custLiveBound) return !!s;
+    s._custLiveBound = true;
+    s.on('traffic:update', ingest);
+    var sub = function() { try { s.emit('traffic:subscribe'); } catch (_) {} };
+    if (s.connected) sub();
+    s.on('connect', sub);
+    return true;
+  }
+
+  bindSocket();
+  if (typeof App !== 'undefined' && App.api) {
+    App.api('/mikrotik/customer-traffic').then(ingest).catch(function() {});
+  }
+  setTimeout(bindSocket, 800);
+  setTimeout(function() {
+    var s = (typeof App !== 'undefined') && App.socket;
+    if (s && s.connected) return;
+    if (window._custLivePoll) return;
+    window._custLivePoll = setInterval(function() {
+      if (typeof App === 'undefined' || !App.api) return;
+      App.api('/mikrotik/customer-traffic').then(ingest).catch(function() {});
+    }, 4000);
+  }, 2000);
+}
+
 // ── LIST ──────────────────────────────────────────────────────
 async function loadCustomers() {
   const search = document.getElementById('searchCustomer')?.value || '';
@@ -635,13 +719,6 @@ async function loadCustomers() {
     var isOv = (c.latest_invoice_status === 'overdue') && c.status === 'active';
     var isDs = (c.latest_invoice_status === 'unpaid')  && c.status === 'active' && diffCk !== null && diffCk >= 0 && diffCk <= 3;
 
-    var stCls = 'sb-inactive', stDot = '#94a3b8', stLabel = c.status||'–';
-    if      (isOv)                   { stCls='sb-overdue';  stDot='#dc2626'; stLabel='Overdue'; }
-    else if (isDs)                   { stCls='sb-due-soon'; stDot='#ea580c'; stLabel='Due Soon'; }
-    else if (c.status==='active')    { stCls='sb-active';   stDot='#16a34a'; stLabel='Aktif'; }
-    else if (c.status==='isolated')  { stCls='sb-suspended';stDot='#dc2626'; stLabel='Isolir'; }
-    else if (c.status==='suspended') { stCls='sb-suspended';stDot='#dc2626'; stLabel='Suspended'; }
-
     var price = (c.package && c.package.price)
       ? 'Rp '+Number(c.package.price).toLocaleString('id-ID')
       : (c.monthly_fee ? 'Rp '+Number(c.monthly_fee).toLocaleString('id-ID') : '–');
@@ -654,7 +731,7 @@ async function loadCustomers() {
     var pkgName   = (c.package && c.package.name) ? _esc(c.package.name) : (c.package_name ? _esc(c.package_name) : '–');
     var actDate   = c.installation_date ? new Date(c.installation_date).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'}) : '–';
 
-    return '<tr data-id="'+c.id+'">'
+    return '<tr data-id="'+c.id+'" data-billing="'+_esc(c.status||'')+'" data-overdue="'+(isOv?'1':'0')+'" data-duesoon="'+(isDs?'1':'0')+'">'
       + '<td><span class="cid-badge">'+_esc(c.customer_id)+'</span></td>'
       + '<td>'
         + '<div style="display:flex;align-items:center;gap:11px">'
@@ -674,7 +751,7 @@ async function loadCustomers() {
       + '<td style="font-weight:700;color:#1a6ef5;font-size:13px">'+price+'</td>'
       + '<td style="color:#6b7fa8">'+actDate+'</td>'
       + '<td><div style="line-height:1.5">'+dueDateHtml+'</div></td>'
-      + '<td><span class="sb '+stCls+'"><span class="sb-dot" style="background:'+stDot+'"></span>'+stLabel+'</span></td>'
+      + '<td class="cust-status-cell">'+_statusCellHtml(c, isOv, isDs)+'</td>'
       + '<td style="text-align:right;padding-right:18px">'
         + '<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">'
           + '<button class="rb rb-wa" onclick="sendWA(\''+_esc(c.phone||'')+'\')" >WA</button>'
@@ -690,6 +767,7 @@ async function loadCustomers() {
   }).join('');
 
   _renderPagination(total, 20);
+  _paintLiveStatus();
 }
 
 function sendWA(phone) {
@@ -800,7 +878,7 @@ function _confirmPppoeRename(oldName, newName) {
         </div>
         <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:12px;color:#92400e;line-height:1.5;margin-bottom:6px;">
           <strong>Apa yang ingin Anda lakukan?</strong><br>
-          Tanpa sync ke router, data di FLAYNET dan MikroTik akan tidak konsisten.
+          Tanpa sync ke router, data di Skynet dan MikroTik akan tidak konsisten.
         </div>
       </div>
       <div style="padding:14px 22px;background:#fafbfc;border-top:1px solid #f1f5f9;display:flex;flex-direction:column;gap:8px;">
@@ -945,7 +1023,7 @@ async function _saveCustomerInner() {
   // ═══ STEP 2a: Intercept PPPoE username rename di mode EDIT ═══
   // Kalau user mengubah pppoe_username dari value aslinya, butuh konfirmasi
   // apakah harus sync ke router MikroTik atau hanya update DB. Hal ini supaya
-  // tidak terjadi desync silent antara DB FLAYNET dan secret di router.
+  // tidak terjadi desync silent antara DB Skynet dan secret di router.
   //
   // Skip modal kalau:
   //   - Mode tambah baru (bukan edit)
@@ -1064,6 +1142,13 @@ async function _saveCustomerInner() {
   const data   = await App.api(url, { method, body: JSON.stringify(body) });
 
   if (data?.success) {
+    const savedId = (data.data && data.data.id) || _custEditId;
+    if (savedId && (_pendingPhotos.ktp || _pendingPhotos.house || _photosToDelete.ktp || _photosToDelete.house)) {
+      btn.textContent = 'Mengunggah foto...';
+      const photoMsg = await _uploadPendingCustomerPhotos(savedId);
+      if (photoMsg) data._photoMsg = photoMsg;
+    }
+
     // Sync kredensial portal (cuma jalan di mode edit, panel hidden = no-op)
     const ppRes = await ppSaveCredentials();
     if (!ppRes.ok) {
@@ -1142,6 +1227,7 @@ async function _saveCustomerInner() {
         toastType = 'warning';
       }
     }
+    if (data._photoMsg) msg += data._photoMsg;
     App.showToast(msg, toastType);
   } else {
     // Customer gagal disimpan tapi PPPoE sudah dibuat — beri warning supaya admin tahu
@@ -1261,11 +1347,142 @@ function _clearForm() {
   _setVal('custInstallDate', todayStr);
   if (typeof onActivationDateChange === 'function') onActivationDateChange();
   const idStatus = document.getElementById('custIdStatus'); if (idStatus) idStatus.innerHTML = '';
+  _resetCustomerPhotos();
 }
 function _setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 function _setVal(id, val)  { const el = document.getElementById(id); if (el) el.value = val; }
 function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function _debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+// ── Foto KTP / Rumah ──────────────────────────────────────────
+
+function _customerPhotoUrl(c, slot) {
+  const docs = (c && c.documents && !Array.isArray(c.documents) && typeof c.documents === 'object') ? c.documents : {};
+  if (docs[slot] && docs[slot].url) return docs[slot].url;
+  if (slot === 'ktp') return (c && c.ktp_photo) || '';
+  if (slot === 'house') return (c && c.house_photo) || '';
+  return '';
+}
+
+function _revokePhotoUrls() {
+  _photoObjectUrls.forEach(u => { try { URL.revokeObjectURL(u); } catch (_) {} });
+  _photoObjectUrls = [];
+}
+
+function _photoEmptyInner(slot) {
+  if (slot === 'ktp') {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 9h4M14 13h4M3 17l4-4 3 3"/></svg><span>Foto KTP</span>';
+  }
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Foto Rumah</span>';
+}
+
+function _renderPhotoBox(slot, url) {
+  const box = document.getElementById('custPhotoBox_' + slot);
+  const inner = document.getElementById('custPhotoInner_' + slot);
+  const clearBtn = document.getElementById('custPhotoClear_' + slot);
+  if (!box || !inner) return;
+  const fileInput = document.getElementById('custPhoto_' + slot);
+  if (url) {
+    box.classList.add('filled');
+    inner.innerHTML = '<img src="'+_esc(url)+'" alt="'+slot+'">';
+    if (clearBtn) clearBtn.hidden = false;
+  } else {
+    box.classList.remove('filled');
+    inner.innerHTML = _photoEmptyInner(slot);
+    if (fileInput) fileInput.value = '';
+    if (clearBtn) clearBtn.hidden = true;
+  }
+}
+
+function _resetCustomerPhotos() {
+  _pendingPhotos = { ktp: null, house: null };
+  _photosToDelete = { ktp: false, house: false };
+  _revokePhotoUrls();
+  _renderPhotoBox('ktp', null);
+  _renderPhotoBox('house', null);
+}
+
+function _fillCustomerPhotos(c) {
+  _pendingPhotos = { ktp: null, house: null };
+  _photosToDelete = { ktp: false, house: false };
+  _revokePhotoUrls();
+  _renderPhotoBox('ktp', _customerPhotoUrl(c, 'ktp') || null);
+  _renderPhotoBox('house', _customerPhotoUrl(c, 'house') || null);
+}
+
+window.custPickPhoto = function(slot) {
+  const el = document.getElementById('custPhoto_' + slot);
+  if (el) el.click();
+};
+
+window.custClearPhoto = function(ev, slot) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  _pendingPhotos[slot] = null;
+  _photosToDelete[slot] = true;
+  const el = document.getElementById('custPhoto_' + slot);
+  if (el) el.value = '';
+  _renderPhotoBox(slot, null);
+};
+
+window.custOnPhotoPick = function(slot, input) {
+  const f = input && input.files && input.files[0];
+  if (!f) return;
+  if (f.size > 8 * 1024 * 1024) {
+    App.showToast('Ukuran file maksimal 8MB', 'error');
+    input.value = '';
+    return;
+  }
+  _pendingPhotos[slot] = f;
+  _photosToDelete[slot] = false;
+  const url = URL.createObjectURL(f);
+  _photoObjectUrls.push(url);
+  _renderPhotoBox(slot, url);
+};
+
+async function _uploadPendingCustomerPhotos(customerId) {
+  const slots = ['ktp', 'house'];
+  const uploaded = [];
+  const failed = [];
+  const headersAuth = { 'X-Requested-With': 'XMLHttpRequest' };
+  if (App.token && App.token !== 'null') headersAuth.Authorization = 'Bearer ' + App.token;
+  for (const slot of slots) {
+    const file = _pendingPhotos[slot];
+    if (file) {
+      const fd = new FormData();
+      fd.append('photo', file);
+      try {
+        const r = await fetch('/api/customers/' + customerId + '/document/' + slot, {
+          method: 'POST',
+          credentials: 'include',
+          headers: headersAuth,
+          body: fd
+        });
+        const d = await r.json().catch(() => null);
+        if (r.ok && d && d.success) uploaded.push(slot === 'ktp' ? 'KTP' : 'Rumah');
+        else failed.push((slot === 'ktp' ? 'KTP' : 'Rumah') + ': ' + ((d && d.message) || ('HTTP ' + r.status)));
+      } catch (e) {
+        failed.push((slot === 'ktp' ? 'KTP' : 'Rumah') + ': ' + e.message);
+      }
+      continue;
+    }
+    if (_photosToDelete[slot]) {
+      try {
+        const r = await App.api('/customers/' + customerId + '/document/' + slot, { method: 'DELETE' });
+        if (!(r && r.success)) failed.push((slot === 'ktp' ? 'KTP' : 'Rumah') + ': gagal hapus');
+      } catch (e) {
+        failed.push((slot === 'ktp' ? 'KTP' : 'Rumah') + ': ' + e.message);
+      }
+    }
+  }
+  _pendingPhotos = { ktp: null, house: null };
+  _photosToDelete = { ktp: false, house: false };
+  if (!uploaded.length && !failed.length) return '';
+  if (failed.length) {
+    App.showToast('Foto gagal: ' + failed.join('; '), 'warning');
+    return ' • foto sebagian gagal';
+  }
+  return ' • Foto ' + uploaded.join(' & ') + ' tersimpan ✓';
+}
 
 // Note: tombol Simpan sudah punya inline onclick="saveCustomerBtn()" di customers.ejs
 // yang memanggil saveCustomer(). JANGAN tambahkan addEventListener('click', saveCustomer)

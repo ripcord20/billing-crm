@@ -330,7 +330,7 @@ app.use(async (req, res, next) => {
     }
     res.locals.appSettings = cfg;
     res.locals.brandMode   = cfg.brand_mode  || 'name_tagline';
-    res.locals.appName     = cfg.app_name    || 'DIGSnet';
+    res.locals.appName     = cfg.app_name    || 'Skynet';
     res.locals.appTagline  = cfg.app_tagline || '';
     res.locals.logoUrl     = cfg.logo_url    || '';
     res.locals.faviconUrl  = cfg.favicon_url || '';
@@ -342,7 +342,7 @@ app.use(async (req, res, next) => {
   } catch(e) {
     res.locals.appSettings = {};
     res.locals.brandMode   = 'name_tagline';
-    res.locals.appName     = 'DIGSnet';
+    res.locals.appName     = 'Skynet';
     res.locals.appTagline  = '';
     res.locals.logoUrl     = '';
     res.locals.faviconUrl  = '';
@@ -928,6 +928,30 @@ const startServer = async () => {
         logger.info('Migrated: registration_requests.installed_photo added');
       }
 
+      // Foto KTP & rumah di tabel customers (form tambah/edit pelanggan)
+      if (!(await hasColumn('customers', 'ktp_photo'))) {
+        await db.sequelize.query(`ALTER TABLE customers ADD COLUMN ktp_photo VARCHAR(255) NULL`);
+        logger.info('Migrated: customers.ktp_photo added');
+      }
+      if (!(await hasColumn('customers', 'house_photo'))) {
+        await db.sequelize.query(`ALTER TABLE customers ADD COLUMN house_photo VARCHAR(255) NULL`);
+        logger.info('Migrated: customers.house_photo added');
+      }
+
+      // Modul Wilayah (kartu area + isolir massal) — tabel baru, tidak mengubah skema lama
+      try {
+        if (db.Wilayah) {
+          await db.Wilayah.sync();
+          logger.info('Migrated: wilayah table synced');
+        }
+      } catch (e) {
+        logger.warn('Failed to sync wilayah: ' + (e.message || e));
+      }
+      if (!(await hasColumn('customers', 'wilayah_id'))) {
+        await db.sequelize.query(`ALTER TABLE customers ADD COLUMN wilayah_id INT NULL`);
+        logger.info('Migrated: customers.wilayah_id added');
+      }
+
       // 3b) Backfill created_at/updated_at yang NULL (penyebab "Invalid Date").
       //     Pakai updated_at bila ada, jika tidak pakai NOW().
       try {
@@ -1141,8 +1165,8 @@ const startServer = async () => {
 
     // Start main HTTP server
     server.listen(PORT, () => {
-      logger.info(`FLAYNET.COM CRM running on http://localhost:${PORT}`);
-      console.log(`\n FLAYNET.COM CRM running on http://localhost:${PORT}\n`);
+      logger.info(`Skynet CRM running on http://localhost:${PORT}`);
+      console.log(`\n Skynet CRM running on http://localhost:${PORT}\n`);
     });
 
     // Graceful shutdown

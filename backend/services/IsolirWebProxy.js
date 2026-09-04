@@ -5,7 +5,7 @@
  *
  * Strategi:
  *   - Aktifkan MikroTik Web Proxy (transparent mode, port 8080)
- *   - DST-NAT redirect HTTP (port 80) dari address-list FLAYNET-ISOLIR
+ *   - DST-NAT redirect HTTP (port 80) dari address-list SKYNET-ISOLIR
  *     ke port web proxy (8080)
  *   - Web Proxy Access rule: catch-all `action=deny redirect-to=<URL>`
  *     (proxy access TIDAK support src-address-list, hanya src-address.
@@ -31,15 +31,23 @@
  *   1. /ip proxy → enabled, port 8080
  *   2. /ip proxy access → catch-all deny+redirect rule (single rule)
  *   3. /ip firewall nat → redirect port 80 ke 8080 untuk customer isolir
- *      (filter src-address-list=FLAYNET-ISOLIR di sini, BUKAN di proxy)
+ *      (filter src-address-list=SKYNET-ISOLIR di sini, BUKAN di proxy)
  * ────────────────────────────────────────────────────────────────────
  */
 const { sequelize } = require('../models');
 
 // ── Konstanta ──
 const PROXY_PORT = 8080;
-const TAG_NAT_REDIR  = 'FLAYNET-ISOLIR-WP-NAT';   // NAT redirect port 80 → 8080
-const TAG_PROXY_RULE = 'FLAYNET-ISOLIR-WP-DENY';  // Proxy access rule
+const LIST_ISOLIR    = 'SKYNET-ISOLIR';
+const TAG_NAT_REDIR  = 'SKYNET-ISOLIR-WP-NAT';   // NAT redirect port 80 → 8080
+const TAG_PROXY_RULE = 'SKYNET-ISOLIR-WP-DENY';  // Proxy access rule
+const LEGACY_TAG_NAT_REDIR  = 'FLAYNET-ISOLIR-WP-NAT';
+const LEGACY_TAG_PROXY_RULE = 'FLAYNET-ISOLIR-WP-DENY';
+
+function isProxyAccessTag(comment) {
+  if (!comment) return false;
+  return comment.startsWith(TAG_PROXY_RULE) || comment.startsWith(LEGACY_TAG_PROXY_RULE);
+}
 
 // ════════════════════════════════════════════════════════════════════════
 // HELPER untuk akses settings dari DB
@@ -138,7 +146,7 @@ async function setupIsolirWebProxy(api) {
     const existing = await runWithRetry(api, ['/ip/proxy/access/print']);
     let removed = 0;
     for (const e of existing) {
-      if (e.comment && e.comment.startsWith(TAG_PROXY_RULE)) {
+      if (e.comment && isProxyAccessTag(e.comment)) {
         try {
           await runWithRetry(api, ['/ip/proxy/access/remove', '=.id=' + e['.id']]);
           removed++;
@@ -188,13 +196,15 @@ async function setupIsolirWebProxy(api) {
     }
   } catch (_) { /* abaikan */ }
 
-  // ── 5. Hapus NAT redirect lama (tag kita) ──
+  // ── 5. Hapus NAT redirect lama (tag baru + FLAYNET) ──
   try {
-    const existing = await runWithRetry(api, ['/ip/firewall/nat/print', '?comment=' + TAG_NAT_REDIR]);
-    for (const e of existing) {
-      try {
-        await runWithRetry(api, ['/ip/firewall/nat/remove', '=.id=' + e['.id']]);
-      } catch (_) {}
+    for (const tag of [TAG_NAT_REDIR, LEGACY_TAG_NAT_REDIR]) {
+      const existing = await runWithRetry(api, ['/ip/firewall/nat/print', '?comment=' + tag]);
+      for (const e of existing) {
+        try {
+          await runWithRetry(api, ['/ip/firewall/nat/remove', '=.id=' + e['.id']]);
+        } catch (_) {}
+      }
     }
   } catch (_) {}
 
@@ -205,7 +215,7 @@ async function setupIsolirWebProxy(api) {
       '=chain=dstnat',
       '=protocol=tcp',
       '=dst-port=80',
-      '=src-address-list=FLAYNET-ISOLIR',
+      '=src-address-list=' + LIST_ISOLIR,
       '=action=redirect',
       '=to-ports=' + String(PROXY_PORT),
       '=comment=' + TAG_NAT_REDIR,
@@ -257,7 +267,7 @@ async function teardownIsolirWebProxy(api) {
     const rules = await runWithRetry(api, ['/ip/proxy/access/print']);
     let removed = 0;
     for (const e of rules) {
-      if (e.comment && e.comment.startsWith(TAG_PROXY_RULE)) {
+      if (e.comment && isProxyAccessTag(e.comment)) {
         try {
           await runWithRetry(api, ['/ip/proxy/access/remove', '=.id=' + e['.id']]);
           removed++;
@@ -270,13 +280,16 @@ async function teardownIsolirWebProxy(api) {
   }
 
   try {
-    const rules = await runWithRetry(api, ['/ip/firewall/nat/print', '?comment=' + TAG_NAT_REDIR]);
+    const rules = await runWithRetry(api, ['/ip/firewall/nat/print']);
     let removed = 0;
     for (const e of rules) {
-      try {
-        await runWithRetry(api, ['/ip/firewall/nat/remove', '=.id=' + e['.id']]);
-        removed++;
-      } catch (_) {}
+      const cmt = e.comment || '';
+      if (cmt === TAG_NAT_REDIR || cmt === LEGACY_TAG_NAT_REDIR) {
+        try {
+          await runWithRetry(api, ['/ip/firewall/nat/remove', '=.id=' + e['.id']]);
+          removed++;
+        } catch (_) {}
+      }
     }
     if (removed) results.push(`✓ ${removed} NAT redirect dihapus`);
   } catch (e) {
@@ -308,7 +321,7 @@ async function getWebProxyStatus(api) {
 
   try {
     const rules = await runWithRetry(api, ['/ip/proxy/access/print']);
-    const ours = rules.find(r => r.comment && r.comment.startsWith(TAG_PROXY_RULE));
+    const ours = rules.find(r => isProxyAccessTag(r.comment));
     if (ours) {
       status.access_rule_exists = true;
       status.redirect_target = ours['redirect-to'] || null;
@@ -316,8 +329,8 @@ async function getWebProxyStatus(api) {
   } catch (_) {}
 
   try {
-    const rules = await runWithRetry(api, ['/ip/firewall/nat/print', '?comment=' + TAG_NAT_REDIR]);
-    status.nat_redirect_exists = rules.length > 0;
+    const rules = await runWithRetry(api, ['/ip/firewall/nat/print']);
+    status.nat_redirect_exists = rules.some(r => r.comment === TAG_NAT_REDIR || r.comment === LEGACY_TAG_NAT_REDIR);
   } catch (_) {}
 
   return status;

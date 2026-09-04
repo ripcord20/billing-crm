@@ -27,6 +27,7 @@
  */
 
 const logger = require('../utils/logger');
+const { indexSessionsByName, findSession } = require('../utils/pppoeSessionMatch');
 
 // ── Konfigurasi ────────────────────────────────────────────────────────
 const POLL_INTERVAL_MS = 2000; // selaras dengan kebutuhan real-time frontend
@@ -137,6 +138,7 @@ async function computeSnapshot(opts = {}) {
       return {
         inst,
         host: inst.host,
+        deviceId: devId,
         queues:   q.status === 'fulfilled' ? (q.value || []) : [],
         sessions: s.status === 'fulfilled' ? (s.value || []) : [],
         arp:      a.status === 'fulfilled' ? (Array.isArray(a.value) ? a.value : []) : [],
@@ -175,6 +177,10 @@ async function computeSnapshot(opts = {}) {
     const anyRouterQueried   = routers.length > 0;
     const sessionsFetchOk = anyRouterQueried && routers.every(r => !r.errs.sessions);
     const queuesFetchOk   = anyRouterQueried && routers.every(r => !r.errs.queues);
+    const sessionsOkByDevice = {};
+    routers.forEach((r) => {
+      if (r.deviceId != null) sessionsOkByDevice[r.deviceId] = !r.errs.sessions;
+    });
     // pollHasData = poll ini benar-benar mendapat sinyal yang bisa dipakai
     // (ada session ATAU ada queue ATAU ada router yang fetch-nya sukses penuh).
     // Bila semua router gagal total → false → JANGAN paksa siapa pun offline.
@@ -213,10 +219,10 @@ async function computeSnapshot(opts = {}) {
       if (m && m[1]) queueByPPPoEUser[m[1]] = q;
     });
 
-    const sessionByName = {}, sessionByIP = {};
+    const sessionByName = indexSessionsByName(sessionData);
+    const sessionByIP = {};
     sessionData.forEach(s => {
-      if(s.name)    sessionByName[s.name.toLowerCase()] = s;
-      if(s.address) sessionByIP[s.address]              = s;
+      if (s.address) sessionByIP[s.address] = s;
     });
 
     // ARP: IP yang ada di ARP table = device aktif di jaringan
@@ -248,7 +254,7 @@ async function computeSnapshot(opts = {}) {
     // anomaly traffic justru perlu kelihatan).
     const { Op } = require('sequelize');
     const customers = await Customer.findAll({
-      attributes: ['id','customer_id','name','static_ip','pppoe_username','status','latitude','longitude'],
+      attributes: ['id','customer_id','name','static_ip','pppoe_username','status','latitude','longitude','mikrotik_id'],
       include: [{ model: Package, as: 'package', attributes: ['name','price'], required: false }],
       where: { status: { [Op.in]: ['active', 'isolated', 'suspended', 'inactive'] } }
     });
@@ -266,10 +272,17 @@ async function computeSnapshot(opts = {}) {
       const pppoeLc = pppoe ? pppoe.toLowerCase() : null;
 
       // Cari sesi PPPoE aktif dulu — IP-nya dipakai sebagai fallback target lookup.
-      const session = (pppoeLc && sessionByName[pppoeLc])
+      const session = findSession(sessionByName, pppoe, ip)
         || (ip && sessionByIP[ip])
         || null;
       const sessionIP = session?.address || null;
+
+      const custDevId = cust.mikrotik_id != null ? parseInt(cust.mikrotik_id, 10) : null;
+      const knownDev = Number.isFinite(custDevId) && Object.prototype.hasOwnProperty.call(sessionsOkByDevice, custDevId);
+      const mySessionsOk = knownDev ? !!sessionsOkByDevice[custDevId] : sessionsFetchOk;
+      // Kalau fetch /ppp/active untuk router pelanggan sukses, ada/tidaknya
+      // sesi adalah kebenaran realtime — jangan ditahan ping/queue/histeresis.
+      const pppoeAuthoritative = !!(pppoeLc && mySessionsOk);
 
       // Queue lookup, prioritas dari yang paling spesifik:
       //   1. Simple queue manual dgn target = static IP customer (± /32)
@@ -302,8 +315,8 @@ async function computeSnapshot(opts = {}) {
       const byDHCP   = ip ? !!(dhcpByIP[ip]?.active) : false;
       const byQueue  = (qRateIn + qRateOut) > 0;
 
-      // Online awal: HANYA PPPoE session. Untuk customer ber-IP, status online
-      // ditentukan oleh ping di tahap berikutnya (ping authoritative).
+      // Online awal: HANYA PPPoE session. Pelanggan PPPoE memakai /ppp/active
+      // sebagai kebenaran realtime (lihat pppoeAuthoritative di bawah).
       const isOnline = byPPPoE;
       const onlineSource = byPPPoE ? 'pppoe' : null;
 
@@ -320,8 +333,8 @@ async function computeSnapshot(opts = {}) {
       if (!isOnline) {
         if (!ip && !pppoe) {
           offlineReason = 'no-config';        // Belum diisi IP statis / PPPoE username
-        } else if (pppoe && !session && !ip) {
-          offlineReason = 'pppoe-no-session'; // PPPoE user belum login (tanpa IP cadangan)
+        } else if (pppoeAuthoritative || (pppoe && !session && !ip)) {
+          offlineReason = 'pppoe-no-session'; // PPPoE user belum login
         } else if (ip) {
           offlineReason = 'pinging';          // Sementara — akan jadi rto/online setelah ping
         } else if (pppoe && !session) {
@@ -351,6 +364,7 @@ async function computeSnapshot(opts = {}) {
         // Penanda: pelanggan PPPoE TANPA IP statis. Untuk jenis ini, ketiadaan
         // sesi hanya berarti offline bila fetch session sukses (lihat raw logic).
         _isPppoeOnly: !!(pppoe && !ip),
+        _pppoeAuthoritative: pppoeAuthoritative,
       };
     });
 
@@ -370,6 +384,7 @@ async function computeSnapshot(opts = {}) {
       // online). Berguna untuk diagnosa/L2 view, tapi ingat: saat MAC binding,
       // ini bisa false-online. Default tetap ping aktif.
       result.forEach(r => {
+        if (r._pppoeAuthoritative) return;
         if (!r.online && (r._byARP || r._byDHCP || r._byQueue)) {
           r.online = true;
           r.onlineSource = r._byARP ? 'arp' : r._byDHCP ? 'dhcp' : 'queue';
@@ -391,6 +406,10 @@ async function computeSnapshot(opts = {}) {
 
       // Sinyal awal dari cache ping yang masih valid.
       result.forEach(r => {
+        if (r._pppoeAuthoritative) {
+          r._raw = !!r.online;
+          return;
+        }
         if (r.online) { r._raw = true; return; }     // sudah online via PPPoE
         const activeBps = (r.rateDown || 0) + (r.rateUp || 0);
         if (activeBps >= TRAFFIC_ONLINE_BPS) { r._raw = true; r._rawSrc = 'traffic'; return; }
@@ -423,7 +442,7 @@ async function computeSnapshot(opts = {}) {
       // poll PERTAMA agar status PPPoE/queue tampil instan tanpa nunggu ping.
       const PING_CAP = (opts.maxPing != null) ? Math.max(0, opts.maxPing) : 300;
       const toPing = (PING_CAP === 0) ? [] : result
-        .filter(r => r.ip && r._raw === null)
+        .filter(r => r.ip && r._raw === null && !r._pppoeAuthoritative)
         .sort((a, b) => {
           const ca = _pingCache.get(a.ip), cb = _pingCache.get(b.ip);
           return (ca ? ca.ts : 0) - (cb ? cb.ts : 0); // paling lama dulu
@@ -462,6 +481,7 @@ async function computeSnapshot(opts = {}) {
     } else {
       // Ping dimatikan → fallback L2 (ARP/DHCP/queue) sebagai sinyal raw.
       result.forEach(r => {
+        if (r._pppoeAuthoritative) { r._raw = !!r.online; return; }
         if (r.online) { r._raw = true; return; }
         const activeBps = (r.rateDown || 0) + (r.rateUp || 0);
         if (activeBps >= TRAFFIC_ONLINE_BPS) { r._raw = true; r._rawSrc = 'traffic'; return; }
@@ -481,6 +501,24 @@ async function computeSnapshot(opts = {}) {
     result.forEach(r => {
       let st = _statusState.get(r.id);
       if (!st) { st = { online: null, upStreak: 0, downStreak: 0, ts: now }; _statusState.set(r.id, st); }
+
+      // PPPoE: sesi ada/tidak langsung diterapkan (tanpa tunggu 3 poll / 180s).
+      if (r._pppoeAuthoritative) {
+        const on = r._raw === true;
+        st.online = on;
+        st.upStreak = on ? ONLINE_CONFIRM : 0;
+        st.downStreak = on ? 0 : OFFLINE_CONFIRM;
+        st.ts = now;
+        r.online = on;
+        if (on) {
+          r.onlineSource = r.onlineSource || 'pppoe';
+          r.offlineReason = null;
+        } else {
+          r.onlineSource = null;
+          r.offlineReason = r.offlineReason || 'pppoe-no-session';
+        }
+        return;
+      }
 
       // Gunakan raw signal apa adanya. Jangan dipaksa null walau poll dianggap
       // "tanpa data" — sinyal nyata (PPPoE/ping/traffic/queue) tetap harus lewat.
@@ -522,7 +560,7 @@ async function computeSnapshot(opts = {}) {
     });
 
     // Bersihkan field helper internal sebelum kirim ke client.
-    result.forEach(r => { delete r._byARP; delete r._byDHCP; delete r._byQueue; delete r._raw; delete r._rawSrc; delete r._isPppoeOnly; });
+    result.forEach(r => { delete r._byARP; delete r._byDHCP; delete r._byQueue; delete r._raw; delete r._rawSrc; delete r._isPppoeOnly; delete r._pppoeAuthoritative; });
 
     return ({
       success: true, data: result,

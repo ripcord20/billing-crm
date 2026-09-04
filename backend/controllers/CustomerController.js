@@ -169,6 +169,10 @@ class CustomerController {
         include: [{ model: Package, as: 'package' }]
       });
 
+      try {
+        require('../services/WilayahService').assignCustomer(full).catch(() => {});
+      } catch (_) {}
+
       // Auto-sync ke InfrastructurePoint type='customer' kalau ada lat/lng.
       // Best-effort — gagal sync di sini tidak membatalkan create customer.
       const infraResult = await InfraSync.syncCustomerToInfra(full);
@@ -276,6 +280,10 @@ class CustomerController {
       const full = await Customer.findByPk(customer.id, {
         include: [{ model: Package, as: 'package' }]
       });
+
+      try {
+        require('../services/WilayahService').assignCustomer(full).catch(() => {});
+      } catch (_) {}
 
       // Auto-sync ke InfrastructurePoint. Full sync mode:
       //   - lat/lng ada → create / update point
@@ -837,7 +845,7 @@ class CustomerController {
             await customer.update({ pppoe_username: null });
             return res.json({
               success: true,
-              message: 'PPPoE username dikosongkan di FLAYNET. Tidak ada secret lama di router untuk dihapus.',
+              message: 'PPPoE username dikosongkan di Skynet. Tidak ada secret lama di router untuk dihapus.',
               old_username: oldUsername,
               new_username: null,
               updated_db: true,
@@ -887,7 +895,7 @@ class CustomerController {
             await customer.update({ pppoe_username: null });
             return res.json({
               success: true,
-              message: `Secret "${oldUsername}" tidak ada di router (mungkin sudah dihapus). PPPoE username dikosongkan di FLAYNET.`,
+              message: `Secret "${oldUsername}" tidak ada di router (mungkin sudah dihapus). PPPoE username dikosongkan di Skynet.`,
               old_username: oldUsername,
               new_username: null,
               updated_db: true,
@@ -940,12 +948,12 @@ class CustomerController {
       let okMessage;
       if (isClearing) {
         okMessage = sync_to_router
-          ? `PPPoE username dihapus di FLAYNET & secret dihapus di router (sebelumnya: ${oldUsername})`
-          : `PPPoE username dikosongkan di FLAYNET saja (sebelumnya: ${oldUsername}). Router tidak disentuh.`;
+          ? `PPPoE username dihapus di Skynet & secret dihapus di router (sebelumnya: ${oldUsername})`
+          : `PPPoE username dikosongkan di Skynet saja (sebelumnya: ${oldUsername}). Router tidak disentuh.`;
       } else {
         okMessage = sync_to_router
-          ? `PPPoE username berhasil diubah di FLAYNET & router (${oldUsername} → ${trimmedNew})`
-          : `PPPoE username diubah di FLAYNET saja (${oldUsername} → ${trimmedNew}). Router tidak disentuh.`;
+          ? `PPPoE username berhasil diubah di Skynet & router (${oldUsername} → ${trimmedNew})`
+          : `PPPoE username diubah di Skynet saja (${oldUsername} → ${trimmedNew}). Router tidak disentuh.`;
       }
 
       return res.json({

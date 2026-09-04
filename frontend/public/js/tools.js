@@ -6,8 +6,11 @@ let _routers = [];
 let _scanResults = [];
 let _hsCustomers = [];
 
-// localStorage key (selaras pola flaynet:dashboard:mikrotik_id)
-const LS_KEY = 'flaynet:tools:router_id';
+// localStorage key (selaras pola skynet:dashboard:mikrotik_id)
+const LS_KEY = 'skynet:tools:router_id';
+const LS_KEY_LEGACY = 'flaynet:tools:router_id';
+const lsGet = () => { try { return localStorage.getItem(LS_KEY) || localStorage.getItem(LS_KEY_LEGACY) || ''; } catch (_) { return ''; } };
+const lsSet = (id) => { try { if (id) { localStorage.setItem(LS_KEY, id); localStorage.removeItem(LS_KEY_LEGACY); } } catch (_) {} };
 
 document.addEventListener('DOMContentLoaded', () => {
   loadRouters();
@@ -22,7 +25,7 @@ async function loadRouters() {
     return;
   }
   _routers = d.data;
-  const saved = localStorage.getItem(LS_KEY);
+  const saved = lsGet();
   sel.innerHTML = _routers.map(r =>
     `<option value="${r.id}" ${String(r.id) === String(saved) ? 'selected' : ''}>${_esc(r.name)} — ${_esc(r.ip_address)}</option>`
   ).join('');
@@ -33,7 +36,7 @@ async function loadRouters() {
 
 function onRouterChange() {
   const id = _dev();
-  if (id) localStorage.setItem(LS_KEY, id);
+  if (id) lsSet(id);
   const r = _routers.find(x => String(x.id) === String(id));
   const pill = document.getElementById('routerProto');
   if (r && pill) {

@@ -3,7 +3,10 @@ const _esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
 const _dev = () => document.getElementById('routerSel')?.value || '';
 const _q = id => document.getElementById(id);
 let _routers = [], _scanResults = [], _profilesCache = [], _serversCache = [], _scanIface = '';
-const LS_KEY = 'flaynet:hsbinding:router_id';
+const LS_KEY = 'skynet:hsbinding:router_id';
+const LS_KEY_LEGACY = 'flaynet:hsbinding:router_id';
+const lsGet = () => { try { return localStorage.getItem(LS_KEY) || localStorage.getItem(LS_KEY_LEGACY) || ''; } catch (_) { return ''; } };
+const lsSet = (id) => { try { if (id) { localStorage.setItem(LS_KEY, id); localStorage.removeItem(LS_KEY_LEGACY); } } catch (_) {} };
 // Hotspot ops live under /mikrotik/hotspot, binding/scan helpers under /tools
 const HS  = (p) => '/mikrotik/hotspot' + p;
 const dev = (sep = '?') => _dev() ? `${sep}device_id=${_dev()}` : '';
@@ -60,13 +63,13 @@ async function loadRouters() {
   const sel = _q('routerSel');
   if (!d?.success || !d.data?.length) { sel.innerHTML = '<option value="">— Tidak ada router —</option>'; return; }
   _routers = d.data;
-  const saved = localStorage.getItem(LS_KEY);
+  const saved = lsGet();
   sel.innerHTML = _routers.map(r => `<option value="${r.id}" ${String(r.id)===String(saved)?'selected':''}>${_esc(r.name)} — ${_esc(r.ip_address)}</option>`).join('');
   if (!saved && _routers[0]) sel.value = _routers[0].id;
   onRouterChange();
 }
 function onRouterChange() {
-  const id = _dev(); if (id) localStorage.setItem(LS_KEY, id);
+  const id = _dev(); if (id) lsSet(id);
   const r = _routers.find(x => String(x.id)===String(id));
   const pill = _q('routerProto');
   if (r && pill) { pill.textContent = (r.api_protocol||'auto').toUpperCase(); pill.style.display='inline-flex'; }
@@ -635,7 +638,7 @@ async function openSetupModal(){ if(!_dev()){App.showToast('Pilih router dulu','
       <div class="fg"><label>DNS Server 1 <span class="fhint">(diberikan ke client)</span></label><input class="mono" id="s_dns1" value="8.8.8.8" placeholder="8.8.8.8"></div>
       <div class="fg"><label>DNS Server 2 <span class="fhint">(opsional)</span></label><input class="mono" id="s_dns2" value="1.1.1.1" placeholder="1.1.1.1"></div>
     </div>
-    <div class="fg" style="margin-bottom:11px"><label>DNS Name (login page) <span class="fhint">(opsional)</span></label><input id="s_dns" placeholder="hotspot.flaynet.id"></div>
+    <div class="fg" style="margin-bottom:11px"><label>DNS Name (login page) <span class="fhint">(opsional)</span></label><input id="s_dns" placeholder="hotspot.skynet.id"></div>
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn btn-primary" id="s_save" onclick="saveSetup()">Setup</button></div>`);
   const d=await App.api(HS('/interfaces')+dev());
   const sel=_q('s_iface');
@@ -791,7 +794,7 @@ function openSProfileModal(idx){ if(!_dev()){App.showToast('Pilih router dulu','
   openModal(`<h3>${isEdit?'Edit':'Tambah'} Server Profile</h3><p>Profil server hotspot (login page, DNS, metode login) — sesuai Winbox.</p>
     <div class="fg" style="margin-bottom:11px"><label>Name *</label><input id="sp_name" value="${_esc(p.name||'')}" placeholder="hsprof1" ${isEdit?'':''}></div>
     <div class="fg" style="margin-bottom:11px"><label>Hotspot Address</label><input class="mono" id="sp_addr" value="${_esc(p.hotspotAddress||'')}" placeholder="opsional"></div>
-    <div class="fg" style="margin-bottom:11px"><label>DNS Name (login page)</label><input id="sp_dns" value="${_esc(p.dnsName||'')}" placeholder="mis. hotspot.flaynet.id"></div>
+    <div class="fg" style="margin-bottom:11px"><label>DNS Name (login page)</label><input id="sp_dns" value="${_esc(p.dnsName||'')}" placeholder="mis. hotspot.skynet.id"></div>
     <div class="fg" style="margin-bottom:11px"><label>HTML Directory</label><input id="sp_html" value="${_esc(p.htmlDirectory||'hotspot')}" placeholder="hotspot"></div>
     <div class="fg" style="margin-bottom:8px"><label>Login By</label>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:4px;font-size:12.5px;">

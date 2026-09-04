@@ -41,6 +41,11 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(100),
       allowNull: true
     },
+    wilayah_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: { model: 'wilayah', key: 'id' }
+    },
     phone: {
       type: DataTypes.STRING(20),
       allowNull: true
@@ -113,6 +118,16 @@ module.exports = (sequelize) => {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: []
+    },
+    ktp_photo: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'URL foto KTP pelanggan'
+    },
+    house_photo: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'URL foto rumah / lokasi pemasangan'
     },
     static_ip: {
       type: DataTypes.STRING(20),

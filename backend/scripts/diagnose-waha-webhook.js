@@ -53,7 +53,7 @@ function lapor(pesan, solusi) {
     console.log(c.bad('APP_URL / BASE_URL: KOSONG'));
     lapor(
       'APP_URL tidak diset di .env',
-      'Tambahkan ke .env:\n     APP_URL=https://dgs.digs.co.id\n   Lalu: pm2 restart flaynet-crm'
+      'Tambahkan ke .env:\n     APP_URL=https://dgs.digs.co.id\n   Lalu: pm2 restart skynet-crm'
     );
   } else {
     console.log(c.ok('APP_URL = ' + appUrl));
@@ -211,7 +211,7 @@ function lapor(pesan, solusi) {
             'Webhook merespons ' + r.status + ' (bukan 200)',
             r.status === 401 || r.status === 403
               ? 'Ada middleware auth yang memblokir. Endpoint webhook harus publik.'
-              : 'Cek log aplikasi: pm2 logs flaynet-crm'
+              : 'Cek log aplikasi: pm2 logs skynet-crm'
           );
         }
       } catch (e) {
@@ -282,7 +282,7 @@ function ringkas() {
   if (!masalah.length) {
     console.log(c.ok('Tidak ditemukan masalah konfigurasi.'));
     console.log(c.dim('\nKalau pesan masuk masih tidak muncul, pantau log saat mengirim WA:'));
-    console.log(c.dim('  pm2 logs flaynet-crm --lines 0 | grep WAHA'));
+    console.log(c.dim('  pm2 logs skynet-crm --lines 0 | grep WAHA'));
     console.log(c.dim('\nKalau tidak ada baris "[WAHA] Webhook message" muncul, berarti WAHA'));
     console.log(c.dim('memang tidak mengirim — periksa log container WAHA sendiri.'));
     return;

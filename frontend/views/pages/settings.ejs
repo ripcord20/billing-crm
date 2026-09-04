@@ -341,7 +341,7 @@
                   <label class="pf-label">Mode Tampilan</label>
                   <%
                     // Preview text — pakai nama/tagline dari setting (fallback ke default)
-                    const previewName    = appSettings?.app_name    || 'DIGSnet';
+                    const previewName    = appSettings?.app_name    || 'Skynet';
                     const previewTagline = appSettings?.app_tagline || 'ISP Management';
                   %>
                   <div class="brand-grid">
@@ -380,7 +380,7 @@
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                   <div class="pf-field" style="margin-bottom:0;">
                     <label class="pf-label">Nama Aplikasi</label>
-                    <input type="text" class="pf-input" id="appName" value="<%= appSettings?.app_name||'DIGSnet' %>" oninput="updatePreview()">
+                    <input type="text" class="pf-input" id="appName" value="<%= appSettings?.app_name||'Skynet' %>" oninput="updatePreview()">
                   </div>
                   <div class="pf-field" style="margin-bottom:0;" id="taglineField">
                     <label class="pf-label">Tagline</label>
@@ -1952,7 +1952,7 @@
                 <div class="op-grid" style="margin-top:8px;">
                   <div>
                     <label class="pf-label">Nama Pengirim</label>
-                    <input type="text" class="pf-input" id="smtpFromName" placeholder="FLAYNET / Nama ISP Anda">
+                    <input type="text" class="pf-input" id="smtpFromName" placeholder="Skynet / Nama ISP Anda">
                     <div class="op-hint">Nama yang tampil sebagai pengirim di inbox penerima.</div>
                   </div>
                   <div>
@@ -2420,7 +2420,7 @@ async function downloadSettingsBackup() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const blob = await res.blob();
     // Ambil nama file dari header bila ada
-    let fname = 'flaynet-settings-backup.json';
+    let fname = 'skynet-settings-backup.json';
     const cd = res.headers.get('Content-Disposition') || '';
     const m = cd.match(/filename="?([^"]+)"?/);
     if (m) fname = m[1];
@@ -3716,7 +3716,7 @@ function imgError(el) { el.style.display='none'; var n=el.nextSibling; if(n) n.s
 
 function updatePreview(dataUrl) {
   const mode    = document.getElementById('brandMode').value;
-  const name    = document.getElementById('appName')?.value || 'DIGSnet';
+  const name    = document.getElementById('appName')?.value || 'Skynet';
   const tagline = document.getElementById('appTagline')?.value || '';
   const logo    = dataUrl || document.getElementById('logoUrl')?.value || '';
   const prev    = document.getElementById('brandPreview');
@@ -3742,7 +3742,7 @@ function updatePreview(dataUrl) {
 // Refresh teks di 3 kartu Mode Tampilan (Nama+Tagline / Logo+Nama / Logo Only)
 // Dipanggil dari updatePreview() saat user mengetik di field nama atau tagline.
 function updateBrandOptionsPreview(name, tagline) {
-  const n = (name || '').trim() || 'DIGSnet';
+  const n = (name || '').trim() || 'Skynet';
   const t = (tagline || '').trim() || 'ISP Management';
   const n1 = document.getElementById('bopt1Name');
   const t1 = document.getElementById('bopt1Tag');

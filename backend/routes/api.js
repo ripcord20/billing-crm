@@ -37,6 +37,7 @@ const UserController = require('../controllers/UserController');
 const CustomerController = require('../controllers/CustomerController');
 const RegionController = require('../controllers/RegionController');
 const PackageController = require('../controllers/PackageController');
+const WilayahController = require('../controllers/WilayahController');
 const BillingController = require('../controllers/BillingController');
 const DeviceController = require('../controllers/DeviceController');
 const InfrastructureController     = require('../controllers/InfrastructureController');
@@ -375,6 +376,65 @@ router.post('/packages', authenticate, demoGuard, authorize('superadmin', 'admin
 router.get('/packages/:id', authenticate, demoGuard, PackageController.show);
 router.put('/packages/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'package'), PackageController.update);
 router.delete('/packages/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('delete', 'package'), PackageController.destroy);
+
+// ===== WILAYAH (disconnect + isolir per area) =====
+router.get('/wilayah/settings', authenticate, demoGuard, (r, s) => WilayahController.settings(r, s));
+router.put('/wilayah/settings', authenticate, demoGuard, authorize('superadmin', 'admin'), (r, s) => WilayahController.saveSettings(r, s));
+router.post('/wilayah/relink', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'wilayah'), (r, s) => WilayahController.relink(r, s));
+router.get('/wilayah', authenticate, demoGuard, (r, s) => WilayahController.index(r, s));
+router.post('/wilayah', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('create', 'wilayah'), (r, s) => WilayahController.create(r, s));
+router.get('/wilayah/:id', authenticate, demoGuard, (r, s) => WilayahController.show(r, s));
+router.put('/wilayah/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'wilayah'), (r, s) => WilayahController.update(r, s));
+router.delete('/wilayah/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('delete', 'wilayah'), (r, s) => WilayahController.destroy(r, s));
+router.post('/wilayah/:id/isolir', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('isolir', 'wilayah'), (r, s) => WilayahController.isolir(r, s));
+router.post('/wilayah/:id/restore', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('restore', 'wilayah'), (r, s) => WilayahController.restore(r, s));
+
+// ===== RADIUS / NAS (FreeRADIUS + WireGuard/OpenVPN/L2TP) =====
+let RadiusController, NasController, tenantContextMiddleware;
+try {
+  ({ tenantContextMiddleware } = require('../middleware/tenantContext'));
+  RadiusController = require('../controllers/RadiusController');
+  NasController = require('../controllers/NasController');
+} catch (e) {
+  console.warn('[api] Modul NAS/RADIUS tidak dimuat:', e.message);
+}
+if (NasController && RadiusController) {
+  const radiusStaff = authorize('superadmin', 'admin', 'tenant_owner', 'finance', 'noc');
+  const tc = tenantContextMiddleware || ((req, res, next) => next());
+  router.get('/radius/servers', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.listServers(r, s));
+  router.post('/radius/servers', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.createServer(r, s));
+  router.post('/radius/ensure-local', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.ensureLocal(r, s));
+  router.get('/radius/sql-guide', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.sqlGuide(r, s));
+  router.put('/radius/servers/:id', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.updateServer(r, s));
+  router.post('/radius/servers/:id/test', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.testServer(r, s));
+  router.get('/radius/sessions', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.sessions(r, s));
+  router.get('/radius/users', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.radiusUsers(r, s));
+  router.post('/radius/provision', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.provision(r, s));
+  router.post('/radius/customers/:customerId/isolir', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.isolate(r, s));
+  router.post('/radius/customers/:customerId/restore', authenticate, demoGuard, tc, radiusStaff, (r, s) => RadiusController.restore(r, s));
+  router.get('/nas/wireguard/server', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.wgServerGet(r, s));
+  router.put('/nas/wireguard/server', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.wgServerSave(r, s));
+  router.post('/nas/wireguard/server/init-keys', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.wgServerInitKeys(r, s));
+  if (typeof NasController.wgServerApply === 'function') {
+    router.post('/nas/wireguard/server/apply', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.wgServerApply(r, s));
+  }
+  router.post('/nas/import', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.importFromRadius(r, s));
+  router.post('/nas/routeros-preview', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.routerosPreview(r, s));
+  if (typeof NasController.provisionRemoteWg === 'function') {
+    router.post('/nas/remote-wg/provision', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.provisionRemoteWg(r, s));
+  }
+  router.get('/nas', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.index(r, s));
+  router.post('/nas', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.create(r, s));
+  router.post('/nas/:id/sync', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.syncOne(r, s));
+  router.post('/nas/:id/wg/generate', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.wgGenerate(r, s));
+  router.post('/nas/:id/vpn/generate', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.vpnGenerate(r, s));
+  router.post('/nas/:id/routeros-script', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.routerosScript(r, s));
+  if (typeof NasController.remoteWgScript === 'function') {
+    router.post('/nas/:id/remote-wg/script', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.remoteWgScript(r, s));
+  }
+  router.put('/nas/:id', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.update(r, s));
+  router.delete('/nas/:id', authenticate, demoGuard, tc, radiusStaff, (r, s) => NasController.destroy(r, s));
+}
 
 // ===== BILLING =====
 router.get('/billing/invoices', authenticate, demoGuard, BillingController.listInvoices);
@@ -874,6 +934,7 @@ router.post('/upload/payment-logo', authenticate, demoGuard, paymentLogoUpload.s
 // Disimpan di frontend/public/uploads/customer (di-serve via /uploads/customer/...).
 // Metadata path disimpan di kolom Customer.documents (JSON) dengan struktur:
 //   { house: { url, name, size, uploaded_at }, ktp: { url, ... } }
+// Kolom VARCHAR ktp_photo / house_photo ikut di-update untuk listing cepat.
 const customerDocStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = path.join(__dirname, '../../frontend/public/uploads/customer');
@@ -881,7 +942,13 @@ const customerDocStorage = multer.diskStorage({
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    const ext  = path.extname(file.originalname).toLowerCase();
+    const allowed = ['.png', '.jpg', '.jpeg', '.webp'];
+    let ext  = path.extname(file.originalname || '').toLowerCase();
+    if (!allowed.includes(ext)) {
+      if (file.mimetype === 'image/png') ext = '.png';
+      else if (file.mimetype === 'image/webp') ext = '.webp';
+      else ext = '.jpg';
+    }
     const slot = (req.params.slot || 'doc').replace(/[^a-z0-9_]/gi, '');
     const cid  = (req.params.id || 'x').replace(/[^a-z0-9_]/gi, '');
     cb(null, 'cust_' + cid + '_' + slot + '_' + Date.now() + ext);
@@ -892,12 +959,14 @@ const customerDocUpload = multer({
   limits: { fileSize: 8 * 1024 * 1024 }, // max 8MB
   fileFilter: (req, file, cb) => {
     const allowed = ['.png', '.jpg', '.jpeg', '.webp'];
-    if (allowed.includes(path.extname(file.originalname).toLowerCase())) cb(null, true);
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const mimeOk = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(String(file.mimetype || '').toLowerCase());
+    if (allowed.includes(ext) || mimeOk) cb(null, true);
     else cb(new Error('Format tidak didukung. Gunakan PNG/JPG/WebP'));
   }
 });
 
-const CUST_DOC_SLOTS = ['house', 'ktp'];
+const { SLOTS: CUST_DOC_SLOTS, applyDocumentSlot, normalizeCustomerDocuments } = require('../utils/customerDocuments');
 
 // Upload / replace satu dokumen (slot = 'house' atau 'ktp')
 router.post('/customers/:id/document/:slot',
@@ -919,30 +988,29 @@ router.post('/customers/:id/document/:slot',
         return res.status(404).json({ success: false, message: 'Customer tidak ditemukan' });
       }
 
-      // documents bisa null / array (default lama) → normalisasi jadi object
-      let docs = customer.documents;
-      if (!docs || Array.isArray(docs) || typeof docs !== 'object') docs = {};
-
-      // Hapus file lama di slot ini (kalau ada) supaya tidak menumpuk
-      const old = docs[slot];
-      if (old && old.url) {
+      const currentDocs = normalizeCustomerDocuments(customer);
+      const old = currentDocs[slot];
+      if (old && old.url && String(old.url).startsWith('/uploads/customer/')) {
         const resolved = path.join(__dirname, '../../frontend/public', old.url.replace(/^\/+/, ''));
         try { if (fs.existsSync(resolved)) fs.unlinkSync(resolved); } catch (e) { /* ignore */ }
       }
 
-      docs[slot] = {
+      const entry = {
         url:         '/uploads/customer/' + req.file.filename,
         name:        req.file.originalname,
         size:        req.file.size,
         uploaded_at: new Date().toISOString()
       };
+      const patch = applyDocumentSlot(customer, slot, entry);
 
       // changed() perlu di-flag karena Sequelize tidak selalu deteksi mutasi JSON in-place
-      customer.documents = docs;
+      customer.documents = patch.documents;
       customer.changed('documents', true);
+      if (Object.prototype.hasOwnProperty.call(patch, 'ktp_photo')) customer.ktp_photo = patch.ktp_photo;
+      if (Object.prototype.hasOwnProperty.call(patch, 'house_photo')) customer.house_photo = patch.house_photo;
       await customer.save();
 
-      res.json({ success: true, data: docs[slot], documents: docs, message: 'Dokumen berhasil diupload' });
+      res.json({ success: true, data: patch.documents[slot], documents: patch.documents, message: 'Dokumen berhasil diupload' });
     } catch (e) {
       if (req.file) { try { fs.unlinkSync(req.file.path); } catch (er) {} }
       res.status(500).json({ success: false, message: e.message });
@@ -963,21 +1031,21 @@ router.delete('/customers/:id/document/:slot',
       const customer = await Customer.findByPk(req.params.id);
       if (!customer) return res.status(404).json({ success: false, message: 'Customer tidak ditemukan' });
 
-      let docs = customer.documents;
-      if (!docs || Array.isArray(docs) || typeof docs !== 'object') docs = {};
-
-      const entry = docs[slot];
-      if (entry && entry.url) {
-        const resolved = path.join(__dirname, '../../frontend/public', entry.url.replace(/^\/+/, ''));
+      const currentDocs = normalizeCustomerDocuments(customer);
+      const entry = currentDocs[slot];
+      if (entry && entry.url && String(entry.url).startsWith('/uploads/customer/')) {
+        const resolved = path.join(__dirname, '../../frontend/public', String(entry.url).replace(/^\/+/, ''));
         try { if (fs.existsSync(resolved)) fs.unlinkSync(resolved); } catch (e) { /* ignore */ }
       }
-      delete docs[slot];
 
-      customer.documents = docs;
+      const patch = applyDocumentSlot(customer, slot, null);
+      customer.documents = patch.documents;
       customer.changed('documents', true);
+      if (Object.prototype.hasOwnProperty.call(patch, 'ktp_photo')) customer.ktp_photo = patch.ktp_photo;
+      if (Object.prototype.hasOwnProperty.call(patch, 'house_photo')) customer.house_photo = patch.house_photo;
       await customer.save();
 
-      res.json({ success: true, documents: docs, message: 'Dokumen dihapus' });
+      res.json({ success: true, documents: patch.documents, message: 'Dokumen dihapus' });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
     }
@@ -1581,7 +1649,7 @@ router.get('/app-settings/backup', authenticate, demoGuard, async (req, res) => 
 
     const payload = {
       _meta: {
-        app: 'FLAYNET-CRM',
+        app: 'Skynet-CRM',
         type: 'settings-backup',
         version: 1,
         exported_at: new Date().toISOString(),
@@ -1595,7 +1663,7 @@ router.get('/app-settings/backup', authenticate, demoGuard, async (req, res) => 
 
     const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="flaynet-settings-backup-${stamp}.json"`);
+    res.setHeader('Content-Disposition', `attachment; filename="skynet-settings-backup-${stamp}.json"`);
     res.send(JSON.stringify(payload, null, 2));
   } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });

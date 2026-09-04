@@ -81,6 +81,7 @@
     .cust-meta{font-size:11.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .badge{display:inline-block;padding:4px 10px;border-radius:100px;font-size:10px;font-weight:800;flex-shrink:0;}
     .b-active{background:#dcf7ec;color:#0f9d63;}
+    .b-offline{background:#eef2f7;color:#64748b;}
     .b-isolir{background:#fde5e6;color:#d13b42;}
     .b-suspend{background:#fef1db;color:#c67d0a;}
     .b-inactive{background:#e2eefb;color:#6b7a97;}
@@ -128,6 +129,14 @@
     .as-maphint{font-size:11px;color:var(--muted);margin-bottom:9px;}
     .af-map{width:100%;height:200px;border-radius:14px;border:1px solid #e6ebf3;overflow:hidden;margin-bottom:12px;z-index:1;}
     .af-map .leaflet-control-attribution{display:none;}
+    .af-photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+    .af-photo{border:1.5px dashed #bcd0f7;background:#f8fbff;border-radius:14px;min-height:104px;cursor:pointer;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;}
+    .af-photo.filled{border-style:solid;border-color:var(--blue);}
+    .af-photo img{width:100%;height:104px;object-fit:cover;display:block;pointer-events:none;}
+    .af-photo-inner{display:flex;flex-direction:column;align-items:center;gap:6px;color:#7c93a0;font-size:12px;font-weight:700;padding:12px;text-align:center;pointer-events:none;width:100%;}
+    .af-photo-inner svg{width:22px;height:22px;}
+    .af-photo-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2;font-size:100px;margin:0;padding:0;border:0;}
+    .af-photo-clear{position:absolute;top:6px;right:6px;width:22px;height:22px;border:none;border-radius:7px;background:rgba(15,23,42,.7);color:#fff;font-size:13px;cursor:pointer;line-height:22px;padding:0;z-index:3;}
     .as-check{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:#3a4a68;cursor:pointer;padding:9px 0;}
     .as-check input{display:none;}
     .as-cbox{width:22px;height:22px;border-radius:7px;border:2px solid #cdd6e4;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .12s;}
@@ -227,7 +236,7 @@
   </style>
 </head>
 <body>
-  <%- include('../../partials/mobile-drawer', { active: active, appName: (typeof appName!=='undefined'?appName:'FLAYNET'), user: user }) %>
+  <%- include('../../partials/mobile-drawer', { active: active, appName: (typeof appName!=='undefined'?appName:'Skynet'), user: user }) %>
   <div class="wrap">
     <div class="head">
       <div class="htitle">Pelanggan</div>
@@ -316,7 +325,31 @@
     async function api(url){ const t=getToken(); const headers=Object.assign({'Content-Type':'application/json'}, t?{'Authorization':'Bearer '+t}:{}); try{ const r=await fetch(url,{credentials:'include',headers}); if(r.status===401){location.href='/login';return null;} const x=await r.text(); try{return x?JSON.parse(x):null;}catch(_){return null;} }catch(e){return null;} }
     function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
     let _status='',_search='',_page=1,_loading=false; const PAGE_SIZE=20;
-    function statusBadge(st){ st=(st||'').toLowerCase(); if(st==='active')return '<span class="badge b-active">Aktif</span>'; if(st==='isolated'||st==='isolir')return '<span class="badge b-isolir">Isolir</span>'; if(st==='suspended')return '<span class="badge b-suspend">Suspend</span>'; return '<span class="badge b-inactive">Nonaktif</span>'; }
+    const _liveOnline = {};
+    function paintLiveBadges(){
+      document.querySelectorAll('#custList .cust[data-id]').forEach(function(el){
+        const id=parseInt(el.getAttribute('data-id'),10);
+        const billing=el.getAttribute('data-billing')||'';
+        const slot=el.querySelector('.cust-live-badge');
+        if(!slot||!id)return;
+        slot.innerHTML=statusBadge(billing, _liveOnline[id]);
+      });
+    }
+    async function refreshLiveConn(){
+      const j=await api('/api/mikrotik/customer-traffic');
+      const rows=(j&&j.success&&Array.isArray(j.data))?j.data:[];
+      rows.forEach(function(r){ _liveOnline[r.id]=!!r.online; });
+      paintLiveBadges();
+    }
+    function statusBadge(st, live){
+      st=(st||'').toLowerCase();
+      if(st==='isolated'||st==='isolir')return '<span class="badge b-isolir">Isolir</span>';
+      if(st==='suspended')return '<span class="badge b-suspend">Suspend</span>';
+      if(st==='inactive')return '<span class="badge b-inactive">Nonaktif</span>';
+      if(live===true)return '<span class="badge b-active">Terhubung</span>';
+      if(live===false)return '<span class="badge b-offline">Offline</span>';
+      return '<span class="badge b-inactive">Cek…</span>';
+    }
     function fmtRpShort(n){ n=Number(n)||0; if(n>=1000000)return 'Rp '+(n/1000000).toFixed(n%1000000?1:0).replace('.0','')+'jt'; if(n>=1000)return 'Rp '+Math.round(n/1000)+'rb'; return 'Rp '+n.toLocaleString('id-ID'); }
     function overdueDays(dueStr){
       if(!dueStr)return 0;
@@ -328,7 +361,7 @@
       const nm=c.name||'Pelanggan'; const cid=c.customer_id||c.cid||('#'+(c.id||'')); const pkg=(c.package&&c.package.name)||c.package_name||'';
       const init=(nm[0]||'?').toUpperCase(); const meta=[cid,pkg].filter(Boolean).join(' · ');
       const isOverdue=(c.latest_invoice_status==='overdue');
-      let extra='', badge=statusBadge(c.status);
+      let extra='', badge=statusBadge(c.status, _liveOnline[c.id]);
       if(isOverdue){
         const days=overdueDays(c.latest_due_date);
         const inv=c.latest_invoice||{};
@@ -337,9 +370,8 @@
         if(days>0)parts.push('Telat '+days+' hari');
         if(amt)parts.push(fmtRpShort(amt));
         extra='<div class="cust-due"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'+esc(parts.join(' · ')||'Menunggak')+'</div>';
-        badge='<span class="badge b-overdue">Nunggak</span>';
       }
-      return '<div class="cust" onclick="openDetail('+c.id+')"><div class="cust-av">'+esc(init)+'</div><div class="cust-body"><div class="cust-name">'+esc(nm)+'</div><div class="cust-meta">'+esc(meta)+'</div>'+extra+'</div>'+badge+'</div>';
+      return '<div class="cust" data-id="'+c.id+'" data-billing="'+esc(c.status||'')+'" onclick="openDetail('+c.id+')"><div class="cust-av">'+esc(init)+'</div><div class="cust-body"><div class="cust-name">'+esc(nm)+'</div><div class="cust-meta">'+esc(meta)+'</div>'+extra+'</div><span class="cust-live-badge">'+badge+'</span></div>';
     }
     async function loadCustomers(reset){
       if(_loading)return; _loading=true; if(reset){_page=1;}
@@ -364,6 +396,7 @@
         document.getElementById('custCount').textContent='0 pelanggan';
       }
       _loading=false;
+      paintLiveBadges();
     }
 
     // Sinkronkan status filter di chip + highlight KPI, lalu muat ulang.
@@ -384,7 +417,21 @@
     // ── Detail pelanggan (popup) ──
     function fmtRp(n){ n=Number(n)||0; return 'Rp '+n.toLocaleString('id-ID'); }
     function fmtDateLong(s){ if(!s)return'–'; const d=new Date(s); if(isNaN(d))return String(s).slice(0,10); return d.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}); }
-    function stBadgeBig(st){ st=(st||'').toLowerCase(); const map={active:['Aktif','#dcf7ec','#0f9d63'],isolated:['Isolir','#fde5e6','#d13b42'],isolir:['Isolir','#fde5e6','#d13b42'],suspended:['Suspend','#fef1db','#c67d0a']}; const v=map[st]||['Nonaktif','#e2eefb','#6b7a97']; return '<span class="dm-badge" style="background:'+v[1]+';color:'+v[2]+';">'+v[0]+'</span>'; }
+    function stBadgeBig(st, live){
+      st=(st||'').toLowerCase();
+      if(st==='isolated'||st==='isolir') return '<span class="dm-badge" style="background:#fde5e6;color:#d13b42;">Isolir</span>';
+      if(st==='suspended') return '<span class="dm-badge" style="background:#fef1db;color:#c67d0a;">Suspend</span>';
+      if(st==='inactive') return '<span class="dm-badge" style="background:#e2eefb;color:#6b7a97;">Nonaktif</span>';
+      if(live===true) return '<span class="dm-badge" style="background:#dcf7ec;color:#0f9d63;">Terhubung</span>';
+      if(live===false) return '<span class="dm-badge" style="background:#eef2f7;color:#64748b;">Offline</span>';
+      return '<span class="dm-badge" style="background:#e2eefb;color:#6b7a97;">Cek…</span>';
+    }
+    function stBillBadge(st){
+      st=(st||'').toLowerCase();
+      const map={active:['Lunas / aktif','#dcf7ec','#0f9d63'],isolated:['Isolir','#fde5e6','#d13b42'],isolir:['Isolir','#fde5e6','#d13b42'],suspended:['Suspend','#fef1db','#c67d0a'],overdue:['Nunggak','#fde5e6','#d13b42'],unpaid:['Belum lunas','#fef1db','#c67d0a']};
+      const v=map[st]||['–','#e2eefb','#6b7a97'];
+      return '<span class="dm-badge" style="background:'+v[1]+';color:'+v[2]+';">'+v[0]+'</span>';
+    }
 
     function openDetail(id){
       document.getElementById('dmContent').innerHTML='<div class="dm-skel">Memuat detail…</div>';
@@ -420,7 +467,7 @@
       function row(k,v){ return '<div class="dm-row"><span class="dm-k">'+k+'</span><span class="dm-v">'+v+'</span></div>'; }
 
       let html='';
-      html+='<div class="dm-hero"><div class="dm-av">'+esc(init)+'</div><div style="min-width:0;"><div class="dm-name">'+esc(nm)+'</div><div class="dm-cid">'+esc(c.customer_id||('#'+c.id))+'</div><div style="margin-top:6px;">'+stBadgeBig(c.status)+'</div></div></div>';
+      html+='<div class="dm-hero"><div class="dm-av">'+esc(init)+'</div><div style="min-width:0;"><div class="dm-name">'+esc(nm)+'</div><div class="dm-cid">'+esc(c.customer_id||('#'+c.id))+'</div><div style="margin-top:6px;">'+stBadgeBig(c.status, _liveOnline[c.id])+'</div></div></div>';
 
       html+='<div class="dm-body">';
 
@@ -453,7 +500,7 @@
       const installDate=c.installation_date||c.created_at;
       if(installDate) html+=row('Tgl. Aktivasi / Instalasi', fmtDateLong(installDate));
       html+=row('Aktif sampai', '<span style="color:#0f9d63;">'+aktifSampai+'</span>');
-      html+=row('Status tagihan', stBadgeBig(dueStatus==='active'?'active':dueStatus));
+      html+=row('Status tagihan', stBillBadge(dueStatus==='active'?'active':dueStatus));
       html+='</div>';
 
       // Riwayat pembayaran (diisi async)
@@ -792,6 +839,84 @@
     }
     function selName(id){ const el=document.getElementById(id); const o=el.options[el.selectedIndex]; return o?(o.getAttribute('data-name')||''):''; }
 
+    var _afPendingPhotos={ktp:null,house:null};
+    var _afPhotosToDelete={ktp:false,house:false};
+    var _afPhotoUrls=[];
+    function afPhotoUrl(c,slot){
+      const docs=(c&&c.documents&&!Array.isArray(c.documents)&&typeof c.documents==='object')?c.documents:{};
+      if(docs[slot]&&docs[slot].url) return docs[slot].url;
+      if(slot==='ktp') return (c&&c.ktp_photo)||'';
+      if(slot==='house') return (c&&c.house_photo)||'';
+      return '';
+    }
+    function afRenderPhoto(slot,url){
+      const box=document.getElementById('afPhotoBox_'+slot);
+      const inner=document.getElementById('afPhotoInner_'+slot);
+      const clearBtn=document.getElementById('afPhotoClear_'+slot);
+      if(!box||!inner) return;
+      if(url){
+        box.classList.add('filled');
+        inner.innerHTML='<img src="'+esc(url)+'" alt="'+slot+'">';
+        if(clearBtn) clearBtn.hidden=false;
+      } else {
+        box.classList.remove('filled');
+        inner.innerHTML=slot==='ktp'
+          ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 9h4M14 13h4M3 17l4-4 3 3"/></svg><span>Foto KTP</span>'
+          : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Foto Rumah</span>';
+        const inp=document.getElementById('afPhoto_'+slot); if(inp) inp.value='';
+        if(clearBtn) clearBtn.hidden=true;
+      }
+    }
+    function afResetPhotos(){
+      _afPendingPhotos={ktp:null,house:null};
+      _afPhotosToDelete={ktp:false,house:false};
+      _afPhotoUrls.forEach(function(u){ try{ URL.revokeObjectURL(u); }catch(_){} });
+      _afPhotoUrls=[];
+      afRenderPhoto('ktp',null); afRenderPhoto('house',null);
+    }
+    function afOnPhotoPick(slot,inp){
+      const f=inp&&inp.files&&inp.files[0]; if(!f) return;
+      if(f.size>8*1024*1024){ toast('Ukuran file maksimal 8MB','err'); inp.value=''; return; }
+      _afPendingPhotos[slot]=f;
+      _afPhotosToDelete[slot]=false;
+      const url=URL.createObjectURL(f); _afPhotoUrls.push(url);
+      afRenderPhoto(slot,url);
+    }
+    function afClearPhoto(ev,slot){
+      if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+      _afPendingPhotos[slot]=null;
+      _afPhotosToDelete[slot]=true;
+      const el=document.getElementById('afPhoto_'+slot); if(el) el.value='';
+      afRenderPhoto(slot,null);
+    }
+    async function afUploadPhotos(customerId){
+      const t=getToken();
+      const headers=Object.assign({'X-Requested-With':'XMLHttpRequest'}, t?{'Authorization':'Bearer '+t}:{});
+      const slots=['ktp','house'];
+      for(let i=0;i<slots.length;i++){
+        const slot=slots[i]; const file=_afPendingPhotos[slot];
+        if(file){
+          const fd=new FormData(); fd.append('photo',file);
+          try{
+            await fetch('/api/customers/'+customerId+'/document/'+slot,{
+              method:'POST', credentials:'include', headers:headers, body:fd
+            });
+          }catch(_){}
+          continue;
+        }
+        if(_afPhotosToDelete[slot]){
+          try{
+            await fetch('/api/customers/'+customerId+'/document/'+slot,{
+              method:'DELETE', credentials:'include',
+              headers:Object.assign({'Content-Type':'application/json'}, t?{'Authorization':'Bearer '+t}:{})
+            });
+          }catch(_){}
+        }
+      }
+      _afPendingPhotos={ktp:null,house:null};
+      _afPhotosToDelete={ktp:false,house:false};
+    }
+
     // Saat kelurahan/desa dipilih → geocode otomatis, pindahkan marker (seperti desktop)
     function onVillageChange(){ geocodeWilayah(true); }
     async function geocodeWilayah(force){
@@ -933,7 +1058,7 @@
       const isEdit=!!_editId;
       btn.disabled=true; btn.textContent='Menyimpan…';
       const t=getToken();
-      let ok=false, msg='';
+      let ok=false, msg='', saved=null;
       try{
         const url=isEdit ? ('/api/customers/'+encodeURIComponent(_editId)) : '/api/customers';
         const r=await fetch(url,{
@@ -943,10 +1068,14 @@
           body:JSON.stringify(body)
         });
         const d=await r.json().catch(()=>null);
-        ok=(r.ok && d && d.success); msg=(d&&d.message)||'';
+        ok=(r.ok && d && d.success); msg=(d&&d.message)||''; saved=d;
       }catch(e){ msg=e.message; }
       btn.disabled=false; btn.textContent = isEdit ? 'Simpan Perubahan' : 'Simpan Pelanggan';
       if(ok){
+        const savedId=(saved&&saved.data&&saved.data.id)||_editId;
+        if(savedId && (_afPendingPhotos.ktp||_afPendingPhotos.house||_afPhotosToDelete.ktp||_afPhotosToDelete.house)){
+          await afUploadPhotos(savedId);
+        }
         toast(isEdit?'Perubahan tersimpan':'Pelanggan berhasil ditambahkan','ok');
         closeAdd(); clearAddForm(); _editId=null;
         loadCustStats(); loadGrowth(); loadCustomers(true);
@@ -977,6 +1106,9 @@
       document.getElementById('afStaticIp').value=c.static_ip||'';
       document.getElementById('afMac').value=c.mac_address||'';
       document.getElementById('afNotes').value=c.notes||'';
+      afResetPhotos();
+      afRenderPhoto('ktp', afPhotoUrl(c,'ktp')||null);
+      afRenderPhoto('house', afPhotoUrl(c,'house')||null);
       document.getElementById('afPppoeUser').value=c.pppoe_username||'';
       document.getElementById('afPppoePass').value=c.pppoe_password||'';
       // Tanggal aktivasi & jatuh tempo (DATEONLY dari server → potong ke YYYY-MM-DD)
@@ -1045,11 +1177,14 @@
       const pp=document.getElementById('afPppoeProfile'); if(pp){pp.innerHTML='<option value="">Pilih router dulu…</option>';pp.disabled=true;} const rr=document.getElementById('afRouter'); if(rr)rr.value='';
       if(_afMap&&_afMarker){ _afMarker.setLatLng(AF_DEFAULT); _afMap.setView(AF_DEFAULT,13); }
       const gh=document.getElementById('afGeoHint'); if(gh)gh.textContent='';
+      afResetPhotos();
     }
 
     loadCustStats();
     loadGrowth();
     loadCustomers(true);
+    refreshLiveConn();
+    setInterval(refreshLiveConn, 4000);
 
     // Buka detail langsung bila datang dari pencarian global (?focus=ID)
     (function(){
@@ -1138,6 +1273,26 @@
       <div class="as-row">
         <div><label class="as-lbl">IP Static</label><input class="as-in" id="afStaticIp" inputmode="decimal" placeholder="10.10.x.x"></div>
         <div><label class="as-lbl">MAC Address</label><input class="as-in" id="afMac" placeholder="AA:BB:CC:.."></div>
+      </div>
+      <div class="as-sec">Dokumen Foto</div>
+      <div class="as-hint">Foto KTP dan foto rumah (opsional, max 8MB). Ketuk kotak untuk pilih foto.</div>
+      <div class="af-photo-grid">
+        <div class="af-photo" id="afPhotoBox_ktp">
+          <input type="file" accept="image/png,image/jpeg,image/webp,image/*" capture="environment" id="afPhoto_ktp" class="af-photo-input" aria-label="Pilih foto KTP" onchange="afOnPhotoPick('ktp',this)">
+          <div class="af-photo-inner" id="afPhotoInner_ktp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 9h4M14 13h4M3 17l4-4 3 3"/></svg>
+            <span>Foto KTP</span>
+          </div>
+          <button type="button" class="af-photo-clear" id="afPhotoClear_ktp" hidden title="Hapus foto" onclick="afClearPhoto(event,'ktp')">×</button>
+        </div>
+        <div class="af-photo" id="afPhotoBox_house">
+          <input type="file" accept="image/png,image/jpeg,image/webp,image/*" capture="environment" id="afPhoto_house" class="af-photo-input" aria-label="Pilih foto rumah" onchange="afOnPhotoPick('house',this)">
+          <div class="af-photo-inner" id="afPhotoInner_house">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>Foto Rumah</span>
+          </div>
+          <button type="button" class="af-photo-clear" id="afPhotoClear_house" hidden title="Hapus foto" onclick="afClearPhoto(event,'house')">×</button>
+        </div>
       </div>
       <label class="as-lbl">Catatan</label>
       <textarea class="as-in" id="afNotes" rows="2" placeholder="Catatan opsional"></textarea>

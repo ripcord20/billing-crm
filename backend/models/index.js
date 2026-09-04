@@ -124,6 +124,7 @@ const SalesCommission     = require('./SalesCommission')(sequelize);
 
 // Field Collection module — penagihan lapangan oleh kolektor
 const CollectorProfile      = require('./CollectorProfile')(sequelize);
+const Wilayah               = require('./Wilayah')(sequelize);
 const CollectionAssignment  = require('./CollectionAssignment')(sequelize);
 const CollectionAssignmentLog = require('./CollectionAssignmentLog')(sequelize);
 const CommissionPayment       = require('./CommissionPayment')(sequelize);
@@ -200,6 +201,10 @@ Permission.belongsToMany(Role, { through: RolePermission, foreignKey: 'permissio
 // Customer <-> Package
 Package.hasMany(Customer, { foreignKey: 'package_id', as: 'customers' });
 Customer.belongsTo(Package, { foreignKey: 'package_id', as: 'package' });
+
+// Customer <-> Wilayah operasional (modul isolir/disconnect per area)
+Wilayah.hasMany(Customer, { foreignKey: 'wilayah_id', as: 'customers' });
+Customer.belongsTo(Wilayah, { foreignKey: 'wilayah_id', as: 'wilayah' });
 
 // Customer <-> Device (router MikroTik untuk PPPoE isolir)
 // Asosiasi ini opsional — customer.mikrotik_id boleh NULL (tidak semua
@@ -328,6 +333,7 @@ const db = {
   RegistrationRequest,
   SalesCommission,
   CollectorProfile,
+  Wilayah,
   CollectionAssignment,
   CollectionAssignmentLog,
   CommissionPayment,

@@ -57,7 +57,7 @@ const GeniePage = (() => {
     const latEl  = document.getElementById('srv-latency');
     const urlVal = document.getElementById('cfg-nbi-url')?.value || '';
 
-    // Strip scheme for display (acs.flaynet.com:7557 bukan https://acs.flaynet.com:7557)
+    // Strip scheme for display (acs.skynet.com:7557 bukan https://acs.skynet.com:7557)
     urlEl.textContent = urlVal ? urlVal.replace(/^https?:\/\//, '') : '—';
 
     pill?.classList.remove('err', 'warn');

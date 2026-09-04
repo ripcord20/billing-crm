@@ -143,7 +143,11 @@ async function buildInvoiceDataForPdf(invoice, customer, tplCfg, AppSetting) {
     cust_name:    customer.name,
     cid:          customer.customer_id,
     cust_phone:   customer.phone || '',
-    cust_address: customer.address || '',
+    cust_address: await (async () => {
+      try {
+        return await require('../services/WilayahService').formatInvoiceAddress(customer.address || '', customer);
+      } catch (_) { return customer.address || ''; }
+    })(),
     cust_email:   customer.email || '',
     pkg_name:     customer.package?.name || 'Layanan Internet',
     period_month: invoice.period_month,

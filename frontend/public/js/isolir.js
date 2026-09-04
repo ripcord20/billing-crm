@@ -352,7 +352,8 @@ window.setupFirewall = async function(id) {
     message: 'Akan membuat rule <strong>NAT redirect + bypass + drop</strong> di router ini.',
     bullets: [
       'URL halaman isolir sudah diset (HTTP, IP LOKAL, bukan domain CDN)',
-      'Rule lama sudah dibersihkan via WinBox'
+      'Auto-buat pool isolir 10.255.0.0/24 + pool klien PPPoE 10.2.64.2-10.2.79.254',
+      'Rule lama FLAYNET/WAU dibersihkan, list pindah ke SKYNET-*'
     ],
     confirmText: 'Lanjutkan',
     cancelText: 'Batal'
@@ -752,9 +753,9 @@ window.doIsolir = async function(id, name) {
   if (m === 'hotspot_binding') {
     bullets = ['IP Binding di MikroTik akan di-<strong>disable</strong> (sama seperti di /hotspot-binding)', 'Session hotspot pelanggan di-kick', 'Akses internet langsung terputus'];
   } else if (m === 'pppoe') {
-    bullets = ['Profil PPPoE diganti ke profil isolir', 'Session PPPoE aktif di-kick', 'Saat reconnect, pelanggan masuk profil isolir'];
+    bullets = ['Pool + profil isolir PPPoE auto-create (10.255.0.0/24) kalau belum ada', 'Profil PPPoE diganti ke profil isolir', 'Session PPPoE aktif di-kick', 'Saat reconnect, pelanggan dapat IP dari pool isolir /24'];
   } else {
-    bullets = ['IP pelanggan ditambahkan ke address-list FLAYNET-ISOLIR', 'Traffic HTTP di-redirect ke halaman isolir', 'HTTPS & traffic lain di-drop'];
+    bullets = ['IP pelanggan ditambahkan ke address-list SKYNET-ISOLIR', 'Traffic HTTP di-redirect ke halaman isolir', 'HTTPS & traffic lain di-drop'];
   }
   const ok = await DigsDialog.confirm({
     type: 'warning',
@@ -805,7 +806,7 @@ window.runAutoIsolir = async function() {
     type: 'warning',
     title: 'Jalankan Auto Isolir',
     message: 'Semua pelanggan overdue yang punya IP akan diisolir secara otomatis.',
-    bullets: ['Cek semua pelanggan yang sudah lewat jatuh tempo + grace days', 'IP mereka akan ditambahkan ke address-list FLAYNET-ISOLIR', 'Notifikasi WhatsApp dikirim (kalau diaktifkan)'],
+    bullets: ['Cek semua pelanggan yang sudah lewat jatuh tempo + grace days', 'IP mereka akan ditambahkan ke address-list SKYNET-ISOLIR', 'Notifikasi WhatsApp dikirim (kalau diaktifkan)'],
     confirmText: 'Jalankan',
     cancelText: 'Batal'
   });
@@ -1028,7 +1029,7 @@ async function loadWebProxyConfig() {
               (m.proxy_enabled ? ' (port <code>' + (m.proxy_port || '?') + '</code>)' : '') + '</div>' +
           '<div>' + (m.access_rule_exists ? yes : no) + ' Access rule (deny + redirect)' +
               (m.redirect_target ? ' → <code>' + m.redirect_target + '</code>' : '') + '</div>' +
-          '<div>' + (m.nat_redirect_exists ? yes : no) + ' NAT redirect port 80 → 8080 (filter: FLAYNET-ISOLIR)</div>' +
+          '<div>' + (m.nat_redirect_exists ? yes : no) + ' NAT redirect port 80 → 8080 (filter: SKYNET-ISOLIR)</div>' +
           '<div style="margin-top:4px;color:var(--d-muted);font-size:10px;">Device: ' + (m.device_name||'?') + '</div>';
       }
     }
@@ -1317,7 +1318,7 @@ window.bulkIsolir = async function() {
   const ok = await DigsDialog.confirm({
     type: 'warning', title: 'Bulk Isolir',
     message: `<strong>${ids.length} pelanggan</strong> terpilih akan diisolir sekaligus.`,
-    bullets: ['Semua IP ditambahkan ke address-list FLAYNET-ISOLIR', 'Proses sekuensial dengan jeda 400ms'],
+    bullets: ['Semua IP ditambahkan ke address-list SKYNET-ISOLIR', 'Proses sekuensial dengan jeda 400ms'],
     confirmText: 'Isolir Semua', cancelText: 'Batal'
   });
   if (!ok) return;
@@ -1540,7 +1541,7 @@ window.syncBypassToRouter = async function() {
   const ok = await DigsDialog.confirm({
     type: 'warning', title: 'Sync Bypass ke Router',
     message: `Daftar bypass akan di-push ke <strong>${_esc(_currentBypassRouterName)}</strong>.`,
-    bullets: ['Seluruh isi address-list FLAYNET-BYPASS di router akan di-replace', 'Daftar gabungan = bypass global + bypass khusus router ini'],
+    bullets: ['Seluruh isi address-list SKYNET-BYPASS di router akan di-replace', 'Daftar gabungan = bypass global + bypass khusus router ini'],
     confirmText: 'Sync Sekarang', cancelText: 'Batal'
   });
   if (!ok) return;
