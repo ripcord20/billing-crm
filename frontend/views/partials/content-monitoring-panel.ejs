@@ -1,0 +1,168 @@
+<%
+  /* Shared cards: Traffic per konten + Top destination.
+     Dipakai halaman desktop /monitoring/content dan shell HP /mobile/content. */
+%>
+<style>
+  .cm-card {
+    background: #fff;
+    border: 1px solid #e8eaed;
+    border-radius: 16px;
+    padding: 16px 16px 12px;
+    margin-bottom: 14px;
+    box-shadow: 0 8px 22px -16px rgba(30,60,120,.28);
+  }
+  .cm-card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .cm-ic {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: #eff6ff; color: #2563eb;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .cm-ic svg { width: 18px; height: 18px; }
+  .cm-card-title { font-size: 16px; font-weight: 800; color: #0f172a; letter-spacing: -.2px; }
+  .cm-tabs {
+    display: flex; gap: 4px;
+    background: #f1f5f9; border-radius: 10px; padding: 3px;
+    margin-bottom: 10px;
+  }
+  .cm-tab {
+    flex: 1; border: none; background: transparent;
+    font-family: inherit; font-size: 12.5px; font-weight: 700;
+    color: #64748b; padding: 7px 8px; border-radius: 8px; cursor: pointer;
+  }
+  .cm-tab.active { background: #fff; color: #2563eb; box-shadow: 0 1px 3px rgba(15,23,42,.08); }
+  .cm-desc { font-size: 12px; color: #64748b; line-height: 1.55; margin: 0 0 8px; }
+  .cm-empty {
+    padding: 36px 12px 28px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #94a3b8;
+  }
+  .cm-empty .cm-hint {
+    display: block;
+    margin-top: 8px;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+  .cm-empty a { color: #2563eb; font-weight: 700; text-decoration: none; }
+  .cm-content { display: none; gap: 18px; align-items: center; flex-wrap: wrap; padding: 4px 0 8px; }
+  .cm-donut-col {
+    position: relative; flex-shrink: 0;
+    width: 200px; max-width: 100%; aspect-ratio: 1 / 1;
+    display: flex; align-items: center; justify-content: center; margin: 0 auto;
+  }
+  .cm-donut-col > div:first-child { width: 100%; }
+  .cm-donut-center {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    text-align: center; pointer-events: none;
+  }
+  .cm-dc-val { font-size: 16px; font-weight: 800; color: #0f172a; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .cm-dc-lbl { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+  .cm-list { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 2px; }
+  .cm-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 4px; border-radius: 8px;
+  }
+  .cm-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .cm-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cm-cat { font-size: 10px; color: #94a3b8; }
+  .cm-pct { font-size: 12px; font-weight: 800; min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+  .cm-bytes { font-size: 11px; color: #94a3b8; min-width: 58px; text-align: right; font-variant-numeric: tabular-nums; }
+  .cm-sub { font-size: 11px; font-weight: 700; color: #94a3b8; margin: 0 0 8px; }
+
+  .cm-table-wrap { overflow-x: auto; margin: 0 -4px; }
+  .cm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .cm-table th {
+    text-align: left; font-size: 11px; font-weight: 800; letter-spacing: .04em;
+    color: #64748b; background: #f8fafc; padding: 9px 10px;
+    border-bottom: 1px solid #eef2f7;
+  }
+  .cm-table th:first-child, .cm-table td:first-child { width: 36px; text-align: center; color: #94a3b8; }
+  .cm-table td { padding: 10px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  .cm-host { font-weight: 700; color: #0f172a; word-break: break-all; }
+  .cm-ptr { font-size: 11.5px; color: #64748b; margin-top: 2px; font-weight: 500; }
+  .cm-meta { font-size: 11px; color: #94a3b8; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+  .cm-skel {
+    height: 8px; border-radius: 100px;
+    background: linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);
+    background-size: 200% 100%; animation: cmSh 1.3s infinite; margin: 14px 10px 18px;
+  }
+  @keyframes cmSh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  @media (max-width: 640px) {
+    .cm-donut-col { width: min(200px, 70vw); }
+    .cm-table th.cm-col-extra, .cm-table td.cm-col-extra { display: none; }
+  }
+  [data-theme="dark"] .cm-card { background: var(--bg-card,#1a1d27); border-color: var(--border,#2a2d3e); }
+  [data-theme="dark"] .cm-card-title, [data-theme="dark"] .cm-name, [data-theme="dark"] .cm-host, [data-theme="dark"] .cm-dc-val { color: var(--text,#e2e8f0); }
+  [data-theme="dark"] .cm-tabs { background: #252937; }
+  [data-theme="dark"] .cm-tab.active { background: #1a1d27; color: #60a5fa; }
+  [data-theme="dark"] .cm-table th { background: #141720; color: #94a3b8; }
+  [data-theme="dark"] .cm-ic { background: rgba(37,99,235,.18); color: #60a5fa; }
+</style>
+
+<div class="cm-card" id="cmTrafficCard">
+  <div class="cm-card-head">
+    <div class="cm-ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+      </svg>
+    </div>
+    <div class="cm-card-title">Traffic per konten</div>
+  </div>
+  <div class="cm-tabs" role="tablist">
+    <button type="button" class="cm-tab active" id="tsTabProvider" onclick="cmSetMode('provider')">Provider</button>
+    <button type="button" class="cm-tab" id="tsTabCategory" onclick="cmSetMode('category')">Kategori</button>
+    <button type="button" class="cm-tab" id="tsTabWeb" onclick="cmSetMode('web')">Web</button>
+  </div>
+  <p class="cm-desc">
+    Snapshot koneksi aktif di MikroTik (termasuk fasttrack). Provider dicocokkan dari blok IP
+    (Google, Meta, Cloudflare, Netflix, Roblox, Steam, dll). Tab Web memakai DNS cache router,
+    atau reverse DNS bila cache kosong.
+  </p>
+  <div class="cm-sub" id="tsSub"></div>
+  <div class="cm-empty" id="tsEmpty">Memuat…</div>
+  <div class="cm-content" id="tsContent">
+    <div class="cm-donut-col">
+      <div id="tsDonut"></div>
+      <div class="cm-donut-center">
+        <div class="cm-dc-val" id="tsTotalVal">—</div>
+        <div class="cm-dc-lbl">total</div>
+      </div>
+    </div>
+    <div class="cm-list" id="tsList"></div>
+  </div>
+</div>
+
+<div class="cm-card" id="cmDestCard">
+  <div class="cm-card-head">
+    <div class="cm-ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      </svg>
+    </div>
+    <div class="cm-card-title">Top destination</div>
+  </div>
+  <p class="cm-desc">IP tujuan dengan traffic terbesar saat ini, plus reverse DNS bila ada.</p>
+  <div class="cm-table-wrap">
+    <table class="cm-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>IP / HOSTNAME</th>
+          <th class="cm-col-extra">TRAFFIC</th>
+        </tr>
+      </thead>
+      <tbody id="tdBody">
+        <tr><td colspan="3"><div class="cm-skel"></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>

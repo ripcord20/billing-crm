@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    :root {
+      --cm-blue:#2563eb; --cm-blue-d:#1d4ed8;
+      --border:#e2e8f0; --text:#0f172a; --muted:#64748b; --faint:#94a3b8;
+    }
+    .cm { font-family:'Plus Jakarta Sans',sans-serif; }
+    .cm-hdr {
+      display:flex; align-items:flex-start; justify-content:space-between;
+      flex-wrap:wrap; gap:12px; margin-bottom:16px;
+    }
+    .cm-hdr-l h1 { font-size:22px; font-weight:800; color:var(--text); margin:0 0 4px; }
+    .cm-hdr-l p  { font-size:13px; color:var(--muted); margin:0; }
+    .cm-hdr-r { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .cm-btn {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:6px 12px; border-radius:8px; font-size:12px; font-weight:600;
+      cursor:pointer; border:1.5px solid var(--border); background:#fff; color:#374151;
+      font-family:inherit;
+    }
+    .cm-btn:hover { background:#f8fafc; }
+    .cm-btn svg { width:14px; height:14px; }
+    .cm-btn.spin svg { animation: cmSpin 1s linear infinite; }
+    @keyframes cmSpin { to { transform: rotate(360deg); } }
+    .live-chip {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700;
+    }
+    .chip-idle { background:#f1f5f9; border:1px solid var(--border); color:var(--muted); }
+    .chip-live { background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; }
+    .chip-busy { background:#eff6ff; border:1px solid #bfdbfe; color:var(--cm-blue); }
+    .live-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .chip-idle .live-dot { background:var(--faint); }
+    .chip-live .live-dot { background:#16a34a; animation: cmPulse 2s ease-in-out infinite; }
+    .chip-busy .live-dot { background:var(--cm-blue); animation: cmPulse .8s ease-in-out infinite; }
+    @keyframes cmPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.75)} }
+    @media (max-width: 640px) {
+      .cm-hdr-l { display: none; }
+      .cm-hdr-r { width: 100%; }
+      .cm-hdr-r .mt-selector-wrap { flex: 1; min-width: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <%- include('../partials/sidebar') %>
+    <div class="main-content">
+      <%- include('../partials/topbar') %>
+      <main class="page-content cm">
+        <div class="cm-hdr">
+          <div class="cm-hdr-l">
+            <h1>Content Monitoring</h1>
+            <p>Traffic per penyedia konten dari connection tracking MikroTik</p>
+          </div>
+          <div class="cm-hdr-r">
+            <div id="mtSelectorMount"></div>
+            <span class="live-chip chip-idle" id="cmLiveChip">
+              <span class="live-dot"></span>
+              <span id="cmLiveChipTxt">Idle</span>
+            </span>
+            <button type="button" class="cm-btn" id="cmRefreshBtn" onclick="cmRefresh()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23,4 23,10 17,10"/>
+                <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+              </svg>
+              Refresh
+            </button>
+          </div>
+        </div>
+        <%- include('../partials/content-monitoring-panel') %>
+      </main>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/mikrotik-selector.js"></script>
+  <script src="/js/content-monitoring.js"></script>
+</body>
+</html>
