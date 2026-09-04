@@ -8,6 +8,14 @@ const { Device, DeviceLog, TrafficData, sequelize } = require('../models');
 const { Op }   = require('sequelize');
 const { getMikrotikInstance } = require('../services/MikrotikService');
 const { SNMP_OIDS } = require('../config/constants');
+const {
+  scopeDeviceTraffic,
+  aggregateDeviceTraffic,
+  keepMonitorIface
+} = require('../utils/deviceMetrics');
+const { pinDeviceUplinkIfEmpty, pinDeviceUplinkWithTimeout } = require('../utils/pinDeviceUplink');
+
+const _snmpByteSnap = new Map();
 
 let snmp;
 try { snmp = require('net-snmp'); } catch(e) {}
@@ -240,13 +248,15 @@ async function _pollMikrotikApi(device) {
     }
 
     // Ambil semua data paralel
-    const [resResult, ifaceResult] = await Promise.allSettled([
+    const [resResult, ifaceResult, gwResult] = await Promise.allSettled([
       mt.getSystemResource(),
-      mt.getInterfaces()
+      mt.getInterfaces(),
+      mt.getDefaultRouteIface()
     ]);
 
     const sysRes   = resResult.status === 'fulfilled'   ? resResult.value   : {};
     const ifaceRaw = ifaceResult.status === 'fulfilled' ? ifaceResult.value : [];
+    const detectedGw = gwResult.status === 'fulfilled' ? gwResult.value : null;
 
     // CPU — langsung dari system resource
     const cpuLoad = sysRes.cpuLoad ?? 0;
@@ -257,32 +267,30 @@ async function _pollMikrotikApi(device) {
     const usedMem  = Math.max(0, totalMem - freeMem);
     const memPct   = totalMem > 0 ? Math.round((usedMem / totalMem) * 100) : 0;
 
-    // Interfaces — ambil yang running, max 12
-    const runningIfaces = ifaceRaw.filter(i => !i.disabled).slice(0, 12);
-    const ifaceStats = await Promise.allSettled(
-      runningIfaces.map(i => mt.getInterfaceStats(i.name).catch(() => null))
-    );
+    // Byte-delta on WAN/uplink only. Pin (atau default-route) ikut diukur
+    // meski berupa VLAN — jangan jumlahkan sfp+1+sfp+2 (itu selalu RX≈TX).
+    const pin = String(device.uplink_iface || detectedGw || '').trim() || null;
+    const monitorIfaces = ifaceRaw.filter((i) => keepMonitorIface(i, pin)).slice(0, 40);
+    let liveStats = [];
+    try {
+      liveStats = await mt.getInterfacesBulkStats(monitorIfaces.map((i) => i.name));
+    } catch (_) { /* rates stay 0 on this tick */ }
 
-    let totalRx = 0, totalTx = 0;
-    const interfaces = ifaceStats
-      .map((r, idx) => {
-        const s = r.status === 'fulfilled' ? r.value : null;
-        if (!s) return null;
-        const rxMbps = ((s.rxBitsPerSecond || 0) / 1e6);
-        const txMbps = ((s.txBitsPerSecond || 0) / 1e6);
-        if (runningIfaces[idx]?.running) {
-          totalRx += rxMbps;
-          totalTx += txMbps;
-        }
-        return {
-          name:    runningIfaces[idx]?.name || s.name || '',
-          type:    runningIfaces[idx]?.type || 'ether',
-          running: runningIfaces[idx]?.running || false,
-          rxMbps:  parseFloat(rxMbps.toFixed(3)),
-          txMbps:  parseFloat(txMbps.toFixed(3))
-        };
-      })
-      .filter(Boolean);
+    const scoped = scopeDeviceTraffic(monitorIfaces, liveStats, pin);
+    if (!device.uplink_iface) {
+      await pinDeviceUplinkIfEmpty(device, mt, scoped.trafficIfaces[0]);
+    }
+    const interfaces = scoped.interfaces.map((i) => ({
+      name:    i.name,
+      type:    i.type || 'ether',
+      running: i.running,
+      comment: i.comment || '',
+      rxMbps:  i.rxMbps,
+      txMbps:  i.txMbps,
+      include_in_total: !!i.include_in_total
+    }));
+    const totalRx = scoped.totalRxMbps;
+    const totalTx = scoped.totalTxMbps;
 
     // Disk — ambil langsung dari /system/resource raw
     let diskPct = 0;
@@ -308,8 +316,10 @@ async function _pollMikrotikApi(device) {
       firmware:     sysRes.version   || '',
       boardName:    sysRes.boardName || '',
       interfaces,
-      totalRxMbps:  parseFloat(totalRx.toFixed(3)),
-      totalTxMbps:  parseFloat(totalTx.toFixed(3))
+      totalRxMbps:  parseFloat(Number(totalRx || 0).toFixed(3)),
+      totalTxMbps:  parseFloat(Number(totalTx || 0).toFixed(3)),
+      trafficScope: scoped.trafficScope,
+      trafficIfaces: scoped.trafficIfaces
     };
   } catch(e) {
     console.error('[DevMon API]', e.message);
@@ -371,18 +381,28 @@ async function _pollSnmp(device) {
       const ifColumns = [1, 2, 8, 10, 16]; // index, descr, oper, in, out
       session.tableColumns(SNMP_OIDS.IF_TABLE, ifColumns, 50, (ifErr, table) => {
         session.close();
-        let interfaces = [], totalRx = 0, totalTx = 0;
+        let interfaces = [];
 
         if (!ifErr && table) {
+          const now = Date.now();
           Object.values(table).forEach(row => {
+            const name = row[2]?.toString() || '';
             const rxOctets = parseInt(row[10]) || 0;
             const txOctets = parseInt(row[16]) || 0;
-            const rxMbps   = (rxOctets * 8) / 1e6;
-            const txMbps   = (txOctets * 8) / 1e6;
-            totalRx += rxMbps;
-            totalTx += txMbps;
+            const key = `${device.id}:${name}`;
+            const prev = _snmpByteSnap.get(key);
+            let rxMbps = 0;
+            let txMbps = 0;
+            if (prev) {
+              const sec = (now - prev.at) / 1000;
+              if (sec >= 0.3 && sec <= 180 && rxOctets >= prev.rx && txOctets >= prev.tx) {
+                rxMbps = ((rxOctets - prev.rx) * 8) / sec / 1e6;
+                txMbps = ((txOctets - prev.tx) * 8) / sec / 1e6;
+              }
+            }
+            _snmpByteSnap.set(key, { rx: rxOctets, tx: txOctets, at: now });
             interfaces.push({
-              name:    row[2]?.toString() || '',
+              name,
               running: row[8] === 1,
               rxMbps:  parseFloat(rxMbps.toFixed(3)),
               txMbps:  parseFloat(txMbps.toFixed(3))
@@ -390,6 +410,7 @@ async function _pollSnmp(device) {
           });
         }
 
+        const traffic = aggregateDeviceTraffic(interfaces, device.uplink_iface);
         resolve({
           reachable:   true,
           protocol:    'snmp',
@@ -401,8 +422,10 @@ async function _pollSnmp(device) {
           uptime:      get(SNMP_OIDS.SYSTEM_UPTIME)?.toString() || '',
           firmware:    get(SNMP_OIDS.MT_FIRMWARE)?.toString() || '',
           interfaces,
-          totalRxMbps: parseFloat(totalRx.toFixed(3)),
-          totalTxMbps: parseFloat(totalTx.toFixed(3))
+          totalRxMbps: traffic.totalRxMbps,
+          totalTxMbps: traffic.totalTxMbps,
+          trafficScope: traffic.trafficScope,
+          trafficIfaces: traffic.trafficIfaces
         });
       });
     });
@@ -451,6 +474,8 @@ async function _saveLog(deviceId, metrics) {
         diskPercent:  metrics.diskPercent,
         totalRxMbps:  metrics.totalRxMbps,
         totalTxMbps:  metrics.totalTxMbps,
+        trafficScope: metrics.trafficScope || null,
+        trafficIfaces: metrics.trafficIfaces || [],
         memUsed:      metrics.memUsed,
         memTotal:     metrics.memTotal,
         firmware:     metrics.firmware,
@@ -504,6 +529,9 @@ exports.createDevice = async (req, res) => {
       is_active:       true,
       status:          'offline'
     });
+
+    await pinDeviceUplinkWithTimeout(device, 4000);
+    await device.reload().catch(() => {});
 
     res.status(201).json({ success: true, data: device, message: 'Device berhasil ditambahkan' });
   } catch(e) {

@@ -276,6 +276,8 @@ function setGaugeColor(el, val) {
 function updateTrafficSummary(d) {
   $('rxVal').textContent = (d.totalRxMbps || 0).toFixed(2);
   $('txVal').textContent = (d.totalTxMbps || 0).toFixed(2);
+  const scopeEl = $('trafficScopeLbl');
+  if (scopeEl) scopeEl.textContent = d.trafficScope ? ('Uplink ' + d.trafficScope) : '';
 }
 
 // ── Interface grid ────────────────────────────────────────────
@@ -286,11 +288,12 @@ function updateInterfaceGrid(interfaces) {
     return;
   }
   grid.innerHTML = interfaces.map(i => `
-    <div class="dm-iface-card">
+    <div class="dm-iface-card"${i.include_in_total ? ' style="outline:1.5px solid #67e8f9"' : ''}>
       <div class="dm-iface-header">
         <div class="dm-iface-name">
           <span class="dm-iface-dot ${i.running ? '' : 'down'}"></span>
           ${i.name}
+          ${i.include_in_total ? '<span style="font-size:9px;font-weight:800;color:#0891b2;margin-left:6px">UPLINK</span>' : ''}
         </div>
         <span style="font-size:10px;color:var(--dm-muted);">${i.type || 'ether'}</span>
       </div>
