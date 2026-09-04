@@ -303,6 +303,12 @@ class CustomerController {
         sanitized.pppoe_password = String(sanitized.pppoe_password || '').trim() || null;
       }
 
+      const prevUser = String(customer.pppoe_username || '').trim();
+      const prevPass = String(customer.pppoe_password || '').trim();
+      const prevMk   = customer.mikrotik_id == null ? '' : String(customer.mikrotik_id);
+      const forceSync = sanitized.sync_pppoe === true || sanitized.sync_pppoe === 'true';
+      delete sanitized.sync_pppoe;
+
       await customer.update(sanitized);
       const full = await Customer.findByPk(customer.id, {
         include: [{ model: Package, as: 'package' }]
@@ -313,9 +319,19 @@ class CustomerController {
       //   - lat/lng null → hapus point yang ada
       // Best-effort: gagal sync tidak membatalkan update customer.
       const infraResult = await InfraSync.syncCustomerToInfra(full);
-      const pppoeSync = await PppoeProvision.syncCustomerSecret(full).catch(e => ({
-        status: 'failed', message: e.message || String(e)
-      }));
+
+      // Jangan sentuh router saat update biasa (foto rumah, alamat, dll).
+      // Sync PPPoE hanya kalau kredensial/router berubah, atau diminta eksplisit.
+      const newUser = String(full.pppoe_username || '').trim();
+      const newPass = String(full.pppoe_password || '').trim();
+      const newMk   = full.mikrotik_id == null ? '' : String(full.mikrotik_id);
+      const credsChanged = newUser !== prevUser || newPass !== prevPass || newMk !== prevMk;
+      let pppoeSync = { status: 'skipped', message: 'Tidak ada perubahan PPPoE' };
+      if (forceSync || credsChanged) {
+        pppoeSync = await PppoeProvision.syncCustomerSecret(full).catch(e => ({
+          status: 'failed', message: e.message || String(e)
+        }));
+      }
 
       res.json({ success: true, data: full, infra_sync: infraResult, pppoe_sync: pppoeSync });
     } catch (error) {

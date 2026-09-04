@@ -1090,10 +1090,6 @@ async function _saveCustomerInner() {
     } else if (data.pppoe_sync && data.pppoe_sync.status === 'failed') {
       msg += ' • Router: ' + (data.pppoe_sync.message || 'gagal');
       toastType = 'warning';
-    } else if (data.pppoe_sync && data.pppoe_sync.status === 'skipped' && data.pppoe_sync.message) {
-      if (/password|router/i.test(data.pppoe_sync.message)) {
-        msg += ' • ' + data.pppoe_sync.message;
-      }
     }
 
     // Info status auto-sync ke peta infrastruktur
@@ -1453,7 +1449,8 @@ window.activatePppoeNow = async function () {
         pppoe_username: user,
         pppoe_password: pass,
         mikrotik_id: mk,
-        connection_type: 'pppoe'
+        connection_type: 'pppoe',
+        sync_pppoe: true
       })
     });
     const sync = saveRes && saveRes.pppoe_sync;
