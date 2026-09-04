@@ -38,6 +38,7 @@ const Permission = require('./Permission')(sequelize);
 const RolePermission = require('./RolePermission')(sequelize);
 const Customer = require('./Customer')(sequelize);
 const CustomerPushSubscription = require('./CustomerPushSubscription')(sequelize);
+const PortalOtp = require('./PortalOtp')(sequelize);
 const Package = require('./Package')(sequelize);
 const Invoice = require('./Invoice')(sequelize);
 const Payment = require('./Payment')(sequelize);
@@ -201,6 +202,10 @@ Permission.belongsToMany(Role, { through: RolePermission, foreignKey: 'permissio
 Package.hasMany(Customer, { foreignKey: 'package_id', as: 'customers' });
 Customer.belongsTo(Package, { foreignKey: 'package_id', as: 'package' });
 
+// Customer <-> PortalOtp (login email / WhatsApp)
+Customer.hasMany(PortalOtp, { foreignKey: 'customer_id', as: 'portal_otps' });
+PortalOtp.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
+
 // Customer <-> Device (router MikroTik untuk PPPoE isolir)
 // Asosiasi ini opsional — customer.mikrotik_id boleh NULL (tidak semua
 // customer terhubung ke router tertentu). Alias 'mikrotik' dipakai agar
@@ -261,6 +266,7 @@ const db = {
   RolePermission,
   Customer,
   CustomerPushSubscription,
+  PortalOtp,
   Package,
   Invoice,
   Payment,

@@ -391,6 +391,30 @@ class EmailService {
       return false;
     }
   }
+
+  // OTP login portal pelanggan. noRetry: kode kedaluwarsa cepat, jangan dikirim ulang.
+  async sendPortalOtp(to, { code, name, companyName, ttlMinutes }) {
+    const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+    const company = companyName || 'ISP';
+    const mins = ttlMinutes || 5;
+    const who = name || 'Pelanggan';
+    const safeCode = String(code || '').replace(/\D/g, '').slice(0, 8);
+    const subject = `Kode login ${company}: ${safeCode}`;
+    const text = `Halo ${who},\n\nKode login portal Anda: ${safeCode}\nBerlaku ${mins} menit. Jangan berikan kode ini ke siapa pun.\n\nJika Anda tidak meminta kode ini, abaikan email ini.\n\n— ${company}`;
+    const html = `
+      <div style="font-family:sans-serif;padding:24px;max-width:480px;color:#0f172a;">
+        <h2 style="color:#1d4ed8;margin:0 0 12px;">Kode login portal</h2>
+        <p style="margin:0 0 16px;">Halo ${esc(who)},</p>
+        <p style="margin:0 0 8px;">Gunakan kode berikut untuk masuk ke portal pelanggan:</p>
+        <div style="font-size:28px;font-weight:800;letter-spacing:8px;text-align:center;padding:16px;background:#eff6ff;border-radius:12px;color:#1e3a8a;margin:16px 0;">${esc(safeCode)}</div>
+        <p style="color:#64748b;font-size:13px;margin:0 0 16px;">Berlaku ${mins} menit. Jangan berikan kode ini ke siapa pun, termasuk petugas yang mengaku dari ${esc(company)}.</p>
+        <p style="color:#94a3b8;font-size:12px;margin:0;">Jika Anda tidak meminta kode ini, abaikan email ini.</p>
+        <p style="color:#94a3b8;font-size:12px;margin:16px 0 0;">— ${esc(company)}</p>
+      </div>`;
+    return this.sendWithReason({ to, subject, html, text, type: 'otp', noRetry: true });
+  }
 }
 
 module.exports = new EmailService();
