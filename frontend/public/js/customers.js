@@ -92,6 +92,8 @@ window.openAddCustomer = async function () {
   // Show panel PPPoE create (hanya untuk tambah baru, default OFF)
   const ppBox = document.getElementById('pppoeCreateBox');
   if (ppBox) ppBox.style.display = '';
+  const actBtnAdd = document.getElementById('btnActivatePppoe');
+  if (actBtnAdd) actBtnAdd.style.display = 'none';
   document.getElementById('customerModal').classList.add('active');
   custInitMap();
   await loadPackages();
@@ -155,6 +157,8 @@ window.editCustomer = async function (id) {
   if (ppForm) ppForm.style.display = 'none';
   const ppBox = document.getElementById('pppoeCreateBox');
   if (ppBox) ppBox.style.display = '';
+  const actBtn = document.getElementById('btnActivatePppoe');
+  if (actBtn) actBtn.style.display = '';
   _movePppoeToEditSlot();
 
   _setVal('custName',        c.name            || '');
@@ -1076,9 +1080,20 @@ async function _saveCustomerInner() {
     let msg = _custEditId ? 'Customer diperbarui' : 'Customer ditambahkan';
     let toastType = 'success';
 
-    // Info status pembuatan PPPoE
+    // Info status pembuatan PPPoE (checkbox lama ATAU auto-sync backend)
     if (pppoeStatus === 'created') {
       msg += ' • Akun PPPoE dibuat ✓';
+    } else if (data.pppoe_sync && data.pppoe_sync.status === 'created') {
+      msg += ' • Akun PPPoE dibuat di router ✓';
+    } else if (data.pppoe_sync && data.pppoe_sync.status === 'updated') {
+      msg += ' • Akun PPPoE di router di-update ✓';
+    } else if (data.pppoe_sync && data.pppoe_sync.status === 'failed') {
+      msg += ' • Router: ' + (data.pppoe_sync.message || 'gagal');
+      toastType = 'warning';
+    } else if (data.pppoe_sync && data.pppoe_sync.status === 'skipped' && data.pppoe_sync.message) {
+      if (/password|router/i.test(data.pppoe_sync.message)) {
+        msg += ' • ' + data.pppoe_sync.message;
+      }
     }
 
     // Info status auto-sync ke peta infrastruktur
@@ -1418,6 +1433,45 @@ async function loadPppoeProfiles(deviceId) {
     if (spinner) spinner.style.display = 'none';
   }
 }
+
+window.activatePppoeNow = async function () {
+  if (!_custEditId) {
+    App.showToast('Simpan customer dulu, lalu klik tombol ini', 'error');
+    return;
+  }
+  const user = document.getElementById('custPPPoE')?.value?.trim() || '';
+  const pass = document.getElementById('custPppoePassword')?.value?.trim() || '';
+  const mk = document.getElementById('custMikrotikId')?.value || '';
+  if (!user || !pass) { App.showToast('Isi username dan password PPPoE', 'error'); return; }
+  if (!mk) { App.showToast('Pilih Router MikroTik — untuk KPJ pilih CORE 1', 'error'); return; }
+  const btn = document.getElementById('btnActivatePppoe');
+  if (btn) { btn.disabled = true; btn.textContent = 'Mengaktifkan…'; }
+  try {
+    const saveRes = await App.api('/customers/' + _custEditId, {
+      method: 'PUT',
+      body: JSON.stringify({
+        pppoe_username: user,
+        pppoe_password: pass,
+        mikrotik_id: mk,
+        connection_type: 'pppoe'
+      })
+    });
+    const sync = saveRes && saveRes.pppoe_sync;
+    if (sync && (sync.status === 'created' || sync.status === 'updated')) {
+      App.showToast(sync.message || 'Akun PPPoE aktif di router', 'success');
+    } else if (sync && sync.status === 'failed') {
+      App.showToast(sync.message || 'Gagal aktifkan di router', 'error');
+    } else {
+      const r = await App.api('/customers/' + _custEditId + '/activate-pppoe', { method: 'POST' });
+      if (r?.success) App.showToast(r.message || 'Akun PPPoE aktif di router', 'success');
+      else App.showToast(r?.message || 'Gagal aktifkan di router', 'error');
+    }
+  } catch (e) {
+    App.showToast(e.message || 'Gagal aktifkan di router', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Aktifkan di router sekarang'; }
+  }
+};
 
 // Generate random password 10 chars (alfanumeric)
 window.generatePppoePassword = function() {

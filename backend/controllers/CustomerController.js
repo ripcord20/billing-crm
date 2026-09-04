@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const { generateUniqueCustomerId, paginateResponse } = require('../utils/helpers');
 const { getCompanyName } = require('../utils/companyInfo');
 const InfraSync = require('../services/CustomerInfraSyncService');
+const PppoeProvision = require('../services/CustomerPppoeProvisionService');
 const { applyTenantWhere, getTenantId, assertCustomerTenant, isTenantOwner } = require('../utils/tenantScope');
 
 class CustomerController {
@@ -187,6 +188,9 @@ class CustomerController {
       // Auto-sync ke InfrastructurePoint type='customer' kalau ada lat/lng.
       // Best-effort — gagal sync di sini tidak membatalkan create customer.
       const infraResult = await InfraSync.syncCustomerToInfra(full);
+      const pppoeSync = await PppoeProvision.syncCustomerSecret(full).catch(e => ({
+        status: 'failed', message: e.message || String(e)
+      }));
 
       // Kirim WA welcome (best-effort, tidak block response)
       let waStatus = 'skipped';
@@ -253,7 +257,7 @@ class CustomerController {
         }).catch(() => {});
       } catch (_) {}
 
-      res.status(201).json({ success: true, data: full, wa_status: waStatus, email_status: emailStatus, infra_sync: infraResult });
+      res.status(201).json({ success: true, data: full, wa_status: waStatus, email_status: emailStatus, infra_sync: infraResult, pppoe_sync: pppoeSync });
     } catch (error) {
       const msg = error.name === 'SequelizeValidationError'
         ? error.errors.map(e => e.message).join(', ')
@@ -309,13 +313,34 @@ class CustomerController {
       //   - lat/lng null → hapus point yang ada
       // Best-effort: gagal sync tidak membatalkan update customer.
       const infraResult = await InfraSync.syncCustomerToInfra(full);
+      const pppoeSync = await PppoeProvision.syncCustomerSecret(full).catch(e => ({
+        status: 'failed', message: e.message || String(e)
+      }));
 
-      res.json({ success: true, data: full, infra_sync: infraResult });
+      res.json({ success: true, data: full, infra_sync: infraResult, pppoe_sync: pppoeSync });
     } catch (error) {
       const msg = error.name === 'SequelizeValidationError'
         ? error.errors.map(e => e.message).join(', ')
         : error.message;
       res.status(400).json({ success: false, message: msg });
+    }
+  }
+
+  // Satu klik: buat/update secret PPPoE di router pelanggan.
+  async activatePppoe(req, res) {
+    try {
+      const customer = await Customer.findByPk(req.params.id, {
+        include: [{ model: Package, as: 'package' }]
+      });
+      if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+      if (!assertCustomerTenant(req, customer)) {
+        return res.status(404).json({ success: false, message: 'Customer not found' });
+      }
+      const result = await PppoeProvision.syncCustomerSecret(customer);
+      const ok = result.status === 'created' || result.status === 'updated';
+      res.status(ok ? 200 : 400).json({ success: ok, ...result });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
     }
   }
 

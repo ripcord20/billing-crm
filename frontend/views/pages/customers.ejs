@@ -618,7 +618,10 @@
             <input type="text" class="finput" id="custPppoePassword" placeholder="Password PPPoE" autocomplete="off" style="padding-right:84px">
             <button type="button" onclick="generatePppoePassword()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:#2563eb;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;">Generate</button>
           </div>
-          <div class="form-hint">Disimpan di data pelanggan. Dipakai juga saat membuat secret di MikroTik.</div>
+          <div class="form-hint">Isi username, password, dan <strong>Router MikroTik</strong> lalu Simpan — akun PPPoE dibuat otomatis di router. Pelanggan KPJ pilih <strong>CORE 1</strong>.</div>
+          <button type="button" id="btnActivatePppoe" onclick="activatePppoeNow()" style="display:none;margin-top:8px;background:#0f766e;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;">
+            Aktifkan di router sekarang
+          </button>
         </div>
 
         <div class="form-sec"><span class="form-sec-t">Alamat</span><span class="form-sec-hint">Wilayah dari data resmi — alamat lengkap tersusun otomatis</span></div>
