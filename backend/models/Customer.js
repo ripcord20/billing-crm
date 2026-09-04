@@ -143,6 +143,11 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(100),
       allowNull: true
     },
+    pppoe_password: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+      comment: 'Password PPPoE (disimpan untuk provision RADIUS / secret)'
+    },
     billing_date: {
       type: DataTypes.INTEGER,
       defaultValue: 1,

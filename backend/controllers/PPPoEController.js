@@ -119,12 +119,31 @@ class PPPoEController {
   // POST /api/mikrotik/pppoe/secrets
   async createSecret(req, res) {
     try {
-      const mt = await getMt(req);
       if (!req.body.name)     return res.status(400).json({ success:false, message:'Username wajib diisi' });
       if (!req.body.password) return res.status(400).json({ success:false, message:'Password wajib diisi' });
-      await mt.createPPPoESecret(req.body);
-      // null response = ECONNRESET after write = operation succeeded
-      res.json({ success: true, message: 'User PPPoE berhasil dibuat' });
+      const { getTenantId } = require('../utils/tenantScope');
+      const PppoeAccount = require('../services/PppoeAccountService');
+      const result = await PppoeAccount.provisionStandalone({
+        username: req.body.name,
+        password: req.body.password,
+        profile: req.body.profile,
+        remoteAddress: req.body.remoteAddress,
+        localAddress: req.body.localAddress,
+        service: req.body.service || 'pppoe',
+        comment: req.body.comment,
+        deviceId: resolveDeviceId(req),
+        tenant_id: getTenantId(req),
+        backend: req.body.pppoe_backend || 'auto',
+        failIfExists: req.body.failIfExists !== false
+      });
+      if (result.skipped && result.reason === 'no_radius_server') {
+        // fallback already handled inside provisionStandalone
+      }
+      if (!result.success) {
+        return res.status(400).json({ success: false, message: result.message, detail: result.message });
+      }
+      const where = result.backend === 'radius' ? 'RADIUS' : 'router MikroTik';
+      res.json({ success: true, message: `User PPPoE berhasil dibuat di ${where}`, data: result });
     } catch (err) {
       logger.error('PPPoE createSecret error:', err.message);
       res.status(400).json({ success:false, message: err.message, detail: String(err.message) });

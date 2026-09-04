@@ -210,6 +210,9 @@ router.get('/nms', authenticate, blockFinanceArea, (req, res) => {
 router.get('/monitoring/pppoe', authenticate, blockFinanceArea, (req, res) => {
   res.render('pages/pppoe', { title: 'PPPoE Sessions', user: req.user, active: 'pppoe' });
 });
+router.get('/monitoring/radius', authenticate, blockFinanceArea, (req, res) => {
+  res.render('pages/radius', { title: 'RADIUS', user: req.user, active: 'radius' });
+});
 
 router.get('/monitoring/queue', authenticate, blockFinanceArea, (req, res) => {
   res.render('pages/queue', { title: 'Simple Queue', user: req.user, active: 'queue' });

@@ -63,6 +63,8 @@ function _movePppoeToEditSlot() {
     editSlot.appendChild(input);
   }
   if (addSlot) addSlot.style.display = 'none';
+  const extras = document.getElementById('custPppoeEditExtras');
+  if (extras) extras.style.display = '';
 }
 
 function _movePppoeToAddSlot() {
@@ -76,6 +78,8 @@ function _movePppoeToAddSlot() {
     addSlot.appendChild(input);
   }
   if (editSlot) editSlot.style.display = 'none';
+  const extras = document.getElementById('custPppoeEditExtras');
+  if (extras) extras.style.display = 'none';
 }
 
 // ── EXPOSE ────────────────────────────────────────────────────
@@ -104,6 +108,16 @@ window.openAddCustomer = async function () {
   // Show panel PPPoE create (hanya untuk tambah baru, default OFF)
   const ppBox = document.getElementById('pppoeCreateBox');
   if (ppBox) ppBox.style.display = '';
+  const cbPppoeAdd = document.getElementById('custCreatePppoe');
+  if (cbPppoeAdd) {
+    cbPppoeAdd.checked = true;
+    const formBox = document.getElementById('pppoeFormBox');
+    if (formBox) formBox.style.display = '';
+    if (typeof loadPppoeRouters === 'function') loadPppoeRouters();
+  }
+  _setVal('custConnType', 'pppoe');
+  if (typeof onConnTypeChange === 'function') onConnTypeChange();
+  if (!document.getElementById('custPppoePassword')?.value) generatePppoePassword();
   document.getElementById('customerModal').classList.add('active');
   custInitMap();
   await loadPackages();
@@ -182,6 +196,7 @@ window.editCustomer = async function (id) {
   _setVal('custDueDate',     c.due_date        || '');
   _setVal('custInstallDate', c.installation_date || '');
   _setVal('custPPPoE',       c.pppoe_username  || '');
+  _setVal('custPppoePasswordEdit', c.pppoe_password || '');
   // Simpan value asli untuk deteksi perubahan di saveCustomer()
   _originalPppoeUsername = String(c.pppoe_username || '').trim();
   _setVal('custOntSn',       c.ont_sn          || '');
@@ -800,17 +815,17 @@ function _confirmPppoeRename(oldName, newName) {
         </div>
         <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:12px;color:#92400e;line-height:1.5;margin-bottom:6px;">
           <strong>Apa yang ingin Anda lakukan?</strong><br>
-          Tanpa sync ke router, data di FLAYNET dan MikroTik akan tidak konsisten.
+          Kalau server RADIUS aktif, sync menulis ke RADIUS (cara BillingRadius) — bukan /ppp/secret. Tanpa sync, ONT tidak bisa dial dengan username baru.
         </div>
       </div>
       <div style="padding:14px 22px;background:#fafbfc;border-top:1px solid #f1f5f9;display:flex;flex-direction:column;gap:8px;">
         <button id="__ppRenameSync" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:11px 14px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;line-height:1.4;">
-          <div>✓ Update DB &amp; rename di router MikroTik</div>
-          <div style="font-size:11px;font-weight:400;opacity:.85;margin-top:2px;">Sinkron otomatis. Customer mungkin disconnect sementara.</div>
+          <div>✓ Update DB &amp; sync akun dial (RADIUS / router)</div>
+          <div style="font-size:11px;font-weight:400;opacity:.85;margin-top:2px;">Username baru bisa dipakai untuk dial. Sesi lama mungkin terputus.</div>
         </button>
         <button id="__ppRenameDbOnly" style="background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:8px;padding:11px 14px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;line-height:1.4;">
-          <div>Update database saja (tanpa sentuh router)</div>
-          <div style="font-size:11px;font-weight:400;color:#64748b;margin-top:2px;">Pilih ini kalau Anda sudah rename manual di Winbox/router.</div>
+          <div>Update database saja (tanpa sentuh RADIUS/router)</div>
+          <div style="font-size:11px;font-weight:400;color:#64748b;margin-top:2px;">Pilih ini hanya jika akun di RADIUS/Winbox sudah diganti manual.</div>
         </button>
         <button id="__ppRenameCancel" style="background:#fff;color:#64748b;border:1px solid #e2e8f0;border-radius:8px;padding:9px 14px;font-size:12.5px;font-weight:500;cursor:pointer;margin-top:2px;">
           Batal — kembali ke form
@@ -868,7 +883,8 @@ async function _saveCustomerInner() {
 
   let pppoeData = null;
   if (createPppoe) {
-    const mkId        = document.getElementById('custPppoeRouter')?.value?.trim() || '';
+    const mkId        = document.getElementById('custPppoeRouter')?.value?.trim()
+      || document.getElementById('custMikrotikId')?.value?.trim() || '';
     const pppoeUser   = document.getElementById('custPPPoE')?.value?.trim() || '';
     const pppoePass   = document.getElementById('custPppoePassword')?.value?.trim() || '';
     const pppoeProf   = document.getElementById('custPppoeProfile')?.value?.trim() || '';
@@ -876,10 +892,8 @@ async function _saveCustomerInner() {
     const pppoeLocal  = document.getElementById('custPppoeLocalAddr')?.value?.trim() || '';
     const pppoeRemote = document.getElementById('custPppoeRemoteAddr')?.value?.trim() || '';
 
-    if (!mkId)      { App.showToast('Pilih Router MikroTik untuk PPPoE', 'error'); return; }
     if (!pppoeUser) { App.showToast('PPPoE Username wajib diisi', 'error'); return; }
     if (!pppoePass) { App.showToast('Password PPPoE wajib diisi', 'error'); return; }
-    if (!pppoeProf) { App.showToast('Pilih Profile PPPoE', 'error'); return; }
 
     pppoeData = {
       device_id:     mkId,
@@ -888,48 +902,11 @@ async function _saveCustomerInner() {
       profile:       pppoeProf,
       service:       pppoeSvc,
       localAddress:  pppoeLocal,
-      remoteAddress: pppoeRemote,
-      comment:       (custId ? custId + ' — ' : '') + name
+      remoteAddress: pppoeRemote
     };
   }
 
   btn.disabled = true; btn.textContent = 'Menyimpan...';
-
-  // ═══ STEP 1: Buat akun PPPoE di MikroTik dulu (kalau diminta) ═══
-  // Alasan: kalau gagal, jangan lanjutkan create customer (rollback gampang).
-  let pppoeStatus = 'skipped';
-  if (pppoeData) {
-    btn.textContent = 'Membuat akun PPPoE...';
-    try {
-      const url = '/mikrotik/pppoe/secrets?device_id=' + encodeURIComponent(pppoeData.device_id);
-      const ppRes = await App.api(url, {
-        method: 'POST',
-        body: JSON.stringify({
-          name:          pppoeData.name,
-          password:      pppoeData.password,
-          profile:       pppoeData.profile,
-          service:       pppoeData.service,
-          localAddress:  pppoeData.localAddress,
-          remoteAddress: pppoeData.remoteAddress,
-          comment:       pppoeData.comment
-        })
-      });
-      if (!ppRes?.success) {
-        const errMsg = ppRes?.message || 'Gagal membuat akun PPPoE';
-        App.showToast('PPPoE gagal: ' + errMsg + '. Customer TIDAK disimpan.', 'error');
-        btn.disabled = false; btn.textContent = 'Simpan Customer';
-        return;
-      }
-      pppoeStatus = 'created';
-    } catch (e) {
-      App.showToast('PPPoE gagal: ' + e.message + '. Customer TIDAK disimpan.', 'error');
-      btn.disabled = false; btn.textContent = 'Simpan Customer';
-      return;
-    }
-  }
-
-  // ═══ STEP 2: Simpan customer ═══
-  btn.textContent = 'Menyimpan customer...';
 
   const phone = document.getElementById('custPhone')?.value || '';
   // Flag kirim WA welcome — hanya relevan saat tambah baru, dan customer punya HP
@@ -1051,6 +1028,19 @@ async function _saveCustomerInner() {
   if (_custEditId || createPppoe) {
     body.pppoe_username = document.getElementById('custPPPoE')?.value || '';
   }
+  if (createPppoe && pppoeData) {
+    body.pppoe_password = pppoeData.password;
+    body.pppoe_profile = pppoeData.profile || null;
+    body.pppoe_service = pppoeData.service || 'pppoe';
+    body.pppoe_local_address = pppoeData.localAddress || null;
+    body.pppoe_remote_address = pppoeData.remoteAddress || null;
+    if (pppoeData.device_id) body.mikrotik_id = pppoeData.device_id;
+    body.create_pppoe = true;
+  }
+  if (_custEditId) {
+    const editPass = document.getElementById('custPppoePasswordEdit')?.value?.trim();
+    if (editPass) body.pppoe_password = editPass;
+  }
   if (sendWA) body.send_wa_welcome = true;
   if (sendEmail) body.send_email_welcome = true;
   // Kalau PPPoE rename sudah di-handle oleh endpoint khusus di atas,
@@ -1093,9 +1083,15 @@ async function _saveCustomerInner() {
     let msg = _custEditId ? 'Customer diperbarui' : 'Customer ditambahkan';
     let toastType = 'success';
 
-    // Info status pembuatan PPPoE
-    if (pppoeStatus === 'created') {
-      msg += ' • Akun PPPoE dibuat ✓';
+    // Info status pembuatan PPPoE (RADIUS atau router)
+    const ps = data.pppoe_sync;
+    if (ps && ps.status && ps.status !== 'skipped') {
+      if (ps.status === 'failed') {
+        msg += ' • PPPoE: ' + (ps.message || 'gagal');
+        toastType = 'warning';
+      } else {
+        msg += ' • ' + (ps.message || 'Akun PPPoE aktif');
+      }
     }
 
     // Info status auto-sync ke peta infrastruktur
@@ -1144,16 +1140,7 @@ async function _saveCustomerInner() {
     }
     App.showToast(msg, toastType);
   } else {
-    // Customer gagal disimpan tapi PPPoE sudah dibuat — beri warning supaya admin tahu
-    if (pppoeStatus === 'created') {
-      App.showToast(
-        'PPPoE sudah dibuat di MikroTik tapi customer gagal disimpan: ' + (data?.message || 'Unknown error') +
-        '. Silakan hapus secret PPPoE manual atau ulangi simpan customer.',
-        'error'
-      );
-    } else {
-      App.showToast(data?.message || 'Gagal menyimpan', 'error');
-    }
+    App.showToast(data?.message || 'Gagal menyimpan', 'error');
   }
   btn.disabled = false; btn.textContent = 'Simpan Customer';
 }
@@ -1216,7 +1203,7 @@ window.refreshNextId = async function() {
 function _clearForm() {
   ['custName','custPhone','custEmail','custAddress','custPPPoE','custOntSn','custId','custInstallDate','custStaticIP',
    'custMacAddress','custNik','custJalan','custNoRumah','custRt','custRw',
-   'custPppoePassword','custPppoeLocalAddr','custPppoeRemoteAddr',
+   'custPppoePassword','custPppoePasswordEdit','custPppoeLocalAddr','custPppoeRemoteAddr',
    'custLatitude','custLongitude'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
@@ -1417,12 +1404,47 @@ async function loadPppoeProfiles(deviceId) {
 }
 
 // Generate random password 10 chars (alfanumeric)
-window.generatePppoePassword = function() {
+window.generatePppoePassword = function(targetId) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
   let pw = '';
   for (let i = 0; i < 10; i++) pw += chars.charAt(Math.floor(Math.random() * chars.length));
-  const el = document.getElementById('custPppoePassword');
+  const el = document.getElementById(targetId || 'custPppoePassword');
   if (el) el.value = pw;
+  return pw;
+};
+
+window.activateCustomerPppoe = async function() {
+  if (!_custEditId) {
+    App.showToast('Simpan pelanggan dulu, lalu aktifkan akun PPPoE', 'warning');
+    return;
+  }
+  const username = (document.getElementById('custPPPoE')?.value || '').trim();
+  const password = (document.getElementById('custPppoePasswordEdit')?.value || '').trim();
+  const mkId = document.getElementById('custMikrotikId')?.value || '';
+  if (!username || !password) {
+    App.showToast('Isi username dan password PPPoE dulu', 'error');
+    return;
+  }
+  const btn = document.getElementById('custActivatePppoeBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Mengaktifkan…'; }
+  try {
+    const r = await App.api('/customers/' + _custEditId + '/provision-pppoe', {
+      method: 'POST',
+      body: JSON.stringify({
+        pppoe_username: username,
+        pppoe_password: password,
+        mikrotik_id: mkId || null
+      })
+    });
+    if (r?.success) {
+      App.showToast(r.message || r.pppoe_sync?.message || 'Akun PPPoE aktif', 'success');
+    } else {
+      App.showToast(r?.message || r?.pppoe_sync?.message || 'Gagal aktifkan PPPoE', 'error');
+    }
+  } catch (e) {
+    App.showToast(e.message || 'Gagal aktifkan PPPoE', 'error');
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Aktifkan akun PPPoE sekarang'; }
 };
 
 // Bind event listeners untuk panel PPPoE create

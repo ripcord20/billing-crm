@@ -610,6 +610,15 @@
             <span class="form-meta">— mendukung format user@realm</span>
           </label>
         </div>
+        <div id="custPppoeEditExtras" style="display:none" class="span-all">
+          <label class="flbl">Password PPPoE</label>
+          <div style="position:relative">
+            <input type="text" class="finput" id="custPppoePasswordEdit" placeholder="Password PPPoE" autocomplete="off" style="padding-right:84px">
+            <button type="button" onclick="generatePppoePassword('custPppoePasswordEdit')" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:#2563eb;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;">Generate</button>
+          </div>
+          <div class="form-hint">Isi username + password lalu Simpan, atau klik Aktifkan — akun dibuat di RADIUS (atau router jika RADIUS belum diset).</div>
+          <button type="button" id="custActivatePppoeBtn" onclick="activateCustomerPppoe()" style="margin-top:8px;background:#065f46;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;">Aktifkan akun PPPoE sekarang</button>
+        </div>
 
         <div class="form-sec"><span class="form-sec-t">Alamat</span><span class="form-sec-hint">Wilayah dari data resmi — alamat lengkap tersusun otomatis</span></div>
         <div class="form-field span-all">
@@ -714,10 +723,10 @@
           <div style="flex:1;min-width:0;">
             <div style="font-size:13px;font-weight:700;color:#1e40af;display:flex;align-items:center;gap:6px;">
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
-              Buat Akun PPPoE di MikroTik
+              Buat akun PPPoE (RADIUS, seperti BillingRadius)
             </div>
             <div style="font-size:11px;color:#1d4ed8;margin-top:2px;line-height:1.4;">
-              Otomatis tambahkan secret PPPoE ke router yang dipilih saat customer disimpan.
+              Satu simpan = data pelanggan + user dial. Kalau server RADIUS aktif, akun masuk <code>radcheck</code> (bukan /ppp/secret). Tanpa RADIUS, fallback ke secret MikroTik.
             </div>
           </div>
         </label>

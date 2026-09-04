@@ -744,6 +744,32 @@ const startServer = async () => {
       logger.warn('Failed to migrate customers.nik: ' + (e.message || e));
     }
 
+    // Password PPPoE di record pelanggan — dipakai provision RADIUS (cara BillingRadius).
+    try {
+      const [pwRows] = await db.sequelize.query(
+        `SELECT COUNT(*) AS c FROM information_schema.columns
+          WHERE table_schema = DATABASE()
+            AND table_name = 'customers'
+            AND column_name = 'pppoe_password'`
+      );
+      if (!(pwRows && pwRows[0] && parseInt(pwRows[0].c) > 0)) {
+        await db.sequelize.query(
+          `ALTER TABLE customers ADD COLUMN pppoe_password VARCHAR(128) NULL AFTER pppoe_username`
+        );
+        logger.info('Migrated: customers.pppoe_password column added');
+      }
+    } catch (e) {
+      logger.warn('Failed to migrate customers.pppoe_password: ' + (e.message || e));
+    }
+
+    try {
+      if (db.RadiusServer) await db.RadiusServer.sync();
+      if (db.RadiusAccount) await db.RadiusAccount.sync();
+      logger.info('Synced: radius_servers / radius_accounts');
+    } catch (e) {
+      logger.warn('Failed to sync RADIUS tables: ' + (e.message || e));
+    }
+
     // ── Migrasi: kolom wilayah terstruktur untuk filter per-area ────────────
     // province, regency (kab/kota), district (kecamatan), village (desa/kel).
     // Idempotent — cek tiap kolom sebelum ALTER.
