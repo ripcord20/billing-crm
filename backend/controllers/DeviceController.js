@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const { paginateResponse } = require('../utils/helpers');
 const net = require('net');
 const logger = require('../utils/logger');
+const { parseWinboxPort } = require('../utils/winboxPort');
 
 class DeviceController {
   async index(req, res) {
@@ -106,6 +107,7 @@ class DeviceController {
       if (payload.uplink_iface !== undefined) {
         payload.uplink_iface = String(payload.uplink_iface || '').trim() || null;
       }
+      payload.winbox_port = parseWinboxPort(payload.winbox_port);
       const device = await Device.create(payload);
       res.status(201).json({ success: true, data: device });
     } catch (error) {
@@ -138,7 +140,10 @@ class DeviceController {
         ...req.body,
         uplink_iface: (req.body.uplink_iface === undefined)
           ? undefined
-          : (String(req.body.uplink_iface || '').trim() || null)
+          : (String(req.body.uplink_iface || '').trim() || null),
+        winbox_port: (req.body.winbox_port === undefined)
+          ? undefined
+          : parseWinboxPort(req.body.winbox_port)
       });
       res.json({ success: true, data: device });
     } catch (error) {
@@ -408,7 +413,8 @@ class DeviceController {
         api_username: device.api_username,
         api_password: device.api_password,
         api_port: device.api_port,
-        api_protocol: device.api_protocol
+        api_protocol: device.api_protocol,
+        winbox_port: device.winbox_port
       });
 
       // Update status device di DB
@@ -596,6 +602,7 @@ async function _probeDevice(cfg) {
   // ── Step 1: TCP ping (coba beberapa port umum) ──
   const portsToTry = [
     parseInt(cfg.api_port) || 80,
+    parseWinboxPort(cfg.winbox_port),
     443,
     22,
     parseInt(cfg.snmp_port) || 161

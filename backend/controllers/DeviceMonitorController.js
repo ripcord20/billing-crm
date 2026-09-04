@@ -203,7 +203,7 @@ exports.summary = async (req, res) => {
     const device = await Device.findByPk(req.params.id, {
       attributes: ['id','name','ip_address','type','brand','model','status',
                    'cpu_load','memory_usage','uptime','firmware','last_polled',
-                   'monitoring_type','location']
+                   'monitoring_type','location','api_port','api_username','winbox_port']
     });
     if (!device) return res.status(404).json({ success: false, message: 'Device not found' });
 
@@ -476,6 +476,7 @@ exports.createDevice = async (req, res) => {
       monitoring_type,
       // MikroTik API fields
       api_port, api_username, api_password,
+      winbox_port,
       // SNMP fields
       snmp_community, snmp_version, snmp_port,
       poll_interval, notes
@@ -496,6 +497,7 @@ exports.createDevice = async (req, res) => {
       api_port:        api_port        || null,
       api_username:    api_username    || null,
       api_password:    api_password    || null,
+      winbox_port:     require('../utils/winboxPort').parseWinboxPort(winbox_port),
       snmp_community:  snmp_community  || 'public',
       snmp_version:    snmp_version    || 2,
       snmp_port:       snmp_port       || 161,
@@ -518,7 +520,11 @@ exports.updateDevice = async (req, res) => {
   try {
     const device = await Device.findByPk(req.params.id);
     if (!device) return res.status(404).json({ success: false, message: 'Device tidak ditemukan' });
-    await device.update(req.body);
+    const patch = { ...req.body };
+    if (patch.winbox_port !== undefined) {
+      patch.winbox_port = require('../utils/winboxPort').parseWinboxPort(patch.winbox_port);
+    }
+    await device.update(patch);
     res.json({ success: true, data: device, message: 'Device berhasil diperbarui' });
   } catch(e) {
     res.status(400).json({ success: false, message: e.message });

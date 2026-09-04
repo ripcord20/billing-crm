@@ -276,6 +276,7 @@
           <h1 id="hdrName">Loading device...</h1>
           <p>
             <span class="mono" id="hdrIp">—</span>
+            <span class="mono" id="hdrWinbox" style="background:#ecfeff;color:#155e75;">Winbox :8291</span>
             <span id="hdrType" style="text-transform:capitalize">—</span>
             <span class="st-chip st-offline" id="hdrStatus"><span class="dot"></span>offline</span>
           </p>
@@ -289,6 +290,10 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h3l3-9 6 18 3-9h5"/></svg>
             Test Koneksi
           </button>
+          <a class="btn btn-outline btn-sm" id="btnWinbox" href="#">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+            Buka Winbox
+          </a>
         </div>
       </div>
 
@@ -306,6 +311,7 @@
           <div class="info-grid" id="infoGrid">
             <div class="info-row"><div class="lbl">Name</div><div class="val" id="iName">—</div></div>
             <div class="info-row"><div class="lbl">IP Address</div><div class="val mono" id="iIp">—</div></div>
+            <div class="info-row"><div class="lbl">Winbox Port</div><div class="val mono" id="iWinboxPort">8291</div></div>
             <div class="info-row"><div class="lbl">Brand / Model</div><div class="val" id="iBrand">—</div></div>
             <div class="info-row"><div class="lbl">Tipe</div><div class="val" id="iType">—</div></div>
             <div class="info-row"><div class="lbl">Identity (MikroTik)</div><div class="val" id="iIdentity">—</div></div>
@@ -411,6 +417,7 @@
             <div class="info-row"><div class="lbl">SNMP Port / Version</div><div class="val mono" id="oSnmpPort">—</div></div>
             <div class="info-row"><div class="lbl">API Username</div><div class="val mono" id="oApiUser">—</div></div>
             <div class="info-row"><div class="lbl">API Port</div><div class="val mono" id="oApiPort">—</div></div>
+            <div class="info-row"><div class="lbl">Winbox Port</div><div class="val mono" id="oWinboxPort">8291</div></div>
             <div class="info-row"><div class="lbl">Poll Interval</div><div class="val mono" id="oPollInterval">—</div></div>
             <div class="info-row"><div class="lbl">Status Aktif</div><div class="val" id="oActive">—</div></div>
             <div class="info-row" style="grid-column:1/-1"><div class="lbl">Catatan</div><div class="val" id="oNotes">—</div></div>
@@ -675,6 +682,17 @@
     document.getElementById('crumbName').textContent = d.name || 'Device';
     document.getElementById('hdrName').textContent   = d.name || '—';
     document.getElementById('hdrIp').textContent     = d.ip_address || '—';
+    const wbPort = (function (v) {
+      const n = parseInt(v, 10);
+      return (Number.isFinite(n) && n >= 1 && n <= 65535) ? n : 8291;
+    })(d.winbox_port);
+    const hdrWb = document.getElementById('hdrWinbox');
+    if (hdrWb) hdrWb.textContent = 'Winbox :' + wbPort;
+    const btnWb = document.getElementById('btnWinbox');
+    if (btnWb) {
+      btnWb.href = d.ip_address ? ('winbox://' + d.ip_address + ':' + wbPort) : '#';
+      btnWb.title = 'Buka Winbox ' + (d.ip_address || '') + ':' + wbPort;
+    }
     document.getElementById('hdrType').textContent   = d.type || '—';
     document.title = (d.name || 'Device') + ' - Device Detail - ISP NetOps';
 
@@ -686,6 +704,11 @@
     // Info grid
     document.getElementById('iName').textContent   = d.name || '—';
     document.getElementById('iIp').textContent     = d.ip_address || '—';
+    const iWb = document.getElementById('iWinboxPort');
+    if (iWb) iWb.textContent = String((function (v) {
+      const n = parseInt(v, 10);
+      return (Number.isFinite(n) && n >= 1 && n <= 65535) ? n : 8291;
+    })(d.winbox_port));
     const brand = [d.brand, d.model].filter(Boolean).join(' · ');
     document.getElementById('iBrand').textContent  = brand || '—';
     document.getElementById('iType').textContent   = d.type || '—';
@@ -763,6 +786,11 @@
     document.getElementById('oSnmpPort').textContent      = (d.snmp_port || 161) + ' / v' + (d.snmp_version || 2) + 'c';
     document.getElementById('oApiUser').textContent       = d.api_username || '—';
     document.getElementById('oApiPort').textContent       = d.api_port || '—';
+    const oWb = document.getElementById('oWinboxPort');
+    if (oWb) {
+      const n = parseInt(d.winbox_port, 10);
+      oWb.textContent = (Number.isFinite(n) && n >= 1 && n <= 65535) ? String(n) : '8291';
+    }
     document.getElementById('oPollInterval').textContent  = (d.poll_interval || 60) + ' detik';
 
     const activeEl = document.getElementById('oActive');

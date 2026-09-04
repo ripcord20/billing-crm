@@ -47,6 +47,12 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       allowNull: true
     },
+    // Port Winbox MikroTik. Default 8291; isi port custom bila /ip service winbox diubah.
+    winbox_port: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 8291
+    },
     api_username: {
       type: DataTypes.STRING(100),
       allowNull: true
