@@ -276,7 +276,7 @@ function fillForm(p) {
   setVal('f_name',        p.name || '');
   setVal('f_speed_down',  p.speed_down || '');
   setVal('f_speed_up',    p.speed_up || '');
-  setVal('f_price',       p.price || '');
+  setVal('f_price',       p.price == null || p.price === '' ? '' : p.price);
   setVal('f_description', p.description || '');
   var cat = p.category || detectCat(p);
   setVal('f_category',    cat);
@@ -298,7 +298,8 @@ async function savePkg() {
   var name       = nameEl ? nameEl.value.trim() : '';
   var speed_down = parseInt(document.getElementById('f_speed_down')?.value) || 0;
   var speed_up   = parseInt(document.getElementById('f_speed_up')?.value) || 0;
-  var price      = parseFloat(document.getElementById('f_price')?.value) || 0;
+  var priceRaw   = document.getElementById('f_price') ? document.getElementById('f_price').value : '';
+  var price      = parseFloat(priceRaw);
   var descEl     = document.getElementById('f_description');
   var description= descEl ? descEl.value.trim() : '';
   var catEl      = document.getElementById('f_category');
@@ -309,7 +310,9 @@ async function savePkg() {
   if (!name)       return showErr('Nama paket wajib diisi');
   if (!speed_down) return showErr('Kecepatan download wajib diisi');
   if (!speed_up)   return showErr('Kecepatan upload wajib diisi');
-  if (!price)      return showErr('Harga wajib diisi');
+  if (priceRaw === '' || priceRaw == null || !Number.isFinite(price) || price < 0) {
+    return showErr('Harga wajib diisi (isi 0 untuk paket gratis)');
+  }
 
   var btn    = document.getElementById('btnSavePkg');
   var btnTxt = document.getElementById('btnSaveTxt');

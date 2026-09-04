@@ -118,7 +118,7 @@
     <div class="sheet-hd"><h3 id="sheetTitle">Tambah Paket</h3><button class="sheet-x" onclick="closeForm()">&times;</button></div>
     <div class="sheet-bd">
       <div class="fg"><label>Nama Paket *</label><input type="text" id="fName" placeholder="mis. Home Basic 150.000"></div>
-      <div class="fg"><label>Harga (Rp) *</label><input type="number" id="fPrice" inputmode="numeric" placeholder="150000"></div>
+      <div class="fg"><label>Harga (Rp) *</label><input type="number" id="fPrice" min="0" inputmode="numeric" placeholder="0 = gratis"></div>
       <div class="fg-row">
         <div class="fg"><label>Download (Mbps)</label><input type="number" id="fDown" inputmode="numeric" placeholder="10"></div>
         <div class="fg"><label>Upload (Mbps)</label><input type="number" id="fUp" inputmode="numeric" placeholder="10"></div>
@@ -211,7 +211,7 @@
       document.getElementById('sheetTitle').textContent=_editId?'Edit Paket':'Tambah Paket';
       const p=_editId?_all.find(x=>x.id===_editId):null;
       document.getElementById('fName').value=p?(p.name||''):'';
-      document.getElementById('fPrice').value=p?(p.price||''):'';
+      document.getElementById('fPrice').value=p?(p.price==null||p.price===''?'':p.price):'';
       document.getElementById('fDown').value=p?(p.speed_down||''):'';
       document.getElementById('fUp').value=p?(p.speed_up||''):'';
       document.getElementById('fCat').value=p?(p.category||''):'';
@@ -225,9 +225,10 @@
     function closeForm(){ document.getElementById('sheetOv').classList.remove('open'); document.getElementById('sheet').classList.remove('open'); document.body.style.overflow=''; }
     async function savePackage(){
       const name=document.getElementById('fName').value.trim();
-      const price=parseInt(document.getElementById('fPrice').value)||0;
+      const priceRaw=document.getElementById('fPrice').value;
+      const price=parseFloat(priceRaw);
       if(!name){ toast('Nama paket wajib diisi','err'); return; }
-      if(price<=0){ toast('Harga harus lebih dari 0','err'); return; }
+      if(priceRaw===''||!Number.isFinite(price)||price<0){ toast('Harga wajib diisi (isi 0 untuk paket gratis)','err'); return; }
       const body={ name, price,
         speed_down:parseInt(document.getElementById('fDown').value)||null,
         speed_up:parseInt(document.getElementById('fUp').value)||null,
