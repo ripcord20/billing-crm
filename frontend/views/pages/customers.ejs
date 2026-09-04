@@ -445,7 +445,7 @@
         <div style="display:flex;align-items:center;gap:10px;padding:18px 20px 0;flex-wrap:wrap">
           <div class="search-wrap" style="flex:1;max-width:300px">
             <svg class="si" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input type="text" id="searchCustomer" placeholder="Cari nama, CID, HP, paket…">
+            <input type="text" id="searchCustomer" placeholder="Cari nama, CID, HP, PPPoE, paket…">
             <div id="srchSpin" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--d-blue1)" stroke-width="2.5" style="animation:spin .6s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
             </div>
@@ -491,6 +491,7 @@
                 <th>Nama</th>
                 <th class="col-hide-mob">No HP</th>
                 <th>Paket</th>
+                <th>PPPoE</th>
                 <th class="col-hide-mob">Biaya/Bln</th>
                 <th class="col-hide-mob">Aktivasi</th>
                 <th>Jatuh Tempo</th>
@@ -499,7 +500,7 @@
               </tr>
             </thead>
             <tbody id="customerTable">
-              <tr><td colspan="9" style="text-align:center;padding:52px;color:var(--d-muted)">
+              <tr><td colspan="10" style="text-align:center;padding:52px;color:var(--d-muted)">
                 <div style="font-size:34px;margin-bottom:10px">📋</div>
                 <div style="font-size:14px;font-weight:600;color:var(--d-text)">Memuat data…</div>
               </td></tr>
@@ -604,11 +605,23 @@
           <div class="form-hint">MAC perangkat pelanggan untuk IP Binding hotspot</div>
         </div>
 
-        <!-- Slot khusus PPPoE Username di mode EDIT (JS akan move field ke sini saat edit) -->
-        <div id="custPPPoEEditSlot" style="display:none" class="span-all">
+        <div class="form-field">
           <label class="flbl">PPPoE Username
             <span class="form-meta">— mendukung format user@realm</span>
           </label>
+          <input type="text" class="finput" id="custPPPoE" placeholder="pppoe-username" autocomplete="off">
+          <div class="form-hint">Otomatis terisi dari nama saat tambah baru. Bisa diubah.</div>
+        </div>
+        <div class="form-field">
+          <label class="flbl">Password PPPoE</label>
+          <div style="position:relative">
+            <input type="text" class="finput" id="custPppoePassword" placeholder="Password PPPoE" autocomplete="off" style="padding-right:84px">
+            <button type="button" onclick="generatePppoePassword()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:#2563eb;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;">Generate</button>
+          </div>
+          <div class="form-hint">Isi username, password, dan <strong>Router MikroTik</strong> lalu Simpan — akun PPPoE dibuat otomatis di router. Pelanggan KPJ pilih <strong>CORE 1</strong>.</div>
+          <button type="button" id="btnActivatePppoe" onclick="activatePppoeNow()" style="display:none;margin-top:8px;background:#0f766e;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;">
+            Aktifkan di router sekarang
+          </button>
         </div>
 
         <div class="form-sec"><span class="form-sec-t">Alamat</span><span class="form-sec-hint">Wilayah dari data resmi — alamat lengkap tersusun otomatis</span></div>
@@ -717,7 +730,7 @@
               Buat Akun PPPoE di MikroTik
             </div>
             <div style="font-size:11px;color:#1d4ed8;margin-top:2px;line-height:1.4;">
-              Otomatis tambahkan secret PPPoE ke router yang dipilih saat customer disimpan.
+              Otomatis tambahkan secret PPPoE ke router yang dipilih saat customer disimpan. Username &amp; password diambil dari kolom PPPoE di atas.
             </div>
           </div>
         </label>
@@ -744,21 +757,6 @@
                 <option value="">— Pilih router dulu —</option>
               </select>
               <div class="form-hint">Daftar profile diambil langsung dari router yang dipilih</div>
-            </div>
-            <div id="custPPPoEAddSlot" class="form-field span-all">
-              <label class="flbl" style="display:flex;align-items:center;gap:6px;">
-                Username PPPoE *
-                <span class="form-meta">auto dari Nama, bisa diubah</span>
-              </label>
-              <input type="text" class="finput" id="custPPPoE" placeholder="pppoe-username" autocomplete="off">
-              <div class="form-hint">Otomatis terisi dari Nama Customer. Bisa di-edit manual (mendukung format <strong>user@realm</strong>).</div>
-            </div>
-            <div class="form-field">
-              <label class="flbl">Password PPPoE *</label>
-              <div style="position:relative">
-                <input type="text" class="finput" id="custPppoePassword" placeholder="Password" autocomplete="off" style="padding-right:84px">
-                <button type="button" onclick="generatePppoePassword()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:#2563eb;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;">Generate</button>
-              </div>
             </div>
             <div class="form-field">
               <label class="flbl">Service</label>

@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const { generateUniqueCustomerId, paginateResponse } = require('../utils/helpers');
 const { getCompanyName } = require('../utils/companyInfo');
 const InfraSync = require('../services/CustomerInfraSyncService');
+const PppoeProvision = require('../services/CustomerPppoeProvisionService');
 const { applyTenantWhere, getTenantId, assertCustomerTenant, isTenantOwner } = require('../utils/tenantScope');
 
 class CustomerController {
@@ -17,7 +18,8 @@ class CustomerController {
           { name: { [Op.like]: `%${search}%` } },
           { customer_id: { [Op.like]: `%${search}%` } },
           { phone: { [Op.like]: `%${search}%` } },
-          { address: { [Op.like]: `%${search}%` } }
+          { address: { [Op.like]: `%${search}%` } },
+          { pppoe_username: { [Op.like]: `%${search}%` } }
         ];
       }
       // overdue & due_soon adalah filter virtual — tidak set where.status
@@ -151,6 +153,20 @@ class CustomerController {
         }
       }
 
+      // Mobile form mengirim router_id/device_id; desktop memakai mikrotik_id.
+      if (!data.mikrotik_id && (data.router_id || data.device_id)) {
+        data.mikrotik_id = data.router_id || data.device_id;
+      }
+      delete data.router_id;
+      delete data.device_id;
+      delete data.pppoe_profile; // bukan kolom customers
+      if (data.pppoe_username !== undefined) {
+        data.pppoe_username = String(data.pppoe_username || '').trim() || null;
+      }
+      if (data.pppoe_password !== undefined) {
+        data.pppoe_password = String(data.pppoe_password || '').trim() || null;
+      }
+
       // Jangan izinkan field internal di-set dari input bebas.
       delete data.public_link_token;
 
@@ -172,6 +188,9 @@ class CustomerController {
       // Auto-sync ke InfrastructurePoint type='customer' kalau ada lat/lng.
       // Best-effort — gagal sync di sini tidak membatalkan create customer.
       const infraResult = await InfraSync.syncCustomerToInfra(full);
+      const pppoeSync = await PppoeProvision.syncCustomerSecret(full).catch(e => ({
+        status: 'failed', message: e.message || String(e)
+      }));
 
       // Kirim WA welcome (best-effort, tidak block response)
       let waStatus = 'skipped';
@@ -238,7 +257,7 @@ class CustomerController {
         }).catch(() => {});
       } catch (_) {}
 
-      res.status(201).json({ success: true, data: full, wa_status: waStatus, email_status: emailStatus, infra_sync: infraResult });
+      res.status(201).json({ success: true, data: full, wa_status: waStatus, email_status: emailStatus, infra_sync: infraResult, pppoe_sync: pppoeSync });
     } catch (error) {
       const msg = error.name === 'SequelizeValidationError'
         ? error.errors.map(e => e.message).join(', ')
@@ -271,6 +290,24 @@ class CustomerController {
       delete sanitized.customer_id;           // hanya boleh diubah via updatePortalCredentials (validasi unique)
       delete sanitized.last_portal_login;     // diset otomatis oleh sistem saat login
       delete sanitized.public_link_token;     // hanya via endpoint payment-link (generate/revoke)
+      if (!sanitized.mikrotik_id && (sanitized.router_id || sanitized.device_id)) {
+        sanitized.mikrotik_id = sanitized.router_id || sanitized.device_id;
+      }
+      delete sanitized.router_id;
+      delete sanitized.device_id;
+      delete sanitized.pppoe_profile;
+      if (sanitized.pppoe_username !== undefined) {
+        sanitized.pppoe_username = String(sanitized.pppoe_username || '').trim() || null;
+      }
+      if (sanitized.pppoe_password !== undefined) {
+        sanitized.pppoe_password = String(sanitized.pppoe_password || '').trim() || null;
+      }
+
+      const prevUser = String(customer.pppoe_username || '').trim();
+      const prevPass = String(customer.pppoe_password || '').trim();
+      const prevMk   = customer.mikrotik_id == null ? '' : String(customer.mikrotik_id);
+      const forceSync = sanitized.sync_pppoe === true || sanitized.sync_pppoe === 'true';
+      delete sanitized.sync_pppoe;
 
       await customer.update(sanitized);
       const full = await Customer.findByPk(customer.id, {
@@ -283,12 +320,43 @@ class CustomerController {
       // Best-effort: gagal sync tidak membatalkan update customer.
       const infraResult = await InfraSync.syncCustomerToInfra(full);
 
-      res.json({ success: true, data: full, infra_sync: infraResult });
+      // Jangan sentuh router saat update biasa (foto rumah, alamat, dll).
+      // Sync PPPoE hanya kalau kredensial/router berubah, atau diminta eksplisit.
+      const newUser = String(full.pppoe_username || '').trim();
+      const newPass = String(full.pppoe_password || '').trim();
+      const newMk   = full.mikrotik_id == null ? '' : String(full.mikrotik_id);
+      const credsChanged = newUser !== prevUser || newPass !== prevPass || newMk !== prevMk;
+      let pppoeSync = { status: 'skipped', message: 'Tidak ada perubahan PPPoE' };
+      if (forceSync || credsChanged) {
+        pppoeSync = await PppoeProvision.syncCustomerSecret(full).catch(e => ({
+          status: 'failed', message: e.message || String(e)
+        }));
+      }
+
+      res.json({ success: true, data: full, infra_sync: infraResult, pppoe_sync: pppoeSync });
     } catch (error) {
       const msg = error.name === 'SequelizeValidationError'
         ? error.errors.map(e => e.message).join(', ')
         : error.message;
       res.status(400).json({ success: false, message: msg });
+    }
+  }
+
+  // Satu klik: buat/update secret PPPoE di router pelanggan.
+  async activatePppoe(req, res) {
+    try {
+      const customer = await Customer.findByPk(req.params.id, {
+        include: [{ model: Package, as: 'package' }]
+      });
+      if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+      if (!assertCustomerTenant(req, customer)) {
+        return res.status(404).json({ success: false, message: 'Customer not found' });
+      }
+      const result = await PppoeProvision.syncCustomerSecret(customer);
+      const ok = result.status === 'created' || result.status === 'updated';
+      res.status(ok ? 200 : 400).json({ success: ok, ...result });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
     }
   }
 

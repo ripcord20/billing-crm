@@ -353,6 +353,11 @@ router.post('/customers/:id/rename-pppoe',
   logActivity('rename_pppoe', 'customer'),
   CustomerController.renamePppoe);
 
+router.post('/customers/:id/activate-pppoe',
+  authenticate, demoGuard, hasPermission('customer_update'),
+  logActivity('activate_pppoe', 'customer'),
+  CustomerController.activatePppoe);
+
 // ── Permanent payment link per-pelanggan ──
 // GET    → ambil link saat ini (atau null kalau belum dibuat)
 // POST   → buat / regenerate (revoke lama) token → link baru
