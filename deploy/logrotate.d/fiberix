@@ -1,0 +1,33 @@
+# Log aplikasi Fiberix / FLAYNET (winston + stdout capture).
+# Node tetap buka file descriptor, jadi wajib copytruncate (jangan rename).
+# Pasang: sudo cp deploy/logrotate.d/fiberix /etc/logrotate.d/fiberix
+# Tes:    sudo logrotate -d /etc/logrotate.d/fiberix
+# Paksa:  sudo logrotate -f /etc/logrotate.d/fiberix
+
+/www/wwwroot/fiberix.my.id/logs/*.log {
+    daily
+    maxsize 10M
+    rotate 14
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    dateext
+    dateformat -%Y%m%d
+    su root root
+}
+
+/tmp/fiberix-start.log {
+    daily
+    maxsize 10M
+    rotate 7
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    dateext
+    dateformat -%Y%m%d
+    su root root
+}
