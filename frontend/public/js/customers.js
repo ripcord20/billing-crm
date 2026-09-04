@@ -1023,8 +1023,8 @@ async function _saveCustomerInner() {
   // pppoe_username hanya dikirim saat:
   //   - mode EDIT (user memang mengelola field ini), ATAU
   //   - mode TAMBAH dengan checkbox "Buat Akun PPPoE" dicentang.
-  // Tanpa ini, field #custPPPoE yang mungkin ter-auto-fill akan tersimpan ke DB
-  // walau user tidak ingin membuat PPPoE (bug: PPPoE seolah selalu ter-create).
+  // Tanpa ini, field #custPPPoE kosong tidak perlu ditulis ke DB saat tambah
+  // pelanggan tanpa akun dial.
   if (_custEditId || createPppoe) {
     body.pppoe_username = document.getElementById('custPPPoE')?.value || '';
   }
@@ -1469,17 +1469,7 @@ window.activateCustomerPppoe = async function() {
         const hint = document.getElementById('pppoeFormHint');
         if (hint) { hint.style.display = 'none'; hint.innerHTML = ''; }
 
-        // Auto-fill PPPoE Username dari nama (hanya di mode TAMBAH baru,
-        // dan kalau user belum edit manual field PPPoE).
-        // Berguna untuk skenario: user sudah ketik nama dulu, lalu baru
-        // centang "Buat Akun PPPoE" — field auto-terisi langsung.
-        if (!_custEditId && !_pppoeManuallyEdited) {
-          const nameEl  = document.getElementById('custName');
-          const pppoeEl = document.getElementById('custPPPoE');
-          if (nameEl && pppoeEl && nameEl.value.trim()) {
-            pppoeEl.value = _slugifyForPppoe(nameEl.value);
-          }
-        }
+        // Username PPPoE tidak diisi dari nama — operator ketik sendiri.
       } else {
         const hint = document.getElementById('pppoeFormHint');
         if (hint) { hint.style.display = 'none'; hint.innerHTML = ''; }
@@ -1534,51 +1524,9 @@ window.activateCustomerPppoe = async function() {
   });
 })();
 
-// ─────────────────────────────────────────────────────────────────────
-// AUTO-GENERATE PPPoE Username dari Nama Customer
-// ─────────────────────────────────────────────────────────────────────
-// Saat user mengetik nama di field `custName`, field `custPPPoE` ikut
-// terisi otomatis dengan versi slugified (huruf+angka, tanpa spasi).
-//
-// Aturan:
-//   1. Hanya jalan di mode TAMBAH baru (_custEditId == null). Saat edit,
-//      username yang sudah ada tidak ditimpa.
-//   2. Tidak menimpa kalau user sudah pernah mengetik manual di custPPPoE
-//      (di-track oleh flag `_pppoeManuallyEdited`).
-//   3. Kalau user mengosongkan field PPPoE setelah edit manual, flag
-//      direset → auto-fill aktif kembali (user bisa "minta generate ulang"
-//      dengan cara mengosongkan field).
-//
-// Pakai event delegation pada document supaya berfungsi terlepas dari
-// urutan load script vs. DOMContentLoaded (konsisten dengan pola
-// bindPppoeHandlers di atas).
-// ─────────────────────────────────────────────────────────────────────
-(function bindPppoeAutoGen() {
-  document.addEventListener('input', function(e) {
-    const t = e.target;
-    if (!t || !t.id) return;
-
-    // (A) Ketika user mengetik di field Nama → propagate ke custPPPoE
-    if (t.id === 'custName') {
-      if (_custEditId) return;              // skip di mode edit
-      if (_pppoeManuallyEdited) return;     // skip kalau user sudah edit manual
-
-      const pppoeEl = document.getElementById('custPPPoE');
-      if (!pppoeEl) return;
-      pppoeEl.value = _slugifyForPppoe(t.value);
-      return;
-    }
-
-    // (B) Ketika user mengetik manual di field PPPoE → set flag
-    //     supaya auto-fill berhenti menimpa.
-    //     Kalau user mengosongkan field, reset flag supaya auto-fill
-    //     kembali aktif (re-generate dari nama).
-    if (t.id === 'custPPPoE') {
-      _pppoeManuallyEdited = !!(t.value && t.value.trim());
-      return;
-    }
-  });
-})();
+// Username PPPoE tidak di-generate dari nama. Operator mengisi sendiri
+// (boleh dikosongkan saat tambah pelanggan). Flag _pppoeManuallyEdited
+// tetap dipakai saat edit/rename.
 
 // ═══════════════════════════════════════════════════════════════════════
 // PORTAL CREDENTIALS — admin mengubah login ID & password Customer Portal

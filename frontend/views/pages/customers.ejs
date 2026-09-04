@@ -756,11 +756,11 @@
             </div>
             <div id="custPPPoEAddSlot" class="form-field span-all">
               <label class="flbl" style="display:flex;align-items:center;gap:6px;">
-                Username PPPoE *
-                <span class="form-meta">auto dari Nama, bisa diubah</span>
+                Username PPPoE
+                <span class="form-meta">opsional — isi manual</span>
               </label>
-              <input type="text" class="finput" id="custPPPoE" placeholder="pppoe-username" autocomplete="off">
-              <div class="form-hint">Otomatis terisi dari Nama Customer. Bisa di-edit manual (mendukung format <strong>user@realm</strong>).</div>
+              <input type="text" class="finput" id="custPPPoE" placeholder="kosongkan jika belum ada akun dial" autocomplete="off">
+              <div class="form-hint">Tidak diisi otomatis dari nama. Kosongkan jika belum buat akun PPPoE, atau ketik username sendiri (mendukung <strong>user@realm</strong>).</div>
             </div>
             <div class="form-field">
               <label class="flbl">Password PPPoE *</label>
@@ -916,7 +916,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/customers.js?v=1779700000"></script>
+<script src="/js/customers.js?v=pppoeempty1"></script>
 <script>
 /* ── Extra stat update from loadCustomerStats ── */
 const _origStats = window.loadCustomerStats;

@@ -827,16 +827,7 @@
       rtSel.innerHTML='<option value="">Pilih router…</option>'+rts.map(d=>'<option value="'+d.id+'">'+esc(d.name||('Router #'+d.id))+'</option>').join('');
     }
     function onConnTypeChange(){ const t=document.getElementById('afConnType').value; document.getElementById('pppoeFields').style.display=(t==='pppoe')?'block':'none'; }
-    function slugPppoe(name){
-      return String(name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,32);
-    }
-    function onAfNameInput(){
-      if(_editId) return;
-      var u=document.getElementById('afPppoeUser');
-      if(!u) return;
-      if(u.dataset.manual==='1') return;
-      u.value=slugPppoe(document.getElementById('afName').value);
-    }
+    function onAfNameInput(){ /* username PPPoE tidak diisi dari nama */ }
     function genPppoePassIfEmpty(force){
       var el=document.getElementById('afPppoePass');
       if(!el) return;
@@ -1095,7 +1086,7 @@
     <div class="as-body">
       <div class="as-sec">Data Pelanggan</div>
       <label class="as-lbl">Nama <span class="req">*</span></label>
-      <input class="as-in" id="afName" placeholder="Nama lengkap pelanggan" oninput="onAfNameInput()">
+      <input class="as-in" id="afName" placeholder="Nama lengkap pelanggan">
       <div class="as-row">
         <div><label class="as-lbl">No. HP / WhatsApp</label><input class="as-in" id="afPhone" inputmode="numeric" placeholder="08xxxx"></div>
         <div><label class="as-lbl">Email</label><input class="as-in" id="afEmail" placeholder="email@contoh.com"></div>
@@ -1162,7 +1153,7 @@
         <label class="as-lbl">Profil PPPoE</label>
         <select class="as-in" id="afPppoeProfile" disabled><option value="">Pilih router dulu…</option></select>
         <div class="as-row">
-          <div><label class="as-lbl">PPPoE Username</label><input class="as-in" id="afPppoeUser" placeholder="username" oninput="this.dataset.manual='1'"></div>
+          <div><label class="as-lbl">PPPoE Username</label><input class="as-in" id="afPppoeUser" placeholder="kosongkan jika belum ada"></div>
           <div>
             <label class="as-lbl">PPPoE Password</label>
             <input class="as-in" id="afPppoePass" placeholder="password">
