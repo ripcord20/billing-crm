@@ -93,8 +93,9 @@
     background:#fff;
     border-bottom:1px solid #eef1f6;
     box-shadow:none;
-    height:58px;
-    padding:0 12px;
+    height:auto;
+    min-height:58px;
+    padding:max(36px, calc(env(safe-area-inset-top, 0px) + 12px)) 12px 12px;
   }
   .topbar-page-title{ display:block; flex:1; min-width:0; }
   .search-box{ display:none; }

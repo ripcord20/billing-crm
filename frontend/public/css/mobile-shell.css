@@ -81,7 +81,7 @@ body{padding-bottom:0 !important;}
    safe-area. Beri .head clearance setinggi itu supaya judul tidak tertutup.
    (Halaman seperti payment-new/profile yang TIDAK memuat .mtop pakai .topbar
    sendiri — tidak terpengaruh karena aturan ini menarget .wrap .head.) */
-.wrap .head{ padding-top:calc(70px + env(safe-area-inset-top)) !important; }
+.wrap .head{ padding-top:calc(88px + env(safe-area-inset-top, 0px)) !important; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    POSISI ELEMEN FIXED → DIPATOK KE SHELL  (SATU SUMBER KEBENARAN)
@@ -243,6 +243,10 @@ body{padding-bottom:0 !important;}
 }
 
 /* ── Chrome profesional: header putih + bottom nav ala referensi ── */
+.mtop{
+  padding-top:max(52px, calc(env(safe-area-inset-top, 0px) + 18px)) !important;
+  padding-bottom:14px !important;
+}
 .bottomnav{
   background:#fff !important;
   border-top:1px solid #eef1f6 !important;
