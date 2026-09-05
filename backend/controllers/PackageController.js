@@ -9,6 +9,13 @@ function pickFields(body) {
   return out;
 }
 
+/** Harga 0 = paket gratis. Tolak hanya kosong / NaN / negatif. */
+function invalidPrice(value) {
+  if (value === undefined || value === null || value === '') return true;
+  const n = Number(value);
+  return !Number.isFinite(n) || n < 0;
+}
+
 class PackageController {
   async index(req, res) {
     try {
@@ -52,7 +59,10 @@ class PackageController {
       if (!fields.name)       return res.status(400).json({ success: false, message: 'Nama paket wajib diisi' });
       if (!fields.speed_down) return res.status(400).json({ success: false, message: 'Kecepatan download wajib diisi' });
       if (!fields.speed_up)   return res.status(400).json({ success: false, message: 'Kecepatan upload wajib diisi' });
-      if (!fields.price)      return res.status(400).json({ success: false, message: 'Harga wajib diisi' });
+      if (invalidPrice(fields.price)) {
+        return res.status(400).json({ success: false, message: 'Harga wajib diisi (isi 0 untuk paket gratis)' });
+      }
+      fields.price = Number(fields.price);
       const pkg = await Package.create(fields);
       res.status(201).json({ success: true, data: pkg, message: 'Paket berhasil dibuat' });
     } catch (error) {
