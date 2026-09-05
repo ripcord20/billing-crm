@@ -1204,6 +1204,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
 <script src="/vendor/leaflet/leaflet.js"></script>
+<script src="/js/mapTiles.js?v=gmap1"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script>
@@ -1388,8 +1389,12 @@ function toggleCustLayer(key, btn){
 
 
 function addBaseLayers(map){
-  const street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'});
-  const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'});
+  const street=window.FiberixMapTiles
+    ? FiberixMapTiles.create('streets')
+    : L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{maxZoom:20,subdomains:['mt0','mt1','mt2','mt3'],attribution:'&copy; Google Maps'});
+  const sat=window.FiberixMapTiles
+    ? FiberixMapTiles.create('satellite')
+    : L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{maxZoom:20,subdomains:['mt0','mt1','mt2','mt3'],attribution:'&copy; Google Maps'});
   const hybrid=L.layerGroup([sat]);
   street.addTo(map); // default
   const layers={street,sat,hybrid};

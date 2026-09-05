@@ -1,13 +1,24 @@
 /**
- * Peta Fiberix — CARTO Voyager (API key) + satelit Esri.
+ * Peta Fiberix — Google Maps Roadmap / Satellite (tile mt*.google.com).
  */
 (function (global) {
-  var CARTO_KEY = 'cb1_2xnl_1_41d4c832b8de74c4bc33fb07';
-  var SAT_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-  var STREET_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=' + CARTO_KEY;
-  var DARK_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png?key=' + CARTO_KEY;
-  var ATTR_CARTO = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attributions">CARTO</a>';
+  var ATTR = '&copy; Google Maps';
+  var SUBS = ['mt0', 'mt1', 'mt2', 'mt3'];
+  var ROAD_URL = 'https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+  var SAT_URL = 'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
+  var DARK_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
   var ATTR_ESRI = 'Tiles &copy; Esri';
+
+  function google(url) {
+    return L.tileLayer(url, {
+      maxZoom: 20,
+      subdomains: SUBS,
+      attribution: ATTR,
+      updateWhenIdle: false,
+      keepBuffer: 6,
+      detectRetina: false
+    });
+  }
 
   function raster(url, attr, extra) {
     return L.tileLayer(url, Object.assign({
@@ -19,31 +30,21 @@
     }, extra || {}));
   }
 
-  function carto(url) {
-    return raster(url, ATTR_CARTO, { subdomains: 'abcd', maxZoom: 20 });
-  }
-
-  var PRESETS = {
-    streets: { carto: true, url: STREET_URL, attr: ATTR_CARTO },
-    dark: { carto: true, url: DARK_URL, attr: ATTR_CARTO },
-    satellite: { url: SAT_URL, attr: ATTR_ESRI }
-  };
-
   function create(type) {
-    var cfg = PRESETS[type] || PRESETS.streets;
-    if (cfg.carto) return carto(cfg.url);
-    return raster(cfg.url, cfg.attr);
+    if (type === 'satellite') return google(SAT_URL);
+    if (type === 'dark') return raster(DARK_URL, ATTR_ESRI);
+    return google(ROAD_URL);
   }
 
   global.FiberixMapTiles = {
     SAT_URL: SAT_URL,
-    STREET_URL: STREET_URL,
+    STREET_URL: ROAD_URL,
     DARK_URL: DARK_URL,
-    PRESETS: PRESETS,
     create: create,
     raster: raster,
-    street: function (extra) { return carto(STREET_URL); },
-    satellite: function (extra) { return raster(SAT_URL, ATTR_ESRI, extra); },
-    dark: function (extra) { return carto(DARK_URL); }
+    street: function () { return google(ROAD_URL); },
+    satellite: function () { return google(SAT_URL); },
+    dark: function () { return raster(DARK_URL, ATTR_ESRI); },
+    googleRoadmap: function () { return google(ROAD_URL); }
   };
 })(typeof window !== 'undefined' ? window : this);
