@@ -103,7 +103,13 @@ async function provisionForCustomer(customer, opts = {}) {
 }
 
 async function provisionMikrotik(customer, opts, username, password) {
-  const deviceId = opts.deviceId || customer.mikrotik_id;
+  let deviceId = opts.deviceId || customer.mikrotik_id;
+  if (deviceId) {
+    try {
+      const resolved = await require('../utils/customerRouter').resolveDevicesId(deviceId);
+      if (resolved) deviceId = resolved;
+    } catch (_) {}
+  }
   if (!deviceId) {
     return {
       success: false,

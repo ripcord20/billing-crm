@@ -209,6 +209,7 @@ class CustomerController {
       } catch (e) { /* non-fatal: link bisa dibuat manual nanti */ }
 
       const pppoeFields = prepareCustomerPppoe(data);
+      await require('../utils/customerRouter').normalizeCustomerMikrotikId(data);
 
       const customer = await Customer.create(data);
       const full = await Customer.findByPk(customer.id, {
@@ -323,6 +324,7 @@ class CustomerController {
       delete sanitized.public_link_token;     // hanya via endpoint payment-link (generate/revoke)
 
       PppoeAccount.applyRouterAlias(sanitized);
+      await require('../utils/customerRouter').normalizeCustomerMikrotikId(sanitized);
       const prevUser = String(customer.pppoe_username || '').trim();
       const prevPass = String(customer.pppoe_password || '').trim();
       const prevMk   = customer.mikrotik_id == null ? '' : String(customer.mikrotik_id);
@@ -538,10 +540,14 @@ class CustomerController {
       if (result.mikrotik_id) {
         try {
           const { Device } = require('../models');
-          const router = await Device.findByPk(result.mikrotik_id, {
-            attributes: ['id', 'name', 'host', 'type']
+          const resolvedId = await require('../utils/customerRouter').resolveDevicesId(result.mikrotik_id);
+          const router = await Device.findByPk(resolvedId || result.mikrotik_id, {
+            attributes: ['id', 'name', 'ip_address', 'type']
           });
           result.mikrotik = router ? router.toJSON() : null;
+          if (router && resolvedId && resolvedId !== result.mikrotik_id) {
+            result.mikrotik_id_resolved = resolvedId;
+          }
           if (!router) {
             console.warn(`[CustomerController.show] Device id=${result.mikrotik_id} not found for customer ${result.customer_id}. Stale FK?`);
           }

@@ -1279,12 +1279,14 @@ window.onActivationDateChange = function() {
 
 // ── Load MikroTik devices for dropdown ───────────────────────
 async function loadMikrotikDevices() {
-  const d = await App.api('/isolir/devices').catch(() => null);
+  // Pakai devices.id (bukan mikrotik_devices.id) supaya tidak tabrakan
+  // dengan ACS/SWX yang kebetulan punya id yang sama.
+  const d = await App.api('/devices/mikrotik-list').catch(() => null);
   const sel = document.getElementById('custMikrotikId');
   if (!sel || !d?.data) return;
   sel.innerHTML = '<option value="">— Pilih router —</option>' +
     d.data.map(dev =>
-      `<option value="${dev.id}">${dev.name} (${dev.host})</option>`
+      `<option value="${dev.id}">${_esc(dev.name)} (${_esc(dev.ip_address || dev.host || '')})</option>`
     ).join('');
 }
 
