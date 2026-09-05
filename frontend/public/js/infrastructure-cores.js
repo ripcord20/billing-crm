@@ -11,7 +11,7 @@
   };
 
   const STATUS_LABEL = { active: 'Active', idle: 'Idle', damaged: 'Rusak', reserved: 'Reserved' };
-  let state = { tab: 'cables', cables: [], cable: null, detail: null, selected: null };
+  let state = { tab: 'cables', cables: [], points: [], cable: null, detail: null, selected: null, error: '' };
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -24,10 +24,69 @@
     return (c.name || ('Kabel #' + c.id)) + ' · ' + a + ' → ' + b;
   }
 
+  async function loadPoints() {
+    try {
+      const res = await api('/infrastructure/map');
+      state.points = (res && res.data) || [];
+    } catch (e) {
+      state.points = [];
+    }
+  }
+
   async function loadCables() {
-    const res = await api('/infrastructure-cores/cables');
-    state.cables = (res && res.data) || [];
+    try {
+      const res = await api('/infrastructure-cores/cables');
+      if (!res || res.success === false) {
+        state.error = (res && res.message) || 'Gagal memuat daftar kabel.';
+        state.cables = [];
+      } else {
+        state.error = '';
+        state.cables = res.data || [];
+      }
+    } catch (e) {
+      state.error = e.message || 'Gagal memuat daftar kabel.';
+      state.cables = [];
+    }
     render();
+  }
+
+  function pointOptions(selected) {
+    const pts = (state.points || []).slice().sort((a, b) => {
+      const ta = String(a.type || '');
+      const tb = String(b.type || '');
+      if (ta !== tb) return ta.localeCompare(tb);
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+    if (!pts.length) return '<option value="">— Belum ada titik di peta —</option>';
+    return '<option value="">— pilih titik —</option>' + pts.map((p) => {
+      const sel = Number(selected) === Number(p.id) ? ' selected' : '';
+      return `<option value="${p.id}"${sel}>${esc((p.type || '').toUpperCase())} · ${esc(p.name)}</option>`;
+    }).join('');
+  }
+
+  function renderCreateForm() {
+    return `<div class="core-form" style="border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;margin-bottom:12px;">
+      <div style="font-weight:800;font-size:13px;margin-bottom:4px;">Buat kabel baru</div>
+      <p style="font-size:12px;color:#64748b;margin:0 0 8px;">Pilih dua titik yang sudah ada, atau gambar di peta.</p>
+      <label>Dari titik</label>
+      <select id="cmFrom">${pointOptions()}</select>
+      <label>Ke titik</label>
+      <select id="cmTo">${pointOptions()}</select>
+      <label>Kapasitas core</label>
+      <select id="cmNewCores">
+        <option value="12">12 core</option>
+        <option value="24">24 core</option>
+        <option value="48">48 core</option>
+        <option value="8">8 core</option>
+        <option value="4">4 core</option>
+        <option value="2">2 core</option>
+        <option value="1">1 core</option>
+      </select>
+      <div class="core-actions">
+        <button class="btn btn-primary" type="button" onclick="CoreMap.createLink()">Simpan kabel</button>
+        <button class="btn btn-secondary" type="button" onclick="CoreMap.startDraw()">Gambar di peta</button>
+      </div>
+    </div>`;
   }
 
   async function openCable(id) {
@@ -51,18 +110,21 @@
   }
 
   function renderCables() {
-    if (!state.cables.length) {
-      return '<p style="color:#64748b;font-size:13px;">Belum ada kabel fiber/trunk. Gambar link di peta, lalu pilih kapasitas core.</p>';
-    }
-    return state.cables.map((c) => {
-      const st = c.cores || {};
-      return `<div class="core-cable" onclick="CoreMap.openCable(${c.id})">
-        <div style="font-weight:800;font-size:13px;">${esc(cableTitle(c))}</div>
-        <div style="font-size:11px;color:#64748b;margin-top:4px;">
-          ${st.total || 0} core · aktif ${st.active || 0} · idle ${st.idle || 0} · rusak ${st.damaged || 0}
-        </div>
-      </div>`;
-    }).join('');
+    const err = state.error
+      ? `<p style="color:#b91c1c;font-size:13px;">${esc(state.error)}</p>`
+      : '';
+    const list = state.cables.length
+      ? state.cables.map((c) => {
+        const st = c.cores || {};
+        return `<div class="core-cable" onclick="CoreMap.openCable(${c.id})">
+          <div style="font-weight:800;font-size:13px;">${esc(cableTitle(c))}</div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px;">
+            ${st.total || 0} core · aktif ${st.active || 0} · idle ${st.idle || 0} · rusak ${st.damaged || 0}
+          </div>
+        </div>`;
+      }).join('')
+      : '<p style="color:#64748b;font-size:13px;margin-top:8px;">Belum ada kabel fiber/trunk. Buat dari form di atas, atau gambar link di peta.</p>';
+    return err + renderCreateForm() + list;
   }
 
   function renderMap() {
@@ -169,7 +231,38 @@
       if (!p) return;
       p.classList.add('open');
       p.setAttribute('aria-hidden', 'false');
+      await loadPoints();
       await loadCables();
+    },
+    refresh() {
+      return loadCables();
+    },
+    startDraw() {
+      window.CoreMap.close();
+      if (typeof toggleDrawMode === 'function') toggleDrawMode();
+    },
+    async createLink() {
+      const from = parseInt((document.getElementById('cmFrom') || {}).value, 10);
+      const to = parseInt((document.getElementById('cmTo') || {}).value, 10);
+      const cores = parseInt((document.getElementById('cmNewCores') || {}).value, 10);
+      if (!from || !to || from === to) return alert('Pilih dua titik yang berbeda.');
+      const res = await api('/infrastructure-links', {
+        method: 'POST',
+        body: JSON.stringify({
+          from_point_id: from,
+          to_point_id: to,
+          link_type: 'fiber',
+          status: 'active',
+          core_count: cores || null
+        })
+      });
+      if (!res || !res.success) return alert((res && res.message) || 'Gagal membuat kabel.');
+      if (typeof loadInfraData === 'function') {
+        loadInfraData(typeof currentFilter !== 'undefined' ? currentFilter : '', { preserveView: true });
+      }
+      await loadCables();
+      const newId = res.data && res.data.id;
+      if (newId) await openCable(newId);
     },
     close() {
       const p = document.getElementById('corePanel');

@@ -834,12 +834,19 @@
     .infra-cluster.ic-lg { background: linear-gradient(135deg, #1e3a8a, #172554);
       box-shadow: 0 5px 16px rgba(23,37,84,.5), 0 0 0 5px rgba(30,58,138,.2); }
     .core-panel{
-      position:fixed;top:60px;right:0;bottom:0;width:min(440px,100%);z-index:900;
+      position:fixed;top:60px;right:0;bottom:0;width:min(400px,92vw);z-index:790;
       background:var(--bg-card);border-left:1px solid var(--border);
       box-shadow:-12px 0 32px rgba(15,23,42,.16);
-      display:none;flex-direction:column;
+      display:none;flex-direction:column;pointer-events:none;
     }
-    .core-panel.open{display:flex;}
+    .core-panel.open{display:flex;pointer-events:auto;}
+    @media (max-width: 720px) {
+      .core-panel{
+        top:auto;left:0;right:0;bottom:0;width:100%;height:min(52vh,440px);
+        border-left:none;border-top:1px solid var(--border);
+        box-shadow:0 -12px 32px rgba(15,23,42,.16);
+      }
+    }
     .core-panel-hd{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
     .core-panel-hd h3{margin:0;font-size:15px;font-weight:800;flex:1;}
     .core-tabs{display:flex;gap:4px;padding:8px 12px;border-bottom:1px solid var(--border);}
@@ -1834,7 +1841,7 @@ window.customConfirm = function(opts) {
 <script src="/js/app.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="/js/infrastructure.js?v=1781702500"></script>
-<script src="/js/infrastructure-cores.js?v=core1"></script>
+<script src="/js/infrastructure.js?v=core2"></script>
+<script src="/js/infrastructure-cores.js?v=core2"></script>
 </body>
 </html>
