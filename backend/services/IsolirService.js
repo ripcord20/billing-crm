@@ -1787,9 +1787,13 @@ async function ensureSchema() {
       const defaults = [
         ['isolir_pppoe_profile_name', 'isolir-profile', 'string', 'Nama PPP profile untuk pelanggan diisolir'],
         ['isolir_pppoe_pool_name',    'isolir-pool',    'string', 'Nama IP pool untuk pelanggan PPPoE diisolir'],
-        ['isolir_pppoe_pool_range',   '10.255.255.2-10.255.255.254', 'string', 'Range IP pool isolir'],
-        ['isolir_pppoe_local_addr',   '10.255.255.1',   'string', 'Local-address PPP profile isolir (gateway)'],
+        ['isolir_pppoe_pool_range',   '10.255.0.2-10.255.0.254', 'string', 'Range IP pool isolir (10.255.0.0/24)'],
+        ['isolir_pppoe_local_addr',   '10.255.0.1',   'string', 'Local-address PPP profile isolir (gateway)'],
         ['isolir_pppoe_rate_limit',   '128k/128k',      'string', 'Rate-limit PPP profile isolir (rx/tx)'],
+        ['pppoe_client_profile_name', 'FIBERIX', 'string', 'Nama PPP profile klien PPPoE aktif'],
+        ['pppoe_client_pool_name',    'FIBERIX', 'string', 'Nama IP pool klien PPPoE aktif'],
+        ['pppoe_client_pool_range',   '10.20.0.2-10.20.15.254', 'string', 'Range IP pool klien PPPoE (10.20.0.0/20)'],
+        ['pppoe_client_local_addr',   '10.20.0.1', 'string', 'Local-address PPP profile klien PPPoE'],
       ];
       for (const [key, value, type, description] of defaults) {
         await sequelize.query(

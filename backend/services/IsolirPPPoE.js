@@ -14,20 +14,23 @@
  *   2. Kick session lagi → reconnect dengan profile normal
  *
  * Setup MikroTik (auto saat Setup Firewall di IsolirFirewallV2):
- *   /ip pool add name=isolir-pool ranges=10.255.255.2-10.255.255.254
+ *   /ip pool add name=isolir-pool ranges=10.255.0.2-10.255.0.254
  *   /ppp profile add name=isolir-profile
- *     local-address=10.255.255.1
+ *     local-address=10.255.0.1
  *     remote-address=isolir-pool
  *     address-list=FLAYNET-ISOLIR
  *     rate-limit=128k/128k
+ *
+ * Pool klien PPPoE aktif (bukan isolir) — 10.20.0.0/20:
+ *   /ip pool add name=FIBERIX ranges=10.20.0.2-10.20.15.254
  * ────────────────────────────────────────────────────────────────────
  */
 
 // Default nama profile & pool isolir. Bisa di-override via app_settings.
 const DEFAULT_ISOLIR_PROFILE = 'isolir-profile';
 const DEFAULT_ISOLIR_POOL    = 'isolir-pool';
-const DEFAULT_POOL_RANGES    = '10.255.255.2-10.255.255.254';
-const DEFAULT_LOCAL_ADDR     = '10.255.255.1';
+const DEFAULT_POOL_RANGES    = '10.255.0.2-10.255.0.254';
+const DEFAULT_LOCAL_ADDR     = '10.255.0.1';
 const DEFAULT_RATE_LIMIT     = '128k/128k';
 
 // Runner dengan retry (sama seperti di IsolirFirewallV2)
