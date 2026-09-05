@@ -151,9 +151,11 @@ function initMap(lat, lng, t) {
   if (!el) return;
 
   leafletMap = L.map('tdMap', { zoomControl: true }).setView([lat, lng], 15);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap'
-  }).addTo(leafletMap);
+  (window.FiberixMapTiles
+    ? FiberixMapTiles.create('streets')
+    : L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3'], attribution: '&copy; Google Maps'
+      })).addTo(leafletMap);
 
   // Ticket marker
   const ticketIcon = L.divIcon({

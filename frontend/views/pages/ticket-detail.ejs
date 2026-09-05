@@ -482,6 +482,7 @@
 
 <script>const TID='<%= ticketId %>';</script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/js/mapTiles.js?v=gmap1"></script>
 <script>
 'use strict';
 let tkData=null,leafMap=null,selFiles=[],selStatus=null;
@@ -845,8 +846,12 @@ $('commentFile')?.addEventListener('change',function(){
 function initMap(lat,lng,t){
   if(leafMap){leafMap.remove();leafMap=null;}
   leafMap=L.map('map').setView([lat,lng],15);
-  const streets=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'});
-  const sat=L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',{maxZoom:21,subdomains:'0123',attribution:'© Google'});
+  const streets=window.FiberixMapTiles
+    ? FiberixMapTiles.create('streets')
+    : L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{maxZoom:20,subdomains:['mt0','mt1','mt2','mt3'],attribution:'&copy; Google Maps'});
+  const sat=window.FiberixMapTiles
+    ? FiberixMapTiles.create('satellite')
+    : L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{maxZoom:20,subdomains:['mt0','mt1','mt2','mt3'],attribution:'&copy; Google Maps'});
   streets.addTo(leafMap);window._ml={streets,sat};window._mc='streets';
   const tc=TC[t.type]||'#f44336';
   const pulse={gangguan:'pulse-red',request:'pulse-blue',installation:'pulse-green',maintenance:'pulse-orange'}[t.type]||'pulse-blue';

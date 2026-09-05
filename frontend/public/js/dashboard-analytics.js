@@ -676,10 +676,17 @@ async function loadDashCustomerMap(){
   }
   if (!_dashMap){
     _dashMap = L.map(host,{scrollWheelZoom:true}).setView([-2.5,118],5);
-    const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'});
-    const sat = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',{maxZoom:21,subdomains:'0123',attribution:'&copy; Google'});
-    const labels = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:19});
-    const hybrid = L.layerGroup([sat,labels]);
+    const street = window.FiberixMapTiles
+      ? FiberixMapTiles.create('streets')
+      : L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+          maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '&copy; Google Maps'
+        });
+    const sat = window.FiberixMapTiles
+      ? FiberixMapTiles.create('satellite')
+      : L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+          maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '&copy; Google Maps'
+        });
+    const hybrid = L.layerGroup([sat]);
     street.addTo(_dashMap);
     const layers={street,hybrid}; _dashMap._activeBase='street';
     const Ctl=L.Control.extend({ options:{position:'topright'}, onAdd:function(){

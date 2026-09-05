@@ -67,11 +67,19 @@ function jbLabel(pt) {
   return jbKind(pt) === 'joint_closure' ? 'Joint Closure' : 'Joint Box';
 }
 
-const TILES = {
-  streets:   { url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', attr:'&copy; OpenStreetMap contributors &copy; CARTO' },
-  satellite: { url:'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr:'&copy; Google', subdomains:'0123' },
-  dark:      { url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attr:'&copy; CARTO' }
-};
+function makeInfraBaseLayer(type) {
+  if (window.FiberixMapTiles && typeof window.FiberixMapTiles.create === 'function') {
+    return window.FiberixMapTiles.create(type);
+  }
+  const fallback = {
+    streets: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    dark: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+  };
+  return L.tileLayer(fallback[type] || fallback.streets, {
+    attribution: 'Tiles &copy; Esri', maxZoom: 19
+  });
+}
 
 // ─── CSS ──────────────────────────────────────────────
 (function() {
@@ -335,13 +343,7 @@ function initMap() {
     if (statsEl && container) container.appendChild(statsEl);
   }, 0);
 
-  const streetCfg = TILES.streets;
-  tileLayer = L.tileLayer(streetCfg.url, {
-    attribution: streetCfg.attr, maxZoom: 20,
-    updateWhenIdle: false, keepBuffer: 6,
-    detectRetina: false,
-    opacity: 1
-  }).addTo(map);
+  tileLayer = makeInfraBaseLayer('streets').addTo(map);
 
   map.on('click', function(e) {
     if (placeMode) {
@@ -393,22 +395,14 @@ function initMap() {
 function switchTile(type, btn) {
   document.querySelectorAll('.tile-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  map.removeLayer(tileLayer);
-  const cfg = TILES[type];
-  // Set background sesuai tile — dark/satellite pakai background gelap
+  if (tileLayer) map.removeLayer(tileLayer);
   const mapEl = document.getElementById('infraMap');
   if (type === 'dark' || type === 'satellite') {
     mapEl.style.background = '#1a1a2e';
   } else {
-    mapEl.style.background = '#e8e0d8';
+    mapEl.style.background = '#e8eef6';
   }
-  tileLayer = L.tileLayer(cfg.url, {
-    attribution: cfg.attr, maxZoom: 20,
-    subdomains: cfg.subdomains || 'abcd',
-    updateWhenIdle: false, keepBuffer: 6,
-    detectRetina: false,
-    opacity: 1
-  }).addTo(map);
+  tileLayer = makeInfraBaseLayer(type).addTo(map);
 }
 
 // ─── Filter ───────────────────────────────────────────

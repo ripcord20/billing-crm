@@ -153,7 +153,7 @@
       _map=L.map('infMap',{zoomControl:true,attributionControl:false}).setView([-6.4,106.8],12);
       _tileStreet=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19});
       // Satelit: pakai Google (domain mt0-3.google.com sudah diizinkan CSP).
-      _tileSat=L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{maxZoom:20,subdomains:['mt0','mt1','mt2','mt3']});
+      _tileSat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'});
       _tileStreet.addTo(_map);
       _markers=L.layerGroup().addTo(_map);
       _mapReady=true;

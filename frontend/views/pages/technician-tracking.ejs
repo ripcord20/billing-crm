@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"/>
 
   <style>
     /* ═══════════════════════════════════════════════════
@@ -1013,6 +1014,9 @@
 <%# Load app.js SEBELUM socket dan script halaman — ini yang mendefinisikan App global %>
 <script src="/js/app.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
+<script src="/js/mapTiles.js?v=gmap1"></script>
 <script src="/socket.io/socket.io.js"></script>
 
 <script>
@@ -1041,21 +1045,19 @@ const CENTER = [-6.2088, 106.8456];
 function initMap() {
   leafMap = L.map('tt-map-leaf', { center:CENTER, zoom:13, zoomControl:false });
 
-  // CartoDB Voyager (sama dengan gps-tracking.ejs)
-  streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution:'&copy; <a href="https://carto.com/">CARTO</a>',
-    subdomains:'abcd', maxZoom:19
-  });
+  streetLayer = window.FiberixMapTiles
+    ? FiberixMapTiles.create('streets')
+    : L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        attribution:'Tiles &copy; Esri', maxZoom:19
+      });
 
-  // Google Satellite (imagery)
-  satLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-    attribution:'&copy; Google', maxZoom:21, subdomains:'0123'
-  });
+  satLayer = window.FiberixMapTiles
+    ? FiberixMapTiles.create('satellite')
+    : L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution:'Tiles &copy; Esri', maxZoom:19
+      });
 
-  // Label overlay di atas satellite (Google: jalan + label)
-  labelLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=h&x={x}&y={y}&z={z}', {
-    attribution:'', maxZoom:21, subdomains:'0123', opacity:1
-  });
+  labelLayer = null;
 
   streetLayer.addTo(leafMap);
 }
@@ -1065,13 +1067,11 @@ function toggleSat() {
   if (currentLayer === 'street') {
     leafMap.removeLayer(streetLayer);
     leafMap.addLayer(satLayer);
-    leafMap.addLayer(labelLayer);
     currentLayer = 'satellite';
     if (lblTopbar) lblTopbar.textContent = 'Street';
     ['btn-sat-top','btn-sat-map'].forEach(id => document.getElementById(id)?.classList.add('active'));
   } else {
     leafMap.removeLayer(satLayer);
-    leafMap.removeLayer(labelLayer);
     leafMap.addLayer(streetLayer);
     currentLayer = 'street';
     if (lblTopbar) lblTopbar.textContent = 'Satellite';
