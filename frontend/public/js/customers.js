@@ -2177,8 +2177,7 @@ function _custPinIcon() {
 function custAddBaseLayers(map) {
   const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
   const sat    = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles &copy; Esri' });
-  const labels = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', { maxZoom: 19, pane: 'overlayPane' });
-  const hybrid = L.layerGroup([sat, labels]);
+  const hybrid = L.layerGroup([sat]);
   street.addTo(map); // default
   const layers = { street, hybrid };
   map._activeBase = 'street';

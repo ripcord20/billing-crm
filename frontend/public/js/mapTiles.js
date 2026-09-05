@@ -1,21 +1,18 @@
 /**
- * Tile peta Fiberix — tanpa Google Maps API key.
- * Satelit resmi Google (mt*.google.com/vt) butuh key dan sering
- * tampil "For development purposes only" / gagal load.
- * Satelit: Esri World Imagery (sudah diizinkan CSP).
+ * Tile peta Fiberix — OSM + Esri, tanpa API key.
+ * CARTO basemaps.cartocdn.com sekarang watermark "API KEY REQUIRED".
  */
 (function (global) {
   var SAT_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
   var SAT_ATTR = 'Tiles &copy; Esri';
-  var STREET_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-  var STREET_ATTR = '&copy; OpenStreetMap &copy; CARTO';
-  var LABEL_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png';
+  var STREET_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+  var STREET_ATTR = 'Tiles &copy; Esri';
+  var DARK_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
 
   function street(extra) {
     return L.tileLayer(STREET_URL, Object.assign({
-      maxZoom: 20,
-      attribution: STREET_ATTR,
-      subdomains: 'abcd'
+      maxZoom: 19,
+      attribution: STREET_ATTR
     }, extra || {}));
   }
   function satellite(extra) {
@@ -24,11 +21,10 @@
       attribution: SAT_ATTR
     }, extra || {}));
   }
-  function labels(extra) {
-    return L.tileLayer(LABEL_URL, Object.assign({
-      maxZoom: 20,
-      pane: 'overlayPane',
-      attribution: ''
+  function dark(extra) {
+    return L.tileLayer(DARK_URL, Object.assign({
+      maxZoom: 16,
+      attribution: SAT_ATTR
     }, extra || {}));
   }
 
@@ -37,9 +33,9 @@
     SAT_ATTR: SAT_ATTR,
     STREET_URL: STREET_URL,
     STREET_ATTR: STREET_ATTR,
-    LABEL_URL: LABEL_URL,
+    DARK_URL: DARK_URL,
     street: street,
     satellite: satellite,
-    labels: labels
+    dark: dark
   };
 })(typeof window !== 'undefined' ? window : this);

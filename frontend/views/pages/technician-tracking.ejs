@@ -1042,18 +1042,15 @@ function initMap() {
   leafMap = L.map('tt-map-leaf', { center:CENTER, zoom:13, zoomControl:false });
 
   // CartoDB Voyager (sama dengan gps-tracking.ejs)
-  streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution:'&copy; <a href="https://carto.com/">CARTO</a>',
-    subdomains:'abcd', maxZoom:19
+  streetLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    attribution:'Tiles &copy; Esri', maxZoom:19
   });
 
   satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     attribution:'Tiles &copy; Esri', maxZoom:19
   });
 
-  labelLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
-    attribution:'', maxZoom:19, opacity:1
-  });
+  labelLayer = null;
 
   streetLayer.addTo(leafMap);
 }
@@ -1063,13 +1060,11 @@ function toggleSat() {
   if (currentLayer === 'street') {
     leafMap.removeLayer(streetLayer);
     leafMap.addLayer(satLayer);
-    leafMap.addLayer(labelLayer);
     currentLayer = 'satellite';
     if (lblTopbar) lblTopbar.textContent = 'Street';
     ['btn-sat-top','btn-sat-map'].forEach(id => document.getElementById(id)?.classList.add('active'));
   } else {
     leafMap.removeLayer(satLayer);
-    leafMap.removeLayer(labelLayer);
     leafMap.addLayer(streetLayer);
     currentLayer = 'street';
     if (lblTopbar) lblTopbar.textContent = 'Satellite';

@@ -1012,18 +1012,15 @@
       map = L.map('map', { zoomControl: false }).setView([-6.2088, 106.8456], 11);
 
       // CartoDB Voyager - street layer utama
-      streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
-        subdomains: 'abcd', maxZoom: 19
+      streetLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri', maxZoom: 19
       });
 
       satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri', maxZoom: 19
       });
 
-      labelLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
-        attribution: '', maxZoom: 19, opacity: 1
-      });
+      labelLayer = null;
 
       streetLayer.addTo(map);
     }
@@ -1036,14 +1033,12 @@
       if (currentLayer === 'street') {
         map.removeLayer(streetLayer);
         map.addLayer(satelliteLayer);
-        map.addLayer(labelLayer);   // tambah label nama jalan di atas satellite
         currentLayer = 'satellite';
         if (btnTopbar) btnTopbar.classList.add('active');
         if (btnMap) btnMap.classList.add('active');
         if (lbl) lbl.textContent = 'Street';
       } else {
         map.removeLayer(satelliteLayer);
-        map.removeLayer(labelLayer);
         map.addLayer(streetLayer);
         currentLayer = 'street';
         if (btnTopbar) btnTopbar.classList.remove('active');

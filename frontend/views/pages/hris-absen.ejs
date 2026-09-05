@@ -173,7 +173,7 @@ function initMap(loc){
   try {
     const center = loc ? [loc.latitude, loc.longitude] : [-6.2, 106.8];
     map = L.map('map',{ zoomControl:false, attributionControl:false }).setView(center, 16);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
     if(loc && !loc.allow_any_location){
       locCircle = L.circle([loc.latitude, loc.longitude], { radius:loc.radius_meters, color:'#2563eb', fillColor:'#2563eb', fillOpacity:.12 }).addTo(map);
       L.marker([loc.latitude, loc.longitude]).addTo(map).bindPopup(loc.name);

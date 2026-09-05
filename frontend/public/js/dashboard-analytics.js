@@ -678,8 +678,7 @@ async function loadDashCustomerMap(){
     _dashMap = L.map(host,{scrollWheelZoom:true}).setView([-2.5,118],5);
     const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'});
     const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'});
-    const labels = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:19});
-    const hybrid = L.layerGroup([sat,labels]);
+    const hybrid = L.layerGroup([sat]);
     street.addTo(_dashMap);
     const layers={street,hybrid}; _dashMap._activeBase='street';
     const Ctl=L.Control.extend({ options:{position:'topright'}, onAdd:function(){
