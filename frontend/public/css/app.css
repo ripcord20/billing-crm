@@ -672,6 +672,9 @@ input, select, textarea { font-family: inherit; }
 }
 
 @media (max-width: 768px) {
+  .sidebar-header {
+    padding-top: max(88px, calc(env(safe-area-inset-top, 0px) + 44px)) !important;
+  }
   .sidebar {
     transform: translateX(-100%);
     z-index: 1200;

@@ -35,6 +35,7 @@ const demoRoutes = require('./demo');
 const AuthController = require('../controllers/AuthController');
 const UserController = require('../controllers/UserController');
 const CustomerController = require('../controllers/CustomerController');
+const RadiusController = require('../controllers/RadiusController');
 const RegionController = require('../controllers/RegionController');
 const PackageController = require('../controllers/PackageController');
 const BillingController = require('../controllers/BillingController');
@@ -84,6 +85,7 @@ const _financeBlockedPrefixes = [
   '/olt',
   '/hotspot',
   '/pppoe',
+  '/radius',
   '/monitoring',
   '/ping-monitor',
   '/qos',
@@ -352,6 +354,23 @@ router.post('/customers/:id/rename-pppoe',
   authenticate, demoGuard, hasPermission('customer_update'),
   logActivity('rename_pppoe', 'customer'),
   CustomerController.renamePppoe);
+router.post('/customers/:id/provision-pppoe',
+  authenticate, demoGuard, hasPermission('customer_update'),
+  logActivity('provision_pppoe', 'customer'),
+  CustomerController.provisionPppoe);
+
+// ===== RADIUS / FreeRADIUS SQL =====
+router.get('/radius/status', authenticate, demoGuard, RadiusController.status);
+router.get('/radius/servers', authenticate, demoGuard, authorize('superadmin','admin','noc'), RadiusController.listServers);
+router.post('/radius/servers', authenticate, demoGuard, authorize('superadmin','admin'), logActivity('create','radius_server'), RadiusController.createServer);
+router.put('/radius/servers/:id', authenticate, demoGuard, authorize('superadmin','admin'), logActivity('update','radius_server'), RadiusController.updateServer);
+router.delete('/radius/servers/:id', authenticate, demoGuard, authorize('superadmin','admin'), logActivity('delete','radius_server'), RadiusController.deleteServer);
+router.post('/radius/servers/:id/test', authenticate, demoGuard, authorize('superadmin','admin','noc'), RadiusController.testServer);
+router.get('/radius/sessions', authenticate, demoGuard, RadiusController.sessions);
+router.get('/radius/users', authenticate, demoGuard, RadiusController.radiusUsers);
+router.get('/radius/groups', authenticate, demoGuard, RadiusController.groups);
+router.post('/radius/users', authenticate, demoGuard, authorize('superadmin','admin'), logActivity('create','radius_user'), RadiusController.createUser);
+router.post('/radius/provision', authenticate, demoGuard, authorize('superadmin','admin'), logActivity('create','radius_user'), RadiusController.provision);
 
 // ── Permanent payment link per-pelanggan ──
 // GET    → ambil link saat ini (atau null kalau belum dibuat)

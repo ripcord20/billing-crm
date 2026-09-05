@@ -4,7 +4,51 @@ const bcrypt = require('bcryptjs');
 const { generateUniqueCustomerId, paginateResponse } = require('../utils/helpers');
 const { getCompanyName } = require('../utils/companyInfo');
 const InfraSync = require('../services/CustomerInfraSyncService');
+const PppoeAccount = require('../services/PppoeAccountService');
 const { applyTenantWhere, getTenantId, assertCustomerTenant, isTenantOwner } = require('../utils/tenantScope');
+
+function prepareCustomerPppoe(data) {
+  PppoeAccount.applyRouterAlias(data);
+  const fields = PppoeAccount.extractPppoeFields(data);
+  if (fields.username) data.pppoe_username = fields.username;
+  if (fields.password) data.pppoe_password = fields.password;
+  if (fields.username && !data.connection_type) data.connection_type = 'pppoe';
+  PppoeAccount.stripPppoeFields(data);
+  return fields;
+}
+
+async function syncCustomerPppoe(customer, fields, extra = {}) {
+  if (!fields || !fields.username || !fields.password) {
+    return { status: 'skipped', message: 'Username/password PPPoE belum lengkap — akun dial belum dibuat' };
+  }
+  const result = await PppoeAccount.provisionForCustomer(customer, {
+    username: fields.username,
+    password: fields.password,
+    profile: fields.profile || extra.profile,
+    deviceId: fields.deviceId || extra.deviceId || customer.mikrotik_id,
+    backend: fields.backend || extra.backend || 'auto',
+    remoteAddress: fields.remoteAddress || extra.remoteAddress,
+    localAddress: fields.localAddress,
+    service: fields.service,
+    comment: extra.comment || ((customer.customer_id || '') + ' — ' + (customer.name || '')),
+    failIfExists: false
+  });
+  if (result && result.success) {
+    return {
+      status: result.backend === 'radius' ? 'radius' : (result.action || 'created'),
+      backend: result.backend,
+      message: result.backend === 'radius'
+        ? `Akun PPPoE "${result.username}" tersimpan di RADIUS — pelanggan bisa dial tanpa secret di router`
+        : (result.message || `Akun PPPoE "${result.username}" di router`),
+      username: result.username
+    };
+  }
+  return {
+    status: result && result.skipped ? 'skipped' : 'failed',
+    backend: result && result.backend,
+    message: (result && result.message) || 'Gagal provision PPPoE'
+  };
+}
 
 class CustomerController {
   async index(req, res) {
@@ -164,6 +208,8 @@ class CustomerController {
         }
       } catch (e) { /* non-fatal: link bisa dibuat manual nanti */ }
 
+      const pppoeFields = prepareCustomerPppoe(data);
+
       const customer = await Customer.create(data);
       const full = await Customer.findByPk(customer.id, {
         include: [{ model: Package, as: 'package' }]
@@ -238,7 +284,11 @@ class CustomerController {
         }).catch(() => {});
       } catch (_) {}
 
-      res.status(201).json({ success: true, data: full, wa_status: waStatus, email_status: emailStatus, infra_sync: infraResult });
+      const pppoeSync = await syncCustomerPppoe(full, pppoeFields).catch(e => ({
+        status: 'failed', message: e.message || String(e)
+      }));
+
+      res.status(201).json({ success: true, data: full, wa_status: waStatus, email_status: emailStatus, infra_sync: infraResult, pppoe_sync: pppoeSync });
     } catch (error) {
       const msg = error.name === 'SequelizeValidationError'
         ? error.errors.map(e => e.message).join(', ')
@@ -272,6 +322,15 @@ class CustomerController {
       delete sanitized.last_portal_login;     // diset otomatis oleh sistem saat login
       delete sanitized.public_link_token;     // hanya via endpoint payment-link (generate/revoke)
 
+      PppoeAccount.applyRouterAlias(sanitized);
+      const prevUser = String(customer.pppoe_username || '').trim();
+      const prevPass = String(customer.pppoe_password || '').trim();
+      const prevMk   = customer.mikrotik_id == null ? '' : String(customer.mikrotik_id);
+      const forceSync = sanitized.sync_pppoe === true || sanitized.sync_pppoe === 'true';
+      const pppoeFields = PppoeAccount.extractPppoeFields(sanitized);
+      if (pppoeFields.password) sanitized.pppoe_password = pppoeFields.password;
+      PppoeAccount.stripPppoeFields(sanitized);
+
       await customer.update(sanitized);
       const full = await Customer.findByPk(customer.id, {
         include: [{ model: Package, as: 'package' }]
@@ -283,7 +342,22 @@ class CustomerController {
       // Best-effort: gagal sync tidak membatalkan update customer.
       const infraResult = await InfraSync.syncCustomerToInfra(full);
 
-      res.json({ success: true, data: full, infra_sync: infraResult });
+      const newUser = String(full.pppoe_username || '').trim();
+      const newPass = String(full.pppoe_password || '').trim();
+      const newMk   = full.mikrotik_id == null ? '' : String(full.mikrotik_id);
+      const credsChanged = newUser !== prevUser || newPass !== prevPass || newMk !== prevMk;
+      let pppoeSync = { status: 'skipped', message: 'Tidak ada perubahan PPPoE' };
+      if (forceSync || (credsChanged && newUser && newPass)) {
+        pppoeSync = await syncCustomerPppoe(full, {
+          username: newUser,
+          password: newPass,
+          profile: pppoeFields.profile,
+          deviceId: pppoeFields.deviceId || full.mikrotik_id,
+          backend: pppoeFields.backend || 'auto'
+        }).catch(e => ({ status: 'failed', message: e.message || String(e) }));
+      }
+
+      res.json({ success: true, data: full, infra_sync: infraResult, pppoe_sync: pppoeSync });
     } catch (error) {
       const msg = error.name === 'SequelizeValidationError'
         ? error.errors.map(e => e.message).join(', ')
@@ -756,6 +830,46 @@ class CustomerController {
     }
   }
 
+  // POST /api/customers/:id/provision-pppoe
+  // Paksa buat/update akun PPPoE (RADIUS dulu, fallback secret MikroTik).
+  async provisionPppoe(req, res) {
+    try {
+      const customer = await Customer.findByPk(req.params.id, {
+        include: [{ model: Package, as: 'package' }]
+      });
+      if (!customer) return res.status(404).json({ success: false, message: 'Customer tidak ditemukan' });
+      if (!assertCustomerTenant(req, customer)) {
+        return res.status(404).json({ success: false, message: 'Customer tidak ditemukan' });
+      }
+
+      const body = req.body || {};
+      PppoeAccount.applyRouterAlias(body);
+      const username = String(body.pppoe_username || body.username || customer.pppoe_username || '').trim();
+      const password = body.pppoe_password || body.password || customer.pppoe_password;
+      if (body.mikrotik_id) await customer.update({ mikrotik_id: parseInt(body.mikrotik_id, 10) || customer.mikrotik_id });
+      if (username && username !== customer.pppoe_username) await customer.update({ pppoe_username: username });
+      if (password && password !== customer.pppoe_password) await customer.update({ pppoe_password: password });
+      await customer.reload({ include: [{ model: Package, as: 'package' }] });
+
+      const pppoeSync = await syncCustomerPppoe(customer, {
+        username,
+        password,
+        profile: body.pppoe_profile || body.profile,
+        deviceId: body.mikrotik_id || customer.mikrotik_id,
+        backend: body.pppoe_backend || 'auto'
+      });
+      const ok = pppoeSync.status !== 'failed';
+      res.status(ok ? 200 : 400).json({
+        success: ok,
+        data: customer,
+        pppoe_sync: pppoeSync,
+        message: pppoeSync.message
+      });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
   // ──────────────────────────────────────────────────────────────────
   // POST /api/customers/:id/rename-pppoe
   // Ubah PPPoE username customer existing, dengan opsi sync ke router MikroTik.
@@ -824,11 +938,30 @@ class CustomerController {
         }
       }
 
-      // ── Sync ke router kalau diminta ─────────────────────────────
+      // ── RADIUS dulu (cara BillingRadius): rename tanpa menulis /ppp/secret ──
       let syncedRouter = false;
       let routerWarning = null;
+      let usedRadius = false;
 
-      if (sync_to_router) {
+      if (sync_to_router && await PppoeAccount.preferRadius(customer.tenant_id)) {
+        const RadiusProv = require('../services/RadiusProvisionService');
+        const r = await RadiusProv.rename(customer, oldUsername, isClearing ? '' : trimmedNew);
+        if (!r.success && !r.skipped) {
+          return res.status(502).json({
+            success: false,
+            message: r.message || 'Gagal rename username di RADIUS'
+          });
+        }
+        usedRadius = !r.skipped;
+        syncedRouter = usedRadius;
+        if (!isClearing && customer.pppoe_password) {
+          await PppoeAccount.provisionForCustomer(customer, {
+            username: trimmedNew,
+            password: customer.pppoe_password,
+            backend: 'radius'
+          }).catch(() => {});
+        }
+      } else if (sync_to_router) {
         // Butuh: oldUsername (untuk lookup) dan customer.mikrotik_id (router yang punya secret)
         if (!oldUsername) {
           // Tidak ada secret lama untuk disentuh. Kalau clearing, anggap sukses
@@ -894,9 +1027,27 @@ class CustomerController {
               synced_router: false
             });
           }
-          return res.status(404).json({
-            success: false,
-            message: `Secret PPPoE "${oldUsername}" tidak ditemukan di router. Mungkin sudah di-rename manual atau dihapus. Pilih mode "DB only" untuk update database saja.`
+          // Secret lama tidak ada — buat akun baru dengan username baru (bukan gagal senyap).
+          const created = await PppoeAccount.provisionForCustomer(customer, {
+            username: trimmedNew,
+            password: customer.pppoe_password,
+            deviceId: customer.mikrotik_id,
+            backend: 'mikrotik'
+          });
+          if (!created.success) {
+            return res.status(404).json({
+              success: false,
+              message: created.message || `Secret PPPoE "${oldUsername}" tidak ditemukan di router. Isi password PPPoE lalu Aktifkan akun, atau pilih mode "DB only".`
+            });
+          }
+          await customer.update({ pppoe_username: trimmedNew });
+          return res.json({
+            success: true,
+            message: `Secret lama "${oldUsername}" tidak ada di router. Akun baru "${trimmedNew}" dibuat agar pelanggan bisa dial.`,
+            old_username: oldUsername,
+            new_username: trimmedNew,
+            updated_db: true,
+            synced_router: true
           });
         }
 
@@ -939,13 +1090,17 @@ class CustomerController {
 
       let okMessage;
       if (isClearing) {
-        okMessage = sync_to_router
-          ? `PPPoE username dihapus di FLAYNET & secret dihapus di router (sebelumnya: ${oldUsername})`
-          : `PPPoE username dikosongkan di FLAYNET saja (sebelumnya: ${oldUsername}). Router tidak disentuh.`;
+        okMessage = usedRadius
+          ? `PPPoE username dihapus di billing & RADIUS (sebelumnya: ${oldUsername})`
+          : sync_to_router
+            ? `PPPoE username dihapus di FLAYNET & secret dihapus di router (sebelumnya: ${oldUsername})`
+            : `PPPoE username dikosongkan di FLAYNET saja (sebelumnya: ${oldUsername}). Router tidak disentuh.`;
       } else {
-        okMessage = sync_to_router
-          ? `PPPoE username berhasil diubah di FLAYNET & router (${oldUsername} → ${trimmedNew})`
-          : `PPPoE username diubah di FLAYNET saja (${oldUsername} → ${trimmedNew}). Router tidak disentuh.`;
+        okMessage = usedRadius
+          ? `PPPoE username diubah di RADIUS (${oldUsername} → ${trimmedNew}). Router tidak perlu secret lokal.`
+          : sync_to_router
+            ? `PPPoE username berhasil diubah di FLAYNET & router (${oldUsername} → ${trimmedNew})`
+            : `PPPoE username diubah di FLAYNET saja (${oldUsername} → ${trimmedNew}). Router tidak disentuh.`;
       }
 
       return res.json({

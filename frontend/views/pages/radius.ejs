@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    :root{--d-bg:#eef2f9;--d-card:#fff;--d-border:#e0e7f3;--d-text:#0d1b3e;--d-muted:#6b7fa8;--d-blue1:#1a6ef5;}
+    .rd-page{font-family:'DM Sans',sans-serif;}
+    .rd-card{background:#fff;border:1px solid var(--d-border);border-radius:18px;overflow:hidden;margin-bottom:16px;}
+    .rd-card-hdr{padding:16px 20px;border-bottom:1px solid var(--d-border);display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(135deg,#f8faff,#f0f4ff);}
+    .rd-card-body{padding:18px 20px;}
+    .rd-note{font-size:12.5px;color:var(--d-muted);line-height:1.55;margin:0;}
+    .rd-note code{background:#eef2ff;padding:1px 5px;border-radius:5px;font-size:11px;}
+    .rd-btn{display:inline-flex;align-items:center;gap:6px;border:none;cursor:pointer;padding:8px 14px;border-radius:10px;font-family:inherit;font-size:12.5px;font-weight:700;}
+    .rd-btn-primary{background:#1d4ed8;color:#fff;}
+    .rd-btn-outline{background:#fff;color:var(--d-text);border:1px solid var(--d-border);}
+    .rd-tbl{width:100%;border-collapse:collapse;font-size:13px;}
+    .rd-tbl th{text-align:left;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--d-muted);padding:8px 10px;border-bottom:1px solid var(--d-border);}
+    .rd-tbl td{padding:10px;border-bottom:1px solid #f1f5f9;color:var(--d-text);}
+    .mono{font-family:'DM Mono',ui-monospace,monospace;font-size:12px;}
+    .rd-modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:80;align-items:center;justify-content:center;padding:16px;}
+    .rd-modal.show{display:flex;}
+    .rd-modal-box{background:#fff;border-radius:16px;padding:22px;width:100%;max-width:460px;max-height:90vh;overflow:auto;}
+    .rd-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--d-muted);display:block;margin:10px 0 6px;}
+    .rd-input{width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--d-border);font-size:13px;box-sizing:border-box;font-family:inherit;}
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <%- include('../partials/sidebar') %>
+  <div class="main-content">
+    <%- include('../partials/topbar') %>
+    <main class="page-content rd-page">
+      <div class="page-header" style="margin-bottom:18px;">
+        <div>
+          <h1 style="margin:0 0 4px;font-size:22px;font-weight:800;color:var(--d-text);">RADIUS / FreeRADIUS</h1>
+          <p class="rd-note">User PPPoE dari modul <strong>Pelanggan</strong> dan <strong>PPPoE Sessions</strong> disimpan ke <code>radcheck</code> / <code>radreply</code>, sama seperti BillingRadius — bukan ke PPP Secret MikroTik. Di CORE 1/2: <code>/radius</code> harus mengarah ke FreeRADIUS Fiberix (bukan host BillingRadius), lalu <code>/ppp aaa set use-radius=yes</code>.</p>
+        </div>
+      </div>
+
+      <div class="rd-card">
+        <div class="rd-card-hdr">
+          <strong>Server FreeRADIUS (MySQL)</strong>
+          <button class="rd-btn rd-btn-primary" type="button" onclick="openSrv()">+ Server</button>
+        </div>
+        <div class="rd-card-body">
+          <p class="rd-note" style="margin-bottom:12px;">Isi host daemon RADIUS (biasanya IP daloRADIUS / FreeRADIUS) dan kredensial MySQL schema <code>radius</code>. Tes dulu sebelum membuat pelanggan.</p>
+          <table class="rd-tbl">
+            <thead><tr><th>Nama</th><th>Host auth</th><th>MySQL</th><th>Tes</th><th></th></tr></thead>
+            <tbody id="srvTable"><tr><td colspan="5" style="color:#94a3b8;padding:16px;">Memuat…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rd-card">
+        <div class="rd-card-hdr">
+          <strong>Sesi online (radacct)</strong>
+          <button class="rd-btn rd-btn-outline" type="button" onclick="loadSessions()">Refresh</button>
+        </div>
+        <div class="rd-card-body">
+          <table class="rd-tbl">
+            <thead><tr><th>User</th><th>NAS</th><th>IP</th><th>Mulai</th></tr></thead>
+            <tbody id="sessTable"><tr><td colspan="4" style="padding:16px;color:#94a3b8;">Klik refresh setelah tes MySQL berhasil</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rd-card">
+        <div class="rd-card-hdr">
+          <strong>User di radcheck</strong>
+          <button class="rd-btn rd-btn-outline" type="button" onclick="loadUsers()">Refresh</button>
+        </div>
+        <div class="rd-card-body">
+          <table class="rd-tbl">
+            <thead><tr><th>Username</th><th>Group</th><th>Password</th><th>Auth-Type</th></tr></thead>
+            <tbody id="userTable"><tr><td colspan="4" style="padding:16px;color:#94a3b8;">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div id="srvModal" class="rd-modal">
+  <div class="rd-modal-box">
+    <h3 style="margin:0 0 4px;">Server RADIUS</h3>
+    <p class="rd-note">Password MySQL tidak ditampilkan ulang setelah disimpan.</p>
+    <label class="rd-label">Nama</label>
+    <input id="sName" class="rd-input" value="FreeRADIUS">
+    <label class="rd-label">Host FreeRADIUS (UDP 1812)</label>
+    <input id="sHost" class="rd-input" placeholder="192.168.1.10">
+    <label class="rd-label">MySQL host</label>
+    <input id="sMysql" class="rd-input" value="127.0.0.1">
+    <label class="rd-label">Database</label>
+    <input id="sDb" class="rd-input" value="radius">
+    <label class="rd-label">User MySQL</label>
+    <input id="sUser" class="rd-input" value="radius">
+    <label class="rd-label">Password MySQL</label>
+    <input id="sPass" class="rd-input" type="password" placeholder="kosongkan jika tidak diubah">
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button class="rd-btn rd-btn-outline" type="button" onclick="closeSrv()">Batal</button>
+      <button class="rd-btn rd-btn-primary" type="button" onclick="saveSrv()">Simpan</button>
+    </div>
+  </div>
+</div>
+<script src="/js/app.js"></script>
+<script src="/js/radius.js"></script>
+</body>
+</html>

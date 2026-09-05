@@ -81,7 +81,7 @@ body{padding-bottom:0 !important;}
    safe-area. Beri .head clearance setinggi itu supaya judul tidak tertutup.
    (Halaman seperti payment-new/profile yang TIDAK memuat .mtop pakai .topbar
    sendiri — tidak terpengaruh karena aturan ini menarget .wrap .head.) */
-.wrap .head{ padding-top:calc(70px + env(safe-area-inset-top)) !important; }
+.wrap .head{ padding-top:calc(88px + env(safe-area-inset-top, 0px)) !important; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    POSISI ELEMEN FIXED → DIPATOK KE SHELL  (SATU SUMBER KEBENARAN)
@@ -240,5 +240,59 @@ body{padding-bottom:0 !important;}
   .head, .content > *, .tx, .cust, .hs, .rs, .iso, .rm, .bd, .ht, .ip, .na, .iface-row, .status-row{
     animation:none !important;
   }
+}
+
+/* ── Chrome profesional: header putih + bottom nav ala referensi ── */
+.mtop{
+  padding-top:max(88px, calc(env(safe-area-inset-top, 0px) + 44px)) !important;
+  padding-bottom:14px !important;
+}
+.mdr-head{
+  padding-top:max(88px, calc(env(safe-area-inset-top, 0px) + 44px)) !important;
+}
+.bottomnav{
+  background:#fff !important;
+  border-top:1px solid #eef1f6 !important;
+  box-shadow:0 -10px 28px -16px rgba(15,23,42,.18) !important;
+}
+.bottomnav .bn-item{
+  color:#9aa3b2 !important;
+  font-weight:600 !important;
+  font-size:10.5px !important;
+  gap:5px !important;
+}
+.bottomnav .bn-item.active,
+.bottomnav .bn-item.active span{
+  color:#2563eb !important;
+}
+.bottomnav .bn-item svg{
+  stroke:#9aa3b2;
+}
+.bottomnav .bn-item.active svg{
+  stroke:#2563eb !important;
+}
+.bottomnav .bn-fab a,
+.bottomnav .bn-fab button{
+  top:-16px !important;
+  width:52px !important;
+  height:52px !important;
+  border-radius:14px !important;
+  background:#2563eb !important;
+  border:none !important;
+  box-shadow:0 10px 22px -4px rgba(37,99,235,.5) !important;
+}
+/* Sembunyikan FAB halaman lama (lingkaran kanan bawah) — + tengah sudah menggantikan */
+body > .fab,
+.wrap ~ .fab,
+button.fab{
+  display:none !important;
+}
+.wrap > .topbar{
+  display:none !important;
+}
+.bottomnav .bn-fab svg{
+  width:24px !important;
+  height:24px !important;
+  stroke-width:2.6 !important;
 }
 

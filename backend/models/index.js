@@ -93,6 +93,8 @@ const Todo            = require('./Todo')(sequelize);
 // ── Bulk Provisioning PPPoE ──────────────────────────────────
 const PppoeProvisionJob  = require('./PppoeProvisionJob')(sequelize);
 const PppoeProvisionItem = require('./PppoeProvisionItem')(sequelize);
+const RadiusServer  = require('./RadiusServer')(sequelize);
+const RadiusAccount = require('./RadiusAccount')(sequelize);
 
 // ── HRIS module — karyawan, absensi, shift, jadwal, payroll ──
 const Employee         = require('./Employee')(sequelize);
@@ -309,6 +311,8 @@ const db = {
   Todo,
   PppoeProvisionJob,
   PppoeProvisionItem,
+  RadiusServer,
+  RadiusAccount,
   Employee,
   HrisShift,
   HrisWorkLocation,
@@ -531,5 +535,10 @@ Employee.hasMany(HrisPayrollItem,      { foreignKey: 'employee_id', as: 'payroll
 // onDelete CASCADE: hapus job → itemnya ikut terhapus.
 PppoeProvisionItem.belongsTo(PppoeProvisionJob, { foreignKey: 'job_id', as: 'job', onDelete: 'CASCADE' });
 PppoeProvisionJob.hasMany(PppoeProvisionItem,  { foreignKey: 'job_id', as: 'items', onDelete: 'CASCADE' });
+
+RadiusAccount.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
+RadiusAccount.belongsTo(RadiusServer, { foreignKey: 'radius_server_id', as: 'server' });
+Customer.hasOne(RadiusAccount, { foreignKey: 'customer_id', as: 'radius_account' });
+RadiusServer.hasMany(RadiusAccount, { foreignKey: 'radius_server_id', as: 'accounts' });
 
 module.exports = db;

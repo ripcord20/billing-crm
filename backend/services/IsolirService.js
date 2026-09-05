@@ -839,10 +839,28 @@ async function isolirCustomer(customerId, triggerBy = 'admin', adminUserId = nul
         }
         methodDetail = `IP ${ip} ditambahkan ke ${ADDRLIST}`;
       } else {
-        // ── Method PPPoE: switch profile + kick session ──
-        const IsolirPPPoE = require('./IsolirPPPoE');
-        const result = await IsolirPPPoE.isolirPPPoEUser(api, pppoeUser, sequelize, customerId);
-        methodDetail = result.message;
+        // ── Method PPPoE: RADIUS reject (cara BillingRadius) + fallback profile MikroTik ──
+        let radiusOk = false;
+        try {
+          const RadiusProv = require('./RadiusProvisionService');
+          if (await RadiusProv.isEnabled(cust.tenant_id)) {
+            const r = await RadiusProv.isolir({
+              id: customerId, tenant_id: cust.tenant_id, pppoe_username: pppoeUser
+            });
+            if (r.success) {
+              radiusOk = true;
+              methodDetail = 'RADIUS Auth-Type Reject';
+            }
+          }
+        } catch (_) {}
+        try {
+          const IsolirPPPoE = require('./IsolirPPPoE');
+          const result = await IsolirPPPoE.isolirPPPoEUser(api, pppoeUser, sequelize, customerId);
+          methodDetail = (methodDetail ? methodDetail + ' · ' : '') + result.message;
+        } catch (e) {
+          if (!radiusOk) throw e;
+          methodDetail = (methodDetail || 'RADIUS isolir') + ' (router: ' + e.message + ')';
+        }
       }
       success = true;
     } finally {
@@ -948,12 +966,30 @@ async function restoreCustomer(customerId, triggerBy = 'admin', adminUserId = nu
         }
         methodDetail = `IP ${ip} dihapus dari ${ADDRLIST}`;
       } else {
-        // ── Method PPPoE: restore profile asli + kick ──
-        const IsolirPPPoE = require('./IsolirPPPoE');
-        const result = await IsolirPPPoE.restorePPPoEUser(
-          api, pppoeUser, cust.pppoe_profile_original
-        );
-        methodDetail = result.message;
+        // ── Method PPPoE: restore RADIUS + profile asli + kick ──
+        let radiusOk = false;
+        try {
+          const RadiusProv = require('./RadiusProvisionService');
+          if (await RadiusProv.isEnabled(cust.tenant_id)) {
+            const r = await RadiusProv.restore({
+              id: customerId, tenant_id: cust.tenant_id, pppoe_username: pppoeUser
+            });
+            if (r.success) {
+              radiusOk = true;
+              methodDetail = 'RADIUS Auth-Type dihapus';
+            }
+          }
+        } catch (_) {}
+        try {
+          const IsolirPPPoE = require('./IsolirPPPoE');
+          const result = await IsolirPPPoE.restorePPPoEUser(
+            api, pppoeUser, cust.pppoe_profile_original
+          );
+          methodDetail = (methodDetail ? methodDetail + ' · ' : '') + result.message;
+        } catch (e) {
+          if (!radiusOk) throw e;
+          methodDetail = (methodDetail || 'RADIUS restore') + ' (router: ' + e.message + ')';
+        }
       }
       success = true;
     } finally {
