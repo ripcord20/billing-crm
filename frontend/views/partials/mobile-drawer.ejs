@@ -8,8 +8,10 @@
   var _uemail = (typeof user !== 'undefined' && user && user.email) ? user.email : '';
   var _uavatar = (typeof user !== 'undefined' && user && user.avatar) ? user.avatar : '';
   function _on(id){ return _act === id ? ' active' : ''; }
-  var _ttlMap = { home:'Dashboard', customers:'Pelanggan', payments:'Pembayaran', invoice:'Invoice', keuangan:'Keuangan', finance:'Laporan', monitoring:'Monitoring', ticket:'Tiket', packages:'Paket', isolir:'Isolir', hotspot:'Hotspot', profile:'Profil', wa:'WhatsApp', noc:'NOC', reminder:'Reminder', assets:'Aset', infrastructure:'Infrastruktur', queue:'Antrian', voucher:'Voucher', host:'Host', content:'Konten', 'hotspot-binding':'Binding' };
-  var _ttl = (typeof title !== 'undefined' && title) ? String(title) : (_ttlMap[_act] || 'Dashboard');
+  var _ttlMap = { home:'Dashboard', customers:'Pelanggan', payments:'Pembayaran', invoice:'Invoice', keuangan:'Keuangan', finance:'Laporan', monitoring:'Monitoring', ticket:'Tiket', packages:'Paket', isolir:'Isolir', hotspot:'Hotspot', profile:'Profil', wa:'WhatsApp', noc:'NOC', reminder:'Reminder', assets:'Aset', infrastructure:'Infrastruktur', queue:'Antrian', voucher:'Voucher', host:'Host', content:'Konten', 'hotspot-binding':'Binding', 'm-home':'Dashboard', 'm-customers':'Pelanggan', 'm-payments':'Pembayaran', 'm-invoice':'Invoice', 'm-keuangan':'Keuangan', 'm-finance':'Laporan', 'm-monitoring':'Monitoring', 'm-ticket':'Tiket', 'm-packages':'Paket', 'm-isolir':'Isolir', 'm-hotspot':'Hotspot', 'm-profile':'Profil', 'm-wa':'WhatsApp', 'm-noc':'NOC', 'm-reminder':'Reminder', 'm-assets':'Aset', 'm-infrastructure':'Infrastruktur', 'm-queue':'Antrian', 'm-voucher':'Voucher', 'm-host':'Host', 'm-content':'Konten', 'm-hotspot-binding':'Binding' };
+  var _actKey = String(_act || '').replace(/^m-/, '');
+  var _ttlRaw = (typeof title !== 'undefined' && title) ? String(title) : '';
+  var _ttl = _ttlMap[_act] || _ttlMap[_actKey] || (_ttlRaw === 'Beranda' ? 'Dashboard' : (_ttlRaw || 'Dashboard'));
 %>
 <style>
   /* Hamburger lama (floating) dimatikan — diganti avatar di top nav sticky */
@@ -59,10 +61,11 @@
     left:50%;transform:translateX(-50%) translateY(-8px);
     width:calc(100% - 24px);max-width:calc(var(--shell-max,480px) - 24px);
     background:#fff;border-radius:16px;box-shadow:0 18px 44px -12px rgba(23,43,84,.34);
-    opacity:0;visibility:hidden;transition:opacity .2s, transform .2s, visibility .2s;
+    opacity:0;visibility:hidden;pointer-events:none;
+    transition:opacity .2s, transform .2s, visibility .2s;
     display:flex;flex-direction:column;max-height:70vh;overflow:hidden;
   }
-  .mnotif.open{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0);}
+  .mnotif.open{opacity:1;visibility:visible;pointer-events:auto;transform:translateX(-50%) translateY(0);}
   .mnotif-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid #eef1f6;}
   .mnotif-head span{font-size:14.5px;font-weight:800;color:#1a2b4a;}
   .mnotif-readall{border:none;background:none;color:#2f6fed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;padding:2px 4px;}
