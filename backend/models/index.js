@@ -49,6 +49,9 @@ const Device = require('./Device')(sequelize);
 const DeviceLog = require('./DeviceLog')(sequelize);
 const InfrastructurePoint = require('./InfrastructurePoint')(sequelize);
 const InfrastructureLink  = require('./InfrastructureLink')(sequelize);
+const InfrastructureCableCore = require('./InfrastructureCableCore')(sequelize);
+const InfrastructureCoreConnection = require('./InfrastructureCoreConnection')(sequelize);
+const InfrastructureSubscriberCore = require('./InfrastructureSubscriberCore')(sequelize);
 const OntDevice = require('./OntDevice')(sequelize);
 const FinancialReport = require('./FinancialReport')(sequelize);
 const ActivityLog = require('./ActivityLog')(sequelize);
@@ -149,6 +152,17 @@ InfrastructureLink.belongsTo(InfrastructurePoint, { foreignKey: 'from_point_id',
 InfrastructureLink.belongsTo(InfrastructurePoint, { foreignKey: 'to_point_id',   as: 'toPoint'   });
 InfrastructurePoint.hasMany(InfrastructureLink,   { foreignKey: 'from_point_id', as: 'linksFrom' });
 InfrastructurePoint.hasMany(InfrastructureLink,   { foreignKey: 'to_point_id',   as: 'linksTo'   });
+
+InfrastructureCableCore.belongsTo(InfrastructureLink, { foreignKey: 'cable_id', as: 'cable' });
+InfrastructureLink.hasMany(InfrastructureCableCore, { foreignKey: 'cable_id', as: 'cores' });
+InfrastructureCoreConnection.belongsTo(InfrastructureCableCore, { foreignKey: 'source_core_id', as: 'sourceCore' });
+InfrastructureCoreConnection.belongsTo(InfrastructureCableCore, { foreignKey: 'target_core_id', as: 'targetCore' });
+InfrastructureCableCore.hasMany(InfrastructureCoreConnection, { foreignKey: 'source_core_id', as: 'connectionsFrom' });
+InfrastructureCableCore.hasMany(InfrastructureCoreConnection, { foreignKey: 'target_core_id', as: 'connectionsTo' });
+InfrastructureSubscriberCore.belongsTo(InfrastructureCableCore, { foreignKey: 'core_id', as: 'core' });
+InfrastructureSubscriberCore.belongsTo(Customer, { foreignKey: 'subscriber_id', as: 'subscriber' });
+InfrastructureCableCore.hasOne(InfrastructureSubscriberCore, { foreignKey: 'core_id', as: 'subscriberCore' });
+Customer.hasMany(InfrastructureSubscriberCore, { foreignKey: 'subscriber_id', as: 'coreAssignments' });
 
 // Keuangan <-> User
 User.hasMany(Keuangan, { foreignKey: 'recorded_by', as: 'keuangan_records' });
@@ -274,6 +288,9 @@ const db = {
   DeviceLog,
   InfrastructurePoint,
   InfrastructureLink,
+  InfrastructureCableCore,
+  InfrastructureCoreConnection,
+  InfrastructureSubscriberCore,
   OntDevice,
   FinancialReport,
   ActivityLog,

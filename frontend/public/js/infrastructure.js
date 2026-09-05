@@ -1822,6 +1822,7 @@ function addCustomerMarker(c) {
 // ─── Draw link mode ───────────────────────────────────
 function toggleDrawMode() {
   if (drawMode) { cancelDrawMode(); return; }
+  if (window.CoreMap && typeof CoreMap.close === 'function') CoreMap.close();
   drawMode = true;
   drawFrom = null;
   document.getElementById('infraMap').classList.add('draw-mode');
@@ -1829,6 +1830,24 @@ function toggleDrawMode() {
   document.getElementById('drawModeText').textContent = 'Klik titik PERTAMA (Pelanggan/ODP/ODC)';
   document.getElementById('drawBtn').classList.add('active');
   map.closePopup();
+}
+
+function setFollowRoad(on) {
+  const cb = document.getElementById('drawFollowRoad');
+  if (cb) cb.checked = !!on;
+  const btn = document.getElementById('followRoadBtn');
+  if (btn) btn.classList.toggle('active', !!on);
+}
+
+function toggleFollowRoadDraw() {
+  const cb = document.getElementById('drawFollowRoad');
+  const turningOn = !drawMode || !(cb && cb.checked);
+  if (!drawMode) toggleDrawMode();
+  setFollowRoad(turningOn);
+  const bar = document.getElementById('drawModeText');
+  if (bar && turningOn && !drawFrom) {
+    bar.textContent = 'Mode ikuti jalan: klik titik PERTAMA (Pelanggan/ODP/ODC)';
+  }
 }
 
 function cancelDrawMode() {
@@ -1881,6 +1900,8 @@ function openLinkModal(from, to, autoDistM, waypoints) {
   document.getElementById('lm-type').value       = 'fiber';
   document.getElementById('lm-dist').value       = autoDistM || '';
   document.getElementById('lm-notes').value      = '';
+  const lmCores = document.getElementById('lm-cores');
+  if (lmCores) lmCores.value = '';
   // Show waypoint count
   const wpInfo = document.getElementById('lm-waypoints');
   if (wpInfo) wpInfo.textContent = linkWaypoints.length > 0
@@ -1907,12 +1928,16 @@ async function saveLink() {
       distance_m:    parseInt(document.getElementById('lm-dist').value) || null,
       notes:         document.getElementById('lm-notes').value,
       status:        'active',
-      waypoints:     linkWaypoints.length ? linkWaypoints : null
+      waypoints:     linkWaypoints.length ? linkWaypoints : null,
+      core_count:    parseInt((document.getElementById('lm-cores') || {}).value, 10) || null
     };
     const res = await apiWithRetry('/infrastructure-links', { method:'POST', body:JSON.stringify(payload) });
     if (res?.success) {
       closeLinkModal();
       loadInfraData(currentFilter, { preserveView: true });
+      if (window.CoreMap && typeof CoreMap.refresh === 'function') {
+        CoreMap.refresh();
+      }
 
       // Tampilkan info auto-parent kalau backend set parent_id otomatis.
       // Pesan dibedakan: created (baru di-set), changed (sebelumnya beda),

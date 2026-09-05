@@ -833,6 +833,46 @@
     .infra-cluster.ic-md { background: linear-gradient(135deg, #1d4ed8, #1e3a8a); }
     .infra-cluster.ic-lg { background: linear-gradient(135deg, #1e3a8a, #172554);
       box-shadow: 0 5px 16px rgba(23,37,84,.5), 0 0 0 5px rgba(30,58,138,.2); }
+    .core-panel{
+      position:fixed;top:60px;right:0;bottom:0;width:min(400px,92vw);z-index:790;
+      background:var(--bg-card);border-left:1px solid var(--border);
+      box-shadow:-12px 0 32px rgba(15,23,42,.16);
+      display:none;flex-direction:column;pointer-events:none;
+    }
+    .core-panel.open{display:flex;pointer-events:auto;}
+    @media (max-width: 720px) {
+      .core-panel{
+        top:auto;left:0;right:0;bottom:0;width:100%;height:min(52vh,440px);
+        border-left:none;border-top:1px solid var(--border);
+        box-shadow:0 -12px 32px rgba(15,23,42,.16);
+      }
+    }
+    .core-panel-hd{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+    .core-panel-hd h3{margin:0;font-size:15px;font-weight:800;flex:1;}
+    .core-tabs{display:flex;gap:4px;padding:8px 12px;border-bottom:1px solid var(--border);}
+    .core-tab{border:none;background:transparent;padding:7px 10px;border-radius:8px;font-size:12px;font-weight:700;color:#64748b;cursor:pointer;}
+    .core-tab.on{background:#e8f0ff;color:#1d4ed8;}
+    .core-body{flex:1;overflow:auto;padding:12px 14px 24px;}
+    .core-cable{border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;}
+    .core-cable:hover{border-color:#93c5fd;background:#f8fbff;}
+    .core-tube{margin:10px 0 14px;}
+    .core-tube-h{font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+    .core-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+    .core-chip{border:1px solid #e2e8f0;border-radius:10px;padding:7px 6px;text-align:center;cursor:pointer;background:#fff;min-height:54px;}
+    .core-chip.on{outline:2px solid #2563eb;}
+    .core-dot{width:14px;height:14px;border-radius:50%;margin:0 auto 4px;border:1px solid rgba(0,0,0,.18);}
+    .core-chip .n{font-size:11px;font-weight:800;}
+    .core-chip .s{font-size:9px;color:#64748b;text-transform:uppercase;}
+    .core-st-active{box-shadow:inset 0 0 0 2px #22c55e;}
+    .core-st-idle{}
+    .core-st-damaged{opacity:.55;box-shadow:inset 0 0 0 2px #ef4444;}
+    .core-st-reserved{box-shadow:inset 0 0 0 2px #f59e0b;}
+    .core-form label{display:block;font-size:11px;font-weight:700;color:#64748b;margin:8px 0 4px;}
+    .core-form input,.core-form select,.core-form textarea{width:100%;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font:inherit;font-size:13px;}
+    .core-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+    .core-trail{border-left:3px solid #2563eb;padding:4px 0 4px 12px;margin:8px 0;}
+    .core-trail div{font-size:12.5px;margin:6px 0;color:#1e293b;}
+
     .infra-cluster b { font-size: 13px; line-height: 1; }
     .infra-cluster small { font-size: 8.5px; opacity: .85; font-weight: 600; margin-top: 1px; }
   </style>
@@ -874,6 +914,11 @@
             <button class="map-draw-btn" id="drawBtn" onclick="toggleDrawMode()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
               <span class="btn-label">Draw Link</span>
+            </button>
+
+            <button class="map-draw-btn" type="button" onclick="CoreMap.open()" title="Manajemen core kabel">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="12" r="2"/><circle cx="12" cy="6" r="2"/><circle cx="18" cy="12" r="2"/><circle cx="12" cy="18" r="2"/><path d="M8 12h8M12 8v8"/></svg>
+              <span class="btn-label">Core Kabel</span>
             </button>
 
             <!-- Spacer: dorong filter ke kanan di desktop -->
@@ -1240,6 +1285,19 @@
           <input type="number" class="form-control" id="lm-dist" placeholder="mis. 150" min="0">
           <div id="lm-waypoints" style="font-size:11px;color:var(--text-secondary);margin-top:4px"></div>
         </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Kapasitas Core (TIA/EIA-598)</label>
+        <select class="form-control" id="lm-cores">
+          <option value="">— Belum generate —</option>
+          <option value="1">1 core</option>
+          <option value="2">2 core</option>
+          <option value="4">4 core</option>
+          <option value="8">8 core</option>
+          <option value="12">12 core</option>
+          <option value="24">24 core</option>
+          <option value="48">48 core</option>
+        </select>
       </div>
       <div class="form-group">
         <label class="form-label">Catatan</label>
@@ -1764,10 +1822,26 @@ window.customConfirm = function(opts) {
 })();
 </script>
 
+<div class="core-panel" id="corePanel" aria-hidden="true">
+  <div class="core-panel-hd">
+    <h3>Manajemen Core Kabel</h3>
+    <button class="modal-close" type="button" onclick="CoreMap.close()" aria-label="Tutup">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="core-tabs">
+    <button class="core-tab on" type="button" data-tab="cables" onclick="CoreMap.tab('cables',this)">Kabel</button>
+    <button class="core-tab" type="button" data-tab="map" onclick="CoreMap.tab('map',this)">Sambungan</button>
+    <button class="core-tab" type="button" data-tab="trace" onclick="CoreMap.tab('trace',this)">Tracing</button>
+  </div>
+  <div class="core-body" id="coreBody">Memuat…</div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="/js/infrastructure.js?v=1781702500"></script>
+<script src="/js/infrastructure.js?v=core2"></script>
+<script src="/js/infrastructure-cores.js?v=core2"></script>
 </body>
 </html>

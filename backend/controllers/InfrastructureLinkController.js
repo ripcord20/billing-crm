@@ -131,7 +131,18 @@ class InfrastructureLinkController {
           { model: InfrastructurePoint, as: 'toPoint',   attributes: pointAttrs }
         ]
       });
-      res.status(201).json({ success: true, data: full, auto_parent: autoParentInfo });
+      let cores = null;
+      const coreCount = parseInt(req.body && req.body.core_count, 10);
+      if (coreCount && ['fiber', 'trunk'].includes(String(link.link_type || '').toLowerCase())) {
+        try {
+          const CableCoreService = require('../services/CableCoreService');
+          cores = await CableCoreService.generateForCable(link.id, coreCount);
+        } catch (genErr) {
+          require('../utils/logger').warn(`[Link create] generate cores skipped: ${genErr.message}`);
+        }
+      }
+
+      res.status(201).json({ success: true, data: full, auto_parent: autoParentInfo, cores });
     } catch (e) { res.status(400).json({ success: false, message: e.message }); }
   }
 

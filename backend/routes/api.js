@@ -42,6 +42,7 @@ const BillingController = require('../controllers/BillingController');
 const DeviceController = require('../controllers/DeviceController');
 const InfrastructureController     = require('../controllers/InfrastructureController');
 const InfrastructureLinkController  = require('../controllers/InfrastructureLinkController');
+const InfrastructureCoreController  = require('../controllers/InfrastructureCoreController');
 const OntController = require('../controllers/OntController');
 const DashboardController = require('../controllers/DashboardController');
 const DashboardLayoutController = require('../controllers/DashboardLayoutController');
@@ -2160,6 +2161,18 @@ router.get   ('/infrastructure-links',     authenticate, demoGuard, (r,s)=>Infra
 router.post  ('/infrastructure-links',     authenticate, demoGuard, (r,s)=>InfrastructureLinkController.create(r,s));
 router.put   ('/infrastructure-links/:id', authenticate, demoGuard, (r,s)=>InfrastructureLinkController.update(r,s));
 router.delete('/infrastructure-links/:id', authenticate, demoGuard, (r,s)=>InfrastructureLinkController.destroy(r,s));
+
+// ===== OPTICAL CABLE CORE MAPPING (submodul, non-breaking) =====
+router.get   ('/infrastructure-cores/palette', authenticate, demoGuard, (r,s)=>InfrastructureCoreController.palette(r,s));
+router.get   ('/infrastructure-cores/cables',  authenticate, demoGuard, (r,s)=>InfrastructureCoreController.cables(r,s));
+router.get   ('/infrastructure-cores/trace',   authenticate, demoGuard, (r,s)=>InfrastructureCoreController.trace(r,s));
+router.get   ('/infrastructure-cores',         authenticate, demoGuard, (r,s)=>InfrastructureCoreController.list(r,s));
+router.post  ('/infrastructure-cores/generate',authenticate, demoGuard, hasPermission('infra_update'), (r,s)=>InfrastructureCoreController.generate(r,s));
+router.patch ('/infrastructure-cores/:id',     authenticate, demoGuard, hasPermission('infra_update'), (r,s)=>InfrastructureCoreController.update(r,s));
+router.post  ('/infrastructure-cores/splice',  authenticate, demoGuard, hasPermission('infra_update'), logActivity('update', 'infrastructure'), (r,s)=>InfrastructureCoreController.splice(r,s));
+router.delete('/infrastructure-cores/connections/:id', authenticate, demoGuard, hasPermission('infra_update'), (r,s)=>InfrastructureCoreController.unsplice(r,s));
+router.post  ('/infrastructure-cores/assign',  authenticate, demoGuard, hasPermission('infra_update'), (r,s)=>InfrastructureCoreController.assign(r,s));
+router.delete('/infrastructure-cores/assign/:id', authenticate, demoGuard, hasPermission('infra_update'), (r,s)=>InfrastructureCoreController.unassign(r,s));
 
 // ===== CUSTOMER TRAFFIC (MikroTik Queue + PPPoE → Customer mapping) =====
 // Polling MikroTik kini disentralisasi di services/CustomerTrafficPoller.js
