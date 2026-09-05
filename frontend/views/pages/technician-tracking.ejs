@@ -1079,8 +1079,15 @@ function toggleSat() {
   }
 }
 
+function precisionZoom(acc) {
+  if (acc == null || acc > 40) return 16;
+  if (acc > 18) return 17;
+  if (acc > 10) return 18;
+  return 19;
+}
+
 function centerMap() {
-  if (curLoc) leafMap.setView([curLoc.latitude, curLoc.longitude], 17);
+  if (curLoc) leafMap.setView([curLoc.latitude, curLoc.longitude], precisionZoom(curLoc.accuracy));
   else leafMap.setView(CENTER, 13);
 }
 
@@ -1110,7 +1117,7 @@ function setMapPos(lat, lng, acc) {
 
   if (!marker) {
     marker = L.marker(ll, { icon }).addTo(leafMap);
-    leafMap.setView(ll, 16);
+    leafMap.setView(ll, precisionZoom(acc));
   } else {
     marker.setIcon(icon);
     // Smooth marker movement
@@ -1126,11 +1133,11 @@ function setMapPos(lat, lng, acc) {
 
   // ── Trail / Route ──
   if (sess) {
-    // Jangan tambah titik terlalu dekat (< 3m) untuk menghindari clutter
+    // Jangan tambah titik terlalu dekat (< 1.5m) — noise statis
     if (trailPts.length > 0) {
       const last = trailPts[trailPts.length - 1];
       const dist = haversine(last[0], last[1], lat, lng);
-      if (dist < 3) {
+      if (dist < 1.5) {
         // Terlalu dekat — update marker saja, jangan tambah trail point
         return;
       }
@@ -1150,8 +1157,8 @@ function setMapPos(lat, lng, acc) {
       <div class="pp-sub">${t ? t.ticket_number+' — '+(t.title||'') : 'Tracking aktif'}</div>
     </div>
     <div class="pp-body">
-      <div class="pp-row"><span class="pp-rk">Latitude</span>  <span class="pp-rv">${lat.toFixed(6)}</span></div>
-      <div class="pp-row"><span class="pp-rk">Longitude</span> <span class="pp-rv">${lng.toFixed(6)}</span></div>
+      <div class="pp-row"><span class="pp-rk">Latitude</span>  <span class="pp-rv">${lat.toFixed(7)}</span></div>
+      <div class="pp-row"><span class="pp-rk">Longitude</span> <span class="pp-rv">${lng.toFixed(7)}</span></div>
       <div class="pp-row"><span class="pp-rk">Akurasi</span>   <span class="pp-rv">${Math.round(acc)} m</span></div>
       <div class="pp-row"><span class="pp-rk">Update</span>    <span class="pp-rv">${new Date().toLocaleTimeString('id-ID')}</span></div>
     </div>`);
@@ -1427,7 +1434,7 @@ async function startTracking() {
   try {
     setBtnLoad(true);
     // Gunakan best-of-N sampling untuk posisi awal yang lebih akurat
-    const pos   = await getAccuratePos(4, 10000);
+    const pos   = await getAccuratePos(8, 22000);
     curLoc = { latitude:pos.coords.latitude, longitude:pos.coords.longitude, accuracy:pos.coords.accuracy };
     const bat   = await getBat();
     const token = localStorage.getItem('token');
@@ -1438,7 +1445,8 @@ async function startTracking() {
     });
     const d = await r.json();
     if (!r.ok || !d.success) throw new Error(d.message||'HTTP '+r.status);
-    sess=d.data; trailPts=[[curLoc.latitude,curLoc.longitude]];
+    sess = d.session || d.data;
+    trailPts=[[curLoc.latitude,curLoc.longitude]];
     uiActive(); startWatch();
     setMapPos(curLoc.latitude, curLoc.longitude, curLoc.accuracy);
   } catch(e) {
@@ -1534,12 +1542,29 @@ async function confirmStop() {
 
 /* ═══════════════════════════════════════════════════════
    GPS — High Accuracy Engine
-   Target: 5-10 meter accuracy
+   Target: 5–8 meter (GPS + filter noise + blend)
 ════════════════════════════════════════════════════════ */
+
+const GPS_TARGET_M = 8;
+const GPS_LOCK_M = 15;
+const GPS_REJECT_M = 40;
+
+function blendGps(prev, lat, lng, acc) {
+  if (!prev || !Number.isFinite(acc) || acc <= 0 || !Number.isFinite(prev.accuracy) || prev.accuracy <= 0) {
+    return { latitude: lat, longitude: lng, accuracy: acc };
+  }
+  const wNew = 1 / Math.max(acc * acc, 4);
+  const wOld = 1 / Math.max(prev.accuracy * prev.accuracy, 4);
+  const w = wNew + wOld;
+  return {
+    latitude: (prev.latitude * wOld + lat * wNew) / w,
+    longitude: (prev.longitude * wOld + lng * wNew) / w,
+    accuracy: Math.sqrt(1 / w)
+  };
+}
 
 /**
  * Quick position — untuk stop tracking & fallback
- * Boleh pakai cache, tidak perlu akurat banget
  */
 function getPos() {
   return new Promise((res,rej) => {
@@ -1548,20 +1573,19 @@ function getPos() {
       rej(new Error(['','GPS permission ditolak','Posisi GPS tidak tersedia','GPS timeout'][err.code]||err.message));
     }, {
       enableHighAccuracy: true,
-      timeout: 8000,
-      maximumAge: 30000   // boleh cache 30 detik untuk kecepatan
+      timeout: 12000,
+      maximumAge: 8000
     });
   });
 }
 
 /**
- * Best-of-N sampling — untuk START tracking
- * Ambil beberapa sample, pilih yang terbaik.
- * Berhenti segera jika akurasi <= 10m.
+ * Best-of-N sampling — untuk START tracking.
+ * Tunggu kunci satelit: target ≤8m, minimal 3 sample bagus.
  */
 function getAccuratePos(maxSamples, timeoutMs) {
-  maxSamples = maxSamples || 5;
-  timeoutMs  = timeoutMs  || 12000;
+  maxSamples = maxSamples || 8;
+  timeoutMs  = timeoutMs  || 22000;
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) { reject(new Error('Geolocation tidak didukung')); return; }
     let best = null;
@@ -1574,112 +1598,91 @@ function getAccuratePos(maxSamples, timeoutMs) {
       navigator.geolocation.clearWatch(wid);
       clearTimeout(fallback);
       if (result) resolve(result);
-      else reject(new Error('GPS timeout'));
+      else reject(new Error('GPS timeout — coba di luar ruangan'));
     };
 
     const wid = navigator.geolocation.watchPosition(
       pos => {
         count++;
-        console.log(`GPS sample #${count}: accuracy=${pos.coords.accuracy.toFixed(1)}m`);
-
-        if (!best || pos.coords.accuracy < best.coords.accuracy) {
-          best = pos;
-        }
-        // Target tercapai — langsung selesai
-        if (pos.coords.accuracy <= 10) {
+        if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos;
+        if (pos.coords.accuracy <= GPS_TARGET_M && count >= 2) {
           done(best);
           return;
         }
-        // Sudah cukup sample — ambil yang terbaik
-        if (count >= maxSamples) {
-          done(best);
-        }
+        if (count >= maxSamples) done(best);
       },
       err => {
-        console.warn('GPS sample error:', err.message);
-        // Jika sudah punya data bagus, pakai itu
-        done(best);
+        if (best) done(best);
+        else reject(new Error(['','GPS permission ditolak','Posisi GPS tidak tersedia','GPS timeout'][err.code]||err.message));
       },
       {
         enableHighAccuracy: true,
-        timeout: Math.min(timeoutMs, 10000),
-        maximumAge: 0   // paksa posisi fresh untuk start
+        timeout: timeoutMs,
+        maximumAge: 0
       }
     );
 
-    // Hard timeout
-    const fallback = setTimeout(() => {
-      console.warn('GPS sampling timeout, best accuracy:', best?.coords.accuracy);
-      done(best);
-    }, timeoutMs);
+    const fallback = setTimeout(() => done(best), timeoutMs);
   });
 }
 
 /**
- * Continuous watch — untuk tracking berjalan
- * Strategi high-accuracy:
- * 1. maximumAge: 0 — selalu minta posisi segar, TIDAK pakai cache
- * 2. Filter noise: abaikan spike akurasi buruk
- * 3. Minimum distance filter: abaikan update < 2m (noise statis)
+ * Continuous watch — tracking berjalan.
+ * Warm-up tidak masuk trail sampai kunci ≤15m.
+ * Titik di-blend supaya tidak zig-zag.
  */
 function startWatch() {
   if (watchId) return;
   document.getElementById('gps-live').style.display = 'flex';
-  let lastGood = null;      // posisi terakhir yang lolos filter
-  let warmupCount = 0;      // hitung beberapa reading pertama untuk warm-up
+  let lastGood = curLoc ? { latitude: curLoc.latitude, longitude: curLoc.longitude, accuracy: curLoc.accuracy } : null;
+  let locked = !!(lastGood && lastGood.accuracy && lastGood.accuracy <= GPS_LOCK_M);
 
   watchId = navigator.geolocation.watchPosition(p => {
     const acc = p.coords.accuracy;
-    const lat = p.coords.latitude;
-    const lng = p.coords.longitude;
-    warmupCount++;
+    const rawLat = p.coords.latitude;
+    const rawLng = p.coords.longitude;
 
-    // WARM-UP: 3 reading pertama selalu diterima agar GPS lock cepat
-    if (warmupCount <= 3) {
-      curLoc = { latitude:lat, longitude:lng, accuracy:acc, speed:p.coords.speed, heading:p.coords.heading };
-      lastGood = { latitude:lat, longitude:lng, accuracy:acc };
-      updateGps();
-      setMapPos(lat, lng, acc);
-      return;
+    if (locked && lastGood && lastGood.accuracy <= GPS_LOCK_M && acc > GPS_REJECT_M) return;
+    if (locked && lastGood && lastGood.accuracy < 12 && acc > lastGood.accuracy * 3.5) return;
+
+    if (lastGood && acc <= 20) {
+      const dist = haversine(lastGood.latitude, lastGood.longitude, rawLat, rawLng);
+      if (dist < 1.2 && acc >= lastGood.accuracy) return;
+      if (dist > Math.max(60, (lastGood.accuracy || 20) + acc) * 2) return;
     }
 
-    // FILTER 1: Buang reading dengan akurasi > 50m jika sudah punya yg < 20m
-    if (lastGood && lastGood.accuracy < 20 && acc > 50) {
-      console.log(`GPS filtered: acc ${acc.toFixed(0)}m too bad (had ${lastGood.accuracy.toFixed(0)}m)`);
-      return;
-    }
-
-    // FILTER 2: Buang jika akurasi > 4x lebih buruk dari terakhir
-    if (lastGood && lastGood.accuracy < 15 && acc > lastGood.accuracy * 4) {
-      console.log(`GPS filtered: acc spike ${acc.toFixed(0)}m vs ${lastGood.accuracy.toFixed(0)}m`);
-      return;
-    }
-
-    // FILTER 3: Minimum distance — abaikan gerakan < 2m (noise statis saat diam)
-    if (lastGood && acc < 25) {
-      const dist = haversine(lastGood.latitude, lastGood.longitude, lat, lng);
-      if (dist < 2 && acc >= lastGood.accuracy) {
-        // Posisi hampir sama, akurasi tidak lebih baik — skip
-        return;
-      }
-    }
-
-    // Lolos filter — update
-    curLoc = { latitude:lat, longitude:lng, accuracy:acc, speed:p.coords.speed, heading:p.coords.heading };
-    lastGood = { latitude:lat, longitude:lng, accuracy:acc };
+    const blended = blendGps(lastGood, rawLat, rawLng, acc);
+    curLoc = {
+      latitude: blended.latitude,
+      longitude: blended.longitude,
+      accuracy: acc,
+      speed: p.coords.speed,
+      heading: p.coords.heading
+    };
+    lastGood = { latitude: blended.latitude, longitude: blended.longitude, accuracy: acc };
+    if (acc <= GPS_LOCK_M) locked = true;
     updateGps();
-    setMapPos(lat, lng, acc);
+    setMapPos(blended.latitude, blended.longitude, acc);
   }, e => {
     console.warn('GPS watch error:', e.message);
-    // Jangan showErr untuk setiap watch error — terlalu noisy
   }, {
     enableHighAccuracy: true,
-    timeout: 15000,
-    maximumAge: 0   // KUNCI akurasi tinggi: JANGAN pakai cache, selalu posisi segar
+    timeout: 20000,
+    maximumAge: 0
   });
 
-  // Kirim update ke server setiap 15 detik (lebih sering = tracking lebih akurat)
-  itvl = setInterval(sendUpdate, 15000);
+  scheduleSendLoop();
+}
+
+function scheduleSendLoop() {
+  if (itvl) clearInterval(itvl);
+  const tick = () => {
+    sendUpdate();
+    const acc = curLoc && curLoc.accuracy;
+    const next = (acc != null && acc <= GPS_LOCK_M) ? 5000 : 10000;
+    itvl = setTimeout(tick, next);
+  };
+  itvl = setTimeout(tick, 4000);
 }
 
 /**
@@ -1695,26 +1698,36 @@ function haversine(lat1, lon1, lat2, lon2) {
 
 function stopWatch() {
   if (watchId) { navigator.geolocation.clearWatch(watchId); watchId=null; }
-  if (itvl)   { clearInterval(itvl); itvl=null; }
+  if (itvl)   { clearTimeout(itvl); clearInterval(itvl); itvl=null; }
   document.getElementById('gps-live').style.display = 'none';
 }
 
 async function sendUpdate() {
   if (!sess||!curLoc) return;
-  // Jangan kirim jika akurasi terlalu buruk
-  if (curLoc.accuracy > 100) {
-    console.warn('GPS accuracy too low (' + Math.round(curLoc.accuracy) + 'm), skipping update');
-    return;
-  }
+  if (curLoc.accuracy > 80) return;
   try {
     const bat=await getBat(), token=localStorage.getItem('token');
     const r = await fetch('/api/tracking/update', {
       method:'POST',
       headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-      body: JSON.stringify({ session_id:sess.session_id, latitude:curLoc.latitude, longitude:curLoc.longitude, accuracy:curLoc.accuracy, speed:curLoc.speed, heading:curLoc.heading, battery_level:bat })
+      body: JSON.stringify({
+        session_id:sess.session_id,
+        latitude: Number(curLoc.latitude.toFixed(7)),
+        longitude: Number(curLoc.longitude.toFixed(7)),
+        accuracy:curLoc.accuracy,
+        speed:curLoc.speed,
+        heading:curLoc.heading,
+        battery_level:bat
+      })
     });
     const d = await r.json();
-    if (d.success&&d.data.session) { sess=d.data.session; updateStats(); }
+    if (d.success && !d.skipped && (d.session || (d.data && d.data.session))) {
+      const next = d.session || d.data.session;
+      sess.total_distance = next.total_distance;
+      sess.total_duration = next.total_duration;
+      sess.points_count = next.points_count;
+      updateStats();
+    }
   } catch(e) { console.warn('Update err:',e); }
 }
 
@@ -1775,9 +1788,10 @@ function updateStats() {
 
 function updateGps() {
   if (!curLoc) return;
-  document.getElementById('g-lat').textContent = curLoc.latitude.toFixed(6);
-  document.getElementById('g-lng').textContent = curLoc.longitude.toFixed(6);
-  document.getElementById('g-acc').textContent = Math.round(curLoc.accuracy)+' m';
+  document.getElementById('g-lat').textContent = curLoc.latitude.toFixed(7);
+  document.getElementById('g-lng').textContent = curLoc.longitude.toFixed(7);
+  const accTxt = (curLoc.accuracy < 10 ? curLoc.accuracy.toFixed(1) : Math.round(curLoc.accuracy)) + ' m';
+  document.getElementById('g-acc').textContent = accTxt;
   document.getElementById('g-upd').textContent = new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   getBat().then(b=>{if(b!==null)document.getElementById('g-bat').textContent=b+'%';});
 }

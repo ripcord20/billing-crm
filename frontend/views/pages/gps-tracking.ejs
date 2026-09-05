@@ -1004,7 +1004,7 @@
   <script src="/socket.io/socket.io.js"></script>
 
   <script>
-    let map, markers = {}, trails = {}, socket, activeSessions = [];
+    let map, markers = {}, accCircles = {}, trails = {}, socket, activeSessions = [];
     let showingTrails = false, searchFilter = '';
     let streetLayer, satelliteLayer, labelLayer, currentLayer = 'street';
 
@@ -1077,7 +1077,10 @@
 
       // Hapus marker yang sudah tidak aktif
       existingIds.forEach(id => {
-        if (!currentIds.has(id)) { map.removeLayer(markers[id]); delete markers[id]; }
+        if (!currentIds.has(id)) {
+          map.removeLayer(markers[id]); delete markers[id];
+          if (accCircles[id]) { map.removeLayer(accCircles[id]); delete accCircles[id]; }
+        }
       });
 
       activeSessions.forEach(s => {
@@ -1088,6 +1091,7 @@
         if (markers[s.session_id]) {
           // Sudah ada → smooth move saja, tidak re-render
           markers[s.session_id].setLatLng([loc.latitude, loc.longitude]);
+          _syncAccCircle(s.session_id, loc);
         } else {
           // Baru → buat marker
           _createMarker(s, loc, live);
@@ -1143,7 +1147,7 @@
               <div class="tl-item">
                 <div class="tl-dot ${live?'live':'stop'}"></div>
                 <div class="tl-title">${live?'Sedang Tracking':'Last Update'} <span class="tl-time">${lu}</span></div>
-                <div class="tl-addr">Lat: ${parseFloat(s.last_location.latitude).toFixed(5)}, Lng: ${parseFloat(s.last_location.longitude).toFixed(5)}</div>
+                <div class="tl-addr">Lat: ${parseFloat(s.last_location.latitude).toFixed(7)}, Lng: ${parseFloat(s.last_location.longitude).toFixed(7)}${s.last_location.accuracy != null ? ` · ±${Math.round(s.last_location.accuracy)} m` : ''}</div>
                 <div class="tl-stats">
                   <span>Durasi <strong>${dur}</strong></span>
                   <span>Jarak <strong>${dist}</strong></span>
@@ -1184,12 +1188,31 @@
         reverseGeocode(parseFloat(loc.latitude), parseFloat(loc.longitude), `pp-loc-${s.session_id}`);
       });
       markers[s.session_id] = marker;
+      _syncAccCircle(s.session_id, loc);
+    }
+
+    function _syncAccCircle(id, loc) {
+      const acc = loc && loc.accuracy != null ? Number(loc.accuracy) : NaN;
+      if (!Number.isFinite(acc) || acc <= 0) {
+        if (accCircles[id]) { map.removeLayer(accCircles[id]); delete accCircles[id]; }
+        return;
+      }
+      const ll = [loc.latitude, loc.longitude];
+      if (accCircles[id]) accCircles[id].setLatLng(ll).setRadius(acc);
+      else {
+        accCircles[id] = L.circle(ll, {
+          radius: acc, color: '#2563eb', fillColor: '#2563eb',
+          fillOpacity: 0.06, weight: 1.2, dashArray: '4,4'
+        }).addTo(map);
+      }
     }
 
     // Dipakai oleh socket handler (full rebuild)
     function updateMarkers() {
       Object.values(markers).forEach(m => map.removeLayer(m));
+      Object.values(accCircles).forEach(c => map.removeLayer(c));
       markers = {};
+      accCircles = {};
       activeSessions.forEach(s => {
         if (!s.last_location) return;
         const loc = s.last_location;
@@ -1209,7 +1232,8 @@
       const lu=s.last_location?new Date(s.last_location.recorded_at).toLocaleTimeString('id-ID'):'N/A';
       const lat=s.last_location?parseFloat(s.last_location.latitude):null;
       const lng=s.last_location?parseFloat(s.last_location.longitude):null;
-      const coordStr = lat&&lng ? `${lat.toFixed(6)}, ${lng.toFixed(6)}` : '-';
+      const acc = s.last_location && s.last_location.accuracy != null ? Number(s.last_location.accuracy) : null;
+      const coordStr = lat&&lng ? `${lat.toFixed(7)}, ${lng.toFixed(7)}${acc!=null && Number.isFinite(acc) ? ' · ±' + Math.round(acc) + ' m' : ''}` : '-';
       const popupId = `pp-loc-${s.session_id}`;
       const live = s.last_location && (Date.now()-new Date(s.last_location.recorded_at).getTime())/1000 < 300;
 
@@ -1473,7 +1497,15 @@
       if(Object.keys(markers).length>0) map.fitBounds(L.latLngBounds(Object.values(markers).map(m=>m.getLatLng())),{padding:[50,50]});
       else map.setView([-6.2088,106.8456],11);
     }
-    function focusTech(id) { const m=markers[id]; if(m){map.setView(m.getLatLng(),16);m.openPopup();} }
+    function focusTech(id) {
+      const m=markers[id];
+      if(!m) return;
+      const s=activeSessions.find(x=>x.session_id===id);
+      const acc=s && s.last_location ? Number(s.last_location.accuracy) : NaN;
+      const z = Number.isFinite(acc) ? (acc<=10?19:acc<=18?18:acc<=40?17:16) : 18;
+      map.setView(m.getLatLng(), z);
+      m.openPopup();
+    }
     function filterTech(v) { searchFilter=v; updateTripList(); }
 
     function switchPanel(p) {
@@ -1495,8 +1527,9 @@
           if(s){
             if(data.stats){s.total_distance=data.stats.total_distance;s.total_duration=data.stats.total_duration;s.points_count=data.stats.points_count;}
             if(data.location){
-              s.last_location={latitude:data.location.latitude,longitude:data.location.longitude,recorded_at:data.location.timestamp||new Date().toISOString()};
+              s.last_location={latitude:data.location.latitude,longitude:data.location.longitude,accuracy:data.location.accuracy,recorded_at:data.location.timestamp||new Date().toISOString()};
               const m=markers[data.session_id]; if(m) m.setLatLng([data.location.latitude,data.location.longitude]);
+              _syncAccCircle(data.session_id, data.location);
               if(showingTrails&&trails[data.session_id]){const ll=trails[data.session_id].getLatLngs();ll.push([data.location.latitude,data.location.longitude]);trails[data.session_id].setLatLngs(ll);}
             }
             updateStats(); updateTripList(); updateAlerts();
