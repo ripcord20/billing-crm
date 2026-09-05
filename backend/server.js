@@ -94,16 +94,17 @@ app.use(helmet({
         "app.midtrans.com", "app.sandbox.midtrans.com",
         "app-prod.duitku.com", "app-sandbox.duitku.com", "*.duitku.com"
       ],
-      fontSrc: ["'self'", "fonts.gstatic.com", "cdn.jsdelivr.net"],
+      fontSrc: ["'self'", "fonts.gstatic.com", "cdn.jsdelivr.net", "tiles.openfreemap.org", "*.openfreemap.org"],
+      workerSrc: ["'self'", "blob:", "unpkg.com", "cdn.jsdelivr.net"],
+      childSrc: ["'self'", "blob:"],
       imgSrc: [
         "'self'", "data:", "blob:",
         "*.tile.openstreetmap.org", "*.basemaps.cartocdn.com",
         "mt0.google.com", "mt1.google.com", "mt2.google.com", "mt3.google.com",
         "*.googleapis.com", "*.ggpht.com",
-        // Tile satelit Esri (World Imagery) untuk mode satelit peta.
         "server.arcgisonline.com", "*.arcgisonline.com",
+        "tiles.openfreemap.org", "*.openfreemap.org",
         "unpkg.com", "*.midtrans.com", "*.duitku.com",
-        // Logo channel/bank Tripay di-host di domain Tripay (mis. assets.tripay.co.id).
         "*.tripay.co.id", "tripay.co.id"
       ],
       connectSrc: [
@@ -111,6 +112,7 @@ app.use(helmet({
         "cdn.jsdelivr.net", "unpkg.com",
         "*.tile.openstreetmap.org", "*.basemaps.cartocdn.com",
         "server.arcgisonline.com", "*.arcgisonline.com",
+        "tiles.openfreemap.org", "*.openfreemap.org",
         "nominatim.openstreetmap.org",
         "mt0.google.com", "mt1.google.com", "mt2.google.com", "mt3.google.com",
         "*.midtrans.com", "api.midtrans.com", "api.sandbox.midtrans.com",

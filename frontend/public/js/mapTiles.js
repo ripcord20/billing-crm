@@ -1,41 +1,63 @@
 /**
- * Tile peta Fiberix — OSM + Esri, tanpa API key.
- * CARTO basemaps.cartocdn.com sekarang watermark "API KEY REQUIRED".
+ * Peta Fiberix — vektor OpenFreeMap (tanpa API key) + cadangan Esri.
+ * CARTO Voyager/Dark sekarang watermark "API KEY REQUIRED".
  */
 (function (global) {
   var SAT_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-  var SAT_ATTR = 'Tiles &copy; Esri';
-  var STREET_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
-  var STREET_ATTR = 'Tiles &copy; Esri';
-  var DARK_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+  var STREET_RASTER = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+  var DARK_RASTER = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+  var LIBERTY = 'https://tiles.openfreemap.org/styles/liberty';
+  var DARK_STYLE = 'https://tiles.openfreemap.org/styles/dark';
+  var ATTR_VEC = '&copy; OpenMapTiles &copy; OpenStreetMap';
+  var ATTR_ESRI = 'Tiles &copy; Esri';
 
-  function street(extra) {
-    return L.tileLayer(STREET_URL, Object.assign({
+  function raster(url, attr, extra) {
+    return L.tileLayer(url, Object.assign({
       maxZoom: 19,
-      attribution: STREET_ATTR
+      attribution: attr,
+      updateWhenIdle: false,
+      keepBuffer: 6,
+      detectRetina: false
     }, extra || {}));
   }
-  function satellite(extra) {
-    return L.tileLayer(SAT_URL, Object.assign({
-      maxZoom: 19,
-      attribution: SAT_ATTR
-    }, extra || {}));
+
+  function vector(styleUrl, attr) {
+    if (typeof L === 'undefined' || typeof L.maplibreGL !== 'function') return null;
+    try {
+      return L.maplibreGL({
+        style: styleUrl,
+        attribution: attr,
+        interactive: false
+      });
+    } catch (_) {
+      return null;
+    }
   }
-  function dark(extra) {
-    return L.tileLayer(DARK_URL, Object.assign({
-      maxZoom: 16,
-      attribution: SAT_ATTR
-    }, extra || {}));
+
+  var PRESETS = {
+    streets: { vectorStyle: LIBERTY, url: STREET_RASTER, attr: ATTR_VEC, rasterAttr: ATTR_ESRI },
+    dark: { vectorStyle: DARK_STYLE, url: DARK_RASTER, attr: ATTR_VEC, rasterAttr: ATTR_ESRI },
+    satellite: { url: SAT_URL, attr: ATTR_ESRI }
+  };
+
+  function create(type) {
+    var cfg = PRESETS[type] || PRESETS.streets;
+    if (cfg.vectorStyle) {
+      var vec = vector(cfg.vectorStyle, cfg.attr);
+      if (vec) return vec;
+    }
+    return raster(cfg.url, cfg.rasterAttr || cfg.attr);
   }
 
   global.FiberixMapTiles = {
     SAT_URL: SAT_URL,
-    SAT_ATTR: SAT_ATTR,
-    STREET_URL: STREET_URL,
-    STREET_ATTR: STREET_ATTR,
-    DARK_URL: DARK_URL,
-    street: street,
-    satellite: satellite,
-    dark: dark
+    STREET_URL: STREET_RASTER,
+    DARK_URL: DARK_RASTER,
+    PRESETS: PRESETS,
+    create: create,
+    raster: raster,
+    street: function (extra) { return raster(STREET_RASTER, ATTR_ESRI, extra); },
+    satellite: function (extra) { return raster(SAT_URL, ATTR_ESRI, extra); },
+    dark: function (extra) { return raster(DARK_RASTER, ATTR_ESRI, extra); }
   };
 })(typeof window !== 'undefined' ? window : this);
