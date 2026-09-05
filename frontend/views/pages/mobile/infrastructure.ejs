@@ -100,8 +100,8 @@
       <div id="mapWrap" class="map-wrap anim">
         <div id="infMap"></div>
         <div class="map-mode" id="mapMode">
-          <button class="mm-btn sel" data-m="street" onclick="setMapMode('street')">Peta</button>
-          <button class="mm-btn" data-m="satellite" onclick="setMapMode('satellite')">Satelit</button>
+          <button class="mm-btn" data-m="street" onclick="setMapMode('street')">Peta</button>
+          <button class="mm-btn sel" data-m="satellite" onclick="setMapMode('satellite')">Google</button>
         </div>
         <div class="map-legend" id="mapLegend"></div>
       </div>
@@ -146,15 +146,15 @@
     let _type='', _all=[];
     const TYPE_LABEL={odp:'ODP',odc:'ODC',pop:'POP',tower:'Tower',ont:'ONT',customer:'Pelanggan',jb:'JB'};
     const TYPE_COLOR={odc:'#1d4ed8',odp:'#104396',pop:'#ef4444',tower:'#475569',ont:'#f97316',customer:'#f97316',jb:'#0d9488'};
-    let _map=null, _markers=null, _mapReady=false, _tileStreet=null, _tileSat=null, _mapMode='street';
+    let _map=null, _markers=null, _mapReady=false, _tileStreet=null, _tileSat=null, _mapMode='satellite';
 
     function initMap(){
       if(_mapReady||typeof L==='undefined')return;
       _map=L.map('infMap',{zoomControl:true,attributionControl:false}).setView([-6.4,106.8],12);
-      _tileStreet=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19});
-      // Satelit: pakai Google (domain mt0-3.google.com sudah diizinkan CSP).
-      _tileSat=L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{maxZoom:20,subdomains:['mt0','mt1','mt2','mt3']});
-      _tileStreet.addTo(_map);
+      _tileStreet=L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{maxZoom:21,subdomains:['mt0','mt1','mt2','mt3'],attribution:'&copy; Google Maps'});
+      _tileSat=L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',{maxZoom:21,subdomains:['mt0','mt1','mt2','mt3'],attribution:'&copy; Google Maps'});
+      _tileSat.addTo(_map);
+      document.getElementById('mapLegend').classList.add('on-sat');
       _markers=L.layerGroup().addTo(_map);
       _mapReady=true;
       // legend

@@ -67,12 +67,29 @@ function jbLabel(pt) {
   return jbKind(pt) === 'joint_closure' ? 'Joint Closure' : 'Joint Box';
 }
 
+const GOOGLE_SUBDOMAINS = ['mt0', 'mt1', 'mt2', 'mt3'];
 const TILES = {
-  osm:       { url:'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', attr:'&copy; Google', subdomains:'0123' },
-  streets:   { url:'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', attr:'&copy; Google', subdomains:'0123' },
-  satellite: { url:'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr:'&copy; Google', subdomains:'0123' },
-  dark:      { url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attr:'&copy; OpenStreetMap contributors &copy; CARTO' } // CartoDB.DarkMatter
+  osm:       { url:'https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', attr:'&copy; Google Maps', subdomains: GOOGLE_SUBDOMAINS },
+  streets:   { url:'https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', attr:'&copy; Google Maps', subdomains: GOOGLE_SUBDOMAINS },
+  satellite: { url:'https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr:'&copy; Google Maps', subdomains: GOOGLE_SUBDOMAINS },
+  dark:      { url:'https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', attr:'&copy; Google Maps', subdomains: GOOGLE_SUBDOMAINS, className:'google-dark-tiles' }
 };
+
+function makeInfraBaseLayer(type) {
+  if (type === 'osm') type = 'streets';
+  const cfg = TILES[type] || TILES.satellite;
+  const opts = {
+    attribution: cfg.attr,
+    maxZoom: 21,
+    subdomains: cfg.subdomains || GOOGLE_SUBDOMAINS,
+    updateWhenIdle: false,
+    keepBuffer: 6,
+    detectRetina: false,
+    opacity: 1
+  };
+  if (cfg.className) opts.className = cfg.className;
+  return L.tileLayer(cfg.url, opts);
+}
 
 // ─── CSS ──────────────────────────────────────────────
 (function() {
@@ -183,15 +200,19 @@ const TILES = {
     .nav-group.gis-wide .nav-sub .nav-sub-dot {
       width:5px; height:5px; border-radius:50%; background:#94a3b8; flex-shrink:0;
     }
+    /* Google roadmap tiles inverted to a dark basemap (no OSM/Carto). */
+    .google-dark-tiles {
+      filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(1.05) saturate(0.7);
+    }
   `;
   document.head.appendChild(s);
 })();
 
 let roadLabelMarkers = [];
-let currentTileType = 'streets';
+let currentTileType = 'satellite';
 
 function mapsDirectionsUrl(lat, lng) {
-  return `https://www.openstreetmap.org/directions?from=&to=${lat},${lng}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
 }
 
 function portOccupancy(pt) {
@@ -425,27 +446,22 @@ function renderSidebar() {
 }
 
 function toggleLayer(type, btn) {
-  if (!map || !TILES[type]) return;
+  if (!map) return;
+  if (type === 'osm') type = 'streets';
+  if (!TILES[type]) type = 'satellite';
   currentTileType = type;
   document.querySelectorAll('.tile-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   else {
-    const match = document.querySelector(`.tile-btn[data-tile="${type}"], .tile-btn[data-tile="${type === 'osm' ? 'streets' : type}"]`);
+    const match = document.querySelector(`.tile-btn[data-tile="${type}"]`);
     if (match) match.classList.add('active');
   }
   if (tileLayer) map.removeLayer(tileLayer);
-  const cfg = TILES[type] || TILES.streets;
   const mapEl = document.getElementById('infraMap');
   if (mapEl) {
     mapEl.style.background = (type === 'dark' || type === 'satellite') ? '#1a1a2e' : '#e8e0d8';
   }
-  tileLayer = L.tileLayer(cfg.url, {
-    attribution: cfg.attr, maxZoom: 20,
-    subdomains: cfg.subdomains || 'abcd',
-    updateWhenIdle: false, keepBuffer: 6,
-    detectRetina: false,
-    opacity: 1
-  }).addTo(map);
+  tileLayer = makeInfraBaseLayer(type).addTo(map);
 }
 
 function clearRoadLabels() {
@@ -715,22 +731,16 @@ function initMap() {
     if (statsEl && container) container.appendChild(statsEl);
   }, 0);
 
-  const streetCfg = TILES.streets;
-  tileLayer = L.tileLayer(streetCfg.url, {
-    attribution: streetCfg.attr, maxZoom: 20,
-    subdomains: streetCfg.subdomains || '0123',
-    updateWhenIdle: false, keepBuffer: 6,
-    detectRetina: false,
-    opacity: 1
-  }).addTo(map);
-  currentTileType = 'streets';
+  tileLayer = makeInfraBaseLayer('satellite').addTo(map);
+  currentTileType = 'satellite';
   setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 80);
 
   document.querySelectorAll('.tile-btn').forEach(b => {
-    if (b.dataset.tile === 'streets') {
-      const lbl = b.querySelector('.btn-label');
-      if (lbl) lbl.textContent = 'Google';
-    }
+    const lbl = b.querySelector('.btn-label');
+    if (!lbl) return;
+    if (b.dataset.tile === 'streets') lbl.textContent = 'Peta';
+    if (b.dataset.tile === 'satellite') lbl.textContent = 'Google';
+    b.classList.toggle('active', b.dataset.tile === 'satellite');
   });
 
   map.on('click', function(e) {
@@ -3479,7 +3489,7 @@ async function deletePoint(id,name) {
 
 // ─── Navigation ───────────────────────────────────────
 function openNavigation(lat,lng,name) {
-  window.open(`https://www.openstreetmap.org/directions?from=&to=${lat},${lng}`, '_blank');
+  window.open(mapsDirectionsUrl(lat, lng), '_blank');
 }
 window.deleteLinksForPoint = deleteLinksForPoint;
 window.toggleLayer = toggleLayer;
@@ -3487,6 +3497,8 @@ window.renderSidebar = renderSidebar;
 window.createMarker = createMarker;
 window.addLabels = addLabels;
 window.createCustomIcon = createCustomIcon;
+window.makeInfraBaseLayer = makeInfraBaseLayer;
+window.mapsDirectionsUrl = mapsDirectionsUrl;
 
 // ─── ODP Photo helpers ────────────────────────────────
 // Event listener dipasang via JS (bukan onchange inline) agar lebih reliable

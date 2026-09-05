@@ -852,13 +852,13 @@
           <!-- Baris 1: tile switcher | Tambah Titik | Draw Link | spacer | filter (desktop) -->
           <div class="map-topbar">
             <div class="tile-switcher">
-              <button class="tile-btn active" data-tile="streets" onclick="switchTile('streets',this)">
+              <button class="tile-btn" data-tile="streets" onclick="switchTile('streets',this)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1,6 1,22 8,18 16,22 23,18 23,2 16,6 8,2 1,6"/></svg>
-                <span class="btn-label">Google</span>
+                <span class="btn-label">Peta</span>
               </button>
-              <button class="tile-btn" data-tile="satellite" onclick="switchTile('satellite',this)">
+              <button class="tile-btn active" data-tile="satellite" onclick="switchTile('satellite',this)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
-                <span class="btn-label">Satelite</span>
+                <span class="btn-label">Google</span>
               </button>
               <button class="tile-btn" data-tile="dark" onclick="switchTile('dark',this)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
@@ -1768,6 +1768,7 @@ window.customConfirm = function(opts) {
 <script src="/js/app.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="/js/infrastructure.js?v=1781702701"></script>
+<script src="/js/mapTiles.js?v=gmap2"></script>
+<script src="/js/infrastructure.js?v=1781702801"></script>
 </body>
 </html>
