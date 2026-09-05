@@ -67,15 +67,34 @@ function jbKind(pt) {
 function jbLabel(pt) {
   return jbKind(pt) === 'joint_closure' ? 'Joint Closure' : 'Joint Box';
 }
-function otbCores(pt) {
-  const cap = parseInt(pt && pt.capacity, 10);
-  if (cap === 48 || cap === 12) return cap;
+function parsePtMeta(pt) {
   let meta = pt && pt.metadata;
   if (typeof meta === 'string') {
     try { meta = JSON.parse(meta); } catch (_) { meta = null; }
   }
-  const m = parseInt(meta && meta.cores, 10);
+  return meta && typeof meta === 'object' ? meta : {};
+}
+function otbCores(pt) {
+  const cap = parseInt(pt && pt.capacity, 10);
+  if (cap === 48 || cap === 12) return cap;
+  const m = parseInt(parsePtMeta(pt).cores, 10);
   return m === 48 ? 48 : 12;
+}
+const SPLITTER_RATIOS = ['1/2', '1/4', '1/8', '1/16'];
+function splitterRatio(pt) {
+  const meta = parsePtMeta(pt);
+  const v = String(meta.splitter || meta.ratio || '');
+  return SPLITTER_RATIOS.includes(v) ? v : '';
+}
+function applySplitterCapacity(kind) {
+  const sel = document.getElementById(kind + '-splitter');
+  const cap = document.getElementById(kind + '-capacity');
+  if (!sel || !cap) return;
+  const denom = parseInt(String(sel.value).split('/')[1], 10);
+  if (!denom) return;
+  if (kind === 'odp' && (!cap.value || ['2', '4', '8', '16'].includes(String(cap.value)))) {
+    cap.value = String(denom);
+  }
 }
 function typeLabel(pt) {
   if (!pt || !pt.type) return '';
@@ -83,6 +102,10 @@ function typeLabel(pt) {
   if (pt.type === 'jb') return jbLabel(pt);
   if (pt.type === 'customer') return 'Pelanggan';
   if (pt.type === 'otb') return 'OTB ' + otbCores(pt) + ' core';
+  if (pt.type === 'odc' || pt.type === 'odp') {
+    const r = splitterRatio(pt);
+    return (pt.type === 'odc' ? 'ODC' : 'ODP') + (r ? ' ' + r : '');
+  }
   if (pt.type === 'rack') return 'Rack';
   if (pt.type === 'server') return 'Server';
   if (pt.type === 'switch') return 'Switch';
@@ -656,6 +679,7 @@ async function _loadInfraInternal(type, opts) {
 
   // Build allInfraPoints lookup
   if (allRes?.success) allRes.data.forEach(pt => { allInfraPoints[pt.id] = pt; });
+  window.allInfraPoints = allInfraPoints;
 
   // Render infra markers (skip kalau filter customer)
   if (allRes?.success && type !== 'customer') {
@@ -692,6 +716,7 @@ async function _loadInfraInternal(type, opts) {
   const stServer = document.getElementById('st-server'); if (stServer) stServer.textContent = stats.server;
   const stSwitch = document.getElementById('st-switch'); if (stSwitch) stSwitch.textContent = stats.switch;
   const stOtb = document.getElementById('st-otb'); if (stOtb) stOtb.textContent = stats.otb;
+  if (typeof renderOpticalOccPanel === 'function') renderOpticalOccPanel();
 
   // Auto-fit hanya saat first load atau ganti filter — saat edit/draw kita
   // pertahankan view agar tidak zoom-out mendadak dan bikin user kehilangan
@@ -1386,7 +1411,9 @@ function addInfraMarker(pt) {
     const portBar = pt.capacity ? (() => {
       const pct = Math.min(100, Math.round(autoUsed / pt.capacity * 100));
       const bc  = pct > 80 ? '#ef4444' : pct > 60 ? '#f59e0b' : '#22c55e';
+      const split = (pt.type === 'odc' || pt.type === 'odp') ? splitterRatio(pt) : '';
       return `<div style="margin:10px 0 4px">
+        ${split ? `<div style="font-size:11px;font-weight:700;color:#334155;margin-bottom:6px">Multi ${split}</div>` : ''}
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
           <span style="color:#8899b0">Port Usage</span>
           <span style="font-weight:700;color:${bc}">${autoUsed} / ${pt.capacity}
@@ -2693,6 +2720,8 @@ function resetForm() {
   const popType=document.getElementById('pop-pop-type'); if(popType) popType.value='olt';
   const jbKindEl=document.getElementById('jb-kind'); if(jbKindEl) jbKindEl.value='joint_box';
   const otbCoresEl=document.getElementById('otb-cores'); if(otbCoresEl) otbCoresEl.value='12';
+  const odcSplit=document.getElementById('odc-splitter'); if(odcSplit) odcSplit.value='1/8';
+  const odpSplit=document.getElementById('odp-splitter'); if(odpSplit) odpSplit.value='1/8';
   const cs=document.getElementById('cust-search'); if(cs) cs.value='';
   // Reset manual coord panel
   const manualWrap = document.getElementById('coordManualWrap');
@@ -2984,6 +3013,8 @@ async function savePoint() {
     const odcExistMeta=(()=>{try{const el=document.getElementById('odc-photo-url'); return el?.dataset?.existMeta?JSON.parse(el.dataset.existMeta):{};}catch(e){return {};}})();
     const odcNewMeta=finalOdcPhotoUrl?{...odcExistMeta,photo_url:finalOdcPhotoUrl}:(odcPhotoUrl===''&&!finalOdcPhotoUrl?{...odcExistMeta,photo_url:undefined}:odcExistMeta);
     if(odcNewMeta.photo_url===undefined) delete odcNewMeta.photo_url;
+    const odcSplit=document.getElementById('odc-splitter')?.value;
+    if (SPLITTER_RATIOS.includes(odcSplit)) odcNewMeta.splitter = odcSplit;
     payload={...payload,type:'odc',name,capacity:parseInt(document.getElementById('odc-capacity').value)||null,used_ports:parseInt(document.getElementById('odc-used').value)||0,parent_id:odcParentPid?parseInt(odcParentPid):null,address:document.getElementById('odc-address').value,status:document.getElementById('odc-status').value,notes:document.getElementById('odc-notes').value,metadata:Object.keys(odcNewMeta).length?odcNewMeta:null};
   } else if(tab==='odp'){
     const name=document.getElementById('odp-name').value.trim(); if(!name) return alert('Nama ODP wajib');
@@ -2996,6 +3027,8 @@ async function savePoint() {
     const existMeta=(()=>{try{const el=document.getElementById('odp-photo-url'); return el?.dataset?.existMeta?JSON.parse(el.dataset.existMeta):{};}catch(e){return {};}})();
     const newMeta=finalPhotoUrl?{...existMeta,photo_url:finalPhotoUrl}:(photoUrl===''&&!finalPhotoUrl?{...existMeta,photo_url:undefined}:existMeta);
     if(newMeta.photo_url===undefined) delete newMeta.photo_url;
+    const odpSplit=document.getElementById('odp-splitter')?.value;
+    if (SPLITTER_RATIOS.includes(odpSplit)) newMeta.splitter = odpSplit;
     payload={...payload,type:'odp',name,capacity:parseInt(document.getElementById('odp-capacity').value)||null,used_ports:parseInt(document.getElementById('odp-used').value)||0,parent_id:pid?parseInt(pid):null,address:document.getElementById('odp-address').value,status:document.getElementById('odp-status').value,notes:document.getElementById('odp-notes').value,metadata:Object.keys(newMeta).length?newMeta:null};
   } else if(tab==='jb'){
     const name=document.getElementById('jb-name').value.trim(); if(!name) return alert('Nama JB wajib');
@@ -3163,6 +3196,8 @@ async function editPoint(id) {
       const remBtn=document.getElementById('odc-photo-remove');
       if(meta.photo_url){ prev.src=meta.photo_url; prev.style.display='block'; if(remBtn) remBtn.style.display='inline-block'; }
       else { if(prev) prev.style.display='none'; if(remBtn) remBtn.style.display='none'; }
+      const odcSplitEl=document.getElementById('odc-splitter');
+      if (odcSplitEl) odcSplitEl.value = SPLITTER_RATIOS.includes(meta.splitter) ? meta.splitter : (SPLITTER_RATIOS.includes(meta.ratio) ? meta.ratio : '1/8');
     } catch(e){}
   } else if(tab==='odp'){
     document.getElementById('odp-name').value=pt.name; document.getElementById('odp-capacity').value=pt.capacity||'';
@@ -3182,6 +3217,8 @@ async function editPoint(id) {
       const remBtn=document.getElementById('odp-photo-remove');
       if(meta.photo_url){ prev.src=meta.photo_url; prev.style.display='block'; if(remBtn) remBtn.style.display='inline-block'; }
       else { if(prev) prev.style.display='none'; if(remBtn) remBtn.style.display='none'; }
+      const odpSplitEl=document.getElementById('odp-splitter');
+      if (odpSplitEl) odpSplitEl.value = SPLITTER_RATIOS.includes(meta.splitter) ? meta.splitter : (SPLITTER_RATIOS.includes(meta.ratio) ? meta.ratio : '1/8');
     } catch(e){}
   } else if(tab==='jb'){
     document.getElementById('jb-name').value=pt.name;
@@ -3767,3 +3804,85 @@ function addCustomerMarker(cust) {
   markers.push(m);
   if (cust && cust.id != null) window.customerMarkersById[cust.id] = m;
 }
+
+window.applySplitterCapacity = applySplitterCapacity;
+
+function toggleOdpOccPanel() {
+  const p = document.getElementById('odpOccPanel');
+  if (!p) return;
+  p.classList.toggle('collapsed');
+  const ch = document.getElementById('odpOccChevron');
+  if (ch) ch.textContent = p.classList.contains('collapsed') ? '▸' : '▾';
+}
+window.toggleOdpOccPanel = toggleOdpOccPanel;
+
+function renderOpticalOccPanel() {
+  const body = document.getElementById('odpOccBody');
+  const sum = document.getElementById('odpOccSummary');
+  if (!body) return;
+  const rows = Object.values(allInfraPoints || {}).filter((p) => p && (p.type === 'odc' || p.type === 'odp' || p.type === 'otb'));
+  rows.sort((a, b) => {
+    const order = { odc: 1, odp: 2, otb: 3 };
+    const oa = order[a.type] || 9;
+    const ob = order[b.type] || 9;
+    if (oa !== ob) return oa - ob;
+    return String(a.name || '').localeCompare(String(b.name || ''));
+  });
+  let full = 0;
+  let warn = 0;
+  rows.forEach((p) => {
+    const used = (allInfraPoints[p.id] && allInfraPoints[p.id]._connCount != null)
+      ? allInfraPoints[p.id]._connCount
+      : (p.used_ports || 0);
+    const cap = parseInt(p.capacity, 10) || 0;
+    if (p.type === 'odp' && cap) {
+      if (used >= cap) full++;
+      else if (used / cap >= 0.8) warn++;
+    }
+  });
+  const stFull = document.getElementById('st-occ-full');
+  const stWarn = document.getElementById('st-occ-warn');
+  if (stFull) stFull.textContent = String(full);
+  if (stWarn) stWarn.textContent = String(warn);
+  if (sum) {
+    sum.textContent = rows.length
+      ? (rows.length + ' titik · ODP penuh ' + full)
+      : 'belum ada ODC/ODP/OTB';
+  }
+  if (!rows.length) {
+    body.innerHTML = '<div class="odp-occ-empty">Belum ada ODC, ODP, atau OTB di peta.</div>';
+    return;
+  }
+  const colors = { odc: '#1d4ed8', odp: '#3b82f6', otb: '#c2410c' };
+  body.innerHTML = rows.map((p) => {
+    const used = (allInfraPoints[p.id] && allInfraPoints[p.id]._connCount != null)
+      ? allInfraPoints[p.id]._connCount
+      : (p.used_ports || 0);
+    const cap = parseInt(p.capacity, 10) || 0;
+    const pct = cap ? Math.min(100, Math.round(used / cap * 100)) : 0;
+    const lvl = !cap ? '#64748b' : (pct >= 100 ? '#ef4444' : (pct >= 80 ? '#f59e0b' : '#22c55e'));
+    const multi = p.type === 'otb' ? (otbCores(p) + 'c') : (splitterRatio(p) || '—');
+    return `<div class="odp-occ-row" onclick="focusInfraPoint(${p.id})">
+      <div>
+        <div class="lvl" style="color:${colors[p.type] || '#64748b'}">${escHtml(String(p.type).toUpperCase())} · ${escHtml(multi)}</div>
+        <div style="font-weight:700;margin-top:2px">${escHtml(p.name || '')}</div>
+      </div>
+      <div style="text-align:right;font-weight:800;color:${lvl}">${used}/${cap || '—'}</div>
+    </div>`;
+  }).join('');
+}
+window.renderOpticalOccPanel = renderOpticalOccPanel;
+
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function focusInfraPoint(id) {
+  const m = window.markersById && window.markersById[id];
+  if (m && typeof map !== 'undefined') {
+    map.setView(m.getLatLng(), 18);
+    if (m.openPopup) m.openPopup();
+  }
+}
+window.focusInfraPoint = focusInfraPoint;
