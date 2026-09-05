@@ -175,6 +175,14 @@ const TILES = {
     .leaflet-tooltip-top.gis-road-label::before,
     .leaflet-tooltip-bottom.gis-road-label::before { display:none !important; }
     .nav-group.gis-wide.open .nav-group-children { max-height:640px; }
+    .nav-group.gis-wide .nav-sub {
+      display:flex; align-items:center; gap:10px;
+      padding:8px 18px 8px 44px; font-size:12.5px; font-weight:500;
+      color:#64748b; text-decoration:none; white-space:nowrap;
+    }
+    .nav-group.gis-wide .nav-sub .nav-sub-dot {
+      width:5px; height:5px; border-radius:50%; background:#94a3b8; flex-shrink:0;
+    }
   `;
   document.head.appendChild(s);
 })();
@@ -715,6 +723,7 @@ function initMap() {
     opacity: 1
   }).addTo(map);
   currentTileType = 'streets';
+  setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 80);
 
   document.querySelectorAll('.tile-btn').forEach(b => {
     if (b.dataset.tile === 'streets') {
