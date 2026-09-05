@@ -11,7 +11,7 @@ const pointAttrs = ['id','name','type','latitude','longitude','status','parent_i
 //   ODP   → di bawah ODC/JB
 //   Tower → support fisik (tidak hierarkis untuk customer)
 //   Customer → leaf (paling bawah)
-const TYPE_RANK = { pop: 1, odc: 2, jb: 3, odp: 4, tower: 5, customer: 6 };
+const TYPE_RANK = { pop: 1, rack: 2, odc: 3, otb: 3, server: 3, switch: 3, jb: 4, odp: 5, tower: 6, customer: 7 };
 
 /**
  * Tentukan pasangan (parent, child) dari 2 titik berdasarkan tipe.

@@ -12,7 +12,7 @@ module.exports = (sequelize) => {
       allowNull: false
     },
     type: {
-      type: DataTypes.ENUM('odp', 'odc', 'ont', 'customer', 'pop', 'tower', 'jb'),
+      type: DataTypes.ENUM('odp', 'odc', 'ont', 'customer', 'pop', 'tower', 'jb', 'rack', 'server', 'switch', 'otb'),
       allowNull: false
     },
     latitude: {

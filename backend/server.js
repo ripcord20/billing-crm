@@ -493,12 +493,13 @@ const startServer = async () => {
         { type: db.sequelize.QueryTypes.SELECT }
       );
       const colType = String(enumRow?.COLUMN_TYPE || enumRow?.column_type || '');
-      if (colType && !colType.includes("'jb'")) {
+      const neededTypes = ['jb', 'rack', 'server', 'switch', 'otb'];
+      if (colType && neededTypes.some((t) => !colType.includes("'" + t + "'"))) {
         await db.sequelize.query(
           `ALTER TABLE infrastructure_points MODIFY COLUMN type
-           ENUM('odp','odc','ont','customer','pop','tower','jb') NOT NULL`
+           ENUM('odp','odc','ont','customer','pop','tower','jb','rack','server','switch','otb') NOT NULL`
         );
-        logger.info("Migrated: infrastructure_points.type ENUM expanded with 'jb'");
+        logger.info("Migrated: infrastructure_points.type ENUM expanded with rack/server/switch/otb");
       }
     } catch (e) {
       logger.warn('Failed to expand infrastructure_points.type ENUM: ' + (e.message || e));
