@@ -11,7 +11,67 @@
   };
 
   const STATUS_LABEL = { active: 'Active', idle: 'Idle', damaged: 'Rusak', reserved: 'Reserved' };
+  const TIA_COLORS = [
+    { name: 'Blue', hex: '#0000FF', label: 'Biru' },
+    { name: 'Orange', hex: '#FF6600', label: 'Oranye' },
+    { name: 'Green', hex: '#008000', label: 'Hijau' },
+    { name: 'Brown', hex: '#8B4513', label: 'Cokelat' },
+    { name: 'Slate', hex: '#808080', label: 'Abu-abu' },
+    { name: 'White', hex: '#FFFFFF', label: 'Putih' },
+    { name: 'Red', hex: '#FF0000', label: 'Merah' },
+    { name: 'Black', hex: '#000000', label: 'Hitam' },
+    { name: 'Yellow', hex: '#FFFF00', label: 'Kuning' },
+    { name: 'Violet', hex: '#800080', label: 'Ungu' },
+    { name: 'Rose', hex: '#FFC0CB', label: 'Pink' },
+    { name: 'Aqua', hex: '#00FFFF', label: 'Toska' }
+  ];
+  const SPLITTERS = ['1/2', '1/4', '1/8', '1/16'];
   let state = { tab: 'cables', cables: [], points: [], cable: null, detail: null, selected: null, error: '' };
+
+  function tiaColor(n) {
+    return TIA_COLORS[(Math.max(1, Number(n) || 1) - 1) % 12];
+  }
+  function colorStrip(count) {
+    const n = Math.max(0, Number(count) || 0);
+    if (!n) return '<span class="cm-muted">—</span>';
+    const show = Math.min(n, 12);
+    let html = '<span class="cm-strip">';
+    for (let i = 1; i <= show; i++) {
+      const c = tiaColor(i);
+      const title = i === 1 ? 'Core 1 · Biru' : ('Core ' + i + ' · ' + c.label);
+      html += `<span class="cm-swatch${i === 1 ? ' cm-swatch-c1' : ''}" title="${title}" style="background:${c.hex}"></span>`;
+    }
+    if (n > 12) html += `<span class="cm-more">+${n - 12}</span>`;
+    html += '</span>';
+    return html;
+  }
+  function parseMeta(pt) {
+    let meta = pt && pt.metadata;
+    if (typeof meta === 'string') {
+      try { meta = JSON.parse(meta); } catch (_) { meta = null; }
+    }
+    return meta && typeof meta === 'object' ? meta : {};
+  }
+  function splitterOf(pt) {
+    const v = String(parseMeta(pt).splitter || parseMeta(pt).ratio || '');
+    return SPLITTERS.includes(v) ? v : '';
+  }
+  function otbCoresOf(pt) {
+    const cap = parseInt(pt && pt.capacity, 10);
+    if (cap === 48 || cap === 12) return cap;
+    const m = parseInt(parseMeta(pt).cores, 10);
+    return m === 48 ? 48 : 12;
+  }
+  function multiOf(pt) {
+    if (!pt) return '—';
+    if (pt.type === 'otb') return otbCoresOf(pt) + ' core';
+    return splitterOf(pt) || '—';
+  }
+  function usedOf(pt) {
+    const live = window.allInfraPoints && window.allInfraPoints[pt.id];
+    if (live && live._connCount != null) return live._connCount;
+    return pt.used_ports || 0;
+  }
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -109,22 +169,60 @@
     return Object.values(tubes);
   }
 
+  function renderDeviceTable() {
+    const rows = (state.points || []).filter((p) => p.type === 'odc' || p.type === 'odp' || p.type === 'otb');
+    rows.sort((a, b) => {
+      const order = { odc: 1, odp: 2, otb: 3 };
+      return (order[a.type] || 9) - (order[b.type] || 9) || String(a.name || '').localeCompare(String(b.name || ''));
+    });
+    if (!rows.length) {
+      return `<div class="core-form" style="border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;margin-bottom:12px;">
+        <div style="font-weight:800;font-size:13px;">ODC / ODP / OTB</div>
+        <p style="font-size:12px;color:#64748b;margin:6px 0 0;">Belum ada titik optik. Tambah dari peta.</p>
+      </div>`;
+    }
+    const body = rows.map((p) => {
+      const used = usedOf(p);
+      const cap = parseInt(p.capacity, 10) || 0;
+      return `<tr onclick="typeof focusInfraPoint==='function'&&focusInfraPoint(${p.id})">
+        <td style="font-weight:800;color:${p.type==='otb'?'#c2410c':(p.type==='odp'?'#3b82f6':'#1d4ed8')}">${esc((p.type||'').toUpperCase())}</td>
+        <td>${esc(p.name || '')}</td>
+        <td style="font-weight:800">${esc(multiOf(p))}</td>
+        <td>${used}/${cap || '—'}</td>
+      </tr>`;
+    }).join('');
+    return `<div style="font-weight:800;font-size:13px;margin-bottom:4px;">ODC / ODP / OTB</div>
+      <table class="cm-table">
+        <thead><tr><th>Tipe</th><th>Nama</th><th>Multi</th><th>Isi</th></tr></thead>
+        <tbody>${body}</tbody>
+      </table>`;
+  }
+
   function renderCables() {
     const err = state.error
       ? `<p style="color:#b91c1c;font-size:13px;">${esc(state.error)}</p>`
       : '';
+    const legend = `<div class="cm-legend"><b>Warna core</b> ${TIA_COLORS.map((c, i) =>
+      `<span class="cm-strip"><span class="cm-swatch${i===0?' cm-swatch-c1':''}" style="background:${c.hex}"></span>${i+1} ${c.label}</span>`
+    ).join('')}</div>`;
     const list = state.cables.length
-      ? state.cables.map((c) => {
-        const st = c.cores || {};
-        return `<div class="core-cable" onclick="CoreMap.openCable(${c.id})">
-          <div style="font-weight:800;font-size:13px;">${esc(cableTitle(c))}</div>
-          <div style="font-size:11px;color:#64748b;margin-top:4px;">
-            ${st.total || 0} core · aktif ${st.active || 0} · idle ${st.idle || 0} · rusak ${st.damaged || 0}
-          </div>
-        </div>`;
-      }).join('')
+      ? `<table class="cm-table">
+          <thead><tr><th>Kabel</th><th>Rute</th><th>Core</th><th>Warna</th></tr></thead>
+          <tbody>${state.cables.map((c) => {
+            const st = c.cores || {};
+            const n = st.total || c.core_count || 0;
+            const a = c.from_point ? ((c.from_point.type || '').toUpperCase() + ' ' + (c.from_point.name || '')) : '?';
+            const b = c.to_point ? ((c.to_point.type || '').toUpperCase() + ' ' + (c.to_point.name || '')) : '?';
+            return `<tr onclick="CoreMap.openCable(${c.id})">
+              <td style="font-weight:800">${esc(c.name || ('Kabel #' + c.id))}</td>
+              <td>${esc(a)} → ${esc(b)}</td>
+              <td>${n}</td>
+              <td>${colorStrip(n)}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>`
       : '<p style="color:#64748b;font-size:13px;margin-top:8px;">Belum ada kabel fiber/trunk. Buat dari form di atas, atau gambar link di peta.</p>';
-    return err + renderCreateForm() + list;
+    return err + renderDeviceTable() + renderCreateForm() + '<div style="font-weight:800;font-size:13px;margin:4px 0 2px;">Kabel</div>' + legend + list;
   }
 
   function renderMap() {
@@ -146,17 +244,22 @@
     const sel = state.selected;
     const drop = (state.detail.subscriber_cores || []).find((d) => sel && Number(d.core_id) === Number(sel.id));
     let html = `<div style="font-size:12px;font-weight:700;margin-bottom:8px;">${esc(cableTitle(state.cable))}</div>`;
+    html += `<div class="cm-legend"><span class="cm-strip"><span class="cm-swatch cm-swatch-c1" style="background:#0000FF"></span><b>Core 1 = Biru</b></span></div>`;
     tubes.forEach((t) => {
-      html += `<div class="core-tube"><div class="core-tube-h">Tube ${t.tube} · ${esc(t.color || '')}</div><div class="core-grid">`;
+      html += `<div class="core-tube-h">Tube ${t.tube} · ${esc(t.color || '')}</div>
+        <table class="cm-table"><thead><tr><th>#</th><th>Warna</th><th>Core</th><th>Status</th></tr></thead><tbody>`;
       t.cores.forEach((c) => {
         const on = sel && Number(sel.id) === Number(c.id) ? ' on' : '';
-        html += `<button type="button" class="core-chip core-st-${esc(c.status)}${on}" onclick="CoreMap.select(${c.id})">
-          <div class="core-dot" style="background:${esc(c.hex_code || '#999')}"></div>
-          <div class="n">${c.core_number} ${esc(c.color_code)}</div>
-          <div class="s">${esc(STATUS_LABEL[c.status] || c.status)}</div>
-        </button>`;
+        const col = c.hex_code || tiaColor(c.core_number).hex;
+        const label = Number(c.core_number) === 1 ? 'Biru' : esc(c.color_code || tiaColor(c.core_number).label);
+        html += `<tr class="${on.trim()}" onclick="CoreMap.select(${c.id})">
+          <td style="font-weight:800">${c.core_number}</td>
+          <td><span class="cm-strip"><span class="cm-swatch${Number(c.core_number)===1?' cm-swatch-c1':''}" style="background:${esc(col)}"></span>${label}</span></td>
+          <td>${esc(c.color_code || '')}</td>
+          <td>${esc(STATUS_LABEL[c.status] || c.status)}</td>
+        </tr>`;
       });
-      html += '</div></div>';
+      html += '</tbody></table>';
     });
     if (sel) {
       html += `<div class="core-form">
@@ -180,6 +283,7 @@
           <option value="OLT_PORT">OLT Port</option>
           <option value="ODC_SPLITTER">ODC Splitter</option>
           <option value="ODP_PORT">ODP Port</option>
+          <option value="OTB_PORT">OTB Port</option>
         </select>
         <input id="cmDevPort" placeholder="Nomor port / splitter" style="margin-top:6px">
         <div class="core-actions">
