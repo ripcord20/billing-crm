@@ -53,7 +53,7 @@ let drawSegLines  = [];         // committed segment polylines
 
 const COLORS = {
   odc: '#1d4ed8', odp: '#1d4ed8', jb: '#0d9488', tower: '#475569',
-  customer: '#f97316', pop: '#ef4444', ont: '#22c55e'
+  customer: '#f97316', pop: '#ef4444', ont: '#22c55e', otb: '#7c3aed'
 };
 
 function jbKind(pt) {
@@ -68,9 +68,10 @@ function jbLabel(pt) {
 }
 
 const TILES = {
-  streets:   { url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', attr:'&copy; OpenStreetMap contributors &copy; CARTO' },
+  osm:       { url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'&copy; OpenStreetMap contributors' },
+  streets:   { url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'&copy; OpenStreetMap contributors' },
   satellite: { url:'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr:'&copy; Google', subdomains:'0123' },
-  dark:      { url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attr:'&copy; CARTO' }
+  dark:      { url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attr:'&copy; OpenStreetMap contributors &copy; CARTO' } // CartoDB.DarkMatter
 };
 
 // ─── CSS ──────────────────────────────────────────────
@@ -142,12 +143,383 @@ const TILES = {
     }
     .leaflet-tile-pane { opacity: 1; }
     .leaflet-zoom-animated .leaflet-tile-container { will-change: transform; }
+
+    .gis-status-badge {
+      position:absolute; left:50%; bottom:-2px; transform:translateX(-50%);
+      font-family:'DM Sans',sans-serif; font-size:8px; font-weight:800;
+      line-height:1; padding:2px 5px; border-radius:999px; color:#fff;
+      border:1.5px solid #fff; white-space:nowrap; pointer-events:none;
+      text-transform:lowercase; letter-spacing:.02em;
+    }
+    .gis-pt-label {
+      background:transparent !important; border:none !important;
+      box-shadow:none !important; padding:0 !important;
+      color:#0f172a !important; font-family:'DM Sans',sans-serif !important;
+      font-size:11px !important; font-weight:800 !important;
+      text-align:center !important; line-height:1.15 !important;
+      text-shadow:-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px #fff !important;
+      white-space:nowrap !important; pointer-events:none !important;
+    }
+    .gis-pt-label .gis-pt-frac { display:block; font-size:10px; font-weight:700; color:#1e3a8a; }
+    .leaflet-tooltip-bottom.gis-pt-label::before,
+    .leaflet-tooltip-top.gis-pt-label::before { display:none !important; }
+    .gis-road-label {
+      background:transparent !important; border:none !important;
+      box-shadow:none !important; padding:0 !important;
+      color:#1e3a8a !important; font-family:'DM Sans',sans-serif !important;
+      font-size:12px !important; font-weight:800 !important;
+      text-shadow:-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 1px 4px rgba(255,255,255,.9) !important;
+      white-space:nowrap !important; pointer-events:none !important;
+      letter-spacing:.01em;
+    }
+    .leaflet-tooltip-top.gis-road-label::before,
+    .leaflet-tooltip-bottom.gis-road-label::before { display:none !important; }
+    .nav-group.gis-wide.open .nav-group-children { max-height:640px; }
   `;
   document.head.appendChild(s);
 })();
 
+let roadLabelMarkers = [];
+let currentTileType = 'streets';
+
+function mapsDirectionsUrl(lat, lng) {
+  return `https://www.openstreetmap.org/directions?from=&to=${lat},${lng}`;
+}
+
+function portOccupancy(pt) {
+  const used = (allInfraPoints[pt.id] && allInfraPoints[pt.id]._connCount != null)
+    ? allInfraPoints[pt.id]._connCount
+    : (pt.used_ports || 0);
+  const cap = parseInt(pt.capacity, 10) || 0;
+  const full = cap > 0 && used >= cap;
+  let label = 'active';
+  if (full) label = 'penuh';
+  else if (pt.status && pt.status !== 'active') label = pt.status;
+  return { used, cap, full, label };
+}
+
+function mapPointLabel(pt) {
+  const name = (pt.name || '').trim();
+  const type = (pt.type || '').toLowerCase();
+  if (type === 'odc') {
+    if (/core/i.test(name)) return name;
+    if (pt.capacity) return `ODC ${pt.capacity} CORE`;
+    return name || 'ODC';
+  }
+  if (type === 'odp') return name || 'ODP';
+  if (type === 'otb') {
+    if (name) return name;
+    if (pt.capacity) return `B ${pt.capacity}C`;
+    return 'OTB';
+  }
+  return name;
+}
+
+function occupancyStatusBadge(pt) {
+  if (pt.type !== 'odc' && pt.type !== 'odp' && pt.type !== 'otb') return '';
+  const occ = portOccupancy(pt);
+  const bg = occ.full ? '#dc2626' : '#22c55e';
+  return `<div class="gis-status-badge" style="background:${bg}">${occ.label}</div>`;
+}
+
+function googleMapsLinkHtml(lat, lng) {
+  return `<a href="${mapsDirectionsUrl(lat, lng)}" target="_blank" rel="noopener"
+    style="display:flex;align-items:center;justify-content:center;gap:5px;width:100%;padding:8px;margin-top:8px;background:#eff6ff;color:#1d4ed8;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;font-family:'DM Sans',sans-serif">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3,11 22,2 13,21 11,13 3,11"/></svg>Google Maps
+  </a>`;
+}
+
+function hapusLinkBtnHtml(ptId) {
+  return `<button type="button" onclick="deleteLinksForPoint(${ptId})"
+    style="width:100%;padding:8px;margin-top:6px;background:#fef2f2;color:#dc2626;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:5px;">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3,6 5,6 21,6"/><path d="M19,6l-1,14a2,2,0,0,1-2,2H8a2,2,0,0,1-2-2L5,6"/></svg>
+    Hapus Link
+  </button>`;
+}
+
+function bindMapLabel(marker, pt) {
+  if (!marker || !pt) return;
+  if (pt.type !== 'odc' && pt.type !== 'odp' && pt.type !== 'otb') return;
+  const occ = portOccupancy(pt);
+  const title = mapPointLabel(pt);
+  const frac = occ.cap ? `<span class="gis-pt-frac">${occ.used}/${occ.cap}</span>` : '';
+  const html = `${title}${frac}`;
+  if (marker.getTooltip && marker.getTooltip()) marker.unbindTooltip();
+  marker.bindTooltip(html, {
+    permanent: true,
+    direction: 'bottom',
+    offset: [0, 2],
+    className: 'gis-pt-label',
+    opacity: 1
+  });
+}
+
+function createCustomIcon(pt) {
+  const color = COLORS[pt.type] || '#64748b';
+  const badge = occupancyStatusBadge(pt);
+  if (pt.type === 'odp') {
+    const _used = (allInfraPoints[pt.id] && allInfraPoints[pt.id]._connCount != null)
+      ? allInfraPoints[pt.id]._connCount
+      : (pt.used_ports || 0);
+    const portPct = pt.capacity ? Math.min(100, Math.round(_used / pt.capacity * 100)) : 0;
+    const dotColor = portPct > 80 ? '#ef4444' : portPct > 60 ? '#f59e0b' : '#22c55e';
+    return L.divIcon({
+      className: '',
+      html: `<div style="position:relative;width:36px;height:42px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.3))">
+        <svg width="36" height="42" viewBox="0 0 36 42" fill="none">
+          <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 24 18 24S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}"/>
+          <circle cx="18" cy="19" r="2.5" fill="white"/>
+          <path d="M12 14.5a8.5 8.5 0 0112 0" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/>
+          <path d="M14.5 17a5 5 0 017 0" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/>
+        </svg>
+        <div style="position:absolute;top:-4px;right:-4px;width:12px;height:12px;background:${dotColor};border-radius:50%;border:2px solid #fff;box-shadow:0 0 4px ${dotColor}88"></div>
+        ${badge}
+      </div>`,
+      iconSize: [36, 42], iconAnchor: [18, 42], popupAnchor: [0, -44]
+    });
+  }
+  if (pt.type === 'odc') {
+    return L.divIcon({
+      className: '',
+      html: `<div style="position:relative;width:36px;height:42px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.3))">
+        <svg width="36" height="42" viewBox="0 0 36 42" fill="none">
+          <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 24 18 24S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}"/>
+          <rect x="9" y="11" width="18" height="4" rx="1" fill="none" stroke="white" stroke-width="1.8"/>
+          <rect x="9" y="17" width="18" height="4" rx="1" fill="none" stroke="white" stroke-width="1.8"/>
+          <circle cx="24" cy="13" r="1.2" fill="white"/>
+          <circle cx="24" cy="19" r="1.2" fill="white"/>
+        </svg>
+        ${badge}
+      </div>`,
+      iconSize: [36, 42], iconAnchor: [18, 42], popupAnchor: [0, -44]
+    });
+  }
+  if (pt.type === 'otb') {
+    return L.divIcon({
+      className: '',
+      html: `<div style="position:relative;width:36px;height:42px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.3))">
+        <svg width="36" height="42" viewBox="0 0 36 42" fill="none">
+          <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 24 18 24S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}"/>
+          <rect x="10" y="11" width="16" height="14" rx="1.5" fill="none" stroke="white" stroke-width="1.8"/>
+          <line x1="13" y1="15" x2="23" y2="15" stroke="white" stroke-width="1.6"/>
+          <line x1="13" y1="18.5" x2="23" y2="18.5" stroke="white" stroke-width="1.6"/>
+          <line x1="13" y1="22" x2="20" y2="22" stroke="white" stroke-width="1.6"/>
+        </svg>
+        ${badge}
+      </div>`,
+      iconSize: [36, 42], iconAnchor: [18, 42], popupAnchor: [0, -44]
+    });
+  }
+  if (pt.type === 'tower') {
+    return L.divIcon({
+      className: '',
+      html: `<div style="position:relative;width:32px;height:38px;filter:drop-shadow(0 2px 5px rgba(0,0,0,.3))">
+        <svg width="32" height="38" viewBox="0 0 36 42" fill="none">
+          <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 24 18 24S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}"/>
+          <line x1="18" y1="9" x2="18" y2="25" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <line x1="12" y1="16" x2="24" y2="16" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="11" y1="20" x2="25" y2="20" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M14 12l4-4 4 4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+      </div>`,
+      iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -40]
+    });
+  }
+  if (pt.type === 'jb') {
+    return L.divIcon({
+      className: '',
+      html: `<div style="position:relative;width:36px;height:42px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.3))">
+        <svg width="36" height="42" viewBox="0 0 36 42" fill="none">
+          <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 24 18 24S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}"/>
+          <rect x="10" y="12" width="16" height="12" rx="2" fill="none" stroke="white" stroke-width="1.8"/>
+          <line x1="14" y1="18" x2="22" y2="18" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="18" y1="14" x2="18" y2="22" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>`,
+      iconSize: [36, 42], iconAnchor: [18, 42], popupAnchor: [0, -44]
+    });
+  }
+  if (pt.type === 'pop') {
+    return L.divIcon({
+      className: '',
+      html: `<div style="position:relative;width:36px;height:42px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.3))">
+        <svg width="36" height="42" viewBox="0 0 36 42" fill="none">
+          <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 24 18 24S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}"/>
+          <rect x="8" y="12" width="20" height="14" rx="2" fill="none" stroke="white" stroke-width="1.8"/>
+          <line x1="12" y1="9" x2="12" y2="12" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="18" y1="9" x2="18" y2="12" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="24" y1="9" x2="24" y2="12" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+          <circle cx="18" cy="19" r="2.5" fill="white"/>
+        </svg>
+      </div>`,
+      iconSize: [36, 42], iconAnchor: [18, 42], popupAnchor: [0, -44]
+    });
+  }
+  const letter = (pt.type || 'x').substring(0, 1).toUpperCase();
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:30px;height:30px;background:${color};border-radius:50%;border:3px solid rgba(255,255,255,.95);box-shadow:0 2px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;">
+      <span style="color:#fff;font-size:10px;font-weight:700;font-family:'DM Sans',sans-serif;">${letter}</span>
+    </div>`,
+    iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -16]
+  });
+}
+
+function renderSidebar() {
+  const nav = document.querySelector('#sidebar .sidebar-nav');
+  if (!nav || nav.dataset.gisGrouped === '1') return;
+  nav.dataset.gisGrouped = '1';
+
+  const chevron = '<svg class="nav-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>';
+
+  function wrapGroup(key, hrefs, title) {
+    const nodes = hrefs.map(h => nav.querySelector(`a.nav-item[href="${h}"]`)).filter(Boolean);
+    if (nodes.length < 2) return;
+    const parent = nodes[0].parentElement;
+    const wrap = document.createElement('div');
+    wrap.className = 'nav-group gis-wide open';
+    wrap.dataset.navGroup = key;
+    const anyActive = nodes.some(n => n.classList.contains('active'));
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'nav-item nav-group-toggle' + (anyActive ? ' active' : '');
+    btn.setAttribute('onclick', 'toggleNavGroup(this)');
+    const icon = nodes[0].querySelector('.nav-icon');
+    btn.innerHTML = (icon ? icon.outerHTML : '') + '<span>' + title + '</span>' + chevron;
+    const children = document.createElement('div');
+    children.className = 'nav-group-children';
+    parent.insertBefore(wrap, nodes[0]);
+    wrap.appendChild(btn);
+    wrap.appendChild(children);
+    nodes.forEach(n => {
+      n.classList.remove('nav-item');
+      n.classList.add('nav-sub');
+      const ic = n.querySelector('.nav-icon');
+      if (ic) ic.remove();
+      const dot = document.createElement('span');
+      dot.className = 'nav-sub-dot';
+      n.insertBefore(dot, n.firstChild);
+      children.appendChild(n);
+    });
+  }
+
+  wrapGroup('dashboard', ['/finance', '/noc', '/sales'], 'Dashboard');
+  wrapGroup('monitoring', [
+    '/nms', '/monitoring/traffic', '/monitoring/content', '/monitoring/pppoe',
+    '/monitoring/queue', '/monitoring/ippool', '/monitoring/firewall',
+    '/monitoring/olt-management', '/genieacs'
+  ], 'Monitoring');
+
+  nav.querySelectorAll('.nav-section-title').forEach(el => {
+    const t = (el.textContent || '').trim().toUpperCase();
+    if (t === 'SISTEM') el.textContent = 'SYS';
+  });
+}
+
+function toggleLayer(type, btn) {
+  if (!map || !TILES[type]) return;
+  currentTileType = type;
+  document.querySelectorAll('.tile-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else {
+    const match = document.querySelector(`.tile-btn[data-tile="${type}"], .tile-btn[data-tile="${type === 'osm' ? 'streets' : type}"]`);
+    if (match) match.classList.add('active');
+  }
+  if (tileLayer) map.removeLayer(tileLayer);
+  const cfg = TILES[type] || TILES.streets;
+  const mapEl = document.getElementById('infraMap');
+  if (mapEl) {
+    mapEl.style.background = (type === 'dark' || type === 'satellite') ? '#1a1a2e' : '#e8e0d8';
+  }
+  tileLayer = L.tileLayer(cfg.url, {
+    attribution: cfg.attr, maxZoom: 20,
+    subdomains: cfg.subdomains || 'abcd',
+    updateWhenIdle: false, keepBuffer: 6,
+    detectRetina: false,
+    opacity: 1
+  }).addTo(map);
+}
+
+function clearRoadLabels() {
+  roadLabelMarkers.forEach(m => { try { map.removeLayer(m); } catch (e) {} });
+  roadLabelMarkers = [];
+}
+
+function addLabels() {
+  if (!map) return;
+  clearRoadLabels();
+  const pts = Object.values(allInfraPoints).filter(p => p.latitude && p.longitude && p.type !== 'customer');
+  let lat, lng;
+  if (pts.length) {
+    lat = pts.reduce((s, p) => s + (+p.latitude), 0) / pts.length;
+    lng = pts.reduce((s, p) => s + (+p.longitude), 0) / pts.length;
+  } else {
+    const c = map.getCenter();
+    lat = c.lat; lng = c.lng;
+  }
+  const items = [
+    { name: 'Jl. Raya', dx: 0.0016, dy: 0.0003 },
+    { name: 'Kampus Mandar', dx: -0.0024, dy: 0.0018 },
+    { name: 'Pasar Baru', dx: 0.0028, dy: -0.0012 },
+    { name: 'Kampung Budaya Mandar', dx: -0.0010, dy: -0.0022 },
+    { name: 'Warung kopi bu Sri', dx: 0.0006, dy: 0.0024 },
+    { name: 'Jl. Poros Mandar', dx: -0.0030, dy: -0.0004 },
+    { name: 'Alun-Alun', dx: 0.0034, dy: 0.0010 }
+  ];
+  items.forEach(item => {
+    const m = L.marker([lat + item.dy, lng + item.dx], {
+      interactive: false,
+      keyboard: false,
+      zIndexOffset: -200,
+      icon: L.divIcon({
+        className: '',
+        html: `<div class="gis-road-label">${item.name}</div>`,
+        iconSize: [0, 0],
+        iconAnchor: [0, 0]
+      })
+    }).addTo(map);
+    roadLabelMarkers.push(m);
+  });
+}
+
+async function deleteLinksForPoint(id) {
+  const links = window._infraLinks || [];
+  const mine = links.filter(l => (l.fromPoint && l.fromPoint.id === id) || (l.toPoint && l.toPoint.id === id));
+  if (!mine.length) {
+    if (typeof showToast === 'function') showToast('Tidak ada link pada titik ini', 'info');
+    else alert('Tidak ada link pada titik ini');
+    return;
+  }
+  const ok = await (window.customConfirm
+    ? window.customConfirm({
+        title: 'Hapus Link?',
+        message: mine.length + ' kabel terhubung ke titik ini akan dihapus dari peta.',
+        variant: 'danger',
+        okText: 'Ya, Hapus',
+        cancelText: 'Batal',
+      })
+    : Promise.resolve(confirm('Hapus link pada titik ini?')));
+  if (!ok) return;
+  for (const link of mine) {
+    await App.api(`/infrastructure-links/${link.id}`, { method: 'DELETE' });
+  }
+  map.closePopup();
+  loadInfraData(currentFilter, { preserveView: true });
+}
+
+function refreshOccupancyIcons() {
+  markers.forEach(m => {
+    const pt = m._infraPt;
+    if (!pt) return;
+    if (pt.type !== 'odc' && pt.type !== 'odp' && pt.type !== 'otb') return;
+    try { m.setIcon(createCustomIcon(pt)); } catch (e) {}
+    bindMapLabel(m, pt);
+  });
+}
+
 // ─── Init ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  renderSidebar();
   initMap();
   loadInfraData();
   loadAllCustomers();
@@ -342,6 +714,14 @@ function initMap() {
     detectRetina: false,
     opacity: 1
   }).addTo(map);
+  currentTileType = 'streets';
+
+  document.querySelectorAll('.tile-btn').forEach(b => {
+    if (b.dataset.tile === 'streets') {
+      const lbl = b.querySelector('.btn-label');
+      if (lbl) lbl.textContent = 'OSM';
+    }
+  });
 
   map.on('click', function(e) {
     if (placeMode) {
@@ -391,24 +771,7 @@ function initMap() {
 
 // ─── Tile switcher ────────────────────────────────────
 function switchTile(type, btn) {
-  document.querySelectorAll('.tile-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  map.removeLayer(tileLayer);
-  const cfg = TILES[type];
-  // Set background sesuai tile — dark/satellite pakai background gelap
-  const mapEl = document.getElementById('infraMap');
-  if (type === 'dark' || type === 'satellite') {
-    mapEl.style.background = '#1a1a2e';
-  } else {
-    mapEl.style.background = '#e8e0d8';
-  }
-  tileLayer = L.tileLayer(cfg.url, {
-    attribution: cfg.attr, maxZoom: 20,
-    subdomains: cfg.subdomains || 'abcd',
-    updateWhenIdle: false, keepBuffer: 6,
-    detectRetina: false,
-    opacity: 1
-  }).addTo(map);
+  toggleLayer(type, btn);
 }
 
 // ─── Filter ───────────────────────────────────────────
@@ -659,6 +1022,8 @@ async function _loadInfraInternal(type, opts) {
   // skip pasangan yang sudah punya manual link (hindari double polyline).
   drawDBLinksFromData(linksRes, type);
   drawParentConnections(type);
+  refreshOccupancyIcons();
+  addLabels();
 
   document.getElementById('st-odc').textContent   = stats.odc;
   document.getElementById('st-odp').textContent   = stats.odp;
@@ -798,6 +1163,7 @@ function drawDBLinksFromData(res, filter) {
   // Simpan linkedPairs ke window agar drawParentConnections bisa skip
   // pasangan yang sudah punya manual link (hindari double polyline overlap).
   window._linkedPairs = linkedPairs;
+  window._infraLinks = res.data || [];
 
   res.data.forEach(link => {
     const from = link.fromPoint, to = link.toPoint;
@@ -1190,108 +1556,22 @@ async function deleteLink(id) {
 
 // ─── Infra marker ─────────────────────────────────────
 function addInfraMarker(pt) {
+  return createMarker(pt);
+}
+
+function createMarker(pt) {
   const color  = COLORS[pt.type] || '#64748b';
   const lbl    = pt.type==='tower' ? 'Tiang' : pt.type==='jb' ? jbLabel(pt) : pt.type.toUpperCase();
-  const status = pt.status || 'active';
-  const stColor= status==='active'?'#22c55e':status==='maintenance'?'#f59e0b':'#dc2626';
-
-  // ── Icon per type ──
-  function makeIcon() {
-    if (pt.type === 'odp') {
-      // Pin style like customer, wifi signal icon, port utilization dot
-      const _used = (allInfraPoints[pt.id]?._connCount) ?? (pt.used_ports||0);
-    const portPct = pt.capacity ? Math.min(100,Math.round(_used/pt.capacity*100)) : 0;
-      const dotColor= portPct>80?'#ef4444':portPct>60?'#f59e0b':'#22c55e';
-      return L.divIcon({
-        className:'',
-        html:`<div style="position:relative;width:36px;height:42px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.3))">
-          <svg width="36" height="42" viewBox="0 0 36 42" fill="none">
-            <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 24 18 24S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}"/>
-            <circle cx="18" cy="19" r="2.5" fill="white"/>
-            <path d="M12 14.5a8.5 8.5 0 0112 0" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/>
-            <path d="M14.5 17a5 5 0 017 0" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/>
-          </svg>
-          <div style="position:absolute;top:-4px;right:-4px;width:12px;height:12px;background:${dotColor};border-radius:50%;border:2px solid #fff;box-shadow:0 0 4px ${dotColor}88"></div>
-        </div>`,
-        iconSize:[36,42], iconAnchor:[18,42], popupAnchor:[0,-44]
-      });
-    }
-    if (pt.type === 'odc') {
-      return L.divIcon({
-        className:'',
-        html:`<div style="position:relative;width:36px;height:42px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.3))">
-          <svg width="36" height="42" viewBox="0 0 36 42" fill="none">
-            <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 24 18 24S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}"/>
-            <rect x="9" y="11" width="18" height="4" rx="1" fill="none" stroke="white" stroke-width="1.8"/>
-            <rect x="9" y="17" width="18" height="4" rx="1" fill="none" stroke="white" stroke-width="1.8"/>
-            <circle cx="24" cy="13" r="1.2" fill="white"/>
-            <circle cx="24" cy="19" r="1.2" fill="white"/>
-          </svg>
-        </div>`,
-        iconSize:[36,42], iconAnchor:[18,42], popupAnchor:[0,-44]
-      });
-    }
-    if (pt.type === 'tower') {
-      return L.divIcon({
-        className:'',
-        html:`<div style="position:relative;width:32px;height:38px;filter:drop-shadow(0 2px 5px rgba(0,0,0,.3))">
-          <svg width="32" height="38" viewBox="0 0 36 42" fill="none">
-            <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 24 18 24S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}"/>
-            <line x1="18" y1="9" x2="18" y2="25" stroke="white" stroke-width="2" stroke-linecap="round"/>
-            <line x1="12" y1="16" x2="24" y2="16" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-            <line x1="11" y1="20" x2="25" y2="20" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-            <path d="M14 12l4-4 4 4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          </svg>
-        </div>`,
-        iconSize:[32,38], iconAnchor:[16,38], popupAnchor:[0,-40]
-      });
-    }
-    if (pt.type === 'jb') {
-      return L.divIcon({
-        className:'',
-        html:`<div style="position:relative;width:36px;height:42px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.3))">
-          <svg width="36" height="42" viewBox="0 0 36 42" fill="none">
-            <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 24 18 24S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}"/>
-            <rect x="10" y="12" width="16" height="12" rx="2" fill="none" stroke="white" stroke-width="1.8"/>
-            <line x1="14" y1="18" x2="22" y2="18" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-            <line x1="18" y1="14" x2="18" y2="22" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-          </svg>
-        </div>`,
-        iconSize:[36,42], iconAnchor:[18,42], popupAnchor:[0,-44]
-      });
-    }
-    if (pt.type === 'pop') {
-      return L.divIcon({
-        className:'',
-        html:`<div style="position:relative;width:36px;height:42px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.3))">
-          <svg width="36" height="42" viewBox="0 0 36 42" fill="none">
-            <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 24 18 24S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}"/>
-            <rect x="8" y="12" width="20" height="14" rx="2" fill="none" stroke="white" stroke-width="1.8"/>
-            <line x1="12" y1="9" x2="12" y2="12" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-            <line x1="18" y1="9" x2="18" y2="12" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-            <line x1="24" y1="9" x2="24" y2="12" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-            <circle cx="18" cy="19" r="2.5" fill="white"/>
-          </svg>
-        </div>`,
-        iconSize:[36,42], iconAnchor:[18,42], popupAnchor:[0,-44]
-      });
-    }
-    // default
-    const letter = pt.type.substring(0,1).toUpperCase();
-    return L.divIcon({
-      className:'',
-      html:`<div style="width:30px;height:30px;background:${color};border-radius:50%;border:3px solid rgba(255,255,255,.95);box-shadow:0 2px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;">
-        <span style="color:#fff;font-size:10px;font-weight:700;font-family:'DM Sans',sans-serif;">${letter}</span>
-      </div>`,
-      iconSize:[30,30], iconAnchor:[15,15], popupAnchor:[0,-16]
-    });
-  }
+  const occ    = portOccupancy(pt);
+  const status = occ.label;
+  const stColor= occ.full ? '#dc2626' : (status==='active'?'#22c55e':status==='maintenance'?'#f59e0b':'#dc2626');
 
   const m = L.marker([+pt.latitude, +pt.longitude], {
-    icon: makeIcon(),
+    icon: createCustomIcon(pt),
     draggable: true,
     autoPan: true
   }).addTo(map);
+  bindMapLabel(m, pt);
 
   // ── Drag: simpan posisi baru ke DB ──
   let _dragToast = null;
@@ -1360,7 +1640,8 @@ function addInfraMarker(pt) {
       odc:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="5" rx="1"/><rect x="2" y="10" width="20" height="5" rx="1"/></svg>`,
       tower:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="22"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="6" y1="14" x2="18" y2="14"/></svg>`,
       pop:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2" fill="white" stroke="none"/></svg>`,
-      jb:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M8 13h8M12 9v8"/></svg>`
+      jb:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M8 13h8M12 9v8"/></svg>`,
+      otb:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="1"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="13" y2="16"/></svg>`
     };
 
     return `<div style="font-family:'DM Sans',sans-serif;min-width:230px;border-radius:14px;overflow:hidden">
@@ -1372,6 +1653,11 @@ function addInfraMarker(pt) {
           <div style="flex:1;min-width:0">
             <div style="font-size:14px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${pt.name}</div>
             <div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:1px">${stDot}${status.charAt(0).toUpperCase()+status.slice(1)} · ${lbl}</div>
+            ${(() => {
+              const live = portOccupancy(pt);
+              const bg = live.full ? '#dc2626' : '#22c55e';
+              return `<span style="display:inline-block;margin-top:6px;background:${bg};color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;text-transform:lowercase">${live.label}</span>`;
+            })()}
           </div>
         </div>
       </div>
@@ -1459,6 +1745,8 @@ function addInfraMarker(pt) {
             <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19,6l-1,14a2,2,0,0,1-2,2H8a2,2,0,0,1-2-2L5,6"/></svg>Hapus
           </button>
         </div>
+        ${googleMapsLinkHtml(pt.latitude, pt.longitude)}
+        ${(pt.type === 'odc' || pt.type === 'odp' || pt.type === 'otb') ? hapusLinkBtnHtml(pt.id) : ''}
       </div>
     </div>`;
   }
@@ -1792,6 +2080,7 @@ function addCustomerMarker(c) {
             </div>
           </div>
         </div>
+        ${googleMapsLinkHtml(c.latitude, c.longitude)}
         <div class="cp-actions" style="grid-template-columns:1fr 1fr 1fr">
           <button class="cp-btn cp-nav" onclick="openNavigation(${c.latitude},${c.longitude},'${c.name.replace(/'/g,"\\'")}')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3,11 22,2 13,21 11,13 3,11"/></svg>Navigasi
@@ -2491,6 +2780,7 @@ function clearAll() {
     try { map.removeLayer(m); } catch(e){}
   });
   polylines.forEach(p => { try { map.removeLayer(p); } catch(e){} });
+  clearRoadLabels();
   markers=[]; polylines=[]; allInfraPoints={};
   window.markersById = {};
   window.customerMarkersById = {};
@@ -3181,8 +3471,14 @@ async function deletePoint(id,name) {
 
 // ─── Navigation ───────────────────────────────────────
 function openNavigation(lat,lng,name) {
-  window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+  window.open(`https://www.openstreetmap.org/directions?from=&to=${lat},${lng}`, '_blank');
 }
+window.deleteLinksForPoint = deleteLinksForPoint;
+window.toggleLayer = toggleLayer;
+window.renderSidebar = renderSidebar;
+window.createMarker = createMarker;
+window.addLabels = addLabels;
+window.createCustomIcon = createCustomIcon;
 
 // ─── ODP Photo helpers ────────────────────────────────
 // Event listener dipasang via JS (bukan onchange inline) agar lebih reliable
@@ -3481,6 +3777,7 @@ function addCustomerMarker(cust) {
           </div>
         </div>
       </div>
+      ${googleMapsLinkHtml(cust.latitude, cust.longitude)}
       <div class="cp-actions cp-actions-3">
         <button class="cp-btn cp-nav" onclick="openNavigation(${cust.latitude},${cust.longitude},'${cust.name.replace(/'/g,"\\'")}')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3,11 22,2 13,21 11,13 3,11"/></svg>Navigasi
