@@ -62,7 +62,7 @@
     .ip{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #eef1f6;border-radius:15px;padding:13px 15px;}
     .ip-ic{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:800;font-size:11px;}
     .ip-ic svg{width:20px;height:20px;stroke-width:1.8;}
-    .t-odp{background:#e0f2fe;color:#0ea5e9;} .t-odc{background:#e0f2fe;color:#0369a1;} .t-pop{background:#ede9ff;color:#6b4fd8;} .t-tower{background:#fef1db;color:#c67d0a;} .t-ont{background:#dcf7ec;color:#0f9d63;} .t-customer{background:#f0f3f9;color:#6b7a97;} .t-jb{background:#ccfbf1;color:#0f766e;}
+    .t-odp{background:#e0f2fe;color:#0ea5e9;} .t-odc{background:#e0f2fe;color:#0369a1;} .t-pop{background:#ede9ff;color:#6b4fd8;} .t-tower{background:#fef1db;color:#c67d0a;} .t-ont{background:#dcf7ec;color:#0f9d63;} .t-customer{background:#f0f3f9;color:#6b7a97;} .t-jb{background:#ccfbf1;color:#0f766e;} .t-rack{background:#f3e8ff;color:#7c3aed;} .t-server{background:#e2e8f0;color:#334155;} .t-switch{background:#e0f2fe;color:#0284c7;} .t-otb{background:#ffedd5;color:#c2410c;}
     .ip-body{flex:1;min-width:0;}
     .ip-name{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .ip-meta{font-size:11.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -144,8 +144,8 @@
     async function api(url){ const t=getToken(); const headers=Object.assign({'Content-Type':'application/json'}, t?{'Authorization':'Bearer '+t}:{}); try{ const r=await fetch(url,{credentials:'include',headers}); if(r.status===401){location.href='/login';return null;} const x=await r.text(); try{return x?JSON.parse(x):null;}catch(_){return null;} }catch(e){return null;} }
     function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
     let _type='', _all=[];
-    const TYPE_LABEL={odp:'ODP',odc:'ODC',pop:'POP',tower:'Tower',ont:'ONT',customer:'Pelanggan',jb:'JB'};
-    const TYPE_COLOR={odc:'#1d4ed8',odp:'#104396',pop:'#ef4444',tower:'#475569',ont:'#f97316',customer:'#f97316',jb:'#0d9488'};
+    const TYPE_LABEL={odp:'ODP',odc:'ODC',pop:'POP',tower:'Tower',ont:'ONT',customer:'Pelanggan',jb:'JB',rack:'Rack',server:'Server',switch:'Switch',otb:'OTB'};
+    const TYPE_COLOR={odc:'#1d4ed8',odp:'#104396',pop:'#ef4444',tower:'#475569',ont:'#f97316',customer:'#f97316',jb:'#0d9488',rack:'#7c3aed',server:'#334155',switch:'#0284c7',otb:'#c2410c'};
     let _map=null, _markers=null, _mapReady=false, _tileStreet=null, _tileSat=null, _mapMode='street';
 
     function initMap(){

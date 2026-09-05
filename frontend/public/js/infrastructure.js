@@ -53,7 +53,8 @@ let drawSegLines  = [];         // committed segment polylines
 
 const COLORS = {
   odc: '#1d4ed8', odp: '#1d4ed8', jb: '#0d9488', tower: '#475569',
-  customer: '#f97316', pop: '#ef4444', ont: '#22c55e'
+  customer: '#f97316', pop: '#ef4444', ont: '#22c55e',
+  rack: '#7c3aed', server: '#334155', switch: '#0284c7', otb: '#c2410c'
 };
 
 function jbKind(pt) {
@@ -65,6 +66,27 @@ function jbKind(pt) {
 }
 function jbLabel(pt) {
   return jbKind(pt) === 'joint_closure' ? 'Joint Closure' : 'Joint Box';
+}
+function otbCores(pt) {
+  const cap = parseInt(pt && pt.capacity, 10);
+  if (cap === 48 || cap === 12) return cap;
+  let meta = pt && pt.metadata;
+  if (typeof meta === 'string') {
+    try { meta = JSON.parse(meta); } catch (_) { meta = null; }
+  }
+  const m = parseInt(meta && meta.cores, 10);
+  return m === 48 ? 48 : 12;
+}
+function typeLabel(pt) {
+  if (!pt || !pt.type) return '';
+  if (pt.type === 'tower') return 'Tiang';
+  if (pt.type === 'jb') return jbLabel(pt);
+  if (pt.type === 'customer') return 'Pelanggan';
+  if (pt.type === 'otb') return 'OTB ' + otbCores(pt) + ' core';
+  if (pt.type === 'rack') return 'Rack';
+  if (pt.type === 'server') return 'Server';
+  if (pt.type === 'switch') return 'Switch';
+  return String(pt.type).toUpperCase();
 }
 
 const TILES = {
@@ -603,7 +625,7 @@ function _waitForOnline(maxMs) {
 
 async function _loadInfraInternal(type, opts) {
   const preserveView = !!opts.preserveView;
-  const stats = { odc:0, odp:0, jb:0, tower:0, customer:0, pop:0 };
+  const stats = { odc:0, odp:0, jb:0, tower:0, customer:0, pop:0, rack:0, server:0, switch:0, otb:0 };
 
   // Paralelisasi semua fetch supaya tidak serial. Sebelumnya:
   //   - 2x panggilan ke /infrastructure/map (redundan)
@@ -666,6 +688,10 @@ async function _loadInfraInternal(type, opts) {
   document.getElementById('st-tower').textContent = stats.tower;
   document.getElementById('st-cust').textContent  = stats.customer;
   document.getElementById('st-pop').textContent   = stats.pop;
+  const stRack = document.getElementById('st-rack'); if (stRack) stRack.textContent = stats.rack;
+  const stServer = document.getElementById('st-server'); if (stServer) stServer.textContent = stats.server;
+  const stSwitch = document.getElementById('st-switch'); if (stSwitch) stSwitch.textContent = stats.switch;
+  const stOtb = document.getElementById('st-otb'); if (stOtb) stOtb.textContent = stats.otb;
 
   // Auto-fit hanya saat first load atau ganti filter — saat edit/draw kita
   // pertahankan view agar tidak zoom-out mendadak dan bikin user kehilangan
@@ -1191,7 +1217,7 @@ async function deleteLink(id) {
 // ─── Infra marker ─────────────────────────────────────
 function addInfraMarker(pt) {
   const color  = COLORS[pt.type] || '#64748b';
-  const lbl    = pt.type==='tower' ? 'Tiang' : pt.type==='jb' ? jbLabel(pt) : pt.type.toUpperCase();
+  const lbl    = typeLabel(pt);
   const status = pt.status || 'active';
   const stColor= status==='active'?'#22c55e':status==='maintenance'?'#f59e0b':'#dc2626';
 
@@ -1271,6 +1297,25 @@ function addInfraMarker(pt) {
             <line x1="18" y1="9" x2="18" y2="12" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
             <line x1="24" y1="9" x2="24" y2="12" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
             <circle cx="18" cy="19" r="2.5" fill="white"/>
+          </svg>
+        </div>`,
+        iconSize:[36,42], iconAnchor:[18,42], popupAnchor:[0,-44]
+      });
+    }
+    if (pt.type === 'rack' || pt.type === 'server' || pt.type === 'switch' || pt.type === 'otb') {
+      const inner = pt.type === 'rack'
+        ? `<rect x="12" y="10" width="12" height="16" rx="1.5" fill="none" stroke="white" stroke-width="1.8"/><line x1="14" y1="14" x2="22" y2="14" stroke="white" stroke-width="1.5"/><line x1="14" y1="18" x2="22" y2="18" stroke="white" stroke-width="1.5"/><line x1="14" y1="22" x2="22" y2="22" stroke="white" stroke-width="1.5"/>`
+        : pt.type === 'server'
+        ? `<rect x="9" y="12" width="18" height="5" rx="1" fill="none" stroke="white" stroke-width="1.6"/><rect x="9" y="19" width="18" height="5" rx="1" fill="none" stroke="white" stroke-width="1.6"/><circle cx="13" cy="14.5" r="1" fill="white"/><circle cx="13" cy="21.5" r="1" fill="white"/>`
+        : pt.type === 'switch'
+        ? `<rect x="8" y="14" width="20" height="8" rx="1.5" fill="none" stroke="white" stroke-width="1.8"/><circle cx="13" cy="18" r="1.1" fill="white"/><circle cx="18" cy="18" r="1.1" fill="white"/><circle cx="23" cy="18" r="1.1" fill="white"/>`
+        : `<rect x="10" y="12" width="16" height="12" rx="2" fill="none" stroke="white" stroke-width="1.8"/><circle cx="14" cy="18" r="1.3" fill="white"/><circle cx="18" cy="18" r="1.3" fill="white"/><circle cx="22" cy="18" r="1.3" fill="white"/>`;
+      return L.divIcon({
+        className:'',
+        html:`<div style="position:relative;width:36px;height:42px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.3))">
+          <svg width="36" height="42" viewBox="0 0 36 42" fill="none">
+            <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 24 18 24S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}"/>
+            ${inner}
           </svg>
         </div>`,
         iconSize:[36,42], iconAnchor:[18,42], popupAnchor:[0,-44]
@@ -1360,7 +1405,11 @@ function addInfraMarker(pt) {
       odc:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="5" rx="1"/><rect x="2" y="10" width="20" height="5" rx="1"/></svg>`,
       tower:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="22"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="6" y1="14" x2="18" y2="14"/></svg>`,
       pop:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2" fill="white" stroke="none"/></svg>`,
-      jb:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M8 13h8M12 9v8"/></svg>`
+      jb:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M8 13h8M12 9v8"/></svg>`,
+      rack:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="1.5"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="16" y2="15"/></svg>`,
+      server:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="5" rx="1"/><rect x="3" y="13" width="18" height="5" rx="1"/></svg>`,
+      switch:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="8" rx="1.5"/><circle cx="7" cy="12" r="1" fill="white" stroke="none"/><circle cx="12" cy="12" r="1" fill="white" stroke="none"/><circle cx="17" cy="12" r="1" fill="white" stroke="none"/></svg>`,
+      otb:`<svg width="15" height="15" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="8" cy="12" r="1.3" fill="white" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="white" stroke="none"/><circle cx="16" cy="12" r="1.3" fill="white" stroke="none"/></svg>`
     };
 
     return `<div style="font-family:'DM Sans',sans-serif;min-width:230px;border-radius:14px;overflow:hidden">
@@ -1384,12 +1433,12 @@ function addInfraMarker(pt) {
           // yang terhubung ke titik induk ini. Klik anak → pan + zoom + open popup.
           const kids = allInfraPoints[pt.id]?._children;
           if (!kids || kids.length === 0) return '';
-          if (pt.type !== 'odc' && pt.type !== 'pop' && pt.type !== 'odp' && pt.type !== 'jb') return '';
+          if (pt.type !== 'odc' && pt.type !== 'pop' && pt.type !== 'odp' && pt.type !== 'jb' && pt.type !== 'rack' && pt.type !== 'otb') return '';
 
           // Sort by type then name (ODP dulu, lalu ODC, lalu Tiang, lalu Customer)
-          const TYPE_ORDER = { odp: 1, jb: 2, odc: 3, tower: 4, pop: 5, customer: 6 };
-          const TYPE_LABEL = { odp: 'ODP', jb: 'JB', odc: 'ODC', tower: 'Tiang', pop: 'POP', customer: 'Pelanggan' };
-          const TYPE_COLOR = { odp: '#3b82f6', jb: '#0d9488', odc: '#1d4ed8', tower: '#475569', pop: '#ef4444', customer: '#f97316' };
+          const TYPE_ORDER = { odp: 1, jb: 2, odc: 3, tower: 4, pop: 5, rack: 6, otb: 7, switch: 8, server: 9, customer: 10 };
+          const TYPE_LABEL = { odp: 'ODP', jb: 'JB', odc: 'ODC', tower: 'Tiang', pop: 'POP', rack: 'Rack', server: 'Server', switch: 'Switch', otb: 'OTB', customer: 'Pelanggan' };
+          const TYPE_COLOR = { odp: '#3b82f6', jb: '#0d9488', odc: '#1d4ed8', tower: '#475569', pop: '#ef4444', rack: '#7c3aed', server: '#334155', switch: '#0284c7', otb: '#c2410c', customer: '#f97316' };
           const sorted = kids.slice().sort((a, b) => {
             const oa = TYPE_ORDER[a.type] || 99;
             const ob = TYPE_ORDER[b.type] || 99;
@@ -1944,7 +1993,7 @@ async function saveLink() {
       // unchanged (sudah sama — tidak perlu kasih tahu).
       const ap = res.auto_parent;
       if (ap) {
-        const typeLbl = { pop: 'POP', odc: 'ODC', odp: 'ODP', jb: 'JB', tower: 'Tiang', customer: 'Pelanggan' };
+        const typeLbl = { pop: 'POP', odc: 'ODC', odp: 'ODP', jb: 'JB', tower: 'Tiang', customer: 'Pelanggan', rack: 'Rack', server: 'Server', switch: 'Switch', otb: 'OTB' };
         const childLbl = typeLbl[ap.child_type] || ap.child_type;
         const parentLbl = typeLbl[ap.parent_type] || ap.parent_type;
         if (ap.was_changed) {
@@ -2564,7 +2613,7 @@ function _openModalAfterPick() {
 function enterPlaceMode(type) {
   placeMode=true; placeType=type;
   document.getElementById('infraMap').classList.add('place-mode');
-  const names={odc:'ODC',odp:'ODP',jb:'JB / Joint Box',tower:'Tiang',pop:'POP',customer:'Pelanggan'};
+  const names={odc:'ODC',odp:'ODP',jb:'JB / Joint Box',tower:'Tiang',pop:'POP',customer:'Pelanggan',rack:'Rack',server:'Server',switch:'Switch',otb:'OTB'};
   document.getElementById('placeModeText').textContent=`Klik peta untuk menempatkan ${names[type]||type}`;
   document.getElementById('placeModeBar').classList.add('active');
 }
@@ -2612,7 +2661,7 @@ function switchTab(tab, btn) {
   const tp = document.getElementById('tab-'+tab); if(tp) tp.classList.add('active');
   // Update placeType when tab changes
   placeType = tab;
-  const names = {odc:'ODC',odp:'ODP',jb:'JB / Joint Box',tower:'Tiang',pop:'POP',customer:'Pelanggan'};
+  const names = {odc:'ODC',odp:'ODP',jb:'JB / Joint Box',tower:'Tiang',pop:'POP',customer:'Pelanggan',rack:'Rack',server:'Server',switch:'Switch',otb:'OTB'};
   const bar = document.getElementById('placeModeText');
   if(bar) bar.textContent = 'Klik peta untuk menempatkan '+(names[tab]||tab);
   // If modal is open for new point, allow re-picking location
@@ -2627,17 +2676,23 @@ function resetForm() {
    'jb-name','jb-address','jb-notes',
    'tower-name','tower-address','tower-notes',
    'pop-name','pop-address','pop-notes',
+   'rack-name','rack-address','rack-notes',
+   'server-name','server-address','server-notes',
+   'switch-name','switch-address','switch-notes',
+   'otb-name','otb-address','otb-notes',
    'cust-address','cust-notes'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
-  ['odc-capacity','odc-used','odp-capacity','odp-used','jb-capacity','jb-used','pop-capacity','pop-used'].forEach(id=>{
+  ['odc-capacity','odc-used','odp-capacity','odp-used','jb-capacity','jb-used','pop-capacity','pop-used',
+   'rack-capacity','rack-used','server-capacity','server-used','switch-capacity','switch-used','otb-used'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
-  ['odc-status','odp-status','jb-status','tower-status','pop-status'].forEach(id=>{
+  ['odc-status','odp-status','jb-status','tower-status','pop-status','rack-status','server-status','switch-status','otb-status'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='active';
   });
   const popType=document.getElementById('pop-pop-type'); if(popType) popType.value='olt';
   const jbKindEl=document.getElementById('jb-kind'); if(jbKindEl) jbKindEl.value='joint_box';
+  const otbCoresEl=document.getElementById('otb-cores'); if(otbCoresEl) otbCoresEl.value='12';
   const cs=document.getElementById('cust-search'); if(cs) cs.value='';
   // Reset manual coord panel
   const manualWrap = document.getElementById('coordManualWrap');
@@ -2752,16 +2807,18 @@ async function loadParentSelects() {
   //   - odp-parent  → ODC (induk ODP)
   //   - odc-parent  → ODC + POP (induk ODC bisa ODC lain dlm chain, atau langsung POP)
   //   - cust-parent → ODP (induk customer)
-  const [odcRes, odpRes, popRes, jbRes] = await Promise.all([
+  const [odcRes, odpRes, popRes, jbRes, rackRes] = await Promise.all([
     App.api('/infrastructure?type=odc'),
     App.api('/infrastructure?type=odp'),
     App.api('/infrastructure?type=pop'),
     App.api('/infrastructure?type=jb'),
+    App.api('/infrastructure?type=rack'),
   ]);
   const odcList = odcRes?.success ? odcRes.data : [];
   const odpList = odpRes?.success ? odpRes.data : [];
   const popList = popRes?.success ? popRes.data : [];
   const jbList  = jbRes?.success ? jbRes.data : [];
+  const rackList = rackRes?.success ? rackRes.data : [];
 
   const odpSel  = document.getElementById('odp-parent');
   const custSel = document.getElementById('cust-parent');
@@ -2822,6 +2879,34 @@ async function loadParentSelects() {
       jbSel.innerHTML += '</optgroup>';
     }
   }
+  const fillEquipParent = (selId, includeOdc) => {
+    const sel = document.getElementById(selId);
+    if (!sel) return;
+    const selfId = window._editingPointId;
+    sel.innerHTML = '<option value="">-- Tidak ada --</option>';
+    if (popList.length) {
+      sel.innerHTML += '<optgroup label="POP">';
+      popList.forEach(o => sel.innerHTML += `<option value="${o.id}">${o.name}</option>`);
+      sel.innerHTML += '</optgroup>';
+    }
+    if (includeOdc && odcList.length) {
+      sel.innerHTML += '<optgroup label="ODC">';
+      odcList.forEach(o => sel.innerHTML += `<option value="${o.id}">${o.name}</option>`);
+      sel.innerHTML += '</optgroup>';
+    }
+    if (rackList.length) {
+      sel.innerHTML += '<optgroup label="Rack">';
+      rackList.forEach(o => {
+        if (selfId && Number(o.id) === Number(selfId)) return;
+        sel.innerHTML += `<option value="${o.id}">${o.name}</option>`;
+      });
+      sel.innerHTML += '</optgroup>';
+    }
+  };
+  fillEquipParent('rack-parent', false);
+  fillEquipParent('server-parent', false);
+  fillEquipParent('switch-parent', false);
+  fillEquipParent('otb-parent', true);
 }
 
 async function loadAllCustomers() {
@@ -2886,7 +2971,7 @@ async function savePoint() {
   const activeTabBtn = infraModal.querySelector('.modal-tab.active');
   const tab = activeTabBtn?.dataset.tab;
 
-  if(!tab){ alert('Pilih tipe titik (ODC/ODP/JB/Tiang/POP/Pelanggan)'); return; }
+  if(!tab){ alert('Pilih tipe titik (ODC/ODP/JB/Tiang/POP/Rack/Server/Switch/OTB/Pelanggan)'); return; }
 
   let payload={latitude:pendingLat,longitude:pendingLng};
   if(tab==='odc'){
@@ -2953,6 +3038,30 @@ async function savePoint() {
       status:document.getElementById('pop-status').value,
       notes:document.getElementById('pop-notes').value,
       metadata:Object.keys(popNewMeta).length?popNewMeta:null};
+  } else if(tab==='rack' || tab==='server' || tab==='switch'){
+    const nameEl=document.getElementById(tab+'-name');
+    const name=(nameEl&&nameEl.value||'').trim();
+    if(!name) return alert('Nama '+(tab==='rack'?'Rack':tab==='server'?'Server':'Switch')+' wajib');
+    const pid=document.getElementById(tab+'-parent')?.value;
+    payload={...payload,type:tab,name,
+      capacity:parseInt(document.getElementById(tab+'-capacity')?.value,10)||null,
+      used_ports:parseInt(document.getElementById(tab+'-used')?.value,10)||0,
+      parent_id:pid?parseInt(pid,10):null,
+      address:document.getElementById(tab+'-address')?.value||'',
+      status:document.getElementById(tab+'-status')?.value||'active',
+      notes:document.getElementById(tab+'-notes')?.value||''};
+  } else if(tab==='otb'){
+    const name=document.getElementById('otb-name').value.trim(); if(!name) return alert('Nama OTB wajib');
+    const cores=parseInt(document.getElementById('otb-cores')?.value,10)||12;
+    const pid=document.getElementById('otb-parent')?.value;
+    payload={...payload,type:'otb',name,
+      capacity:cores,
+      used_ports:parseInt(document.getElementById('otb-used')?.value,10)||0,
+      parent_id:pid?parseInt(pid,10):null,
+      address:document.getElementById('otb-address')?.value||'',
+      status:document.getElementById('otb-status')?.value||'active',
+      notes:document.getElementById('otb-notes')?.value||'',
+      metadata:{cores}};
   } else if(tab==='customer'){
     if(!selectedCustomerId) return alert('Pilih pelanggan');
     const pid=document.getElementById('cust-parent').value;
@@ -3015,8 +3124,8 @@ async function editPoint(id) {
 
   const pt=res.data; editId=id;
   pendingLat=+pt.latitude; pendingLng=+pt.longitude;
-  const tab={odc:'odc',odp:'odp',jb:'jb',tower:'tower',pop:'pop',customer:'customer'}[pt.type]||'odc';
-  const titleLabel = pt.type==='tower' ? 'Tiang' : pt.type==='pop' ? 'POP' : pt.type==='customer' ? 'Pelanggan' : pt.type==='jb' ? jbLabel(pt) : pt.type.toUpperCase();
+  const tab={odc:'odc',odp:'odp',jb:'jb',tower:'tower',pop:'pop',customer:'customer',rack:'rack',server:'server',switch:'switch',otb:'otb'}[pt.type]||'odc';
+  const titleLabel = typeLabel(pt);
   document.getElementById('modalTitle').textContent=`Edit ${titleLabel}`;
   resetForm();
   // Saat edit, hanya tab tipe titik yang sedang di-edit yang ditampilkan.
@@ -3120,6 +3229,29 @@ async function editPoint(id) {
       if(meta.photo_url){ prev.src=meta.photo_url; prev.style.display='block'; if(remBtn) remBtn.style.display='inline-block'; }
       else { if(prev) prev.style.display='none'; if(remBtn) remBtn.style.display='none'; }
     } catch(e){}
+  } else if(tab==='rack' || tab==='server' || tab==='switch'){
+    const nameEl=document.getElementById(tab+'-name'); if(nameEl) nameEl.value=pt.name||'';
+    const capEl=document.getElementById(tab+'-capacity'); if(capEl) capEl.value=pt.capacity||'';
+    const usedEl=document.getElementById(tab+'-used'); if(usedEl) usedEl.value=actualUsed;
+    const addrEl=document.getElementById(tab+'-address'); if(addrEl) addrEl.value=pt.address||'';
+    const stEl=document.getElementById(tab+'-status'); if(stEl) stEl.value=pt.status||'active';
+    const notesEl=document.getElementById(tab+'-notes'); if(notesEl) notesEl.value=pt.notes||'';
+    if(pt.parent_id) parentSelectsPromise.then(() => {
+      const sel=document.getElementById(tab+'-parent');
+      if (sel) sel.value=pt.parent_id;
+    });
+  } else if(tab==='otb'){
+    document.getElementById('otb-name').value=pt.name||'';
+    document.getElementById('otb-used').value=actualUsed;
+    document.getElementById('otb-address').value=pt.address||'';
+    document.getElementById('otb-status').value=pt.status||'active';
+    document.getElementById('otb-notes').value=pt.notes||'';
+    const coresEl=document.getElementById('otb-cores');
+    if (coresEl) coresEl.value=String(otbCores(pt));
+    if(pt.parent_id) parentSelectsPromise.then(() => {
+      const sel=document.getElementById('otb-parent');
+      if (sel) sel.value=pt.parent_id;
+    });
   } else if(tab==='customer'){
     // Pre-fill customer existing dari metadata.customer_id agar user tidak
     // perlu search ulang. Tampilkan titik info sudah terisi & beri opsi
