@@ -1881,6 +1881,8 @@ function openLinkModal(from, to, autoDistM, waypoints) {
   document.getElementById('lm-type').value       = 'fiber';
   document.getElementById('lm-dist').value       = autoDistM || '';
   document.getElementById('lm-notes').value      = '';
+  const lmCores = document.getElementById('lm-cores');
+  if (lmCores) lmCores.value = '';
   // Show waypoint count
   const wpInfo = document.getElementById('lm-waypoints');
   if (wpInfo) wpInfo.textContent = linkWaypoints.length > 0
@@ -1907,7 +1909,8 @@ async function saveLink() {
       distance_m:    parseInt(document.getElementById('lm-dist').value) || null,
       notes:         document.getElementById('lm-notes').value,
       status:        'active',
-      waypoints:     linkWaypoints.length ? linkWaypoints : null
+      waypoints:     linkWaypoints.length ? linkWaypoints : null,
+      core_count:    parseInt((document.getElementById('lm-cores') || {}).value, 10) || null
     };
     const res = await apiWithRetry('/infrastructure-links', { method:'POST', body:JSON.stringify(payload) });
     if (res?.success) {

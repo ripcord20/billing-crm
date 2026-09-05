@@ -504,6 +504,15 @@ const startServer = async () => {
       logger.warn('Failed to expand infrastructure_points.type ENUM: ' + (e.message || e));
     }
 
+    try {
+      if (db.InfrastructureCableCore) await db.InfrastructureCableCore.sync();
+      if (db.InfrastructureCoreConnection) await db.InfrastructureCoreConnection.sync();
+      if (db.InfrastructureSubscriberCore) await db.InfrastructureSubscriberCore.sync();
+      logger.info('Ensured: optical core mapping tables');
+    } catch (e) {
+      logger.warn('Failed to sync optical core mapping tables: ' + (e.message || e));
+    }
+
     // Idempotent ALTER untuk kolom tracking reminder WA — aman dipanggil
     // setiap server start. MySQL: cek dulu lewat information_schema agar
     // tidak throw "duplicate column" di restart kedua.
