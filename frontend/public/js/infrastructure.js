@@ -1625,8 +1625,10 @@ function createMarker(pt) {
 
   // ── Popup builder ──
   function buildInfraPopup() {
-    // Auto usage: dari jumlah link aktual (lebih akurat dari used_ports manual)
-    const autoUsed = (allInfraPoints[pt.id]?._connCount) ?? (pt.used_ports || 0);
+    const occ = portOccupancy(pt);
+    const status = occ.label;
+    const stColor = occ.full ? '#dc2626' : (status==='active'?'#22c55e':status==='maintenance'?'#f59e0b':'#dc2626');
+    const autoUsed = occ.used;
     const portBar = pt.capacity ? (() => {
       const pct = Math.min(100, Math.round(autoUsed / pt.capacity * 100));
       const bc  = pct > 80 ? '#ef4444' : pct > 60 ? '#f59e0b' : '#22c55e';
@@ -1662,11 +1664,7 @@ function createMarker(pt) {
           <div style="flex:1;min-width:0">
             <div style="font-size:14px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${pt.name}</div>
             <div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:1px">${stDot}${status.charAt(0).toUpperCase()+status.slice(1)} · ${lbl}</div>
-            ${(() => {
-              const live = portOccupancy(pt);
-              const bg = live.full ? '#dc2626' : '#22c55e';
-              return `<span style="display:inline-block;margin-top:6px;background:${bg};color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;text-transform:lowercase">${live.label}</span>`;
-            })()}
+            <span style="display:inline-block;margin-top:6px;background:${occ.full ? '#dc2626' : '#22c55e'};color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;text-transform:lowercase">${occ.label}</span>
           </div>
         </div>
       </div>
