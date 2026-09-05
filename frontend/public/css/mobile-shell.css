@@ -247,6 +247,9 @@ body{padding-bottom:0 !important;}
   padding-top:max(52px, calc(env(safe-area-inset-top, 0px) + 18px)) !important;
   padding-bottom:14px !important;
 }
+.mdr-head{
+  padding-top:max(52px, calc(env(safe-area-inset-top, 0px) + 18px)) !important;
+}
 .bottomnav{
   background:#fff !important;
   border-top:1px solid #eef1f6 !important;
