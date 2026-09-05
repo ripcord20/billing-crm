@@ -55,10 +55,44 @@ class PPPoEController {
     try {
       // No-cache: after create/update/delete, client must see the fresh list
       res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-      const mt = await getMt(req);
-      const secrets = await mt.getPPPoESecrets();
-      const data = secrets || [];
-      res.json({ success: true, data, total: data.length });
+      let data = [];
+      let warning = null;
+      try {
+        const mt = await getMt(req);
+        data = (await mt.getPPPoESecrets()) || [];
+      } catch (err) {
+        warning = err.message;
+        if (!/ECONNRESET|timeout|ECONNREFUSED/i.test(err.message || '')) throw err;
+      }
+      const names = new Set(data.map(s => String(s.name || '').toLowerCase()));
+      try {
+        const { getTenantId } = require('../utils/tenantScope');
+        const RadiusProv = require('../services/RadiusProvisionService');
+        const RadiusSQL = require('../services/RadiusSqlService');
+        const server = await RadiusProv.resolveServer(null, getTenantId(req));
+        if (server) {
+          const rows = await RadiusSQL.listUsers(server, '', 800);
+          for (const r of rows || []) {
+            const un = String(r.username || '').trim();
+            if (!un || names.has(un.toLowerCase())) continue;
+            data.push({
+              id: 'radius:' + un,
+              name: un,
+              hasPassword: r.has_password === 'yes',
+              service: 'pppoe',
+              profile: r.groupname || 'RADIUS',
+              localAddress: '',
+              remoteAddress: '',
+              disabled: String(r.auth_type || '').toLowerCase() === 'reject',
+              comment: 'Hanya di RADIUS Fiberix (tidak ada secret di router ini)',
+              backend: 'radius'
+            });
+          }
+        }
+      } catch (e) {
+        logger.warn('PPPoE secrets merge RADIUS: ' + e.message);
+      }
+      res.json({ success: true, data, total: data.length, warning });
     } catch (err) {
       logger.error(`PPPoE secrets error: ${err.message}`);
       // Return empty array instead of 500 on connection issues
@@ -165,9 +199,29 @@ class PPPoEController {
   // DELETE /api/mikrotik/pppoe/secrets/:id
   async deleteSecret(req, res) {
     try {
-      const mt = await getMt(req);
-      await mt.deletePPPoESecret(req.params.id);
-      res.json({ success: true, message: 'User PPPoE berhasil dihapus' });
+      const { getTenantId } = require('../utils/tenantScope');
+      const PppoeAccount = require('../services/PppoeAccountService');
+      const rawId = decodeURIComponent(String(req.params.id || ''));
+      let username = String(req.query.username || req.body?.name || '').trim();
+      if (!username && rawId.startsWith('radius:')) username = rawId.slice(7);
+      if (!username && rawId && !rawId.startsWith('radius:')) {
+        try {
+          const mt = await getMt(req);
+          const secrets = await mt.getPPPoESecrets();
+          const found = (secrets || []).find(s => String(s.id) === rawId);
+          if (found) username = found.name;
+        } catch (_) {}
+      }
+      const result = await PppoeAccount.removeAccount({
+        username,
+        secretId: rawId,
+        deviceId: resolveDeviceId(req),
+        tenant_id: getTenantId(req)
+      });
+      if (!result.success) {
+        return res.status(400).json({ success: false, message: result.message });
+      }
+      res.json({ success: true, message: result.message, removed: result.removed });
     } catch (err) {
       logger.error(`PPPoE deleteSecret error (id=${req.params.id}): ${err.message}`);
       res.status(400).json({ success:false, message:err.message });

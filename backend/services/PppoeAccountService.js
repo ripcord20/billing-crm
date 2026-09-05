@@ -171,6 +171,65 @@ async function provisionStandalone(opts = {}) {
   return provisionMikrotik({ mikrotik_id: opts.deviceId, name: username, customer_id: '' }, opts, username, password);
 }
 
+/**
+ * Hapus akun PPPoE di RADIUS (radcheck/radreply) dan/atau secret MikroTik.
+ * Username wajib supaya user yang cuma ada di RADIUS ikut hilang.
+ */
+async function removeAccount(opts = {}) {
+  const username = String(opts.username || '').trim();
+  const secretId = opts.secretId ? String(opts.secretId) : '';
+  const removed = { radius: false, mikrotik: false };
+  const errors = [];
+
+  if (username) {
+    try {
+      const RadiusProv = require('./RadiusProvisionService');
+      const server = await RadiusProv.resolveServer(null, opts.tenant_id);
+      if (server) {
+        await require('./RadiusSqlService').deleteUser(server, username);
+        removed.radius = true;
+        try {
+          const { RadiusAccount } = require('../models');
+          await RadiusAccount.destroy({ where: { username } });
+        } catch (_) {}
+      }
+    } catch (e) {
+      errors.push('RADIUS: ' + (e.message || e));
+    }
+  }
+
+  const isRadiusOnly = secretId.startsWith('radius:');
+  if (secretId && !isRadiusOnly && opts.deviceId) {
+    try {
+      const { getMikrotikInstanceByDevice } = require('./MikrotikService');
+      const mt = await getMikrotikInstanceByDevice(opts.deviceId);
+      await mt.deletePPPoESecret(secretId);
+      removed.mikrotik = true;
+    } catch (e) {
+      errors.push('MikroTik: ' + describeMikrotikPppError(e));
+    }
+  }
+
+  if (!removed.radius && !removed.mikrotik) {
+    return {
+      success: false,
+      message: errors[0] || 'User PPPoE tidak ditemukan di RADIUS maupun router',
+      removed
+    };
+  }
+  const bits = [];
+  if (removed.radius) bits.push('RADIUS');
+  if (removed.mikrotik) bits.push('router');
+  return {
+    success: true,
+    username,
+    removed,
+    warnings: errors,
+    message: 'User "' + username + '" dihapus dari ' + bits.join(' + ')
+      + (errors.length ? ' (peringatan: ' + errors.join('; ') + ')' : '')
+  };
+}
+
 module.exports = {
   extractPppoeFields,
   stripPppoeFields,
@@ -178,5 +237,6 @@ module.exports = {
   describeMikrotikPppError,
   preferRadius,
   provisionForCustomer,
-  provisionStandalone
+  provisionStandalone,
+  removeAccount
 };
