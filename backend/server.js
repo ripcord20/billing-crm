@@ -514,6 +514,28 @@ const startServer = async () => {
       logger.warn('Failed to sync optical core mapping tables: ' + (e.message || e));
     }
 
+    try {
+      const linkCols = [
+        ['waypoints', 'JSON NULL'],
+        ['metadata', 'JSON NULL'],
+        ['distance_m', 'INT NULL']
+      ];
+      for (const [col, ddl] of linkCols) {
+        const [rows] = await db.sequelize.query(
+          `SELECT COUNT(*) AS c FROM information_schema.columns
+            WHERE table_schema = DATABASE() AND table_name = 'infrastructure_links' AND column_name = :col`,
+          { replacements: { col } }
+        );
+        const exists = rows && rows[0] && parseInt(rows[0].c, 10) > 0;
+        if (!exists) {
+          await db.sequelize.query(`ALTER TABLE infrastructure_links ADD COLUMN ${col} ${ddl}`);
+          logger.info(`Migrated: infrastructure_links.${col} column added`);
+        }
+      }
+    } catch (e) {
+      logger.warn('Failed to ensure infrastructure_links path columns: ' + (e.message || e));
+    }
+
     // Idempotent ALTER untuk kolom tracking reminder WA — aman dipanggil
     // setiap server start. MySQL: cek dulu lewat information_schema agar
     // tidak throw "duplicate column" di restart kedua.

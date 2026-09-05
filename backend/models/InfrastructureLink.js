@@ -15,7 +15,7 @@ module.exports = (sequelize) => {
       defaultValue: 'active'
     },
     distance_m: { type: DataTypes.INTEGER, allowNull: true },
-    waypoints:  { type: DataTypes.JSON, allowNull: true, comment: 'Array of [lat,lng] intermediate points' },
+    waypoints:  { type: DataTypes.JSON, allowNull: true, comment: 'Array of [lat,lng] intermediate bend points along the cable' },
     notes:      { type: DataTypes.TEXT, allowNull: true },
     metadata:   { type: DataTypes.JSON, allowNull: true }
   }, {

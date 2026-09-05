@@ -1,5 +1,6 @@
 const { InfrastructureLink, InfrastructurePoint, Customer } = require('../models');
 const { Op } = require('sequelize');
+const { resolvePath, mergeLinkMetadata } = require('../utils/infraLinkPath');
 
 const pointAttrs = ['id','name','type','latitude','longitude','status','parent_id','metadata'];
 
@@ -57,14 +58,29 @@ class InfrastructureLinkController {
       if (!from_point_id || !to_point_id)
         return res.status(400).json({ success: false, message: 'from_point_id and to_point_id required' });
 
+      const [ptFrom, ptTo] = await Promise.all([
+        InfrastructurePoint.findByPk(from_point_id),
+        InfrastructurePoint.findByPk(to_point_id),
+      ]);
+      const resolved = resolvePath(
+        ptFrom ? [+ptFrom.latitude, +ptFrom.longitude] : null,
+        ptTo ? [+ptTo.latitude, +ptTo.longitude] : null,
+        waypoints,
+        req.body.metadata,
+        req.body.coordinates
+      );
+      const linkMeta = mergeLinkMetadata(null, req.body.metadata, resolved.metadata);
+
       // Auto-generate name if not given
       const autoName = name || `LINK-${from_point_id}-${to_point_id}`;
       const link = await InfrastructureLink.create({
         name: autoName, from_point_id, to_point_id,
         link_type:  link_type  || 'fiber',
         status:     status     || 'active',
-        notes,      distance_m,
-        waypoints:  waypoints  || null
+        notes,
+        distance_m: distance_m != null && distance_m !== '' ? distance_m : (resolved.distance_m || null),
+        waypoints:  resolved.waypoints,
+        metadata:   linkMeta
       });
 
       // ── Auto-set parent_id berdasarkan hierarki tipe titik ──
@@ -77,10 +93,7 @@ class InfrastructureLinkController {
       //   Customer ↔ ODP → ODP jadi parent customer point
       let autoParentInfo = null;
       try {
-        const [ptFrom, ptTo] = await Promise.all([
-          InfrastructurePoint.findByPk(from_point_id),
-          InfrastructurePoint.findByPk(to_point_id),
-        ]);
+        // Titik sudah di-load di atas untuk normalisasi path; reuse.
         const resolved = resolveParentChild(ptFrom, ptTo);
         if (resolved) {
           const { parent, child } = resolved;
@@ -161,7 +174,28 @@ class InfrastructureLinkController {
     try {
       const link = await InfrastructureLink.findByPk(req.params.id);
       if (!link) return res.status(404).json({ success: false, message: 'Link not found' });
-      await link.update(req.body);
+      const body = Object.assign({}, req.body);
+      delete body.core_count;
+      const pathTouched = body.waypoints !== undefined
+        || body.coordinates !== undefined
+        || (body.metadata && (body.metadata.coordinates || body.metadata.geojson || body.metadata.path));
+      if (pathTouched) {
+        const [ptFrom, ptTo] = await Promise.all([
+          InfrastructurePoint.findByPk(link.from_point_id),
+          InfrastructurePoint.findByPk(link.to_point_id),
+        ]);
+        const resolved = resolvePath(
+          ptFrom ? [+ptFrom.latitude, +ptFrom.longitude] : null,
+          ptTo ? [+ptTo.latitude, +ptTo.longitude] : null,
+          body.waypoints !== undefined ? body.waypoints : link.waypoints,
+          body.metadata !== undefined ? body.metadata : link.metadata,
+          body.coordinates
+        );
+        body.waypoints = resolved.waypoints;
+        body.metadata = mergeLinkMetadata(link.metadata, body.metadata, resolved.metadata);
+        if (body.distance_m == null || body.distance_m === '') body.distance_m = resolved.distance_m;
+      }
+      await link.update(body);
       res.json({ success: true, data: link });
     } catch (e) { res.status(400).json({ success: false, message: e.message }); }
   }

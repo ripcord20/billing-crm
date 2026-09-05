@@ -2,7 +2,7 @@
  * infrastructure.js — DIGSnet Map Infrastructure
  * Tile: Streets / Satellite / Dark
  * Add: ODC, ODP, Tower, Customer
- * Manual Draw Link: klik titik A → klik titik B → simpan ke DB
+ * Manual Draw Link: klik node A → titik belok di jalan → klik node B → simpan jalur JSON
  * Animated fiber optic lines (glowing green pulse)
  */
 
@@ -177,6 +177,36 @@ const TILES = {
       pointer-events:none;
     }
     @keyframes ringPulse { from{transform:scale(.9);opacity:.7} to{transform:scale(1.1);opacity:1} }
+
+    #infraMap.path-edit-mode { cursor:crosshair !important; }
+    #pathEditBar {
+      position:absolute; top:62px; left:50%; transform:translateX(-50%);
+      z-index:812; background:rgba(15,118,110,.96); color:#fff;
+      border-radius:10px; padding:9px 14px; font-size:13px; font-weight:600;
+      display:none; align-items:center; gap:8px; flex-wrap:wrap; max-width:92vw;
+      box-shadow:0 4px 20px rgba(15,118,110,.4);
+    }
+    #pathEditBar.active { display:flex; }
+    #pathEditBar.mode-add { background:rgba(37,99,235,.96); }
+    #pathEditBar.mode-delete { background:rgba(180,83,9,.96); }
+    #pathEditBar .draw-cancel, #pathEditBar .path-edit-act, #pathEditBar .path-edit-save {
+      background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.35);
+      border-radius:8px; color:#fff; padding:4px 10px; font-size:11px; cursor:pointer; font-weight:700;
+    }
+    #pathEditBar .path-edit-save { background:#f8fafc; color:#0f766e; border-color:#f8fafc; }
+    .path-vertex-wrap { background:transparent !important; border:none !important; }
+    .path-vertex {
+      width:14px; height:14px; border-radius:50%; background:#00e5cc;
+      border:2px solid #fff; box-shadow:0 0 0 1px rgba(15,118,110,.45), 0 2px 8px rgba(0,0,0,.25);
+    }
+    .path-vertex.end { background:#99f6e4; border-color:#0f766e; border-radius:3px; }
+    .path-vertex.sel { background:#f59e0b; transform:scale(1.15); }
+    .path-mid-handle { background:transparent !important; border:none !important; }
+    .path-mid-plus {
+      width:16px; height:16px; border-radius:50%; background:#fff; color:#0f766e;
+      font-size:13px; font-weight:800; line-height:15px; text-align:center;
+      box-shadow:0 1px 6px rgba(0,0,0,.25); border:1px solid #99f6e4;
+    }
     /* Hilangkan grid/border antar tile */
     .leaflet-tile {
       border:none !important;
@@ -399,6 +429,12 @@ function initMap() {
       }
       return;
     }
+    if (window.InfraPolyline && InfraPolyline.isEditing()) {
+      if (InfraPolyline.handleMapClick(e.latlng)) {
+        L.DomEvent.stop(e);
+        return;
+      }
+    }
     if (drawMode && drawFrom) {
       // Add waypoint on empty map click (not on a marker)
       const ll = [e.latlng.lat, e.latlng.lng];
@@ -409,7 +445,24 @@ function initMap() {
         weight:2, interactive:false, className:'draw-waypoint-dot'
       }).addTo(map);
       drawSegLines.push(dot);
-      showToast('Titik waypoint ditambahkan — klik marker untuk selesai', 'success');
+      showToast('Titik belok ditambahkan — klik peta lagi atau klik node tujuan', 'success');
+    }
+  });
+
+  map.on('contextmenu', function(e) {
+    if (drawMode && drawFrom && drawWaypoints.length) {
+      L.DomEvent.preventDefault(e);
+      undoLastDrawWaypoint();
+    }
+  });
+
+  document.addEventListener('keydown', function(e) {
+    const tag = (e.target && e.target.tagName) || '';
+    if (/INPUT|TEXTAREA|SELECT/.test(tag) || e.target.isContentEditable) return;
+    if (drawMode && e.key === 'Escape') cancelDrawMode();
+    if (drawMode && (e.key === 'Backspace' || e.key === 'Delete')) {
+      e.preventDefault();
+      undoLastDrawWaypoint();
     }
   });
 
@@ -542,6 +595,8 @@ async function refreshCustomersInViewport() {
 async function redrawLinksOnly() {
   try {
     // Clear hanya polylines, marker tetap utuh
+    if (window.InfraPolyline) InfraPolyline.exitEdit(true);
+    window._infraLinkById = {};
     polylines.forEach(p => { try { map.removeLayer(p); } catch(e){} });
     polylines = [];
     // Fetch ulang links (dgn retry untuk network glitch)
@@ -862,10 +917,20 @@ function drawDBLinksFromData(res, filter) {
     const color    = colorMap[link.link_type] || '#22c55e';
     const css      = link.status === 'active' ? (cssMap[link.link_type] || 'fiber-active') : 'fiber-inactive';
 
-    // Parse waypoints from DB
+    // Parse jalur: waypoints intermediate ATAU metadata.coordinates LineString
     let wpts = [];
     if (link.waypoints) {
       try { wpts = typeof link.waypoints === 'string' ? JSON.parse(link.waypoints) : link.waypoints; } catch(e){}
+    }
+    if (window.InfraPolyline && typeof InfraPolyline.resolvePath === 'function') {
+      const resolved = InfraPolyline.resolvePath(
+        [+from.latitude, +from.longitude],
+        [+to.latitude, +to.longitude],
+        wpts,
+        link.metadata,
+        link.coordinates
+      );
+      wpts = resolved.waypoints || [];
     }
     renderFiberLine(
       [+from.latitude, +from.longitude], [+to.latitude, +to.longitude],
@@ -953,6 +1018,12 @@ function renderFiberLine(from, to, color, fromName, toName, linkId, cssClass, li
       L.DomEvent.stopPropagation(e);
       showLinkPopup(linkId, fromName, toName, linkType, status, e.latlng, color, fromPtId, toPtId);
     });
+    window._infraLinkById = window._infraLinkById || {};
+    window._infraLinkById[linkId] = {
+      path: fullPath,
+      from, to, fromName, toName, linkType, status, color, fromPtId, toPtId,
+      layers: [glow, mid, line, hitArea]
+    };
   }
   polylines.push(line);
 
@@ -1214,6 +1285,22 @@ function showLinkPopup(linkId, fromName, toName, linkType, status, latlng, color
             ${custTd.maxDown ? `<div style="font-size:10px;color:#8899b0;margin-top:4px">Limit: ${fmtR(custTd.maxDown)} / ${fmtR(custTd.maxUp)}</div>` : ''}
           </div>`;
         })()}
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+          <button type="button" onclick="startLinkPathEdit(${linkId})"
+            style="width:100%;padding:8px;background:#ecfdf5;color:#0f766e;border:1px solid #99f6e4;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">
+            Edit Jalur Kabel
+          </button>
+          <div style="display:flex;gap:6px">
+            <button type="button" onclick="addLinkBend(${linkId})"
+              style="flex:1;padding:7px 6px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">
+              Tambah Titik Belok
+            </button>
+            <button type="button" onclick="removeLinkBend(${linkId})"
+              style="flex:1;padding:7px 6px;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">
+              Hapus Titik Belok
+            </button>
+          </div>
+        </div>
         <button onclick="deleteLink(${linkId})"
           style="width:100%;padding:8px;background:#fef2f2;color:#dc2626;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:5px;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3,6 5,6 21,6"/><path d="M19,6l-1,14a2,2,0,0,1-2,2H8a2,2,0,0,1-2-2L5,6"/><path d="M10,11v6"/><path d="M14,11v6"/></svg>
@@ -1898,12 +1985,13 @@ function addCustomerMarker(c) {
 // ─── Draw link mode ───────────────────────────────────
 function toggleDrawMode() {
   if (drawMode) { cancelDrawMode(); return; }
+  if (window.InfraPolyline) InfraPolyline.exitEdit(true);
   if (window.CoreMap && typeof CoreMap.close === 'function') CoreMap.close();
   drawMode = true;
   drawFrom = null;
   document.getElementById('infraMap').classList.add('draw-mode');
   document.getElementById('drawModeBar').classList.add('active');
-  document.getElementById('drawModeText').textContent = 'Klik titik PERTAMA (Pelanggan/ODP/ODC)';
+  document.getElementById('drawModeText').textContent = 'Klik node AWAL, lalu klik kiri di sepanjang jalan untuk titik belok, klik node tujuan untuk selesai';
   document.getElementById('drawBtn').classList.add('active');
   map.closePopup();
 }
@@ -1922,7 +2010,7 @@ function toggleFollowRoadDraw() {
   setFollowRoad(turningOn);
   const bar = document.getElementById('drawModeText');
   if (bar && turningOn && !drawFrom) {
-    bar.textContent = 'Mode ikuti jalan: klik titik PERTAMA (Pelanggan/ODP/ODC)';
+    bar.textContent = 'Kabel Jalan: klik node AWAL, klik kiri mengikuti jalan/tiang, klik node tujuan untuk selesai';
   }
 }
 
@@ -1933,7 +2021,20 @@ function cancelDrawMode() {
   drawSegLines.forEach(l => map.removeLayer(l)); drawSegLines = [];
   document.getElementById('infraMap').classList.remove('draw-mode');
   document.getElementById('drawModeBar').classList.remove('active');
-  document.getElementById('drawBtn').classList.remove('active');
+  const drawBtn = document.getElementById('drawBtn');
+  if (drawBtn) drawBtn.classList.remove('active');
+  const fr = document.getElementById('followRoadBtn');
+  if (fr) fr.classList.remove('active');
+  const cb = document.getElementById('drawFollowRoad');
+  if (cb) cb.checked = false;
+}
+
+function undoLastDrawWaypoint() {
+  if (!drawMode || !drawFrom || !drawWaypoints.length) return;
+  drawWaypoints.pop();
+  const last = drawSegLines.pop();
+  if (last) map.removeLayer(last);
+  if (typeof showToast === 'function') showToast('Titik belok terakhir dihapus', 'info', 1400);
 }
 
 function handleDrawClick(pt) {
@@ -1941,7 +2042,7 @@ function handleDrawClick(pt) {
     // First point
     drawFrom = pt; drawWaypoints = [];
     document.getElementById('drawModeText').innerHTML =
-      `<strong>${pt.name}</strong> dipilih &middot; klik peta untuk belokkan garis, klik marker untuk selesai`;
+      `<strong>${pt.name}</strong> dipilih &middot; klik kiri di jalan/tiang untuk titik belok, klik node tujuan untuk selesai (kanan/Backspace = batal titik)`;
     showSelectRing(pt.lat, pt.lng);
   } else {
     // Second marker — finish line
@@ -1997,14 +2098,20 @@ async function saveLink() {
   const btn = document.getElementById('saveLinkBtn');
   btn.textContent = 'Menyimpan...'; btn.disabled = true;
   try {
+    const fullPath = [[linkFrom.lat, linkFrom.lng], ...linkWaypoints, [linkTo.lat, linkTo.lng]];
+    const pathMeta = (window.InfraPolyline && typeof InfraPolyline.payloadFromPath === 'function')
+      ? InfraPolyline.payloadFromPath(fullPath)
+      : { waypoints: linkWaypoints.length ? linkWaypoints : null, metadata: { coordinates: fullPath } };
     const payload = {
       from_point_id: linkFrom.id,
       to_point_id:   linkTo.id,
       link_type:     document.getElementById('lm-type').value,
-      distance_m:    parseInt(document.getElementById('lm-dist').value) || null,
+      distance_m:    parseInt(document.getElementById('lm-dist').value) || pathMeta.distance_m || null,
       notes:         document.getElementById('lm-notes').value,
       status:        'active',
-      waypoints:     linkWaypoints.length ? linkWaypoints : null,
+      waypoints:     pathMeta.waypoints,
+      metadata:      pathMeta.metadata,
+      coordinates:   fullPath,
       core_count:    parseInt((document.getElementById('lm-cores') || {}).value, 10) || null
     };
     const res = await apiWithRetry('/infrastructure-links', { method:'POST', body:JSON.stringify(payload) });
@@ -2582,7 +2689,48 @@ async function removeMarkerFromMap(custId) {
 }
 
 // ─── Clear all ────────────────────────────────────────
+function startLinkPathEdit(linkId, mode) {
+  const rec = (window._infraLinkById || {})[linkId];
+  if (!rec || !window.InfraPolyline) {
+    if (typeof showToast === 'function') showToast('Jalur kabel tidak ditemukan', 'warning');
+    return;
+  }
+  if (drawMode) cancelDrawMode();
+  InfraPolyline.enterEdit(map, {
+    linkId,
+    path: rec.path,
+    from: rec.from,
+    to: rec.to,
+    mode: mode || 'edit',
+    onSave: persistLinkPath
+  });
+}
+
+function addLinkBend(linkId) {
+  startLinkPathEdit(linkId, 'add');
+}
+
+function removeLinkBend(linkId) {
+  startLinkPathEdit(linkId, 'delete');
+}
+
+async function persistLinkPath(linkId, payload) {
+  const res = await apiWithRetry('/infrastructure-links/' + linkId, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+  if (res && res.success) {
+    if (typeof showToast === 'function') showToast('Jalur kabel disimpan', 'success');
+    loadInfraData(currentFilter, { preserveView: true });
+    return true;
+  }
+  if (typeof showToast === 'function') showToast('Gagal simpan jalur: ' + ((res && res.message) || 'Error'), 'error');
+  return false;
+}
+
 function clearAll() {
+  if (window.InfraPolyline) InfraPolyline.exitEdit(true);
+  window._infraLinkById = {};
   clearFlowPackets();
   // Bersihkan semua marker pelanggan dari cluster sekaligus (jauh lebih cepat
   // daripada removeLayer satu per satu untuk ribuan marker).
