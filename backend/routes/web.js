@@ -335,7 +335,7 @@ function renderMobile(page, title, active) {
     });
   };
 }
-router.get('/mobile',            authenticate, renderMobile('home',       'Beranda',          'm-home'));
+router.get('/mobile',            authenticate, renderMobile('home',       'Dashboard',        'm-home'));
 router.get('/mobile/customers',  authenticate, renderMobile('customers',  'Pelanggan',        'm-customers'));
 router.get('/mobile/payments',   authenticate, renderMobile('payments',   'Pembayaran',       'm-payments'));
 router.get('/mobile/payment-new',authenticate, renderMobile('payment-new','Catat Pembayaran', 'm-payments'));

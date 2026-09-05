@@ -8,6 +8,10 @@
   var _uemail = (typeof user !== 'undefined' && user && user.email) ? user.email : '';
   var _uavatar = (typeof user !== 'undefined' && user && user.avatar) ? user.avatar : '';
   function _on(id){ return _act === id ? ' active' : ''; }
+  var _ttlMap = { home:'Dashboard', customers:'Pelanggan', payments:'Pembayaran', invoice:'Invoice', keuangan:'Keuangan', finance:'Laporan', monitoring:'Monitoring', ticket:'Tiket', packages:'Paket', isolir:'Isolir', hotspot:'Hotspot', profile:'Profil', wa:'WhatsApp', noc:'NOC', reminder:'Reminder', assets:'Aset', infrastructure:'Infrastruktur', queue:'Antrian', voucher:'Voucher', host:'Host', content:'Konten', 'hotspot-binding':'Binding', 'm-home':'Dashboard', 'm-customers':'Pelanggan', 'm-payments':'Pembayaran', 'm-invoice':'Invoice', 'm-keuangan':'Keuangan', 'm-finance':'Laporan', 'm-monitoring':'Monitoring', 'm-ticket':'Tiket', 'm-packages':'Paket', 'm-isolir':'Isolir', 'm-hotspot':'Hotspot', 'm-profile':'Profil', 'm-wa':'WhatsApp', 'm-noc':'NOC', 'm-reminder':'Reminder', 'm-assets':'Aset', 'm-infrastructure':'Infrastruktur', 'm-queue':'Antrian', 'm-voucher':'Voucher', 'm-host':'Host', 'm-content':'Konten', 'm-hotspot-binding':'Binding' };
+  var _actKey = String(_act || '').replace(/^m-/, '');
+  var _ttlRaw = (typeof title !== 'undefined' && title) ? String(title) : '';
+  var _ttl = _ttlMap[_act] || _ttlMap[_actKey] || (_ttlRaw === 'Beranda' ? 'Dashboard' : (_ttlRaw || 'Dashboard'));
 %>
 <style>
   /* Hamburger lama (floating) dimatikan — diganti avatar di top nav sticky */
@@ -18,38 +22,29 @@
      membuat nav tetap di tempat saat konten digulung. */
   .mtop{
     position:sticky; top:0; z-index:240;
-    display:flex; align-items:center; gap:10px;
-    padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
-    background:rgba(255,255,255,.92);
-    backdrop-filter:saturate(180%) blur(12px);
-    -webkit-backdrop-filter:saturate(180%) blur(12px);
+    display:flex; align-items:center; gap:8px;
+    padding:max(88px, calc(env(safe-area-inset-top, 0px) + 44px)) 16px 14px;
+    background:#fff;
     border-bottom:1px solid #eef1f6;
   }
-  /* Bayangan halus muncul saat konten mulai discroll (di-toggle via JS) */
-  .mtop.scrolled{box-shadow:0 6px 18px -12px rgba(23,43,84,.28);}
+  .mtop.scrolled{box-shadow:0 8px 24px -16px rgba(15,23,42,.18);}
   .mtop-hamb{
     width:40px;height:40px;border-radius:12px;flex-shrink:0;cursor:pointer;
-    background:#eef1f6;border:none;display:flex;align-items:center;justify-content:center;color:#25324d;
+    background:transparent;border:none;display:flex;align-items:center;justify-content:center;color:#1f2937;
   }
-  .mtop-hamb svg{width:21px;height:21px;}
-  .mtop-av{
-    width:40px;height:40px;border-radius:50%;flex-shrink:0;cursor:pointer;text-decoration:none;
-    background:linear-gradient(135deg,#2f6fed,#1e4fd6);color:#fff;border:none;
-    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;
-    overflow:hidden;padding:0;font-family:inherit;
+  .mtop-hamb:active{background:#f3f4f6;}
+  .mtop-hamb svg{width:22px;height:22px;}
+  .mtop-title{
+    flex:1;min-width:0;font-size:20px;font-weight:800;letter-spacing:-.4px;color:#111827;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;
   }
-  .mtop-av img{width:100%;height:100%;object-fit:cover;}
-  .mtop-search{
-    flex:1;min-width:0;height:40px;border-radius:100px;border:none;
-    background:#eef1f6;display:flex;align-items:center;gap:8px;padding:0 14px;
-    cursor:text;color:#94a0b8;font-size:13px;font-family:inherit;
+  .mtop-av{display:none !important;}
+  .mtop-icon{
+    width:40px;height:40px;border-radius:12px;flex-shrink:0;cursor:pointer;position:relative;
+    background:transparent;border:none;display:flex;align-items:center;justify-content:center;color:#4b5563;
   }
-  .mtop-search svg{width:17px;height:17px;flex-shrink:0;color:#94a0b8;}
-  .mtop-search span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .mtop-bell{
-    width:40px;height:40px;border-radius:50%;flex-shrink:0;cursor:pointer;position:relative;
-    background:#eef1f6;border:none;display:flex;align-items:center;justify-content:center;color:#3a4a68;
-  }
+  .mtop-icon:active{background:#f3f4f6;}
+  .mtop-icon svg{width:22px;height:22px;}
   .mtop-bell svg{width:20px;height:20px;}
   .mtop-bell .dot{
     position:absolute;top:7px;right:8px;min-width:15px;height:15px;padding:0 4px;
@@ -66,10 +61,12 @@
     left:50%;transform:translateX(-50%) translateY(-8px);
     width:calc(100% - 24px);max-width:calc(var(--shell-max,480px) - 24px);
     background:#fff;border-radius:16px;box-shadow:0 18px 44px -12px rgba(23,43,84,.34);
-    opacity:0;visibility:hidden;transition:opacity .2s, transform .2s, visibility .2s;
+    opacity:0;visibility:hidden;pointer-events:none;
+    transition:opacity .2s, transform .2s, visibility .2s;
     display:flex;flex-direction:column;max-height:70vh;overflow:hidden;
   }
-  .mnotif.open{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0);}
+  .mnotif.open{opacity:1;visibility:visible;pointer-events:auto;transform:translateX(-50%) translateY(0);}
+  .mnotif:not(.open),.mnotif-overlay:not(.open){display:none !important;}
   .mnotif-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid #eef1f6;}
   .mnotif-head span{font-size:14.5px;font-weight:800;color:#1a2b4a;}
   .mnotif-readall{border:none;background:none;color:#2f6fed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;padding:2px 4px;}
@@ -101,6 +98,7 @@
     transform:translateX(-50%) translateY(8px);
   }
   .msearch.open{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0);}
+  .msearch:not(.open){display:none !important;}
   .msearch-bar{
     display:flex;align-items:center;gap:10px;
     padding:calc(10px + env(safe-area-inset-top)) 14px 12px;border-bottom:1px solid #eef1f6;
@@ -156,7 +154,7 @@
     transform:translateX(0);
     visibility:visible;
   }
-  .mdr-head{padding:calc(18px + env(safe-area-inset-top)) 18px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #f0f3f9;flex-shrink:0;}
+  .mdr-head{padding:max(88px, calc(env(safe-area-inset-top, 0px) + 44px)) 18px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #f0f3f9;flex-shrink:0;}
   .mdr-logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#36C9A8,#279694);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;flex-shrink:0;}
   .mdr-brand-t{font-size:15.5px;font-weight:800;color:#1F3849;letter-spacing:-.3px;line-height:1.2;}
   .mdr-brand-s{font-size:11px;color:#7c93a0;margin-top:2px;}
@@ -227,13 +225,16 @@
 <!-- TOP NAV STICKY — akan dipindah ke dalam .wrap via JS agar sticky ke scroll container -->
 <div class="mtop" id="mTop">
   <button class="mtop-hamb" onclick="mdrOpen()" aria-label="Menu">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="16" x2="20" y2="16"/></svg>
   </button>
-  <button class="mtop-search" onclick="msearchOpen()" aria-label="Cari">
+  <div class="mtop-title"><%= _ttl %></div>
+  <button class="mtop-icon mtop-search" onclick="msearchOpen()" aria-label="Cari">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <span>Cari pelanggan, invoice, paket…</span>
   </button>
-  <button class="mtop-bell" id="mTopBell" onclick="mnotifToggle(event)" aria-label="Notifikasi">
+  <button class="mtop-icon mtop-theme" type="button" onclick="mThemeToggle()" aria-label="Ganti tema">
+    <svg class="mtop-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  </button>
+  <button class="mtop-icon mtop-bell" id="mTopBell" onclick="mnotifToggle(event)" aria-label="Notifikasi">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
     <span class="dot" id="mTopBellDot">0</span>
   </button>
@@ -652,6 +653,19 @@
   })();
 
   function _mdrScroller(){ return document.querySelector('.wrap') || document.body; }
+  function mThemeToggle(){
+    var el=document.documentElement;
+    var next=el.getAttribute('data-theme')==='dark'?'light':'dark';
+    el.setAttribute('data-theme', next);
+    try{ localStorage.setItem('fx-theme', next); }catch(_){}
+  }
+  (function(){
+    try{
+      var saved=localStorage.getItem('fx-theme');
+      if(saved==='dark'||saved==='light') document.documentElement.setAttribute('data-theme', saved);
+    }catch(_){}
+  })();
+
   function mdrOpen(){
     document.getElementById('mdrPanel').classList.add('open');
     document.getElementById('mdrOverlay').classList.add('open');
