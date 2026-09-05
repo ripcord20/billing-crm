@@ -1,0 +1,14 @@
+# Salin ke /etc/freeradius/3.0/policy.d/fiberix-proxy
+# Panggil SETELAH modul sql di authorize (default + inner-tunnel).
+#
+# sql notfound  → proxy ke BillingRadius
+# sql reject    → tetap Reject (password salah / isolir), jangan di-proxy
+# sql ok        → Accept lokal (user Fiberix)
+
+fiberix_proxy_notfound {
+	if (notfound) {
+		update control {
+			Proxy-To-Realm := BILLINGRADIUS
+		}
+	}
+}

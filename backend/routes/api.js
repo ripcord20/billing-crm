@@ -361,6 +361,7 @@ router.post('/customers/:id/provision-pppoe',
 
 // ===== RADIUS / FreeRADIUS SQL =====
 router.get('/radius/status', authenticate, demoGuard, RadiusController.status);
+router.get('/radius/alignment', authenticate, demoGuard, authorize('superadmin','admin','noc'), RadiusController.alignment);
 router.get('/radius/servers', authenticate, demoGuard, authorize('superadmin','admin','noc'), RadiusController.listServers);
 router.post('/radius/servers', authenticate, demoGuard, authorize('superadmin','admin'), logActivity('create','radius_server'), RadiusController.createServer);
 router.put('/radius/servers/:id', authenticate, demoGuard, authorize('superadmin','admin'), logActivity('update','radius_server'), RadiusController.updateServer);
