@@ -10,12 +10,12 @@
 <header class="topbar">
   <div class="topbar-left">
     <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="3" y1="12" x2="21" y2="12"/>
-        <line x1="3" y1="6" x2="21" y2="6"/>
-        <line x1="3" y1="18" x2="21" y2="18"/>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <line x1="4" y1="8" x2="20" y2="8"/>
+        <line x1="4" y1="16" x2="20" y2="16"/>
       </svg>
     </button>
+    <div class="topbar-page-title"><%= typeof title !== 'undefined' && title ? title : 'Dashboard' %></div>
   </div>
 
   <div class="topbar-right">
@@ -74,7 +74,46 @@
 </header>
 
 <style>
-@media(min-width:769px){ .sidebar-toggle { display:none !important; } }
+@media(min-width:769px){
+  .sidebar-toggle { display:none !important; }
+  .topbar-page-title { display:none !important; }
+}
+.topbar-page-title{
+  display:none;
+  font-size:18px;
+  font-weight:800;
+  letter-spacing:-.3px;
+  color:#111827;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+@media(max-width:768px){
+  .topbar{
+    background:#fff;
+    border-bottom:1px solid #eef1f6;
+    box-shadow:none;
+    height:58px;
+    padding:0 12px;
+  }
+  .topbar-page-title{ display:block; flex:1; min-width:0; }
+  .search-box{ display:none; }
+  .sidebar-toggle{
+    width:40px;height:40px;border-radius:12px;background:transparent;
+  }
+  .bottom-nav{
+    background:#fff;
+    border-top:1px solid #eef1f6;
+    box-shadow:0 -10px 28px -16px rgba(15,23,42,.18);
+  }
+  .bn-item{ color:#9aa3b2; }
+  .bn-item.active, .bn-item.active span{ color:#2563eb; }
+  .bn-item.active::after{ display:none; }
+  .bn-fab{
+    width:52px;height:52px;border-radius:16px;background:#2563eb;
+    box-shadow:0 10px 22px -4px rgba(37,99,235,.5);margin-bottom:10px;
+  }
+}
 
 /* Notification */
 .notif-wrap { position:relative; }
