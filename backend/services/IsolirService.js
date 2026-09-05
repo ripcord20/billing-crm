@@ -628,8 +628,9 @@ async function loadDeviceWithMaster(deviceId, requireActive = false) {
         d.notes         AS notes
      FROM mikrotik_devices md
      INNER JOIN devices d ON d.id = md.device_id
-     WHERE md.id = ? ${requireActive ? "AND d.is_active = 1" : ""}`,
-    { replacements: [deviceId], type: sequelize.QueryTypes.SELECT }
+     WHERE (md.id = ? OR md.device_id = ?) ${requireActive ? "AND d.is_active = 1" : ""}
+     ORDER BY (md.id = ?) DESC`,
+    { replacements: [deviceId, deviceId, deviceId], type: sequelize.QueryTypes.SELECT }
   );
   const r = rows[0];
   if (!r) return null;
