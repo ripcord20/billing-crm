@@ -968,16 +968,14 @@ function initMap(lat, lng, name) {
 
   _leafletMap = L.map('custMap', {zoomControl:true, scrollWheelZoom:true}).setView([lat,lng],17);
 
-  // Layer definitions — sama dengan infrastructure.js (CartoDB + Google)
   _layerStreet = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
     subdomains: 'abcd',
     maxZoom: 20
   });
-  _layerSat = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-    attribution: '&copy; Google',
-    subdomains: '0123',
-    maxZoom: 20
+  _layerSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri',
+    maxZoom: 19
   });
 
   // Default: street
@@ -2070,7 +2068,7 @@ async function epGeocodeFromAddress(){
 function epPinIcon(){ return L.divIcon({className:'',html:'<div style="position:relative;width:28px;height:38px"><svg viewBox="0 0 30 40" width="28" height="38" style="filter:drop-shadow(0 3px 4px rgba(0,0,0,.35))"><path d="M15 0C7 0 1 6 1 14c0 9 14 26 14 26s14-17 14-26C29 6 23 0 15 0z" fill="#1a6ef5"/><circle cx="15" cy="14" r="6" fill="#fff"/></svg></div>',iconSize:[28,38],iconAnchor:[14,38]}); }
 function epAddBaseLayers(map){
   var street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'});
-  var sat=L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',{maxZoom:21,subdomains:'0123',attribution:'&copy; Google'});
+  var sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'});
   var labels=L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:19,pane:'overlayPane'});
   var hybrid=L.layerGroup([sat,labels]); street.addTo(map); var layers={street:street,hybrid:hybrid}; map._activeBase='street';
   var Ctl=L.Control.extend({options:{position:'topright'},onAdd:function(){ var div=L.DomUtil.create('div','map-toggle'); div.innerHTML='<button type="button" data-base="street" class="on">Peta</button><button type="button" data-base="hybrid">Satelit</button>'; L.DomEvent.disableClickPropagation(div); div.querySelectorAll('button').forEach(function(b){ b.addEventListener('click',function(){ var k=b.dataset.base; if(map._activeBase===k) return; Object.values(layers).forEach(function(l){ if(map.hasLayer(l)) map.removeLayer(l); }); layers[k].addTo(map); map._activeBase=k; div.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x.dataset.base===k);}); }); }); return div; }});

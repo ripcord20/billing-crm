@@ -1017,14 +1017,12 @@
         subdomains: 'abcd', maxZoom: 19
       });
 
-      // Google satellite (imagery) untuk satellite — label dipasang terpisah
-      satelliteLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-        attribution: '&copy; Google', maxZoom: 21, subdomains: '0123'
+      satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri', maxZoom: 19
       });
 
-      // Label overlay di atas satellite (Google: jalan + label transparan)
-      labelLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=h&x={x}&y={y}&z={z}', {
-        attribution: '', maxZoom: 21, subdomains: '0123', opacity: 1
+      labelLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
+        attribution: '', maxZoom: 19, opacity: 1
       });
 
       streetLayer.addTo(map);

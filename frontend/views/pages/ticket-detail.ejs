@@ -846,7 +846,7 @@ function initMap(lat,lng,t){
   if(leafMap){leafMap.remove();leafMap=null;}
   leafMap=L.map('map').setView([lat,lng],15);
   const streets=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'});
-  const sat=L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',{maxZoom:21,subdomains:'0123',attribution:'© Google'});
+  const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'});
   streets.addTo(leafMap);window._ml={streets,sat};window._mc='streets';
   const tc=TC[t.type]||'#f44336';
   const pulse={gangguan:'pulse-red',request:'pulse-blue',installation:'pulse-green',maintenance:'pulse-orange'}[t.type]||'pulse-blue';
