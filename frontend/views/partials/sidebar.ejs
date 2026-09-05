@@ -1,6 +1,14 @@
 <script>
 (function(){ try { var t = localStorage.getItem('ui-theme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) {} })();
 </script>
+<style id="android-sidebar-inset">
+  /* Android: status bar menimpa tepi atas sidebar. env() sering 0 di Chrome. */
+  @media (max-width: 1024px) {
+    .sidebar-header {
+      padding-top: max(88px, calc(env(safe-area-inset-top, 0px) + 44px)) !important;
+    }
+  }
+</style>
 <!-- White-label theme override (dari Settings > Tema Warna) -->
 <% if (locals.themePrimary) { %>
 <%

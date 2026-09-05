@@ -244,11 +244,11 @@ body{padding-bottom:0 !important;}
 
 /* ── Chrome profesional: header putih + bottom nav ala referensi ── */
 .mtop{
-  padding-top:max(52px, calc(env(safe-area-inset-top, 0px) + 18px)) !important;
+  padding-top:max(88px, calc(env(safe-area-inset-top, 0px) + 44px)) !important;
   padding-bottom:14px !important;
 }
 .mdr-head{
-  padding-top:max(52px, calc(env(safe-area-inset-top, 0px) + 18px)) !important;
+  padding-top:max(88px, calc(env(safe-area-inset-top, 0px) + 44px)) !important;
 }
 .bottomnav{
   background:#fff !important;
