@@ -68,8 +68,8 @@ function jbLabel(pt) {
 }
 
 const TILES = {
-  osm:       { url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'&copy; OpenStreetMap contributors' },
-  streets:   { url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'&copy; OpenStreetMap contributors' },
+  osm:       { url:'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', attr:'&copy; Google', subdomains:'0123' },
+  streets:   { url:'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', attr:'&copy; Google', subdomains:'0123' },
   satellite: { url:'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr:'&copy; Google', subdomains:'0123' },
   dark:      { url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attr:'&copy; OpenStreetMap contributors &copy; CARTO' } // CartoDB.DarkMatter
 };
@@ -718,6 +718,7 @@ function initMap() {
   const streetCfg = TILES.streets;
   tileLayer = L.tileLayer(streetCfg.url, {
     attribution: streetCfg.attr, maxZoom: 20,
+    subdomains: streetCfg.subdomains || '0123',
     updateWhenIdle: false, keepBuffer: 6,
     detectRetina: false,
     opacity: 1
@@ -728,7 +729,7 @@ function initMap() {
   document.querySelectorAll('.tile-btn').forEach(b => {
     if (b.dataset.tile === 'streets') {
       const lbl = b.querySelector('.btn-label');
-      if (lbl) lbl.textContent = 'OSM';
+      if (lbl) lbl.textContent = 'Google';
     }
   });
 
