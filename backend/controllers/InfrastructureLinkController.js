@@ -1,4 +1,5 @@
-const { InfrastructureLink, InfrastructurePoint, Customer } = require('../models');
+const { InfrastructureLink, InfrastructurePoint, Customer, sequelize } = require('../models');
+const { deleteLinkDependents } = require('../utils/infraLinkCleanup');
 const { Op } = require('sequelize');
 
 const pointAttrs = ['id','name','type','latitude','longitude','status','parent_id','metadata'];
@@ -137,12 +138,21 @@ class InfrastructureLinkController {
 
   // DELETE /api/infrastructure-links/:id
   async destroy(req, res) {
+    const t = await sequelize.transaction();
     try {
-      const link = await InfrastructureLink.findByPk(req.params.id);
-      if (!link) return res.status(404).json({ success: false, message: 'Link not found' });
-      await link.destroy();
+      const link = await InfrastructureLink.findByPk(req.params.id, { transaction: t });
+      if (!link) {
+        await t.rollback();
+        return res.status(404).json({ success: false, message: 'Link not found' });
+      }
+      await deleteLinkDependents(sequelize, link.id, t);
+      await link.destroy({ transaction: t });
+      await t.commit();
       res.json({ success: true, message: 'Link deleted' });
-    } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+    } catch (e) {
+      try { await t.rollback(); } catch (_) {}
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 
   // PUT /api/infrastructure-links/:id

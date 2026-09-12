@@ -188,18 +188,12 @@ class InfrastructureController {
         }
       }
 
-      // Hapus juga semua links yang melibatkan titik ini
+      // Hapus juga semua links yang melibatkan titik ini (termasuk core kabel)
       try {
-        const { InfrastructureLink } = require('../models');
+        const { InfrastructureLink, sequelize } = require('../models');
         const { Op } = require('sequelize');
-        await InfrastructureLink.destroy({
-          where: {
-            [Op.or]: [
-              { from_point_id: point.id },
-              { to_point_id:   point.id },
-            ],
-          },
-        });
+        const { deleteLinksForPoint } = require('../utils/infraLinkCleanup');
+        await deleteLinksForPoint(sequelize, InfrastructureLink, Op, point.id);
       } catch (e) {
         require('../utils/logger').warn(`[InfraController] hapus links gagal: ${e.message}`);
       }
