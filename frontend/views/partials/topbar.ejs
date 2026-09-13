@@ -16,6 +16,7 @@
         <line x1="3" y1="18" x2="21" y2="18"/>
       </svg>
     </button>
+    <div class="topbar-page-title"><%= typeof title !== 'undefined' && title ? title : 'Dashboard' %></div>
   </div>
 
   <div class="topbar-right">
@@ -74,7 +75,32 @@
 </header>
 
 <style>
-@media(min-width:769px){ .sidebar-toggle { display:none !important; } }
+@media(min-width:769px){
+  .sidebar-toggle { display:none !important; }
+  .topbar-page-title { display:none !important; }
+}
+.topbar-page-title{
+  display:none;
+  font-size:17px;
+  font-weight:800;
+  letter-spacing:-.3px;
+  color:var(--text, #111827);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+@media(max-width:768px){
+  .topbar{
+    height:auto;
+    min-height:58px;
+    padding:max(10px, env(safe-area-inset-top, 0px)) 12px 10px;
+    position:sticky;
+    top:0;
+    z-index:900;
+  }
+  .topbar-left{ flex:1; min-width:0; }
+  .topbar-page-title{ display:block; flex:1; min-width:0; }
+}
 
 /* Notification */
 .notif-wrap { position:relative; }
@@ -886,7 +912,8 @@ document.addEventListener('DOMContentLoaded', () => {
    * Cegah horizontal overflow dengan `max-width: 100vw` di .main-content
    * — lebih reliable daripada overflow-x karena tidak create scroll container. */
   html, body, .app-layout { overflow-x: visible !important; }
-  .main-content { max-width: 100vw; overflow-x: hidden; }
+  /* clip avoids creating a scroll container (overflow:hidden breaks sticky topbar) */
+  .main-content { max-width: 100vw; overflow-x: clip; }
 }
 
 .bn-item {
