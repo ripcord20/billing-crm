@@ -1,17 +1,18 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="light" class="page-dashboard">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
   <title><%= title %> - <%= appName %></title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/app.css?v=dashm1">
   <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 </head>
-<body>
+<body class="page-dashboard">
   <div class="app-layout">
     <%- include('../partials/sidebar') %>
     <div class="main-content">
@@ -78,7 +79,7 @@
         <!-- ── Panel "Perlu Perhatian" / Needs Attention ── -->
         <div class="dashboard-grid" style="grid-template-columns:1fr">
           <div class="card" id="alertsCard">
-            <div class="card-header">
+            <div class="card-header alerts-card-header">
               <div class="card-title-group">
                 <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
@@ -87,7 +88,7 @@
                 <h3>Needs Attention</h3>
                 <span id="alertsBadge" class="alerts-badge" style="display:none"></span>
               </div>
-              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap" id="alertsFilters">
+              <div class="alerts-filters" id="alertsFilters">
                 <button class="alert-chip on" data-f="all">All</button>
                 <button class="alert-chip" data-f="device_offline">Device</button>
                 <button class="alert-chip" data-f="ont_offline">ONT</button>
