@@ -1561,6 +1561,8 @@
     try {
       const res = await App.api(`/devices/${id}`, { method: 'DELETE' });
       if (res?.success) {
+        _DEVICES = _DEVICES.filter(x => x.id !== id);
+        applyFilter();
         App.showToast('Device dihapus', 'success');
         loadDeviceList();
       } else {

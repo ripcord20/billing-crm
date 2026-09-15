@@ -171,9 +171,11 @@ class DeviceController {
       // tidak ada (mis. fitur belum migrate), catch & lanjut.
       const cleanups = [
         // Sequelize models (sudah ada di codebase)
-        { name: 'DeviceLog',         where: { device_id: device.id } },
-        { name: 'TrafficData',       where: { device_id: device.id } },
-        { name: 'NocMonitorPreset',  where: { router_id: device.id } },
+        { name: 'DeviceLog',           where: { device_id: device.id } },
+        { name: 'TrafficData',         where: { device_id: device.id } },
+        { name: 'NocMonitorPreset',    where: { router_id: device.id } },
+        // FK nms_interface_presets.router_id ON DELETE NO ACTION — hapus dulu
+        { name: 'NmsInterfacePreset',  where: { router_id: device.id } },
       ];
 
       for (const c of cleanups) {
@@ -215,6 +217,9 @@ class DeviceController {
         `DELETE FROM device_metrics WHERE device_id = ?`,
         `DELETE FROM device_alerts WHERE device_id = ?`,
         `DELETE FROM interface_stats WHERE device_id = ?`,
+        `DELETE FROM nms_interface_presets WHERE router_id = ?`,
+        `DELETE FROM nms_interfaces WHERE device_id = ?`,
+        `UPDATE mikrotik_devices SET device_id = NULL WHERE device_id = ?`,
       ];
       for (const sql of rawCleanups) {
         try {
