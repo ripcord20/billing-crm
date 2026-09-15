@@ -615,6 +615,12 @@
           <p>Login to your dashboard all-in-one solution</p>
         </div>
 
+        <div id="tryBanner" style="display:none;margin:0 0 18px;padding:12px 14px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-size:13px;line-height:1.45;">
+          <div style="font-weight:700;margin-bottom:4px;">Coba billing Fiberix</div>
+          <div style="margin-bottom:10px;">Pakai akun demo untuk melihat dashboard, pelanggan, dan tagihan. Data demo bersifat contoh.</div>
+          <button type="button" id="tryDemoFill" style="border:none;background:#2563eb;color:#fff;font-weight:700;font-size:12.5px;padding:8px 12px;border-radius:8px;cursor:pointer;">Isi akun demo</button>
+        </div>
+
         <!-- Error Message -->
         <div class="error-msg" id="errorMsg"></div>
 
@@ -739,6 +745,7 @@
                 if (emailInput) emailInput.focus();
               });
             })();
+            })();
           </script>
         </form>
       </div>
@@ -781,6 +788,18 @@
   </div>
 
   <script>
+    document.getElementById('tryDemoFill')?.addEventListener('click', function() {
+      const emailInput = document.getElementById('email');
+      const passInput = document.getElementById('password');
+      if (emailInput) emailInput.value = 'demo@ispnetops.com';
+      if (passInput) passInput.value = 'demo12345';
+      if (passInput) passInput.focus();
+    });
+    if (new URLSearchParams(location.search).get('coba')) {
+      const banner = document.getElementById('tryBanner');
+      if (banner) banner.style.display = 'block';
+    }
+
     // Password Toggle
     document.getElementById('togglePassword').addEventListener('click', function() {
       const passwordInput = document.getElementById('password');

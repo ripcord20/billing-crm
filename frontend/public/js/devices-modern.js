@@ -255,6 +255,8 @@ async function deleteDevice(id, name) {
     const res = await App.api(`/devices/${id}`, { method: 'DELETE' });
     
     if (res?.success) {
+      devicesData = devicesData.filter(d => d.id !== id);
+      renderDeviceTable(devicesData);
       App.showToast('Device deleted successfully', 'success');
       loadDeviceList();
     } else {
