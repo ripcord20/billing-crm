@@ -876,6 +876,11 @@
               <span class="btn-label">Draw Link</span>
             </button>
 
+            <button class="map-draw-btn map-follow-btn" id="followRoadBtn" type="button" onclick="toggleFollowRoadDraw()" title="Kabel mengikuti jalan">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-3 4-3 5 6 8 6 4-3 4-3"/><circle cx="4" cy="15" r="1.6" fill="currentColor"/><circle cx="20" cy="12" r="1.6" fill="currentColor"/></svg>
+              <span class="btn-label">Kabel Jalan</span>
+            </button>
+
             <!-- Spacer: dorong filter ke kanan di desktop -->
             <div class="map-topbar-spacer"></div>
 
@@ -929,7 +934,11 @@
         <!-- Draw mode bar -->
         <div id="drawModeBar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="12" r="2.5"/><line x1="7.5" y1="12" x2="16.5" y2="12" stroke-dasharray="3 2"/></svg>
-          <span id="drawModeText">Klik titik PERTAMA — lalu klik peta untuk belokkan kabel</span>
+          <span id="drawModeText">Klik node AWAL — ketuk jalan untuk belok, atau tarik untuk gambar bebas</span>
+          <label class="draw-follow-toggle" title="Snap kabel ke jalan OpenStreetMap">
+            <input type="checkbox" id="drawFollowRoad" onchange="setFollowRoad(this.checked)">
+            Ikuti jalan
+          </label>
           <button class="draw-cancel" onclick="cancelDrawMode()">Batal</button>
         </div>
 
@@ -1768,6 +1777,6 @@ window.customConfirm = function(opts) {
 <script src="/js/app.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="/js/infrastructure.js?v=1781702500"></script>
+<script src="/js/infrastructure.js?v=road1"></script>
 </body>
 </html>
