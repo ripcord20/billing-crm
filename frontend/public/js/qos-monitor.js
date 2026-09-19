@@ -75,8 +75,17 @@
       document.getElementById('qosDns').innerHTML = '<div class="qos-empty">Belum ada hasil probe. Klik Jalankan probe.</div>';
       return;
     }
-    document.getElementById('qosDns').innerHTML = '<table class="qos-table"><thead><tr><th>Resolver</th><th>Waktu</th><th>Status</th></tr></thead><tbody>'
-      + list.map((d) => '<tr><td><strong>' + esc(d.server || '-') + '</strong><div style="color:var(--text-secondary)">' + (d.group === 'public' ? 'Publik' : (d.group === 'isp' ? 'ISP' : esc(d.group || ''))) + '</div></td><td>' + fmt(d.value, ' ms') + '</td><td>' + badge(d.status) + '</td></tr>').join('')
+    document.getElementById('qosDns').innerHTML = '<table class="qos-table"><thead><tr><th>Resolver</th><th>Resolve</th><th>Ping</th><th>Status</th></tr></thead><tbody>'
+      + list.map((d) => {
+        const meta = d.metadata || {};
+        const via = meta.router || (meta.via === 'mikrotik' ? 'MikroTik' : 'Aplikasi');
+        const pingTxt = meta.rtt_ms != null
+          ? (fmt(meta.rtt_ms, ' ms') + ' · loss ' + fmt(meta.loss_pct, '%'))
+          : '—';
+        return '<tr><td><strong>' + esc(d.server || '-') + '</strong><div style="color:var(--text-secondary)">'
+          + (d.group === 'public' ? 'Publik' : (d.group === 'isp' ? 'ISP' : esc(d.group || '')))
+          + ' · via ' + esc(via) + '</div></td><td>' + fmt(d.value, ' ms') + '</td><td>' + pingTxt + '</td><td>' + badge(d.status) + '</td></tr>';
+      }).join('')
       + '</tbody></table>';
   }
 

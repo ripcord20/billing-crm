@@ -13,6 +13,9 @@ const {
   classifyBandwidth, classifyAuthFails, classifyTrafficAnomaly,
   classifyDns, alertAudience, alertRoles
 } = require('../utils/qosSla');
+const {
+  parseMikrotikPing, parseMikrotikDnsLookup, isNoisyLossSample
+} = require('../utils/mikrotikProbe');
 
 const METRIC_RETENTION_DAYS = 7;
 const ALERT_DEDUPE_MIN = 30;
@@ -123,11 +126,40 @@ async function recordAuthFail({ source, identifier, ip_address, user_agent, reas
   });
 }
 
-function probeResolver(server, hostname, timeoutMs = 4000) {
+let _probeRouter = { mt: null, name: null, id: null, ts: 0 };
+
+async function getProbeRouter() {
+  if (_probeRouter.mt && (Date.now() - _probeRouter.ts) < 60000) return _probeRouter;
+  try {
+    const { getMikrotikInstanceByDevice } = require('./MikrotikService');
+    const { Device } = require('../models');
+    let device = null;
+    try {
+      device = await Device.findOne({ where: { is_primary: true, type: 'router', is_active: true } });
+    } catch (_) { /* kolom is_primary belum ada */ }
+    if (!device) {
+      try { device = await Device.findByPk(8); } catch (_) {}
+    }
+    if (!device) {
+      device = await Device.findOne({
+        where: { type: 'router', is_active: true, api_username: { [Op.ne]: null } },
+        order: [['id', 'ASC']]
+      });
+    }
+    const mt = await getMikrotikInstanceByDevice(device ? device.id : null);
+    _probeRouter = { mt, name: device ? device.name : 'MikroTik', id: device ? device.id : null, ts: Date.now() };
+    return _probeRouter;
+  } catch (e) {
+    _probeRouter = { mt: null, name: null, id: null, ts: Date.now() };
+    return _probeRouter;
+  }
+}
+
+function probeResolverLocal(server, hostname, timeoutMs = 4000) {
   return new Promise((resolve) => {
     const resolver = new Resolver();
     try { resolver.setServers([server]); } catch (e) {
-      resolve({ ok: false, latencyMs: 0, accurate: false, error: e.message, answers: [] });
+      resolve({ ok: false, latencyMs: 0, accurate: false, error: e.message, answers: [], via: 'app' });
       return;
     }
     const t0 = Date.now();
@@ -138,13 +170,13 @@ function probeResolver(server, hostname, timeoutMs = 4000) {
       resolve(result);
     };
     const timer = setTimeout(() => {
-      finish({ ok: false, latencyMs: Date.now() - t0, accurate: false, error: 'timeout', answers: [] });
+      finish({ ok: false, latencyMs: Date.now() - t0, accurate: false, error: 'timeout', answers: [], via: 'app' });
     }, timeoutMs);
     resolver.resolve4(hostname, (err, addrs) => {
       clearTimeout(timer);
       const latencyMs = Date.now() - t0;
       if (err) {
-        finish({ ok: false, latencyMs, accurate: false, error: err.message, answers: [] });
+        finish({ ok: false, latencyMs, accurate: false, error: err.message, answers: [], via: 'app' });
         return;
       }
       finish({
@@ -152,17 +184,53 @@ function probeResolver(server, hostname, timeoutMs = 4000) {
         latencyMs,
         accurate: Array.isArray(addrs) && addrs.length > 0,
         answers: addrs || [],
-        error: null
+        error: null,
+        via: 'app'
       });
     });
   });
 }
 
+async function probeResolver(server, hostname, timeoutMs = 4000) {
+  const router = await getProbeRouter();
+  if (router.mt) {
+    const t0 = Date.now();
+    try {
+      const raw = await router.mt.dnsLookup(hostname, { server, timeout: timeoutMs });
+      const parsed = parseMikrotikDnsLookup(raw);
+      const latencyMs = Date.now() - t0;
+      if (parsed.ok) {
+        return {
+          ok: true,
+          latencyMs,
+          accurate: true,
+          answers: parsed.answers,
+          error: null,
+          via: 'mikrotik',
+          router: router.name
+        };
+      }
+    } catch (_) { /* fallback ke resolver aplikasi */ }
+  }
+  return probeResolverLocal(server, hostname, timeoutMs);
+}
+
 async function pingTarget(host) {
+  const router = await getProbeRouter();
+  if (router.mt) {
+    try {
+      const raw = await router.mt.ping(host, { count: 8, interval: '0.2', timeout: 12000 });
+      const parsed = parseMikrotikPing(raw, 8);
+      return { ...parsed, host, router: router.name, via: 'mikrotik' };
+    } catch (e) {
+      // Jangan langsung 100% loss — coba ICMP dari app sebagai cadangan.
+    }
+  }
   try {
-    return await PingService.ping(host, 3, 4);
+    const ping = await PingService.ping(host, 3, 8);
+    return { ...ping, via: ping.method || 'app' };
   } catch (e) {
-    return { success: false, host, error: e.message, loss: 100, rtt_avg: null, pings: [] };
+    return { success: false, host, error: e.message, loss: 100, rtt_avg: null, pings: [], sent: 0, received: 0, via: 'app' };
   }
 }
 
@@ -178,7 +246,9 @@ async function runDnsChecks(settings) {
     const ping = await pingTarget(server);
     const jitter = computeJitter(ping.pings || []);
     const rtt = ping.success ? ping.rtt_avg : resolve.latencyMs;
-    const loss = ping.success ? ping.loss : (resolve.ok ? 0 : 100);
+    const rawLoss = ping.success ? ping.loss : (resolve.ok ? 0 : 100);
+    const noisy = isNoisyLossSample(ping.sent, ping.received);
+    const loss = noisy ? 0 : rawLoss;
     const dnsClass = classifyDns(resolve, settings);
     const rttClass = classifyRtt(rtt, settings);
     const lossClass = classifyLoss(loss, settings);
@@ -193,11 +263,14 @@ async function runDnsChecks(settings) {
       answers: resolve.answers,
       error: resolve.error || ping.error || null,
       rtt_ms: rtt,
-      loss_pct: loss,
+      loss_pct: rawLoss,
       jitter_ms: jitter,
-      status: [dnsClass.status, rttClass.status, lossClass.status].includes('critical')
-        ? 'critical'
-        : ([dnsClass.status, rttClass.status, lossClass.status].includes('warn') ? 'warn' : (resolve.ok ? 'ok' : 'critical'))
+      via: ping.via || resolve.via || 'app',
+      router: ping.router || resolve.router || null,
+      sent: ping.sent,
+      received: ping.received,
+      // Status resolver = hasil DNS, bukan 1 paket ICMP yang hilang.
+      status: dnsClass.status
     };
     results.push(row);
     await recordMetric({
@@ -207,11 +280,13 @@ async function runDnsChecks(settings) {
     });
     await recordMetric({
       kind: 'rtt', source: group === 'public' ? 'public_dns' : 'isp_dns',
-      target: server, value: rtt, unit: 'ms', status: rttClass.status, metadata: { jitter, loss }
+      target: server, value: rtt, unit: 'ms', status: rttClass.status,
+      metadata: { jitter, loss, raw_loss: rawLoss, via: row.via, router: row.router }
     });
     await recordMetric({
       kind: 'loss', source: group === 'public' ? 'public_dns' : 'isp_dns',
-      target: server, value: loss, unit: '%', status: lossClass.status
+      target: server, value: loss, unit: '%', status: lossClass.status,
+      metadata: { noisy, raw_loss: rawLoss, via: row.via, router: row.router, sent: ping.sent, received: ping.received }
     });
     await recordMetric({
       kind: 'jitter', source: group === 'public' ? 'public_dns' : 'isp_dns',
@@ -240,17 +315,23 @@ async function runPingTargets(settings) {
     const ping = await pingTarget(host);
     const jitter = computeJitter(ping.pings || []);
     const rtt = ping.success ? ping.rtt_avg : null;
-    const loss = ping.success ? ping.loss : 100;
+    const rawLoss = ping.success ? ping.loss : 100;
+    const noisy = isNoisyLossSample(ping.sent, ping.received);
+    const loss = noisy ? 0 : rawLoss;
     const rttClass = classifyRtt(rtt, settings);
     const lossClass = classifyLoss(loss, settings);
     const jitterClass = classifyJitter(jitter, settings);
     const row = {
       host,
       rtt_ms: rtt,
-      loss_pct: loss,
+      loss_pct: rawLoss,
       jitter_ms: jitter,
       success: !!ping.success,
-      method: ping.method || null
+      method: ping.method || ping.via || null,
+      via: ping.via || 'app',
+      router: ping.router || null,
+      sent: ping.sent,
+      received: ping.received
     };
     rows.push(row);
     await recordMetric({ kind: 'rtt', source: 'probe', target: host, value: rtt, unit: 'ms', status: rttClass.status, metadata: row });
@@ -527,7 +608,8 @@ async function latestByKind(kind, limit = 12) {
 
 function metricSummary(rows) {
   if (!rows.length) return { status: 'unknown', value: null, target: null, recorded_at: null };
-  const latest = rows[0];
+  const usable = rows.filter((r) => !(r.metadata && r.metadata.noisy));
+  const latest = (usable.length ? usable : rows)[0];
   return {
     status: latest.status,
     value: latest.value == null ? null : Number(latest.value),
