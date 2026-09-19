@@ -19,10 +19,26 @@
     return (Number.isInteger(v) ? String(v) : v.toFixed(digits == null ? 1 : digits)) + (unit || '');
   }
 
+  function coerceIso(v) {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+    if (typeof v === 'string') return v;
+    if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v.toISOString();
+    if (typeof v === 'object') {
+      const keys = Object.keys(v);
+      if (keys.length && keys.every((k) => /^\d+$/.test(k))) {
+        return keys.sort((a, b) => Number(a) - Number(b)).map((k) => v[k]).join('') || null;
+      }
+    }
+    return null;
+  }
+
   function alertWhen(a) {
-    return (a && (a.last_seen_at || a.lastSeenAt || a.occurred_at || a.created_at || a.createdAt))
+    return coerceIso(
+      (a && (a.last_seen_at || a.lastSeenAt || a.occurred_at || a.created_at || a.createdAt))
       || (a && a.metadata && (a.metadata.occurred_at || a.metadata.last_seen_at))
-      || null;
+      || null
+    );
   }
 
   function fmtWaktu(iso) {
@@ -99,7 +115,7 @@
     document.getElementById('qosAlerts').innerHTML = '<table class="qos-table"><thead><tr><th>Tanggal &amp; waktu</th><th>Tipe</th><th>Pesan</th><th></th></tr></thead><tbody>'
       + rows.map((a) => {
         const hits = Number(a.hit_count || 1);
-        const first = a.first_seen_at || a.created_at || a.createdAt;
+        const first = coerceIso(a.first_seen_at || a.created_at || a.createdAt);
         const extra = hits > 1
           ? '<div class="qos-when-hit">' + hits + 'x'
             + (first ? ' · pertama ' + esc(fmtWaktu(first).full) : '')
@@ -145,7 +161,7 @@
     }
     document.getElementById('qosAuth').innerHTML = '<table class="qos-table"><thead><tr><th>Tanggal &amp; waktu</th><th>Sumber</th><th>Identitas</th><th>IP</th></tr></thead><tbody>'
       + rows.slice(0, 12).map((r) => '<tr>'
-        + waktuCell(r.created_at || r.createdAt)
+        + waktuCell(coerceIso(r.created_at || r.createdAt))
         + '<td>' + esc(r.source) + '</td><td>' + esc(r.identifier || '-') + '</td><td>' + esc(r.ip_address || '-') + '</td></tr>').join('')
       + '</tbody></table>';
   }

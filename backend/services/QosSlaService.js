@@ -115,10 +115,28 @@ async function raiseAlert({ type, title, message, status, targetKey, metadata })
   return alert;
 }
 
+function toIso(value) {
+  if (value == null || value === '') return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  if (typeof value === 'object') {
+    const keys = Object.keys(value);
+    if (keys.length && keys.every((k) => /^\d+$/.test(k))) {
+      return toIso(keys.sort((a, b) => Number(a) - Number(b)).map((k) => value[k]).join(''));
+    }
+  }
+  const dt = new Date(value);
+  return Number.isNaN(dt.getTime()) ? null : dt.toISOString();
+}
+
 function serializeQosAlert(alert) {
   const json = alert && typeof alert.toJSON === 'function' ? alert.toJSON() : Object.assign({}, alert || {});
-  json.occurred_at = json.last_seen_at || json.created_at || (json.metadata && json.metadata.occurred_at) || null;
-  json.first_seen_at = json.created_at || null;
+  const last = toIso(json.last_seen_at || json.lastSeenAt);
+  const first = toIso(json.created_at || json.createdAt);
+  json.last_seen_at = last;
+  json.created_at = first;
+  json.createdAt = first;
+  json.occurred_at = last || first || toIso(json.metadata && json.metadata.occurred_at);
+  json.first_seen_at = first;
   return json;
 }
 

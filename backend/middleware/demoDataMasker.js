@@ -234,10 +234,20 @@ function maskDeep(node, depth = 0, ctx = {}) {
   // Primitive → return as-is
   if (typeof node !== 'object') return node;
 
-  // Sequelize instance → unwrap kalau bisa
+  // Date.toJSON() returns an ISO string; if we keep walking Object.keys(that
+  // string) we emit {"0":"2","1":"0",...} and the UI shows "Invalid Date".
+  if (node instanceof Date) {
+    return Number.isNaN(node.getTime()) ? null : node.toISOString();
+  }
+
+  // Sequelize instance → unwrap kalau bisa (skip Date, which also has toJSON)
   if (typeof node.toJSON === 'function') {
     try {
       node = node.toJSON();
+      if (typeof node !== 'object' || node == null) return node;
+      if (node instanceof Date) {
+        return Number.isNaN(node.getTime()) ? null : node.toISOString();
+      }
     } catch (_) { /* skip */ }
   }
 
