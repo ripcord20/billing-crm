@@ -4,6 +4,22 @@ const { paginateResponse } = require('../utils/helpers');
 const net = require('net');
 const logger = require('../utils/logger');
 
+function isProtectedDevice(device) {
+  if (!device) return false;
+  const name = String(device.name || '').trim();
+  let primary = false;
+  try {
+    const v = device.is_primary !== undefined
+      ? device.is_primary
+      : (typeof device.get === 'function' ? device.get('is_primary') : undefined);
+    primary = v === true || v === 1 || v === '1';
+  } catch (_) {}
+  if (primary) return true;
+  if (Number(device.id) === 8) return true;
+  if (/^core(\s*|-)?1$/i.test(name)) return true;
+  return false;
+}
+
 class DeviceController {
   async index(req, res) {
     try {
@@ -146,22 +162,6 @@ class DeviceController {
     }
   }
 
-  _isProtectedDevice(device) {
-    if (!device) return false;
-    const name = String(device.name || '').trim();
-    let primary = false;
-    try {
-      const v = device.is_primary !== undefined
-        ? device.is_primary
-        : (typeof device.get === 'function' ? device.get('is_primary') : undefined);
-      primary = v === true || v === 1 || v === '1';
-    } catch (_) {}
-    if (primary) return true;
-    if (Number(device.id) === 8) return true;
-    if (/^core(\s*|-)?1$/i.test(name)) return true;
-    return false;
-  }
-
   async destroy(req, res) {
     let t = null;
     try {
@@ -169,7 +169,7 @@ class DeviceController {
       if (!device) {
         return res.status(404).json({ success: false, message: 'Device not found' });
       }
-      if (this._isProtectedDevice(device)) {
+      if (isProtectedDevice(device)) {
         return res.status(400).json({
           success: false,
           message: 'Device utama (CORE) tidak boleh dihapus. Ganti primary dulu jika perlu.'
