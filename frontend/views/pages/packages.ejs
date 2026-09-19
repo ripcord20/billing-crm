@@ -101,9 +101,11 @@
     .pkg-meta { display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px; }
     .pkg-meta-pill { display:flex;align-items:center;gap:5px;background:#f0f5ff;border-radius:8px;padding:5px 10px;font-size:11.5px;font-weight:600;color:#3d5fc4; }
     .pkg-meta-pill svg { color:var(--d-blue1);flex-shrink:0; }
-    .pkg-footer { display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:1px solid var(--d-border); }
+    .pkg-footer { display:flex;flex-direction:column;align-items:stretch;gap:10px;padding-top:14px;border-top:1px solid var(--d-border); }
     .pkg-cust-count { display:flex;align-items:center;gap:5px;font-size:12px;color:var(--d-muted); }
     .pkg-cust-count strong { color:var(--d-text);font-weight:700; }
+    .pkg-actions { display:flex;gap:6px;flex-wrap:wrap; }
+    .pkg-actions .rb { flex:1;justify-content:center;min-width:0;white-space:nowrap; }
     .rb { padding:5px 12px;border-radius:8px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:4px;border:1.5px solid; }
     .rb-edit { background:#fff;color:var(--d-blue1);border-color:#bfdbfe; }
     .rb-edit:hover { background:#eef3ff; }
@@ -111,8 +113,10 @@
     .rb-toggle-on:hover  { background:#f0fdf9; }
     .rb-toggle-off { background:#fff;color:var(--d-orange);border-color:#fde68a; }
     .rb-toggle-off:hover { background:#fffbeb; }
-    .rb-del { background:#fff;color:#cbd5e0;border-color:#e2e8f0;padding:5px 8px; }
-    .rb-del:hover { color:var(--d-red);border-color:#fecdd3;background:#fff4f5; }
+    .rb-del { background:#fff;color:var(--d-red);border-color:#fecdd3; }
+    .rb-del:hover { color:#fff;border-color:var(--d-red);background:var(--d-red); }
+    .btn-del-outline { background:#fff;border:1.5px solid #fecdd3;color:var(--d-red);padding:11px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:none;align-items:center;gap:6px;font-family:inherit;transition:all .15s; }
+    .btn-del-outline:hover { background:#fff4f5;border-color:var(--d-red); }
     .pkg-empty { text-align:center;padding:60px 20px;color:var(--d-muted); }
     .pkg-empty-icon { font-size:48px;margin-bottom:14px;opacity:.4; }
     .pkg-empty h3 { font-size:16px;font-weight:700;margin:0 0 6px;color:var(--d-text); }
@@ -376,12 +380,16 @@
           </select>
         </div>
       </div>
-      <div style="display:flex;gap:10px;margin-top:22px">
+      <div style="display:flex;gap:10px;margin-top:22px;flex-wrap:wrap">
         <button onclick="savePkg()" class="btn-blue" id="btnSavePkg" style="flex:1;justify-content:center;padding:11px">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
           <span id="btnSaveTxt">Simpan Paket</span>
         </button>
         <button onclick="closeModal()" class="btn-outline" style="padding:11px 22px">Batal</button>
+        <button type="button" onclick="deleteFromModal()" class="btn-del-outline" id="btnModalDelete">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+          Hapus
+        </button>
       </div>
     </div>
   </div>
