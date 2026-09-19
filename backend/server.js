@@ -414,6 +414,14 @@ const startServer = async () => {
     await db.sequelize.authenticate();
     logger.info('Database connection established');
 
+    // Listen immediately so nginx is not 502 while later boot talks to MikroTik.
+    if (!server.listening) {
+      server.listen(PORT, () => {
+        logger.info(`Skynet CRM running on http://localhost:${PORT}`);
+        console.log(`\n Skynet CRM running on http://localhost:${PORT}\n`);
+      });
+    }
+
     if (process.env.APP_ENV === 'development') {
       await db.sequelize.sync({ alter: false });
       logger.info('Database models synced');
@@ -1139,11 +1147,7 @@ const startServer = async () => {
     const WAService = require('./services/WAService');
     WAService.restoreAllSessions(io);
 
-    // Start main HTTP server
-    server.listen(PORT, () => {
-      logger.info(`FLAYNET.COM CRM running on http://localhost:${PORT}`);
-      console.log(`\n FLAYNET.COM CRM running on http://localhost:${PORT}\n`);
-    });
+    // HTTP server already listening at start of startServer.
 
     // Graceful shutdown
     process.on('SIGTERM', async () => {
