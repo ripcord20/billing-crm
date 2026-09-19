@@ -211,6 +211,11 @@ class DeviceController {
       res.json({ success: true, message: 'Device deleted' });
     } catch (error) {
       try { await t.rollback(); } catch(_) {}
+      if (/Deadlock found/i.test(String(error.message || '')) && !req._destroyRetry) {
+        req._destroyRetry = true;
+        logger.warn(`[Device.destroy] deadlock, retry once for device ${req.params.id}`);
+        return this.destroy(req, res);
+      }
       logger.error(`[Device.destroy] failed: ${error.message}`);
       // Pesan ramah ke user: kalau FK error, hint apa yang perlu dihapus dulu
       let msg = error.message || 'Gagal menghapus device';
