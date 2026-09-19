@@ -52,6 +52,8 @@
     .chip-idle .live-dot { background:var(--faint); }
     .chip-live .live-dot { background:var(--dm-green); animation:pulse 2s ease-in-out infinite; }
     @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.75)} }
+    .metric-flash { animation: metricPulse .55s ease; }
+    @keyframes metricPulse { 0% { filter: brightness(1.35); } 100% { filter: none; } }
 
     /* ── STAT CARDS — single strip with dividers ── */
     .dm-cards {
@@ -836,12 +838,14 @@
   </div>
 </div>
 
+<script src="/socket.io/socket.io.js"></script>
 <script src="/js/app.js"></script>
 <script>
   /* eslint-disable */
   var _DEVICES     = [];          // semua device hasil fetch
   var _STATUS_FILT = 'all';       // filter stat card: all|online|offline|warning
   var _REFRESH_INT = null;
+  var _METRICS_INT = null;
 
   // ── Escape helper (XSS-safe rendering) ──
   function esc(v) {
@@ -965,24 +969,15 @@
       const cpu = d.cpu_load != null ? Math.round(d.cpu_load) : null;
       const mem = d.memory_usage != null ? Math.round(d.memory_usage) : null;
 
-      const cpuHtml = cpu != null ? `
-        <div class="metric-bar">
-          <div class="mb-track"><div class="mb-fill ${mbClass(cpu)}" style="width:${cpu}%"></div></div>
-          <span class="mb-pct">${cpu}%</span>
-        </div>` : '<span class="mb-pct" style="color:var(--faint)">—</span>';
-
-      const memHtml = mem != null ? `
-        <div class="metric-bar">
-          <div class="mb-track"><div class="mb-fill ${mbClass(mem)}" style="width:${mem}%"></div></div>
-          <span class="mb-pct">${mem}%</span>
-        </div>` : '<span class="mb-pct" style="color:var(--faint)">—</span>';
+      const cpuHtml = metricBarHtml(cpu);
+      const memHtml = metricBarHtml(mem);
 
       const status = d.status || 'offline';
       const brandLine = [d.brand, d.model].filter(Boolean).join(' · ');
 
       return `
-        <tr>
-          <td>
+        <tr data-device-id="${d.id}">
+          <td class="js-status">
             <span class="st-dot st-${esc(status)}"></span>
             <span class="st-txt st-${esc(status)}-txt">${esc(status)}</span>
           </td>
@@ -994,9 +989,9 @@
           </td>
           <td><span class="ip-code">${esc(d.ip_address || '—')}</span></td>
           <td><span class="type-badge type-${esc(d.type||'other')}">${esc(d.type || 'other')}</span></td>
-          <td>${cpuHtml}</td>
-          <td>${memHtml}</td>
-          <td><span class="uptime-txt">${fmtUptime(d.uptime)}</span></td>
+          <td class="js-cpu">${cpuHtml}</td>
+          <td class="js-mem">${memHtml}</td>
+          <td class="js-uptime"><span class="uptime-txt">${fmtUptime(d.uptime)}</span></td>
           <td>
             <div class="act-group">
               <button class="act-btn act-test" onclick="testDevice(${d.id})" title="Test Koneksi">
@@ -1056,7 +1051,7 @@
         : `<span class="dm-mcard-stat-val dim">—</span>`;
 
       return `
-        <div class="dm-mcard is-${esc(status)}">
+        <div class="dm-mcard is-${esc(status)}" data-device-id="${d.id}">
           <div class="dm-mcard-top">
             <div class="dm-mcard-info">
               <div class="dm-mcard-name">
@@ -1075,15 +1070,15 @@
           </div>
 
           <div class="dm-mcard-stats">
-            <div class="dm-mcard-stat">
+            <div class="dm-mcard-stat js-cpu">
               <span class="dm-mcard-stat-lbl">CPU</span>
               ${cpuVal}
             </div>
-            <div class="dm-mcard-stat">
+            <div class="dm-mcard-stat js-mem">
               <span class="dm-mcard-stat-lbl">Memory</span>
               ${memVal}
             </div>
-            <div class="dm-mcard-stat">
+            <div class="dm-mcard-stat js-uptime">
               <span class="dm-mcard-stat-lbl">Uptime</span>
               ${uptimeVal}
             </div>
@@ -1576,13 +1571,101 @@
     if (e.target.id === 'deviceModal') closeDeviceModal();
   });
 
+  function metricBarHtml(pct) {
+    if (pct == null || isNaN(pct)) return '<span class="mb-pct" style="color:var(--faint)">—</span>';
+    return `<div class="metric-bar">
+      <div class="mb-track"><div class="mb-fill ${mbClass(pct)}" style="width:${pct}%"></div></div>
+      <span class="mb-pct">${pct}%</span>
+    </div>`;
+  }
+
+  function mobileMetricHtml(pct) {
+    if (pct == null || isNaN(pct)) return '<span class="dm-mcard-stat-val dim">—</span>';
+    return `<span class="dm-mcard-stat-val">${pct}%</span>
+      <div class="mb-track"><div class="mb-fill ${mbClass(pct)}" style="width:${pct}%"></div></div>`;
+  }
+
+  function applyDeviceMetrics(row) {
+    if (!row || row.id == null && row.device_id == null) return;
+    const id = row.id != null ? row.id : row.device_id;
+    const cur = _DEVICES.find(d => d.id === id);
+    if (!cur) return;
+    const cpu = row.cpu_load != null ? Math.round(row.cpu_load) : (cur.cpu_load != null ? Math.round(cur.cpu_load) : null);
+    const mem = row.memory_usage != null ? Math.round(row.memory_usage) : (cur.memory_usage != null ? Math.round(cur.memory_usage) : null);
+    const status = row.status || cur.status;
+    const uptime = row.uptime != null ? row.uptime : cur.uptime;
+    const cpuChanged = cpu !== (cur.cpu_load != null ? Math.round(cur.cpu_load) : null);
+    const memChanged = mem !== (cur.memory_usage != null ? Math.round(cur.memory_usage) : null);
+    cur.cpu_load = cpu;
+    cur.memory_usage = mem;
+    if (status) cur.status = status;
+    if (uptime != null) cur.uptime = uptime;
+    if (row.last_polled) cur.last_polled = row.last_polled;
+
+    document.querySelectorAll('[data-device-id="' + id + '"]').forEach(el => {
+      const cpuEl = el.querySelector('.js-cpu');
+      const memEl = el.querySelector('.js-mem');
+      const upEl  = el.querySelector('.js-uptime');
+      if (cpuEl) {
+        if (el.tagName === 'TR') cpuEl.innerHTML = metricBarHtml(cpu);
+        else cpuEl.innerHTML = '<span class="dm-mcard-stat-lbl">CPU</span>' + mobileMetricHtml(cpu);
+        if (cpuChanged) { cpuEl.classList.remove('metric-flash'); void cpuEl.offsetWidth; cpuEl.classList.add('metric-flash'); }
+      }
+      if (memEl) {
+        if (el.tagName === 'TR') memEl.innerHTML = metricBarHtml(mem);
+        else memEl.innerHTML = '<span class="dm-mcard-stat-lbl">Memory</span>' + mobileMetricHtml(mem);
+        if (memChanged) { memEl.classList.remove('metric-flash'); void memEl.offsetWidth; memEl.classList.add('metric-flash'); }
+      }
+      if (upEl && uptime != null) {
+        if (el.tagName === 'TR') upEl.innerHTML = '<span class="uptime-txt">' + esc(fmtUptime(uptime)) + '</span>';
+        else upEl.innerHTML = '<span class="dm-mcard-stat-lbl">Uptime</span><span class="dm-mcard-stat-val">' + esc(uptime || '—') + '</span>';
+      }
+      const st = el.querySelector('.js-status, .dm-mcard-status');
+      if (st && status) {
+        if (el.tagName === 'TR') {
+          st.innerHTML = '<span class="st-dot st-' + esc(status) + '"></span><span class="st-txt st-' + esc(status) + '-txt">' + esc(status) + '</span>';
+        } else {
+          st.className = 'dm-mcard-status is-' + status;
+          st.innerHTML = '<span class="st-dot st-' + esc(status) + '"></span> ' + esc(status);
+          el.className = el.className.replace(/is-\w+/g, '').trim() + ' is-' + status;
+        }
+      }
+    });
+    setLive('live');
+  }
+
+  async function loadDeviceMetrics() {
+    try {
+      const res = await App.api('/devices/metrics');
+      if (!res?.success || !Array.isArray(res.data)) return;
+      res.data.forEach(applyDeviceMetrics);
+    } catch (_) {}
+  }
+
+  function bindDeviceSockets() {
+    const sock = App.socket;
+    if (!sock) return;
+    const onMetrics = (p) => applyDeviceMetrics(p);
+    sock.off('devices:metrics', onMetrics);
+    sock.on('devices:metrics', onMetrics);
+    sock.on('monitoring:update', onMetrics);
+    const sub = () => sock.emit('devices:subscribe');
+    if (sock.connected) sub();
+    sock.on('connect', sub);
+  }
+
   // ── Init ──
   document.addEventListener('DOMContentLoaded', () => {
     loadDeviceList();
     _REFRESH_INT = setInterval(() => loadDeviceList(), 30000);
+    _METRICS_INT = setInterval(() => loadDeviceMetrics(), 5000);
+    setTimeout(bindDeviceSockets, 400);
+    setTimeout(loadDeviceMetrics, 800);
   });
   window.addEventListener('beforeunload', () => {
     if (_REFRESH_INT) clearInterval(_REFRESH_INT);
+    if (_METRICS_INT) clearInterval(_METRICS_INT);
+    try { App.socket && App.socket.emit('devices:unsubscribe'); } catch (_) {}
   });
 </script>
 </body>

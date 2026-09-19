@@ -1135,6 +1135,10 @@ const startServer = async () => {
       logger.warn('UplinkMonitorService.start gagal: ' + (e.message || e));
     }
 
+    // CPU/memory Device Management — cepat saat halaman dibuka, pelan saat idle.
+    try { require('./services/DeviceResourcePoller').start(io); }
+    catch (e) { logger.warn('DeviceResourcePoller.start gagal: ' + (e.message || e)); }
+
     // Restore WA sessions
     const WAService = require('./services/WAService');
     WAService.restoreAllSessions(io);
@@ -1153,6 +1157,7 @@ const startServer = async () => {
       try { require('./services/TelegramBotService').stop(); } catch (_) {}
       NocAlertsService.stop();
       try { require('./services/UplinkMonitorService').stop(); } catch (_) {}
+      try { require('./services/DeviceResourcePoller').stop(); } catch (_) {}
       await db.sequelize.close();
       server.close(() => process.exit(0));
     });

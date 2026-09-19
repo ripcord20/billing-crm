@@ -2111,6 +2111,7 @@ router.post('/invoices/:id/send-wa-invoice', authenticate, demoGuard, PaymentCon
 router.get('/devices', authenticate, demoGuard, DeviceController.index);
 router.post('/devices', authenticate, demoGuard, hasPermission('device_create'), logActivity('create', 'device'), DeviceController.create);
 router.get('/devices/stats', authenticate, demoGuard, DeviceController.stats);
+router.get('/devices/metrics', authenticate, demoGuard, DeviceController.metrics);
 router.get('/devices/monitoring', authenticate, demoGuard, DeviceController.monitoringOverview);
 router.get('/devices/mikrotik-list', authenticate, demoGuard, DeviceController.mikrotikList);
 router.post('/devices/test', authenticate, demoGuard, DeviceController.testConnectionByConfig);
