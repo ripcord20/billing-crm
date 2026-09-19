@@ -842,6 +842,7 @@
   var _DEVICES     = [];          // semua device hasil fetch
   var _STATUS_FILT = 'all';       // filter stat card: all|online|offline|warning
   var _REFRESH_INT = null;
+  var _DELETING    = {};          // id → true, cegah auto-refresh mengembalikan baris
 
   // ── Escape helper (XSS-safe rendering) ──
   function esc(v) {
@@ -861,7 +862,7 @@
 
       if (statsRes?.success) updateStats(statsRes.data);
       if (listRes?.success) {
-        _DEVICES = listRes.data || [];
+        _DEVICES = (listRes.data || []).filter(d => !_DELETING[d.id]);
         applyFilter();
       }
       setLive('live');
@@ -1005,9 +1006,9 @@
               <button class="act-btn" onclick="editDevice(${d.id})" title="Edit">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </button>
-              <button class="act-btn act-del" onclick="deleteDevice(${d.id})" title="Hapus">
+              ${isProtectedDevice(d) ? '' : `<button class="act-btn act-del" onclick="deleteDevice(${d.id})" title="Hapus">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-              </button>
+              </button>`}
             </div>
           </td>
         </tr>`;
@@ -1553,20 +1554,46 @@
   }
 
   // ── Delete ──
+  function isProtectedDevice(d) {
+    if (!d) return false;
+    const name = String(d.name || '').trim();
+    if (d.is_primary === true || d.is_primary === 1 || d.is_primary === '1') return true;
+    if (Number(d.id) === 8) return true;
+    if (/^core(\s*|-)?1$/i.test(name)) return true;
+    return false;
+  }
+
   async function deleteDevice(id) {
     const d = _DEVICES.find(x => x.id === id);
-    if (!d) return;
+    if (!d || _DELETING[id]) return;
+    if (isProtectedDevice(d)) {
+      App.showToast('Device utama (CORE) tidak boleh dihapus', 'error');
+      return;
+    }
     if (!confirm(`Hapus device "${d.name}"?\n\nSemua log & traffic data terkait juga akan terhapus.`)) return;
+
+    const snapshot = _DEVICES.slice();
+    _DELETING[id] = true;
+    _DEVICES = _DEVICES.filter(x => x.id !== id);
+    applyFilter();
+    App.showToast('Menghapus device…', 'info');
 
     try {
       const res = await App.api(`/devices/${id}`, { method: 'DELETE' });
       if (res?.success) {
         App.showToast('Device dihapus', 'success');
-        loadDeviceList();
+        App.api('/devices/stats').then(s => { if (s?.success) updateStats(s.data); }).catch(() => {});
+        setTimeout(() => { delete _DELETING[id]; }, 8000);
       } else {
+        delete _DELETING[id];
+        _DEVICES = snapshot;
+        applyFilter();
         App.showToast(res?.message || 'Gagal menghapus', 'error');
       }
     } catch (e) {
+      delete _DELETING[id];
+      _DEVICES = snapshot;
+      applyFilter();
       App.showToast('Error: ' + e.message, 'error');
     }
   }

@@ -414,6 +414,14 @@ const startServer = async () => {
     await db.sequelize.authenticate();
     logger.info('Database connection established');
 
+    // Terima HTTP segera supaya /login tidak 502 saat migrasi/poller.
+    if (!server.listening) {
+      server.listen(PORT, () => {
+        logger.info(`Skynet CRM running on http://localhost:${PORT}`);
+        console.log(`\n Skynet CRM running on http://localhost:${PORT}\n`);
+      });
+    }
+
     if (process.env.APP_ENV === 'development') {
       await db.sequelize.sync({ alter: false });
       logger.info('Database models synced');
@@ -1091,10 +1099,10 @@ const startServer = async () => {
       logger.warn('Failed reseller voucher migration: ' + (e.message || e));
     }
 
-    // Start SNMP monitoring
+    // Start SNMP monitoring (ditunda agar login/customer dapat koneksi DB dulu)
     const snmpService = new SNMPService(io);
     SNMPService.setInstance(snmpService);
-    snmpService.startAll();
+    setTimeout(() => { snmpService.startAll().catch(() => {}); }, 15000);
 
     // Muat state monitoring Telegram yang dipersist (agar transisi down/up
     // tetap akurat setelah restart — tidak ada notif hilang/dobel).
@@ -1112,38 +1120,35 @@ const startServer = async () => {
     // berstatus 'pending' yang diproses, jadi tidak ada secret dobel.
     try {
       const PppoeBulk = require('./services/PppoeBulkProvisionService');
-      const rec = await PppoeBulk.recoverStaleJobs({ autoResume: true, maxJobs: 3 });
-      if (rec.found) {
-        logger.info(`[PppoeBulk] recovery — ${rec.found} job tertinggal, ${rec.resumed} dilanjutkan, ${rec.closed} ditutup`);
-      }
+      PppoeBulk.recoverStaleJobs({ autoResume: true, maxJobs: 3 }).then((rec) => {
+        if (rec && rec.found) {
+          logger.info(`[PppoeBulk] recovery — ${rec.found} job tertinggal, ${rec.resumed} dilanjutkan, ${rec.closed} ditutup`);
+        }
+      }).catch((e) => logger.warn('PppoeBulk recovery gagal: ' + (e.message || e)));
     } catch (e) {
       logger.warn('PppoeBulk recovery gagal: ' + (e.message || e));
     }
 
-    // Start cron jobs
-    CronService.start();
+    // Delay cron so login/customer can take a DB connection first.
+    setTimeout(() => CronService.start(), 15000);
 
     // Start NOC Alerts Service — polling untuk Live Alerts di dashboard NOC.
     // In-memory state, retention 24 jam. Hilang saat pm2 restart (intended).
     const NocAlertsService = require('./services/NocAlertsService');
-    NocAlertsService.start(io);
+    setTimeout(() => { try { NocAlertsService.start(io); } catch (_) {} }, 15000);
 
     // Pantauan uplink terpin (Device Management) — independen dari Telegram.
     try {
-      require('./services/UplinkMonitorService').start(io);
+      setTimeout(() => { try { require('./services/UplinkMonitorService').start(io); } catch (_) {} }, 15000);
     } catch (e) {
       logger.warn('UplinkMonitorService.start gagal: ' + (e.message || e));
     }
 
     // Restore WA sessions
     const WAService = require('./services/WAService');
-    WAService.restoreAllSessions(io);
+    setTimeout(() => { WAService.restoreAllSessions(io); }, 15000);
 
-    // Start main HTTP server
-    server.listen(PORT, () => {
-      logger.info(`FLAYNET.COM CRM running on http://localhost:${PORT}`);
-      console.log(`\n FLAYNET.COM CRM running on http://localhost:${PORT}\n`);
-    });
+    // HTTP server sudah listen di awal startServer.
 
     // Graceful shutdown
     process.on('SIGTERM', async () => {
