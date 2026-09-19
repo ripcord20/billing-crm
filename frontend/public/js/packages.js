@@ -38,6 +38,19 @@ function setText(id, val) {
   var el = document.getElementById(id);
   if (el) el.textContent = val;
 }
+function wilayahLabel(p) {
+  if (!p) return '';
+  var w = p.wilayah;
+  if (w && (w.name || w.code)) {
+    if (w.name && w.code) return w.name + ' (' + w.code + ')';
+    return w.name || w.code || '';
+  }
+  if (p.wilayah_name || p.wilayah_code) {
+    if (p.wilayah_name && p.wilayah_code) return p.wilayah_name + ' (' + p.wilayah_code + ')';
+    return p.wilayah_name || p.wilayah_code || '';
+  }
+  return '';
+}
 function showOk(msg)  { showToast('toastOk',  '✓ ' + msg); }
 function showErr(msg) { showToast('toastErr', '✕ ' + msg); }
 function showToast(id, msg) {
@@ -140,8 +153,18 @@ function buildCard(p) {
   var cat    = p.category || detectCat(p);
   var active = p.is_active;
   var cc     = p.customer_count || 0;
+  var wl     = wilayahLabel(p);
+  var wlHtml = wl
+    ? '<div class="pkg-meta-pill pkg-wl">' +
+        '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
+        esc(wl) +
+      '</div>'
+    : '';
   return '<div class="pkg-card ' + (active ? '' : 'inactive') + '">' +
     '<div class="pkg-card-header ' + cat + '">' +
+      '<button type="button" class="pkg-more" onclick="event.stopPropagation();openPkgMenu(' + p.id + ')" aria-label="Menu paket">' +
+        '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>' +
+      '</button>' +
       (!active ? '<span class="pkg-inactive-tag">Non-Aktif</span>' : '') +
       '<div class="pkg-type-label">' + catLabel(cat) + '</div>' +
       '<div class="pkg-name">' + esc(p.name) + '</div>' +
@@ -157,6 +180,7 @@ function buildCard(p) {
       '</div>' +
       '<div class="pkg-desc">' + esc(p.description || 'Tidak ada deskripsi') + '</div>' +
       '<div class="pkg-meta">' +
+        wlHtml +
         '<div class="pkg-meta-pill">' +
           '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>' +
           ' DL ' + fmtSpd(p.speed_down) +
@@ -352,6 +376,50 @@ async function toggleActive(id, cur) {
   } catch(e) { showErr('Gagal: ' + e.message); }
 }
 
+/* ════ ACTION MENU (Android / kartu sempit) ════ */
+var menuId = null;
+
+function findPkg(id) {
+  return allPackages.find(function(x){ return x.id === id || String(x.id) === String(id); });
+}
+
+function openPkgMenu(id) {
+  var p = findPkg(id);
+  if (!p) return;
+  menuId = id;
+  var title = document.getElementById('actTitle');
+  if (title) title.textContent = p.name || 'Paket';
+  var toggleTxt = document.getElementById('actToggleTxt');
+  if (toggleTxt) toggleTxt.textContent = p.is_active ? 'Nonaktifkan' : 'Aktifkan';
+  var ov = document.getElementById('actOv');
+  if (ov) ov.classList.add('active');
+}
+
+function closePkgMenu() {
+  var ov = document.getElementById('actOv');
+  if (ov) ov.classList.remove('active');
+  menuId = null;
+}
+
+function menuEdit() {
+  var id = menuId;
+  closePkgMenu();
+  if (id != null) openEdit(id);
+}
+
+function menuToggle() {
+  var id = menuId;
+  var p = findPkg(id);
+  closePkgMenu();
+  if (p) toggleActive(id, !!p.is_active);
+}
+
+function menuDelete() {
+  var id = menuId;
+  closePkgMenu();
+  if (id != null) openDelete(id);
+}
+
 /* ════ DELETE ════ */
 function openDelete(id) {
   deletingId = id;
@@ -431,6 +499,10 @@ document.addEventListener('DOMContentLoaded', function() {
       if (e.target === delModal) closeDelModal();
     });
   }
+
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') closePkgMenu();
+  });
 
   loadPackages();
 });
