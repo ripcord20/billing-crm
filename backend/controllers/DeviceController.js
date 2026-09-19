@@ -248,6 +248,20 @@ class DeviceController {
     }
   }
 
+  // Snapshot CPU/memory/status untuk Device Management (tanpa list penuh).
+  async metrics(req, res) {
+    try {
+      const rows = await Device.findAll({
+        where: { is_active: true },
+        attributes: ['id', 'cpu_load', 'memory_usage', 'status', 'uptime', 'last_polled'],
+        order: [['name', 'ASC']]
+      });
+      res.json({ success: true, data: rows });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
   // Device stats for dashboard
   async stats(req, res) {
     try {
