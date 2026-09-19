@@ -146,13 +146,34 @@ class DeviceController {
     }
   }
 
-  async destroy(req, res) {
-    const t = await sequelize.transaction();
+  _isProtectedDevice(device) {
+    if (!device) return false;
+    const name = String(device.name || '').trim();
+    let primary = false;
     try {
-      const device = await Device.findByPk(req.params.id, { transaction: t });
+      const v = device.is_primary !== undefined
+        ? device.is_primary
+        : (typeof device.get === 'function' ? device.get('is_primary') : undefined);
+      primary = v === true || v === 1 || v === '1';
+    } catch (_) {}
+    if (primary) return true;
+    if (Number(device.id) === 8) return true;
+    if (/^core(\s*|-)?1$/i.test(name)) return true;
+    return false;
+  }
+
+  async destroy(req, res) {
+    let t = null;
+    try {
+      const device = await Device.findByPk(req.params.id);
       if (!device) {
-        await t.rollback();
         return res.status(404).json({ success: false, message: 'Device not found' });
+      }
+      if (this._isProtectedDevice(device)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Device utama (CORE) tidak boleh dihapus. Ganti primary dulu jika perlu.'
+        });
       }
 
       // Stop SNMP polling dulu sebelum hapus
@@ -162,10 +183,38 @@ class DeviceController {
         if (snmp) snmp.stopDevice(device.id);
       } catch(e) {}
 
-      // ─── Cleanup child tables yang reference devices.id ──────────
-      // Raw DELETE lebih cepat dari Model.destroy pada tabel log/traffic besar.
-      // Unlink dulu (SET NULL) supaya FK RESTRICT tidak menahan hapus device.
+      // Jangan tahan lock 10+ menit — gagal cepat lebih aman daripada mengunci login.
+      await sequelize.query('SET innodb_lock_wait_timeout = 8');
+
+      // Traffic/log besar DI LUAR transaksi. Satu DELETE 10 juta baris di dalam
+      // transaksi yang sama dengan devices mengunci login + customer + device.
+      const chunkDelete = async (table, column = 'device_id') => {
+        let total = 0;
+        for (let i = 0; i < 400; i++) {
+          try {
+            const [meta] = await sequelize.query(
+              `DELETE FROM \`${table}\` WHERE \`${column}\` = ? LIMIT 2000`,
+              { replacements: [device.id] }
+            );
+            const n = Number((meta && (meta.affectedRows ?? meta.rowCount)) || 0);
+            total += n;
+            if (n < 2000) break;
+          } catch (e) {
+            if (!String(e.message).match(/doesn'?t exist|Unknown table|no such table|Unknown column/i)) {
+              logger.warn(`[Device.destroy] chunk ${table}: ${e.message}`);
+            }
+            break;
+          }
+        }
+        if (total > 0) logger.info(`[Device.destroy] chunked ${total} ${table} row(s) for device ${device.id}`);
+      };
+      await chunkDelete('traffic_data');
+      await chunkDelete('device_logs');
+      await chunkDelete('device_metrics');
+      await chunkDelete('interface_stats');
+
       const models = require('../models');
+      t = await sequelize.transaction();
       const runSql = async (sql) => {
         try {
           await sequelize.query(sql, { replacements: [device.id], transaction: t });
@@ -195,31 +244,28 @@ class DeviceController {
         'UPDATE reseller_voucher_packages SET device_id = NULL WHERE device_id = ?',
         'DELETE FROM nms_interface_presets WHERE router_id = ?',
         'DELETE FROM nms_interfaces WHERE device_id = ?',
-        'DELETE FROM device_logs WHERE device_id = ?',
-        'DELETE FROM traffic_data WHERE device_id = ?',
-        'DELETE FROM device_metrics WHERE device_id = ?',
         'DELETE FROM device_alerts WHERE device_id = ?',
-        'DELETE FROM interface_stats WHERE device_id = ?',
       ];
       for (const sql of steps) await runSql(sql);
       await runModel('NmsInterfacePreset', { router_id: device.id });
       await runModel('NocMonitorPreset', { router_id: device.id });
 
-      // Sekarang hapus device-nya
       await device.destroy({ transaction: t });
       await t.commit();
+      t = null;
       res.json({ success: true, message: 'Device deleted' });
     } catch (error) {
-      try { await t.rollback(); } catch(_) {}
+      if (t) { try { await t.rollback(); } catch(_) {} }
       if (/Deadlock found/i.test(String(error.message || '')) && !req._destroyRetry) {
         req._destroyRetry = true;
         logger.warn(`[Device.destroy] deadlock, retry once for device ${req.params.id}`);
         return this.destroy(req, res);
       }
       logger.error(`[Device.destroy] failed: ${error.message}`);
-      // Pesan ramah ke user: kalau FK error, hint apa yang perlu dihapus dulu
       let msg = error.message || 'Gagal menghapus device';
-      if (String(msg).match(/foreign key constraint/i)) {
+      if (/Lock wait timeout/i.test(String(msg))) {
+        msg = 'Database sedang sibuk. Coba hapus device lagi dalam beberapa detik — device utama (CORE) tidak boleh dihapus.';
+      } else if (String(msg).match(/foreign key constraint/i)) {
         const m = msg.match(/`(\w+)`\.\.?`(\w+)`/);
         const tableHint = m ? m[2] : '(tabel anak)';
         msg = `Device tidak bisa dihapus karena masih terhubung dengan ${tableHint}. Hapus data terkait dulu, atau hubungi admin untuk update schema FK.`;

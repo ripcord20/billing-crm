@@ -247,8 +247,22 @@ async function saveDevice() {
 }
 
 // ─── DELETE DEVICE ────────────────────────────────
+function isProtectedDevice(d, id, name) {
+  const row = d || {};
+  const label = String(name || row.name || '').trim();
+  if (row.is_primary === true || row.is_primary === 1 || row.is_primary === '1') return true;
+  if (Number(id || row.id) === 8) return true;
+  if (/^core(\s*|-)?1$/i.test(label)) return true;
+  return false;
+}
+
 async function deleteDevice(id, name) {
   if (_DELETING[id]) return;
+  const current = (typeof devicesData !== 'undefined' ? devicesData : []).find(d => d.id === id);
+  if (isProtectedDevice(current, id, name)) {
+    App.showToast('Device utama (CORE) tidak boleh dihapus', 'error');
+    return;
+  }
   if (!confirm(`Are you sure you want to delete device "${name}"?`)) {
     return;
   }
