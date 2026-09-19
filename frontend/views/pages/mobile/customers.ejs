@@ -821,7 +821,7 @@
       pkSel.innerHTML='<option value="">Pilih paket…</option>'+pkgs.map(p=>'<option value="'+p.id+'">'+esc(p.name||('Paket #'+p.id))+(p.price?(' — '+fmtRp(p.price)):'')+'</option>').join('');
       const rts=(rt&&rt.success)?(Array.isArray(rt.data)?rt.data:(rt.data&&rt.data.rows?rt.data.rows:[])):(Array.isArray(rt)?rt:[]);
       const rtSel=document.getElementById('afRouter');
-      rtSel.innerHTML='<option value="">Pilih router…</option>'+rts.map(d=>'<option value="'+d.id+'">'+esc(d.name||('Router #'+d.id))+'</option>').join('');
+      rtSel.innerHTML='<option value="">Belum ada NAS / router</option>'+rts.map(d=>'<option value="'+d.id+'">'+esc(d.name||('Router #'+d.id))+'</option>').join('');
     }
     function onConnTypeChange(){ const t=document.getElementById('afConnType').value; document.getElementById('pppoeFields').style.display=(t==='pppoe')?'block':'none'; }
 
@@ -906,8 +906,7 @@
         installation_date:document.getElementById('afInstallDate').value||null,
         due_date:document.getElementById('afDueDate').value||null,
         connection_type:connType||null,
-        router_id:document.getElementById('afRouter').value||null,
-        device_id:document.getElementById('afRouter').value||null,
+        mikrotik_id:document.getElementById('afRouter').value||null,
         static_ip:document.getElementById('afStaticIp').value.trim()||null,
         mac_address:document.getElementById('afMac').value.trim()||null,
         notes:document.getElementById('afNotes').value.trim()||null
@@ -1120,14 +1119,16 @@
 
       <label class="as-lbl">Tipe Koneksi</label>
       <select class="as-in" id="afConnType" onchange="onConnTypeChange()">
+        <option value="">Belum ditentukan</option>
         <option value="pppoe">PPPoE</option>
         <option value="static">IP Static</option>
         <option value="hotspot">Hotspot</option>
       </select>
-      <label class="as-lbl">Router / MikroTik</label>
-      <select class="as-in" id="afRouter" onchange="onRouterChange()"><option value="">Pilih router…</option></select>
+      <label class="as-lbl">Router / NAS <span style="font-weight:500;color:#94a3b8;">(opsional)</span></label>
+      <select class="as-in" id="afRouter" onchange="onRouterChange()"><option value="">Belum ada NAS / router</option></select>
+      <div class="as-hint">Boleh dikosongkan. Pelanggan tetap bisa disimpan sebelum NAS terdaftar.</div>
 
-      <div id="pppoeFields">
+      <div id="pppoeFields" style="display:none">
         <label class="as-lbl">Profil PPPoE</label>
         <select class="as-in" id="afPppoeProfile" disabled><option value="">Pilih router dulu…</option></select>
         <div class="as-row">

@@ -6,6 +6,56 @@ const { getCompanyName } = require('../utils/companyInfo');
 const InfraSync = require('../services/CustomerInfraSyncService');
 const { applyTenantWhere, getTenantId, assertCustomerTenant, isTenantOwner } = require('../utils/tenantScope');
 
+// CRM customer boleh disimpan tanpa NAS / MikroTik. Kosongkan FK & alias
+// (router_id, device_id, string kosong) supaya Sequelize/MySQL tidak gagal.
+function coerceNullableId(val) {
+  if (val === undefined) return undefined;
+  if (val === null || val === '' || val === 'null' || val === 'undefined') return null;
+  const n = parseInt(val, 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function emptyToNull(val) {
+  if (val === undefined) return undefined;
+  if (val === null) return null;
+  if (typeof val === 'string' && val.trim() === '') return null;
+  return val;
+}
+
+function sanitizeCustomerWrite(raw) {
+  const data = raw && typeof raw === 'object' ? raw : {};
+  if (!data.mikrotik_id && (data.router_id || data.device_id)) {
+    data.mikrotik_id = data.router_id || data.device_id;
+  }
+  delete data.router_id;
+  delete data.device_id;
+  delete data.pppoe_profile;
+  delete data.sync_pppoe;
+
+  ['mikrotik_id', 'package_id', 'infra_parent_id'].forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      data[key] = coerceNullableId(data[key]);
+    }
+  });
+
+  ['pppoe_username', 'pppoe_password', 'connection_type', 'static_ip',
+   'mac_address', 'due_date', 'installation_date', 'email', 'phone',
+   'address', 'ont_sn', 'notes', 'latitude', 'longitude'].forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      data[key] = emptyToNull(data[key]);
+    }
+  });
+
+  if (data.billing_date === '' || data.billing_date === null) delete data.billing_date;
+
+  // Kolom opsional yang ada di production tapi belum tentu di model git.
+  if (!Customer.rawAttributes.pppoe_password) delete data.pppoe_password;
+  if (!Customer.rawAttributes.ktp_photo) delete data.ktp_photo;
+  if (!Customer.rawAttributes.house_photo) delete data.house_photo;
+
+  return data;
+}
+
 class CustomerController {
   async index(req, res) {
     try {
@@ -143,6 +193,10 @@ class CustomerController {
         data.customer_id = await generateUniqueCustomerId(Customer);
       }
 
+      // Jangan izinkan field internal di-set dari input bebas.
+      delete data.public_link_token;
+      sanitizeCustomerWrite(data);
+
       // Validasi billing_date
       if (data.billing_date !== undefined) {
         const bd = parseInt(data.billing_date);
@@ -150,9 +204,6 @@ class CustomerController {
           return res.status(400).json({ success: false, message: 'Tanggal tagihan harus antara 1-28' });
         }
       }
-
-      // Jangan izinkan field internal di-set dari input bebas.
-      delete data.public_link_token;
 
       // Auto-generate token link pembayaran permanen untuk pelanggan baru.
       try {
@@ -256,13 +307,6 @@ class CustomerController {
       }
       if (isTenantOwner(req)) delete req.body.tenant_id;
 
-      if (req.body.billing_date !== undefined) {
-        const bd = parseInt(req.body.billing_date);
-        if (isNaN(bd) || bd < 1 || bd > 28) {
-          return res.status(400).json({ success: false, message: 'Tanggal tagihan harus antara 1-28' });
-        }
-      }
-
       // SECURITY: Field portal credentials TIDAK BOLEH diupdate via endpoint umum
       // karena password akan ter-bypass bcrypt dan disimpan plaintext.
       // Gunakan POST /customers/:id/portal-credentials sebagai gantinya.
@@ -271,6 +315,16 @@ class CustomerController {
       delete sanitized.customer_id;           // hanya boleh diubah via updatePortalCredentials (validasi unique)
       delete sanitized.last_portal_login;     // diset otomatis oleh sistem saat login
       delete sanitized.public_link_token;     // hanya via endpoint payment-link (generate/revoke)
+      delete sanitized.send_wa_welcome;
+      delete sanitized.send_email_welcome;
+      sanitizeCustomerWrite(sanitized);
+
+      if (sanitized.billing_date !== undefined) {
+        const bd = parseInt(sanitized.billing_date);
+        if (isNaN(bd) || bd < 1 || bd > 28) {
+          return res.status(400).json({ success: false, message: 'Tanggal tagihan harus antara 1-28' });
+        }
+      }
 
       await customer.update(sanitized);
       const full = await Customer.findByPk(customer.id, {

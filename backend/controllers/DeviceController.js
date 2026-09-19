@@ -163,72 +163,47 @@ class DeviceController {
       } catch(e) {}
 
       // ─── Cleanup child tables yang reference devices.id ──────────
-      // Beberapa tabel punya FK ke devices tapi TIDAK punya ON DELETE CASCADE
-      // di DB schema-nya. Kita manual delete supaya `device.destroy()` tidak
-      // gagal karena foreign key constraint.
-      //
-      // Pendekatan: best-effort delete dari setiap child table. Kalau tabel
-      // tidak ada (mis. fitur belum migrate), catch & lanjut.
-      const cleanups = [
-        // Sequelize models (sudah ada di codebase)
-        { name: 'DeviceLog',         where: { device_id: device.id } },
-        { name: 'TrafficData',       where: { device_id: device.id } },
-        { name: 'NocMonitorPreset',  where: { router_id: device.id } },
-      ];
-
-      for (const c of cleanups) {
+      // Raw DELETE lebih cepat dari Model.destroy pada tabel log/traffic besar.
+      // Unlink dulu (SET NULL) supaya FK RESTRICT tidak menahan hapus device.
+      const models = require('../models');
+      const runSql = async (sql) => {
         try {
-          const Model = require('../models')[c.name];
-          if (Model) {
-            const n = await Model.destroy({ where: c.where, transaction: t });
-            if (n > 0) {
-              logger.info(`[Device.destroy] cleaned ${n} ${c.name} row(s) for device ${device.id}`);
-            }
-          }
+          await sequelize.query(sql, { replacements: [device.id], transaction: t });
         } catch (e) {
-          // Model tidak ada / column tidak ada — fail soft
-          logger.warn(`[Device.destroy] cleanup ${c.name} skipped: ${e.message}`);
-        }
-      }
-
-      // Customer.mikrotik_id — jangan delete customer, tapi set mikrotik_id = NULL
-      // (customer tetap ada, hanya unlink dari router yang akan dihapus)
-      try {
-        const Customer = require('../models').Customer;
-        if (Customer) {
-          const [updated] = await Customer.update(
-            { mikrotik_id: null },
-            { where: { mikrotik_id: device.id }, transaction: t }
-          );
-          if (updated > 0) {
-            logger.info(`[Device.destroy] unlinked ${updated} customer(s) from device ${device.id}`);
+          if (!String(e.message).match(/doesn'?t exist|Unknown table|no such table|Unknown column/i)) {
+            logger.warn(`[Device.destroy] sql skipped: ${e.message}`);
           }
         }
-      } catch (e) {
-        logger.warn(`[Device.destroy] customer unlink skipped: ${e.message}`);
-      }
-
-      // Generic raw SQL cleanup untuk child tables yang tidak punya model di Sequelize
-      // (fail-soft kalau tabel tidak ada). Tambahkan di sini kalau ada FK error baru.
-      const rawCleanups = [
-        // tabel monitoring/snmp lain yang mungkin reference devices
-        `DELETE FROM device_metrics WHERE device_id = ?`,
-        `DELETE FROM device_alerts WHERE device_id = ?`,
-        `DELETE FROM interface_stats WHERE device_id = ?`,
-      ];
-      for (const sql of rawCleanups) {
+      };
+      const runModel = async (name, where) => {
         try {
-          await sequelize.query(sql, {
-            replacements: [device.id],
-            transaction: t,
-          });
+          const Model = models[name];
+          if (!Model) return;
+          const n = await Model.destroy({ where, transaction: t });
+          if (n > 0) logger.info(`[Device.destroy] cleaned ${n} ${name} row(s) for device ${device.id}`);
         } catch (e) {
-          // Tabel tidak ada — abaikan. ER_NO_SUCH_TABLE = code 1146
-          if (!String(e.message).match(/doesn'?t exist|Unknown table|no such table/i)) {
-            logger.warn(`[Device.destroy] raw cleanup failed: ${e.message}`);
-          }
+          logger.warn(`[Device.destroy] cleanup ${name} skipped: ${e.message}`);
         }
-      }
+      };
+
+      // Satu koneksi per transaksi Sequelize — jangan Promise.all.
+      const steps = [
+        'UPDATE customers SET mikrotik_id = NULL WHERE mikrotik_id = ?',
+        'UPDATE nas_devices SET device_id = NULL WHERE device_id = ?',
+        'UPDATE mikrotik_devices SET device_id = NULL WHERE device_id = ?',
+        'UPDATE resellers SET device_id = NULL WHERE device_id = ?',
+        'UPDATE reseller_voucher_packages SET device_id = NULL WHERE device_id = ?',
+        'DELETE FROM nms_interface_presets WHERE router_id = ?',
+        'DELETE FROM nms_interfaces WHERE device_id = ?',
+        'DELETE FROM device_logs WHERE device_id = ?',
+        'DELETE FROM traffic_data WHERE device_id = ?',
+        'DELETE FROM device_metrics WHERE device_id = ?',
+        'DELETE FROM device_alerts WHERE device_id = ?',
+        'DELETE FROM interface_stats WHERE device_id = ?',
+      ];
+      for (const sql of steps) await runSql(sql);
+      await runModel('NmsInterfacePreset', { router_id: device.id });
+      await runModel('NocMonitorPreset', { router_id: device.id });
 
       // Sekarang hapus device-nya
       await device.destroy({ transaction: t });

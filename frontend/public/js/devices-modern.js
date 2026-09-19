@@ -5,6 +5,7 @@
 
 let currentDeviceId = null;
 let devicesData = [];
+const _DELETING = {};
 
 // ─── LOAD DEVICES LIST ────────────────────────────
 async function loadDeviceList() {
@@ -18,7 +19,7 @@ async function loadDeviceList() {
     // Load devices list
     const devicesRes = await App.api('/devices');
     if (devicesRes?.success) {
-      devicesData = devicesRes.data || [];
+      devicesData = (devicesRes.data || []).filter(d => !_DELETING[d.id]);
       renderDeviceTable(devicesData);
     }
   } catch (err) {
@@ -247,22 +248,36 @@ async function saveDevice() {
 
 // ─── DELETE DEVICE ────────────────────────────────
 async function deleteDevice(id, name) {
+  if (_DELETING[id]) return;
   if (!confirm(`Are you sure you want to delete device "${name}"?`)) {
     return;
   }
-  
+
+  const snapshot = devicesData.slice();
+  _DELETING[id] = true;
+  devicesData = devicesData.filter(d => d.id !== id);
+  renderDeviceTable(devicesData);
+  App.showToast('Menghapus device…', 'info');
+
   try {
     const res = await App.api(`/devices/${id}`, { method: 'DELETE' });
-    
+
     if (res?.success) {
-      App.showToast('Device deleted successfully', 'success');
-      loadDeviceList();
+      App.showToast('Device dihapus', 'success');
+      App.api('/devices/stats').then(s => { if (s?.success) updateStats(s.data); }).catch(() => {});
+      setTimeout(() => { delete _DELETING[id]; }, 8000);
     } else {
-      App.showToast(res?.message || 'Failed to delete device', 'error');
+      delete _DELETING[id];
+      devicesData = snapshot;
+      renderDeviceTable(devicesData);
+      App.showToast(res?.message || 'Gagal menghapus', 'error');
     }
   } catch (err) {
     console.error('Error deleting device:', err);
-    App.showToast('Failed to delete device', 'error');
+    delete _DELETING[id];
+    devicesData = snapshot;
+    renderDeviceTable(devicesData);
+    App.showToast('Gagal menghapus device', 'error');
   }
 }
 

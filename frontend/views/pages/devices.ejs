@@ -842,6 +842,7 @@
   var _DEVICES     = [];          // semua device hasil fetch
   var _STATUS_FILT = 'all';       // filter stat card: all|online|offline|warning
   var _REFRESH_INT = null;
+  var _DELETING    = {};          // id → true, cegah auto-refresh mengembalikan baris
 
   // ── Escape helper (XSS-safe rendering) ──
   function esc(v) {
@@ -861,7 +862,7 @@
 
       if (statsRes?.success) updateStats(statsRes.data);
       if (listRes?.success) {
-        _DEVICES = listRes.data || [];
+        _DEVICES = (listRes.data || []).filter(d => !_DELETING[d.id]);
         applyFilter();
       }
       setLive('live');
@@ -1555,18 +1556,31 @@
   // ── Delete ──
   async function deleteDevice(id) {
     const d = _DEVICES.find(x => x.id === id);
-    if (!d) return;
+    if (!d || _DELETING[id]) return;
     if (!confirm(`Hapus device "${d.name}"?\n\nSemua log & traffic data terkait juga akan terhapus.`)) return;
+
+    const snapshot = _DEVICES.slice();
+    _DELETING[id] = true;
+    _DEVICES = _DEVICES.filter(x => x.id !== id);
+    applyFilter();
+    App.showToast('Menghapus device…', 'info');
 
     try {
       const res = await App.api(`/devices/${id}`, { method: 'DELETE' });
       if (res?.success) {
         App.showToast('Device dihapus', 'success');
-        loadDeviceList();
+        App.api('/devices/stats').then(s => { if (s?.success) updateStats(s.data); }).catch(() => {});
+        setTimeout(() => { delete _DELETING[id]; }, 8000);
       } else {
+        delete _DELETING[id];
+        _DEVICES = snapshot;
+        applyFilter();
         App.showToast(res?.message || 'Gagal menghapus', 'error');
       }
     } catch (e) {
+      delete _DELETING[id];
+      _DEVICES = snapshot;
+      applyFilter();
       App.showToast('Error: ' + e.message, 'error');
     }
   }
