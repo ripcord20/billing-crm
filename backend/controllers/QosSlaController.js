@@ -26,7 +26,7 @@ class QosSlaController {
         order: [['status', 'ASC'], ['last_seen_at', 'DESC'], ['id', 'DESC']],
         limit: Math.min(parseInt(req.query.limit, 10) || 80, 200)
       });
-      res.json({ success: true, data: rows });
+      res.json({ success: true, data: rows.map((r) => QosSlaService.serializeQosAlert(r)) });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
     }

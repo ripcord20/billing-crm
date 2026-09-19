@@ -13,7 +13,8 @@ const {
   alertAudience,
   alertRoles,
   mergeSettings,
-  parseServerList
+  parseServerList,
+  formatAlertWhen
 } = require('../utils/qosSla');
 
 assert.strictEqual(computeJitter([10, 12, 11, 40]), 10.67);
@@ -71,5 +72,11 @@ assert.deepStrictEqual(merged.ispDns, ['10.0.0.1', '10.0.0.2']);
 assert.strictEqual(merged.rttMs, 180);
 assert.deepStrictEqual(merged.publicDns, DEFAULTS.publicDns);
 assert.deepStrictEqual(parseServerList('1.1.1.1;8.8.8.8'), ['1.1.1.1', '8.8.8.8']);
+
+const stamped = formatAlertWhen(new Date('2026-09-19T05:30:45.000Z'));
+assert.ok(stamped.includes('2026'));
+assert.ok(stamped.includes('WIB'));
+assert.ok(stamped.includes('12.30.45') || stamped.includes('12:30:45'));
+assert.strictEqual(formatAlertWhen('not-a-date'), '');
 
 console.log('qosSla.test.js OK');

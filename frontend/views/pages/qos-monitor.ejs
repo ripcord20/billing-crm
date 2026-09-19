@@ -56,6 +56,10 @@
     .qos-badge.warn { background: #fffbeb; color: #b45309; }
     .qos-badge.critical, .qos-badge.error { background: #fef2f2; color: #b91c1c; }
     .qos-empty { padding: 24px 16px; color: var(--text-secondary); font-size: 13px; }
+    .qos-when { white-space: nowrap; min-width: 132px; }
+    .qos-when-date { font-weight: 700; font-size: 12px; letter-spacing: -0.01em; }
+    .qos-when-time { color: var(--text-secondary); font-size: 11px; font-variant-numeric: tabular-nums; margin-top: 2px; }
+    .qos-when-hit { color: var(--text-muted); font-size: 10px; font-weight: 700; margin-top: 3px; }
     .qos-settings { display: none; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
     .qos-settings.open { display: block; }
     .qos-form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -108,7 +112,7 @@
         <div class="qos-grid">
           <div class="qos-card-block">
             <h3>Alert otomatis</h3>
-            <p class="sub">Tipe berbeda: teknis (loss/jitter/latency), keamanan (auth/DDoS), dan up-selling bandwidth.</p>
+            <p class="sub">Setiap kejadian menampilkan tanggal dan waktu (WIB). Tipe: teknis, keamanan, dan up-selling bandwidth.</p>
             <div class="qos-filters">
               <button class="qos-chip active" data-aud="" type="button">Semua</button>
               <button class="qos-chip" data-aud="tech" type="button">Teknis</button>
@@ -132,7 +136,7 @@
           </div>
           <div class="qos-card-block">
             <h3>Autentikasi gagal</h3>
-            <p class="sub">Portal + log MikroTik (jika tersedia). Lonjakan = indikasi serangan.</p>
+            <p class="sub">Portal + log MikroTik (jika tersedia). Setiap event menampilkan tanggal dan waktu (WIB).</p>
             <div id="qosAuth"></div>
           </div>
         </div>
@@ -140,6 +144,6 @@
     </div>
   </div>
   <script src="/js/app.js"></script>
-  <script src="/js/qos-monitor.js"></script>
+  <script src="/js/qos-monitor.js?v=alertts1"></script>
 </body>
 </html>

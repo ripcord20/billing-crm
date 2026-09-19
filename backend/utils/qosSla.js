@@ -174,6 +174,26 @@ const SETTING_KEYS = [
   'qos_uplink_mbps', 'qos_public_dns', 'qos_isp_dns', 'qos_ping_targets'
 ];
 
+/** Date/time label for QoS events, always Asia/Jakarta (WIB). */
+function formatAlertWhen(value = new Date()) {
+  const dt = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(dt.getTime())) return '';
+  const date = dt.toLocaleDateString('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+  const time = dt.toLocaleTimeString('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  return date + ' ' + time + ' WIB';
+}
+
 function settingsToRows(settings) {
   const s = mergeSettings(settings);
   return {
@@ -216,5 +236,6 @@ module.exports = {
   alertAudience,
   alertRoles,
   mergeSettings,
-  settingsToRows
+  settingsToRows,
+  formatAlertWhen
 };

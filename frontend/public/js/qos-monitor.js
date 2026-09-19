@@ -19,6 +19,41 @@
     return (Number.isInteger(v) ? String(v) : v.toFixed(digits == null ? 1 : digits)) + (unit || '');
   }
 
+  function alertWhen(a) {
+    return (a && (a.last_seen_at || a.lastSeenAt || a.occurred_at || a.created_at || a.createdAt))
+      || (a && a.metadata && (a.metadata.occurred_at || a.metadata.last_seen_at))
+      || null;
+  }
+
+  function fmtWaktu(iso) {
+    if (!iso) return { date: '—', time: '', full: '—' };
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return { date: '—', time: '', full: '—' };
+    const date = d.toLocaleDateString('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+    const time = d.toLocaleTimeString('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+    return { date: date, time: time + ' WIB', full: date + ' ' + time + ' WIB' };
+  }
+
+  function waktuCell(iso, extra) {
+    const w = fmtWaktu(iso);
+    return '<td class="qos-when" title="' + esc(w.full) + '">'
+      + '<div class="qos-when-date">' + esc(w.date) + '</div>'
+      + (w.time ? '<div class="qos-when-time">' + esc(w.time) + '</div>' : '')
+      + (extra || '')
+      + '</td>';
+  }
+
   function badge(status) {
     return '<span class="qos-badge ' + (status || 'ok') + '">' + (status || 'unknown') + '</span>';
   }
@@ -61,12 +96,22 @@
       document.getElementById('qosAlerts').innerHTML = '<div class="qos-empty">Tidak ada alert terbuka.</div>';
       return;
     }
-    document.getElementById('qosAlerts').innerHTML = '<table class="qos-table"><thead><tr><th>Tipe</th><th>Pesan</th><th></th></tr></thead><tbody>'
-      + rows.map((a) => '<tr>'
-        + '<td><span class="qos-badge ' + a.audience + '">' + (TYPE_LABEL[a.type] || a.type) + '</span><div style="margin-top:4px">' + badge(a.severity === 'critical' ? 'critical' : (a.severity === 'warning' ? 'warn' : 'ok')) + '</div></td>'
-        + '<td><strong>' + esc(a.title) + '</strong><div style="color:var(--text-secondary);margin-top:3px">' + esc(a.message) + '</div></td>'
-        + '<td><button class="btn btn-secondary btn-sm" type="button" data-ack="' + a.id + '">Ack</button></td>'
-        + '</tr>').join('')
+    document.getElementById('qosAlerts').innerHTML = '<table class="qos-table"><thead><tr><th>Tanggal &amp; waktu</th><th>Tipe</th><th>Pesan</th><th></th></tr></thead><tbody>'
+      + rows.map((a) => {
+        const hits = Number(a.hit_count || 1);
+        const first = a.first_seen_at || a.created_at || a.createdAt;
+        const extra = hits > 1
+          ? '<div class="qos-when-hit">' + hits + 'x'
+            + (first ? ' · pertama ' + esc(fmtWaktu(first).full) : '')
+            + '</div>'
+          : '';
+        return '<tr>'
+          + waktuCell(alertWhen(a), extra)
+          + '<td><span class="qos-badge ' + a.audience + '">' + (TYPE_LABEL[a.type] || a.type) + '</span><div style="margin-top:4px">' + badge(a.severity === 'critical' ? 'critical' : (a.severity === 'warning' ? 'warn' : 'ok')) + '</div></td>'
+          + '<td><strong>' + esc(a.title) + '</strong><div style="color:var(--text-secondary);margin-top:3px">' + esc(a.message) + '</div></td>'
+          + '<td><button class="btn btn-secondary btn-sm" type="button" data-ack="' + a.id + '">Ack</button></td>'
+          + '</tr>';
+      }).join('')
       + '</tbody></table>';
   }
 
@@ -98,8 +143,10 @@
       document.getElementById('qosAuth').innerHTML = '<div class="qos-empty">Tidak ada login gagal pada jendela ini.</div>';
       return;
     }
-    document.getElementById('qosAuth').innerHTML = '<table class="qos-table"><thead><tr><th>Sumber</th><th>Identitas</th><th>IP</th></tr></thead><tbody>'
-      + rows.slice(0, 12).map((r) => '<tr><td>' + esc(r.source) + '</td><td>' + esc(r.identifier || '-') + '</td><td>' + esc(r.ip_address || '-') + '</td></tr>').join('')
+    document.getElementById('qosAuth').innerHTML = '<table class="qos-table"><thead><tr><th>Tanggal &amp; waktu</th><th>Sumber</th><th>Identitas</th><th>IP</th></tr></thead><tbody>'
+      + rows.slice(0, 12).map((r) => '<tr>'
+        + waktuCell(r.created_at || r.createdAt)
+        + '<td>' + esc(r.source) + '</td><td>' + esc(r.identifier || '-') + '</td><td>' + esc(r.ip_address || '-') + '</td></tr>').join('')
       + '</tbody></table>';
   }
 
