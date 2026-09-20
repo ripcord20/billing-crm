@@ -99,6 +99,7 @@ app.use(helmet({
         "'self'", "data:", "blob:",
         "*.tile.openstreetmap.org", "*.basemaps.cartocdn.com",
         "mt0.google.com", "mt1.google.com", "mt2.google.com", "mt3.google.com",
+        "*.google.com", "*.gstatic.com",
         "*.googleapis.com", "*.ggpht.com",
         // Tile satelit Esri (World Imagery) untuk mode satelit peta.
         "server.arcgisonline.com", "*.arcgisonline.com",
@@ -113,6 +114,7 @@ app.use(helmet({
         "server.arcgisonline.com", "*.arcgisonline.com",
         "nominatim.openstreetmap.org",
         "mt0.google.com", "mt1.google.com", "mt2.google.com", "mt3.google.com",
+        "*.google.com",
         "*.midtrans.com", "api.midtrans.com", "api.sandbox.midtrans.com",
         "*.duitku.com", "passport.duitku.com", "sandbox.duitku.com",
         "*.tripay.co.id", "tripay.co.id"
