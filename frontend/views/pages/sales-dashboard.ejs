@@ -148,9 +148,22 @@
     .reg-cov.no{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;} .reg-cov.no .ic{background:#ef4444;}
     .reg-cov.load{background:#f1f5fb;border:1px solid var(--border);color:var(--muted);} .reg-cov.load .ic{background:#94a3b8;}
     .reg-submit{width:100%;justify-content:center;margin-top:18px;padding:13px;font-size:14.5px;}
+    .reg-lead-hint{font-size:12.5px;color:var(--muted);font-weight:500;margin:-10px 0 16px;line-height:1.45;}
+    .reg-more-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 14px;border:1.5px dashed var(--border);border-radius:12px;background:#f8fafc;color:var(--muted);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin:4px 0 10px;}
+    .reg-more-btn:hover{border-color:var(--s-blue);color:var(--s-blue);background:#eff6ff;}
+    .reg-more-btn .chev{transition:transform .2s;display:flex;}
+    .reg-more-btn.open .chev{transform:rotate(180deg);}
+    .reg-more{display:none;}
+    .reg-more.open{display:block;}
+    .cust-ro-hint{font-size:12.5px;color:var(--muted);background:#f8fafc;border:1px solid var(--border);border-radius:11px;padding:10px 13px;margin-bottom:4px;line-height:1.45;}
     @media(max-width:600px){
       .reg-modal .row{flex-direction:column;gap:0;}
       .reg-map{height:200px;}
+    }
+    @media(max-width:768px){
+      .sxmodal#regModal{padding:0;align-items:flex-end;}
+      .sxmodal#regModal .reg-modal{max-width:100%!important;width:100%!important;max-height:94vh;border-radius:20px 20px 0 0;margin:0;padding:18px 16px calc(22px + env(safe-area-inset-bottom));}
+      .reg-coord-row{display:none;}
     }
     /* Target & KPI — chart tren tinggi tetap & rapi (gaya clean) */
     #kpiTrend{height:240px;}
@@ -536,7 +549,7 @@
           <p id="fxSub">Ringkasan performa akuisisi pelanggan Anda</p>
         </div>
         <div class="fx-hdr-r">
-          <button class="btn btn-blue" onclick="openRegModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Registrasi Baru</button>
+          <button class="btn btn-blue" onclick="openRegModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Lead Baru</button>
           <button class="icon-btn" onclick="refreshAll()" title="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg></button>
         </div>
       </div>
@@ -667,6 +680,7 @@
           <div class="card-h">
             <div class="t">Pipeline Registrasi & Work Order</div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-blue btn-sm" onclick="openRegModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Lead Baru</button>
               <button id="btnRegTrash" class="btn btn-outline btn-sm" onclick="openRegTrash()" style="display:none">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
                 Trash
@@ -725,12 +739,12 @@
           </div>
         </div>
         <div class="card">
-          <div class="card-h"><div class="t">Daftar Customer<small>Pelanggan yang berhasil didaftarkan & diaktivasi</small></div>
+          <div class="card-h"><div class="t">Daftar Customer<small>Pelanggan yang sudah diaktivasi — hanya lihat</small></div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <input type="text" id="custSearch" placeholder="Cari nama / telp / alamat..." oninput="filterCustomers()" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;min-width:200px">
-              <button class="btn btn-blue btn-sm" onclick="openRegModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> New Customer</button>
             </div>
           </div>
+          <div class="cust-ro-hint">Ini portofolio pelanggan aktif hasil pipeline. Untuk calon baru, gunakan <b>Lead Baru</b> di Pipeline — data teknis (PPPoE, ONT, router) diisi teknisi di modul Customer.</div>
           <div style="overflow-x:auto"><table>
             <thead class="thead-soft"><tr><th>Customer</th><th>Kontak</th><th>Paket</th><th>Alamat / Area</th><th>Status</th><th>Tgl Aktivasi</th><th></th></tr></thead>
             <tbody id="custBody"><tr><td colspan="7" class="empty">Memuat...</td></tr></tbody>
@@ -1133,52 +1147,30 @@
 </div>
 <div class="sxmodal" id="regModal">
   <div class="sxmodal-box reg-modal">
-    <div class="sxmodal-h"><span>Registrasi Pelanggan Baru</span><span class="x" onclick="closeModal('regModal')">&times;</span></div>
+    <div class="sxmodal-h"><span>Lead Baru</span><span class="x" onclick="closeModal('regModal')">&times;</span></div>
+    <p class="reg-lead-hint">Calon pelanggan masuk pipeline survey &amp; instalasi. User/pass PPPoE tidak diisi di sini — teknisi melengkapinya saat pemasangan.</p>
 
-    <div class="reg-sec"><span class="reg-sec-t">Data Pelanggan</span></div>
+    <div class="reg-sec"><span class="reg-sec-t">Data Lead</span></div>
     <div class="row">
-      <div class="field"><label>Nama <i>*</i></label><input id="rgName" placeholder="Nama lengkap"></div>
-      <div class="field"><label>No. WhatsApp <i>*</i></label><input id="rgPhone" placeholder="08xxxxxxxxxx" inputmode="tel"></div>
+      <div class="field"><label>Nama <i>*</i></label><input id="rgName" placeholder="Nama lengkap" autocomplete="name"></div>
+      <div class="field"><label>No. WhatsApp <i>*</i></label><input id="rgPhone" placeholder="08xxxxxxxxxx" inputmode="tel" autocomplete="tel"></div>
     </div>
-    <div class="row">
-      <div class="field"><label>Email</label><input id="rgEmail" placeholder="email@contoh.com" inputmode="email"></div>
-      <div class="field"><label>No. KTP</label><input id="rgKtp" placeholder="16 digit" inputmode="numeric"></div>
-    </div>
-    <div class="row">
-      <div class="field"><label>Provinsi</label><select id="rgProv" onchange="onProvChange()"><option value="">— pilih provinsi —</option></select></div>
-      <div class="field"><label>Kabupaten / Kota</label><select id="rgKab" onchange="onKabChange()" disabled><option value="">— pilih —</option></select></div>
-    </div>
-    <div class="row">
-      <div class="field"><label>Kecamatan</label><select id="rgKec" onchange="onKecChange()" disabled><option value="">— pilih —</option></select></div>
-      <div class="field"><label>Desa / Kelurahan</label><select id="rgDesa" onchange="onDesaChange()" disabled><option value="">— pilih —</option></select></div>
-    </div>
-    <div class="row">
-      <div class="field"><label>Nama Jalan</label><input id="rgJalan" placeholder="Jl. ..." oninput="composeAddr()"></div>
-      <div class="field"><label>No. Rumah</label><input id="rgNoRumah" placeholder="No." oninput="composeAddr()"></div>
-    </div>
-    <div class="row">
-      <div class="field"><label>RT</label><input id="rgRt" placeholder="001" inputmode="numeric" oninput="composeAddr()"></div>
-      <div class="field"><label>RW</label><input id="rgRw" placeholder="002" inputmode="numeric" oninput="composeAddr()"></div>
-    </div>
-    <div class="field"><label>Alamat Lengkap <i>*</i> <span style="font-weight:400;color:var(--muted2);font-size:11px">(otomatis tersusun, bisa diedit)</span></label><textarea id="rgAddr" placeholder="Alamat lengkap pemasangan"></textarea></div>
+    <div class="field"><label>Paket <span style="font-weight:400;color:var(--muted2)">(opsional)</span></label><select id="rgPkg"><option value="">— pilih —</option></select></div>
 
-    <div class="reg-sec"><span class="reg-sec-t">Titik Lokasi</span><span class="reg-sec-hint">Isi koordinat / pilih di peta — alamat & coverage terisi otomatis</span></div>
-    <div class="row">
+    <div class="reg-sec"><span class="reg-sec-t">Titik Lokasi</span><span class="reg-sec-hint">GPS atau pin di peta — alamat &amp; coverage terisi otomatis</span></div>
+    <div class="row reg-coord-row">
       <div class="field"><label>Latitude</label><input id="rgLat" placeholder="-6.20" inputmode="decimal" oninput="onRegCoordInput()"></div>
       <div class="field"><label>Longitude</label><input id="rgLng" placeholder="106.81" inputmode="decimal" oninput="onRegCoordInput()"></div>
     </div>
     <div class="reg-loc-actions">
-      <button type="button" class="btn btn-outline btn-sm" onclick="regUseMyLocation()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg> Lokasi Saya</button>
-      <span class="reg-loc-hint" id="rgGeoHint">Klik / geser pin di peta untuk menentukan titik.</span>
+      <button type="button" class="btn btn-blue btn-sm" onclick="regUseMyLocation()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg> Lokasi Saya</button>
+      <span class="reg-loc-hint" id="rgGeoHint">Ketuk / geser pin ke rumah calon pelanggan.</span>
     </div>
     <div id="rgMap" class="reg-map"></div>
     <div id="rgCoverage" class="reg-cov" style="display:none"></div>
+    <div class="field" style="margin-top:12px"><label>Alamat <span style="font-weight:400;color:var(--muted2);font-size:11px">(otomatis dari pin, bisa diedit)</span></label><textarea id="rgAddr" placeholder="Akan terisi dari pin peta" rows="2"></textarea></div>
 
-    <div class="reg-sec"><span class="reg-sec-t">Paket & Catatan</span></div>
-    <div class="field"><label>Paket</label><select id="rgPkg"><option value="">— pilih —</option></select></div>
-    <div class="field"><label>Catatan <span style="font-weight:400;color:var(--muted2)">(opsional)</span></label><textarea id="rgNotes" placeholder="Catatan tambahan..."></textarea></div>
-
-    <div class="reg-sec"><span class="reg-sec-t">Dokumen Foto <span style="font-weight:400;color:var(--muted2);font-size:11px">(opsional)</span></span></div>
+    <div class="reg-sec"><span class="reg-sec-t">Foto <span style="font-weight:400;color:var(--muted2);font-size:11px">(opsional)</span></span></div>
     <div class="row">
       <div class="upbox" id="up_ktp" onclick="pickPhoto('ktp')">
         <input type="file" accept="image/*" id="file_ktp" style="display:none" onchange="onPick('ktp',this)">
@@ -1196,7 +1188,35 @@
       </div>
     </div>
 
-    <button class="btn btn-blue reg-submit" onclick="saveReg()" id="saveRegBtn">Simpan Registrasi</button>
+    <button type="button" class="reg-more-btn" id="rgMoreBtn" onclick="toggleRegMore()">
+      <span>Lengkapi data opsional</span>
+      <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:16px;height:16px"><polyline points="6 9 12 15 18 9"/></svg></span>
+    </button>
+    <div class="reg-more" id="rgMore">
+      <div class="row">
+        <div class="field"><label>Email</label><input id="rgEmail" placeholder="email@contoh.com" inputmode="email"></div>
+        <div class="field"><label>No. KTP</label><input id="rgKtp" placeholder="16 digit" inputmode="numeric"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Provinsi</label><select id="rgProv" onchange="onProvChange()"><option value="">— pilih provinsi —</option></select></div>
+        <div class="field"><label>Kabupaten / Kota</label><select id="rgKab" onchange="onKabChange()" disabled><option value="">— pilih —</option></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Kecamatan</label><select id="rgKec" onchange="onKecChange()" disabled><option value="">— pilih —</option></select></div>
+        <div class="field"><label>Desa / Kelurahan</label><select id="rgDesa" onchange="onDesaChange()" disabled><option value="">— pilih —</option></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Nama Jalan</label><input id="rgJalan" placeholder="Jl. ..." oninput="composeAddr()"></div>
+        <div class="field"><label>No. Rumah</label><input id="rgNoRumah" placeholder="No." oninput="composeAddr()"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>RT</label><input id="rgRt" placeholder="001" inputmode="numeric" oninput="composeAddr()"></div>
+        <div class="field"><label>RW</label><input id="rgRw" placeholder="002" inputmode="numeric" oninput="composeAddr()"></div>
+      </div>
+      <div class="field"><label>Catatan</label><textarea id="rgNotes" placeholder="Catatan tambahan..."></textarea></div>
+    </div>
+
+    <button class="btn btn-blue reg-submit" onclick="saveReg()" id="saveRegBtn">Simpan Lead</button>
   </div>
 </div>
 <div class="sxmodal" id="detModal"><div class="sxmodal-box" id="detBox"></div></div>
@@ -1234,7 +1254,7 @@ async function api(url,opt={}){const r=await fetch('/api'+url,{headers:{'Content
 
 const STATUS_LABEL={lead:'Lead',survey_request:'Survey Request',surveyed:'Surveyed',survey_rejected:'Survey Ditolak',approved:'Approved',installing:'Installing',activated:'Activated',cancelled:'Cancelled'};
 const STATUS_CLASS={lead:'p-lead',survey_request:'p-survey',surveyed:'p-surveyed',survey_rejected:'p-rejected',approved:'p-approved',installing:'p-installing',activated:'p-activated',cancelled:'p-cancelled'};
-const SUB={overview:'Ringkasan performa akuisisi pelanggan Anda',pipeline:'Kelola lead, survey, dan instalasi',customers:'Pelanggan yang berhasil diaktivasi',coverage:'Cek ketersediaan jaringan di titik pelanggan',potential:'Area dengan banyak calon pelanggan tapi belum ter-cover ODP',referral:'Bagikan link & pantau referral Anda',kpi:'Progress target bulanan & indikator kinerja',commission:'Riwayat & pembayaran komisi',leaderboard:'Peringkat performa tim sales',analytics:'Analisis tren registrasi, aktivasi & komisi',manage:'Pantau kinerja tim sales & atur komisi'};
+const SUB={overview:'Ringkasan performa akuisisi pelanggan Anda',pipeline:'Kelola lead, survey, dan instalasi',customers:'Pelanggan yang sudah diaktivasi (hanya lihat)',coverage:'Cek ketersediaan jaringan di titik pelanggan',potential:'Area dengan banyak calon pelanggan tapi belum ter-cover ODP',referral:'Bagikan link & pantau referral Anda',kpi:'Progress target bulanan & indikator kinerja',commission:'Riwayat & pembayaran komisi',leaderboard:'Peringkat performa tim sales',analytics:'Analisis tren registrasi, aktivasi & komisi',manage:'Pantau kinerja tim sales & atur komisi'};
 const TITLE={overview:'Sales Dashboard',pipeline:'Pipeline Registrasi',customers:'Daftar Customer',coverage:'Coverage Checker',potential:'Area Potensi',referral:'Referral',kpi:'Target & KPI',commission:'Komisi',leaderboard:'Leaderboard',analytics:'Analytics',manage:'Manajemen Sales'};
 
 function goSection(sec){
@@ -1265,6 +1285,12 @@ document.addEventListener('DOMContentLoaded',()=>{
     const bar=document.getElementById('fxPills'); if(bar) bar.style.display='flex';
   }
   const h=(location.hash||'').replace('#','');if(h&&TITLE[h]) goSection(h);
+  try{
+    const q=new URLSearchParams(location.search);
+    if(q.get('reg')==='1' || h==='register' || h==='lead'){
+      setTimeout(()=>openRegModal(), 280);
+    }
+  }catch(_){}
 });
 function refreshAll(){loadStats();loadAnalytics();loadRecent();loadCoverageMap();if(IS_ADMIN){loadTeam();loadManageComm();}toast('Diperbarui');}
 
@@ -1780,9 +1806,19 @@ function openRegModal(){
   pendingPhotos={ktp:null,house:null};
   resetUpBox('ktp','Foto KTP');resetUpBox('house','Foto Rumah');
   const cov=document.getElementById('rgCoverage'); if(cov){cov.style.display='none';cov.innerHTML='';}
+  const more=document.getElementById('rgMore'); const moreBtn=document.getElementById('rgMoreBtn');
+  if(more) more.classList.remove('open');
+  if(moreBtn) moreBtn.classList.remove('open');
   document.getElementById('regModal').classList.add('show');
   loadProvinces();
   setTimeout(initRegMap,120);
+}
+function toggleRegMore(){
+  const more=document.getElementById('rgMore');
+  const btn=document.getElementById('rgMoreBtn');
+  if(!more) return;
+  const open=more.classList.toggle('open');
+  if(btn) btn.classList.toggle('open', open);
 }
 
 // ── Dropdown wilayah berjenjang (API emsifa) ──
@@ -2004,16 +2040,21 @@ async function uploadPhoto(regId,kind,file){
 }
 async function saveReg(){
   const btn=document.getElementById('saveRegBtn');btn.disabled=true;btn.textContent='Menyimpan...';
-  const body={name:rgName.value.trim(),phone:rgPhone.value.trim(),email:rgEmail.value.trim()||null,id_card_number:rgKtp.value.trim()||null,address:rgAddr.value.trim(),latitude:rgLat.value||null,longitude:rgLng.value||null,package_id:rgPkg.value||null,notes:rgNotes.value.trim()||null};
-  if(!body.name||!body.phone||!body.address){btn.disabled=false;btn.textContent='Simpan Registrasi';return toast('Nama, telepon, alamat wajib',false);}
+  const lat=(document.getElementById('rgLat').value||'').trim();
+  const lng=(document.getElementById('rgLng').value||'').trim();
+  let address=(document.getElementById('rgAddr').value||'').trim();
+  if(!address && lat && lng) address='Pin lokasi ('+lat+', '+lng+')';
+  const body={name:rgName.value.trim(),phone:rgPhone.value.trim(),email:(document.getElementById('rgEmail').value||'').trim()||null,id_card_number:(document.getElementById('rgKtp').value||'').trim()||null,address:address,latitude:lat||null,longitude:lng||null,package_id:rgPkg.value||null,notes:(document.getElementById('rgNotes').value||'').trim()||null};
+  if(!body.name||!body.phone){btn.disabled=false;btn.textContent='Simpan Lead';return toast('Nama dan WhatsApp wajib diisi',false);}
+  if(!body.address && !(body.latitude&&body.longitude)){btn.disabled=false;btn.textContent='Simpan Lead';return toast('Pin lokasi di peta atau isi alamat',false);}
   const j=await api('/sales/registrations',{method:'POST',body:JSON.stringify(body)});
-  if(!j.success){btn.disabled=false;btn.textContent='Simpan Registrasi';return toast(j.message,false);}
+  if(!j.success){btn.disabled=false;btn.textContent='Simpan Lead';return toast(j.message,false);}
   // upload foto yang dipilih
   const regId=j.data.id;
   if(pendingPhotos.ktp)   await uploadPhoto(regId,'ktp',pendingPhotos.ktp);
   if(pendingPhotos.house) await uploadPhoto(regId,'house',pendingPhotos.house);
-  btn.disabled=false;btn.textContent='Simpan Registrasi';
-  toast('Registrasi dibuat');closeModal('regModal');loadStats();loadAnalytics();loadRecent();loadRegs();
+  btn.disabled=false;btn.textContent='Simpan Lead';
+  toast('Lead tersimpan di pipeline');closeModal('regModal');loadStats();loadAnalytics();loadRecent();loadRegs();
 }
 
 // ── Pipeline ──

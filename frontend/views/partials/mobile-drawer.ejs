@@ -421,7 +421,12 @@
   <div class="fabsheet-h">Tambah Cepat</div>
   <a class="fabsheet-item" href="/mobile/customers?add=1">
     <span class="fabsheet-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg></span>
-    <span class="fabsheet-tx">Tambah Pelanggan<span class="fabsheet-sub">Daftarkan pelanggan baru</span></span>
+    <span class="fabsheet-tx">Tambah Pelanggan<span class="fabsheet-sub">Akun layanan, termasuk PPPoE</span></span>
+    <span class="fabsheet-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+  </a>
+  <a class="fabsheet-item" href="/mobile/customers?lead=1">
+    <span class="fabsheet-ic" style="background:#e8f0ff;color:#2563eb;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg></span>
+    <span class="fabsheet-tx">Lead Baru<span class="fabsheet-sub">Calon pelanggan, tanpa PPPoE</span></span>
     <span class="fabsheet-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
   </a>
   <a class="fabsheet-item" href="/mobile/payment-new">
@@ -618,6 +623,9 @@
             else if(typeof window.openCreate==='function') window.openCreate();
             else if(typeof window.openQueueAdd==='function') window.openQueueAdd();
           }, 350);
+        }
+        if(p.get('lead')==='1'){
+          setTimeout(function(){ if(typeof window.openLead==='function') window.openLead(); }, 350);
         }
         if(p.get('expense')==='1'){
           // Halaman keuangan punya openExpense() untuk sheet catat pengeluaran.
