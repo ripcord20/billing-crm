@@ -307,7 +307,7 @@
     .up-inner svg{width:26px;height:26px;}
     .upbox img{width:100%;height:96px;object-fit:cover;display:block;}
     .up-badge{position:absolute;top:6px;right:6px;background:var(--green);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:13px;}
-    .ph-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px;}
+    .ph-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px;padding-bottom:8px;}
     .ph-thumb{border:1px solid var(--border);border-radius:11px;overflow:hidden;background:#f8fafc;}
     .ph-thumb img{width:100%;height:90px;object-fit:cover;display:block;cursor:pointer;}
     .ph-thumb .cap{font-size:11px;color:var(--muted);font-weight:600;text-align:center;padding:5px;}
@@ -320,15 +320,28 @@
     .dt-k{color:var(--muted);font-weight:500;flex-shrink:0;}
     .dt-v{color:var(--text);font-weight:600;text-align:right;}
 
-    /* Detail modal — header + hero (clean) */
-    #detBox{ padding:0 !important; overflow:hidden !important; }
-    .dt-head{ display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,#f8faff,#eef4ff); }
+    /* Detail modal — header sticky, isi (termasuk foto) bisa di-scroll / diangkat */
+    #detBox{
+      padding:0 !important;
+      overflow:hidden !important;
+      display:flex !important;
+      flex-direction:column;
+      max-height:min(90vh, calc(100dvh - 24px));
+    }
+    .dt-head{ display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,#f8faff,#eef4ff); flex-shrink:0; }
     .dt-head-icn{ width:38px;height:38px;border-radius:11px;background:#eff6ff;display:flex;align-items:center;justify-content:center;color:var(--s-blue-d);flex-shrink:0; }
     .dt-head-ttl{ font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.3px; }
     .dt-head-sub{ font-size:12px;color:var(--muted);font-family:'DM Mono',ui-monospace,monospace;margin-top:1px; }
     .dt-close{ width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:#fff;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0; }
     .dt-close:hover{ background:#fee2e2;border-color:#fecaca;color:#dc2626; }
-    .dt-pad{ padding:20px 22px 22px; }
+    .dt-pad{
+      padding:20px 22px 28px;
+      overflow-y:auto;
+      -webkit-overflow-scrolling:touch;
+      overscroll-behavior:contain;
+      flex:1 1 auto;
+      min-height:0;
+    }
     .dt-hero{ background:linear-gradient(135deg,var(--s-blue-d),var(--s-blue3));border-radius:14px;padding:16px 18px;margin-bottom:6px; }
     .dt-hero-name{ font-size:18px;font-weight:800;color:#fff;letter-spacing:-.3px;line-height:1.2; }
     .dt-hero-sub{ font-size:12.5px;color:rgba(255,255,255,.8);font-weight:500;margin-top:2px; }
@@ -371,6 +384,14 @@
       .map{height:300px!important;}
       /* Modal: hampir full width */
       .sxmodal-box{width:calc(100vw - 24px)!important;max-width:none!important;max-height:88vh;overflow-y:auto;}
+      /* Detail registrasi: sheet dari bawah, isi bisa di-swipe naik termasuk foto */
+      .sxmodal#detModal{padding:0;align-items:flex-end;}
+      #detBox{
+        width:100%!important;max-width:none!important;margin:0;
+        max-height:min(92dvh, calc(100dvh - 8px))!important;
+        border-radius:20px 20px 0 0;
+      }
+      .dt-pad{padding:18px 16px calc(28px + env(safe-area-inset-bottom));}
       .row{flex-direction:column;gap:0;}
       .legend{font-size:11px;flex-wrap:wrap;}
       #lbPodium{overflow-x:auto;}
@@ -461,6 +482,12 @@
     font-size:13px;color:#1e40af;animation:regBarIn .26s cubic-bezier(.16,1,.3,1)}
   .reg-bulkbar.show{display:flex}
   .reg-bulkbar .cnt b{font-weight:800}
+  @media(max-width:768px){
+    .reg-bulkbar{flex-wrap:wrap;gap:8px;padding:12px 12px 14px;}
+    .reg-bulkbar .cnt{width:100%;}
+    .reg-bulkbar .btn{flex:1;justify-content:center;min-height:44px;}
+    .reg-btn-del-ico{opacity:1;color:#dc2626;border-color:#fecaca;background:#fef2f2;}
+  }
   @keyframes regBarIn{from{opacity:0;transform:translateY(-7px)}to{opacity:1;transform:none}}
 
   .reg-btn-del{background:#dc2626;border:1.5px solid #dc2626;color:#fff;display:inline-flex;align-items:center;gap:6px}
@@ -477,12 +504,15 @@
     box-shadow:0 3px 8px rgba(220,38,38,.16)}
 
   /* ── Dialog konfirmasi ── */
-  .regcf{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px;
+  .regcf{position:fixed;inset:0;z-index:100000;display:flex;align-items:flex-end;justify-content:center;padding:18px;
+    padding-bottom:calc(18px + env(safe-area-inset-bottom));
     opacity:0;pointer-events:none;transition:opacity .22s cubic-bezier(.4,0,.2,1)}
+  @media(min-width:640px){.regcf{align-items:center;}}
   .regcf.show{opacity:1;pointer-events:auto}
   .regcf-bd{position:absolute;inset:0;background:rgba(15,23,42,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
   .regcf-cd{position:relative;background:#fff;border-radius:20px;width:100%;max-width:470px;
-    box-shadow:0 24px 64px rgba(15,23,42,.28);overflow:hidden;
+    box-shadow:0 24px 64px rgba(15,23,42,.28);overflow:auto;-webkit-overflow-scrolling:touch;
+    max-height:min(86dvh, calc(100dvh - 36px));
     transform:translateY(16px) scale(.94);opacity:0;
     transition:transform .32s cubic-bezier(.16,1,.3,1),opacity .24s ease}
   .regcf.show .regcf-cd{transform:none;opacity:1}
@@ -1250,7 +1280,15 @@ function fmtDateVal(raw){
   return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
 }
 function closeModal(id){document.getElementById(id).classList.remove('show');if(id==='commProofModal'){const f=document.getElementById('cpmImgFrame');if(f&&f._objUrl){URL.revokeObjectURL(f._objUrl);f._objUrl=null;}if(f)f.innerHTML='<div class="cpm-img-loading">Memuat gambar…</div>';}}
-async function api(url,opt={}){const r=await fetch('/api'+url,{headers:{'Content-Type':'application/json'},credentials:'include',...opt});return r.json();}
+async function api(url,opt={}){
+  const {headers:extraHdr,...rest}=opt;
+  const r=await fetch('/api'+url,{credentials:'include',headers:{'Content-Type':'application/json',...(extraHdr||{})},...rest});
+  const text=await r.text();
+  try{ return JSON.parse(text); }
+  catch(_){
+    return {success:false, message: r.status===404 ? 'Endpoint tidak ditemukan' : (text.slice(0,180)||('HTTP '+r.status))};
+  }
+}
 
 const STATUS_LABEL={lead:'Lead',survey_request:'Survey Request',surveyed:'Surveyed',survey_rejected:'Survey Ditolak',approved:'Approved',installing:'Installing',activated:'Activated',cancelled:'Cancelled'};
 const STATUS_CLASS={lead:'p-lead',survey_request:'p-survey',surveyed:'p-surveyed',survey_rejected:'p-rejected',approved:'p-approved',installing:'p-installing',activated:'p-activated',cancelled:'p-cancelled'};
@@ -2339,8 +2377,11 @@ async function deleteReg(id, regNo, status){
   if(ans===false||ans===null) return;
 
   const body=(typeof ans==='string')?JSON.stringify({reason:ans}):'{}';
-  const j=await api('/sales/registrations/'+id,{method:'DELETE',body});
-  toast(j.message, !!j.success);
+  let j;
+  try{
+    j=await api('/sales/registrations/'+id+'/delete',{method:'POST',body});
+  }catch(e){ return toast('Gagal menghapus: '+e.message,false); }
+  toast(j.message||(j.success?'Dihapus':'Gagal menghapus'), !!j.success);
   if(j.success) loadRegs();
 }
 
@@ -2368,8 +2409,11 @@ async function bulkDeleteRegs(){
   if(ans===false||ans===null) return;
 
   const payload={ids}; if(typeof ans==='string') payload.reason=ans;
-  const j=await api('/sales/registrations/bulk-delete',{method:'POST',body:JSON.stringify(payload)});
-  toast(j.message, !!j.success);
+  let j;
+  try{
+    j=await api('/sales/registrations/bulk-delete',{method:'POST',body:JSON.stringify(payload)});
+  }catch(e){ return toast('Gagal menghapus: '+e.message,false); }
+  toast(j.message||(j.success?'Dihapus':'Gagal menghapus'), !!j.success);
 
   // Tampilkan detail kegagalan supaya user tahu mana yang tidak terhapus
   if(j.data&&j.data.errors&&j.data.errors.length){
@@ -2493,7 +2537,7 @@ async function openDetail(id){
       </div>
       <input type="file" accept="image/*" id="detFile" style="display:none">
 
-      <div style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap">${actions||'<span style="color:var(--muted);font-size:13px">Tidak ada aksi tersedia.</span>'}</div>
+      <div style="margin-top:20px;margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap">${actions||'<span style="color:var(--muted);font-size:13px">Tidak ada aksi tersedia.</span>'}</div>
     </div>`;
   document.getElementById('detModal').classList.add('show');
 }
