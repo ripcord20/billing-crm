@@ -745,6 +745,141 @@
       _editId=null;
     }
 
+    // ── Lead Baru (pipeline sales) — form pendek, TANPA PPPoE.
+    // Terpisah dari openAdd() supaya form Tambah Pelanggan tidak berubah.
+    let _lfMap=null, _lfMarker=null, _lfMapInit=false, _lfPkgLoaded=false;
+    window.openLead = function openLead(){
+      ['lfName','lfPhone','lfAddr','lfLat','lfLng'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+      var pkg=document.getElementById('lfPkg'); if(pkg) pkg.value='';
+      var cov=document.getElementById('lfCoverage'); if(cov){ cov.style.display='none'; cov.textContent=''; }
+      var hint=document.getElementById('lfGeoHint'); if(hint) hint.textContent='Ketuk peta atau ambil GPS.';
+      document.getElementById('leadOverlay').classList.add('open');
+      document.getElementById('leadSheet').classList.add('open');
+      loadLeadPackages();
+      setTimeout(initLfMap, 350);
+    };
+    function closeLead(){
+      document.getElementById('leadOverlay').classList.remove('open');
+      document.getElementById('leadSheet').classList.remove('open');
+    }
+    async function loadLeadPackages(){
+      if(_lfPkgLoaded) return;
+      const j=await api('/api/sales/packages');
+      const rows=(j&&j.success)?(Array.isArray(j.data)?j.data:[]):[];
+      const sel=document.getElementById('lfPkg');
+      if(!sel) return;
+      sel.innerHTML='<option value="">— pilih paket (opsional) —</option>'+rows.map(function(p){
+        return '<option value="'+p.id+'">'+esc(p.name||('Paket #'+p.id))+(p.price?(' — Rp '+Number(p.price).toLocaleString('id-ID')):'')+'</option>';
+      }).join('');
+      _lfPkgLoaded=true;
+    }
+    function initLfMap(){
+      if(typeof L==='undefined') return;
+      if(!_lfMapInit){
+        _lfMap=L.map('lfMap',{zoomControl:true,attributionControl:false}).setView(AF_DEFAULT,13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(_lfMap);
+        _lfMarker=L.marker(AF_DEFAULT,{draggable:true}).addTo(_lfMap);
+        _lfMarker.on('dragend',function(){ const p=_lfMarker.getLatLng(); setLfPoint(p.lat,p.lng,true); });
+        _lfMap.on('click',function(e){ setLfPoint(e.latlng.lat,e.latlng.lng,true); });
+        _lfMapInit=true;
+      }
+      setTimeout(function(){ if(_lfMap) _lfMap.invalidateSize(); },200);
+    }
+    function setLfPoint(lat,lng,doReverse){
+      lat=Number(Number(lat).toFixed(6)); lng=Number(Number(lng).toFixed(6));
+      document.getElementById('lfLat').value=lat;
+      document.getElementById('lfLng').value=lng;
+      if(_lfMap && _lfMarker){ _lfMarker.setLatLng([lat,lng]); _lfMap.panTo([lat,lng]); }
+      checkLfCoverage(lat,lng);
+      if(doReverse) reverseLfAddress(lat,lng);
+    }
+    function lfUseMyLocation(){
+      var lbl=document.getElementById('lfGeoLbl');
+      if(!navigator.geolocation){ toast('Geolocation tidak didukung','err'); return; }
+      if(lbl) lbl.textContent='Mengambil lokasi…';
+      navigator.geolocation.getCurrentPosition(function(pos){
+        if(_lfMap) _lfMap.setView([pos.coords.latitude,pos.coords.longitude],16);
+        setLfPoint(pos.coords.latitude,pos.coords.longitude,true);
+        if(lbl){ lbl.textContent='Lokasi terisi ✓'; setTimeout(function(){ lbl.textContent='Ambil lokasi saya'; },2000); }
+      },function(){ if(lbl) lbl.textContent='Ambil lokasi saya'; toast('Gagal mengambil lokasi','err'); },{enableHighAccuracy:true,timeout:10000});
+    }
+    async function checkLfCoverage(lat,lng){
+      var box=document.getElementById('lfCoverage'); if(!box) return;
+      box.style.display='block'; box.style.background='#f1f5fb'; box.style.color='#64748b';
+      box.textContent='Mengecek coverage…';
+      try{
+        const t=getToken();
+        const r=await fetch('/api/sales/coverage-check',{
+          method:'POST', credentials:'include',
+          headers:Object.assign({'Content-Type':'application/json'}, t?{'Authorization':'Bearer '+t}:{}),
+          body:JSON.stringify({latitude:lat,longitude:lng})
+        });
+        const j=await r.json().catch(function(){return null;});
+        if(j&&j.success&&j.data){
+          var d=j.data, odp=d.usable_odp||d.nearest_odp;
+          var dist=odp&&odp.distance!=null?(Math.round(odp.distance)>=1000?(odp.distance/1000).toFixed(1)+' km':Math.round(odp.distance)+' m'):null;
+          if(d.coverage_status==='available'){
+            box.style.background='#ecfdf5'; box.style.color='#15803d';
+            box.textContent='Tercover'+(odp?' — ODP '+odp.name:'')+(dist?' ± '+dist:'');
+          } else {
+            box.style.background='#fef2f2'; box.style.color='#b91c1c';
+            box.textContent='Belum tercover'+(dist?' — ODP terdekat ± '+dist:'')+'. Tetap bisa disimpan sebagai lead.';
+          }
+        } else { box.style.display='none'; }
+      }catch(_){ box.style.display='none'; }
+    }
+    async function reverseLfAddress(lat,lng){
+      var el=document.getElementById('lfAddr');
+      if(!el || el.value.trim()) return;
+      try{
+        const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=id&lat='+lat+'&lon='+lng);
+        const j=await r.json();
+        const a=j.address||{};
+        const road=a.road||a.pedestrian||a.residential||'';
+        const num=a.house_number?(' No. '+a.house_number):'';
+        const area=a.village||a.suburb||a.neighbourhood||'';
+        const kec=a.subdistrict||a.city_district||a.county||'';
+        const kota=a.city||a.town||a.regency||'';
+        const txt=[road?road+num:'',area,kec,kota].filter(Boolean).join(', ')||j.display_name||'';
+        if(txt && !el.value.trim()) el.value=txt;
+      }catch(_){}
+    }
+    async function saveLead(){
+      const name=(document.getElementById('lfName').value||'').trim();
+      const phone=(document.getElementById('lfPhone').value||'').trim();
+      const lat=(document.getElementById('lfLat').value||'').trim();
+      const lng=(document.getElementById('lfLng').value||'').trim();
+      let address=(document.getElementById('lfAddr').value||'').trim();
+      if(!name||!phone){ toast('Nama dan WhatsApp wajib diisi','err'); return; }
+      if(!address && lat && lng) address='Pin lokasi ('+lat+', '+lng+')';
+      if(!address && !(lat&&lng)){ toast('Pin lokasi di peta atau isi alamat','err'); return; }
+      const btn=document.getElementById('lfSave');
+      btn.disabled=true; btn.textContent='Menyimpan…';
+      const t=getToken();
+      let ok=false, msg='';
+      try{
+        const r=await fetch('/api/sales/registrations',{
+          method:'POST', credentials:'include',
+          headers:Object.assign({'Content-Type':'application/json'}, t?{'Authorization':'Bearer '+t}:{}),
+          body:JSON.stringify({
+            name:name, phone:phone, address:address,
+            latitude:lat||null, longitude:lng||null,
+            package_id:document.getElementById('lfPkg').value||null,
+            source:'walk_in'
+          })
+        });
+        const d=await r.json().catch(function(){return null;});
+        ok=(r.ok && d && d.success); msg=(d&&d.message)||'';
+      }catch(e){ msg=e.message; }
+      btn.disabled=false; btn.textContent='Simpan Lead';
+      if(ok){
+        toast('Lead tersimpan di pipeline sales','ok');
+        closeLead();
+      } else {
+        toast(msg||'Gagal menyimpan lead','err');
+      }
+    }
+
     function initAfMap(){
       if(_mapInit || typeof L==='undefined')return;
       _afMap=L.map('afMap',{zoomControl:true,attributionControl:false}).setView(AF_DEFAULT,13);
@@ -1151,6 +1286,39 @@
     <div class="as-foot">
       <button class="as-cancel" onclick="closeAdd()">Batal</button>
       <button class="as-save" id="afSave" onclick="saveCustomer()">Simpan Pelanggan</button>
+    </div>
+  </div>
+
+  <!-- Lead Baru (pipeline sales) — form pendek, tanpa PPPoE. Tidak mengganti sheet Tambah Pelanggan. -->
+  <div class="add-overlay" id="leadOverlay" onclick="closeLead()"></div>
+  <div class="add-sheet" id="leadSheet">
+    <div class="as-handle"></div>
+    <div class="as-head">
+      <h3>Lead Baru</h3>
+      <button class="as-close" onclick="closeLead()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="as-body">
+      <p class="as-hint" style="margin-top:0">Calon pelanggan masuk pipeline sales. User/pass PPPoE tidak diisi di sini — gunakan <b>Tambah Pelanggan</b> jika akun layanan + PPPoE sudah siap.</p>
+      <div class="as-sec">Data Lead</div>
+      <label class="as-lbl">Nama <span class="req">*</span></label>
+      <input class="as-in" id="lfName" placeholder="Nama lengkap" autocomplete="name">
+      <label class="as-lbl">No. WhatsApp <span class="req">*</span></label>
+      <input class="as-in" id="lfPhone" inputmode="tel" placeholder="08xxxxxxxxxx" autocomplete="tel">
+      <label class="as-lbl">Paket (opsional)</label>
+      <select class="as-in" id="lfPkg"><option value="">— pilih paket (opsional) —</option></select>
+
+      <div class="as-sec">Titik Lokasi</div>
+      <div class="as-maphint" id="lfGeoHint">Ketuk peta atau ambil GPS — alamat terisi otomatis.</div>
+      <div id="lfMap" class="af-map"></div>
+      <div id="lfCoverage" class="as-hint" style="display:none;padding:10px 12px;border-radius:12px;font-weight:600;margin-bottom:12px;"></div>
+      <input type="hidden" id="lfLat"><input type="hidden" id="lfLng">
+      <button type="button" class="as-geo" onclick="lfUseMyLocation()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a8 8 0 0 0-8 8c0 5.4 8 12 8 12s8-6.6 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg><span id="lfGeoLbl">Ambil lokasi saya</span></button>
+      <label class="as-lbl">Alamat (otomatis dari pin, bisa diedit)</label>
+      <textarea class="as-in" id="lfAddr" rows="2" placeholder="Akan terisi dari pin peta"></textarea>
+    </div>
+    <div class="as-foot">
+      <button class="as-cancel" onclick="closeLead()">Batal</button>
+      <button class="as-save" id="lfSave" onclick="saveLead()">Simpan Lead</button>
     </div>
   </div>
 </body>
