@@ -777,7 +777,7 @@
       if(typeof L==='undefined') return;
       if(!_lfMapInit){
         _lfMap=L.map('lfMap',{zoomControl:true,attributionControl:false}).setView(AF_DEFAULT,13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(_lfMap);
+        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{maxZoom:21,subdomains:['mt0','mt1','mt2','mt3']}).addTo(_lfMap);
         _lfMarker=L.marker(AF_DEFAULT,{draggable:true}).addTo(_lfMap);
         _lfMarker.on('dragend',function(){ const p=_lfMarker.getLatLng(); setLfPoint(p.lat,p.lng,true); });
         _lfMap.on('click',function(e){ setLfPoint(e.latlng.lat,e.latlng.lng,true); });

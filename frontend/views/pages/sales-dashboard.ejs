@@ -1452,12 +1452,17 @@ function toggleCustLayer(key, btn){
 
 
 function addBaseLayers(map){
-  const street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'});
-  const sat=L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',{maxZoom:21,subdomains:'0123',attribution:'&copy; Google'});
-  const labels=L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:19,pane:'overlayPane'});
-  const hybrid=L.layerGroup([sat,labels]);
-  street.addTo(map); // default
-  const layers={street,sat,hybrid};
+  // OSM tile.openstreetmap.org di banyak ISP Indonesia menampilkan
+  // tile bertuliskan "Access Blocked". Pakai sumber yang sama dengan
+  // peta GIS Fiberix (Google vt) yang sudah terbukti tampil.
+  const street=L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{
+    maxZoom:21, subdomains:['mt0','mt1','mt2','mt3'], attribution:'&copy; Google'
+  });
+  const hybrid=L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',{
+    maxZoom:21, subdomains:['mt0','mt1','mt2','mt3'], attribution:'&copy; Google'
+  });
+  street.addTo(map);
+  const layers={street,hybrid};
   map._baseLayers=layers; map._activeBase='street';
 
   // Tombol toggle clean (Peta / Satelit) — bukan dropdown
