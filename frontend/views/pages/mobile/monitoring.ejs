@@ -533,6 +533,9 @@
     loadPppoeStatus();
     loadResDevices(); loadResources();
     loadDevices(); pollTraffic();
+    window.mobileRefresh = function(){
+      return Promise.all([loadMonitoring(true), loadPppoeStatus(), loadResources()]);
+    };
     setInterval(()=>{ if(document.visibilityState==='visible'){ loadMonitoring(false); loadPppoeStatus(); } },30000);
     setInterval(()=>{ if(document.visibilityState==='visible'){ loadResources(); } }, 4000);
     _rtTimer=setInterval(()=>{ if(document.visibilityState==='visible'){ pollTraffic(); } }, 2000);

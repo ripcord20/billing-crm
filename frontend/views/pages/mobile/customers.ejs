@@ -1185,6 +1185,9 @@
     loadCustStats();
     loadGrowth();
     loadCustomers(true);
+    window.mobileRefresh = function(){
+      return Promise.all([loadCustStats(), loadGrowth(), loadCustomers(true)]);
+    };
 
     // Buka detail langsung bila datang dari pencarian global (?focus=ID)
     (function(){

@@ -194,6 +194,7 @@
       if(manual){ setTimeout(()=>btn.classList.remove('spin'),600); toast('Data diperbarui'); }
     }
     loadNoc(false); setInterval(()=>loadNoc(false),30000);
+    window.mobileRefresh = function(){ return loadNoc(true); };
 
     // ── Resource gauges ──
     function gaugeColor(pct){ if(pct>=85)return '#f2545b'; if(pct>=65)return '#f5a623'; return '#38bdf8'; }

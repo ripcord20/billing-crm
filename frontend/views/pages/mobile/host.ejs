@@ -156,6 +156,7 @@
     let _t=null;
     document.getElementById('hostSearch').addEventListener('input',function(){ clearTimeout(_t); const v=this.value.trim(); _t=setTimeout(()=>renderHosts(v),200); });
     loadDevices();
+    window.mobileRefresh = function(){ return loadHosts(true); };
   </script>
 </body>
 </html>

@@ -802,6 +802,9 @@
     loadHome();
     loadNeedAttention();
     loadGrowth();
+    window.mobileRefresh = function(){
+      return Promise.all([loadHome(), loadNeedAttention(), loadGrowth()]);
+    };
   </script>
 </body>
 </html>

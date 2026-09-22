@@ -584,6 +584,9 @@
     setupPeriod();
     loadSummary();
     loadTx(true);
+    window.mobileRefresh = function(){
+      return Promise.all([loadSummary(), loadTx(true)]);
+    };
   </script>
   <div class="toast" id="toast"></div>
 </body>

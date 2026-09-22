@@ -15,6 +15,7 @@ const App = {
     this.initLogout();
     this.initSocket();
     this.initSearch();
+    this.initPullToRefresh();
   },
 
   initTheme() {
@@ -291,6 +292,15 @@ const App = {
         if (q.length >= 2) console.log('Search:', q);
       }, 400);
     });
+  },
+
+  initPullToRefresh() {
+    if (window.__flynPtr) return;
+    if (document.querySelector('script[src*="mobile-ptr.js"]')) return;
+    const s = document.createElement('script');
+    s.src = '/js/mobile-ptr.js?v=20260922';
+    s.async = true;
+    document.head.appendChild(s);
   },
 
   showToast(message, type = 'info') {

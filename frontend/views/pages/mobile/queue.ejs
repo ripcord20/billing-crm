@@ -623,6 +623,7 @@
     }
 
     /* init */
+    window.mobileRefresh = function(){ return loadAll(true); };
     (async function(){
       await loadDevices();
       await loadAll();

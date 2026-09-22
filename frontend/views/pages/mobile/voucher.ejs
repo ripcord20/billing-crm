@@ -117,6 +117,7 @@
       if(manual) setTimeout(()=>btn.classList.remove('spin'),600);
     }
     loadVoucher(false);
+    window.mobileRefresh = function(){ return loadVoucher(true); };
   </script>
 </body>
 </html>
