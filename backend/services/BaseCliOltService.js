@@ -289,9 +289,9 @@ class BaseCliOltService {
         const clean = stripAnsi(buf);
         const tail = clean.slice(-80);
 
-        // 1) Paging "--More--" / "Press any key" → kirim spasi, lanjut.
-        if (/--\s*more\s*--|press any key|----more----/i.test(tail)) {
-          buf = buf.replace(/--\s*more\s*--/gi, '');
+        // 1) Paging "--More--" / C-DATA "--More ( Press 'Q' to quit )--" / "Press any key"
+        if (/--more|press ['']?q['']? to quit|press any key|----more----/i.test(tail)) {
+          buf = buf.replace(/--More\s*\([^)]*\)--/gi, '').replace(/--\s*more\s*--/gi, '');
           stream.write(' ');
           schedule(800);
           return;
