@@ -234,6 +234,7 @@ router.post('/dashboard/layout/reset', authenticate, demoGuard, DashboardLayoutC
 
 // ===== USERS =====
 router.get('/users', authenticate, demoGuard, authorize('superadmin', 'admin'), UserController.index);
+router.get('/users/access-catalog', authenticate, demoGuard, authorize('superadmin', 'admin'), UserController.accessCatalog);
 router.post('/users', authenticate, demoGuard, authorize('superadmin'), logActivity('create', 'user'), UserController.create);
 router.get('/users/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), UserController.show);
 router.put('/users/:id', authenticate, demoGuard, authorize('superadmin'), logActivity('update', 'user'), UserController.update);
