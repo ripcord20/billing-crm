@@ -8,9 +8,10 @@
  *
  * Dua MIB dalam satu vendor:
  *
- * 1) E04I EPON — 1.3.6.1.4.1.50224.3.3.2.1  (oltTree.eponONU.onuInfoTable)
- *    Diverifikasi ke 10.2.2.250.
- *    Kolom 2=nama, 4=IP, 7=MAC, 12=HW, 14=FW, 15=RX uint8, 16=seq status.
+ * 1) E04I / E04R EPON — 1.3.6.1.4.1.50224.3.3.2.1  (onuInfoTable)
+ *    E04I (10.2.2.250): kolom 2=nama, 4=IP, 7=MAC, 12=HW, 14=FW, 15=RX uint8, 16=seq.
+ *    E04R (192.168.94.10 POPMDR): kolom 15 = jarak (bukan dBm). Redaman di
+ *    3.3.3.1.4.{idx}.0.0 (RX 0.01 dBm) dan 3.3.3.1.5.{idx}.0.0 (TX 0.01 dBm).
  *
  * 2) G02ID GPON — 1.3.6.1.4.1.50224.3.12.2.1  (ONT Table di web IGC)
  *    Diverifikasi ke 192.168.94.2 firmware IGC_V1.0.11C_Rel (51 ONT).
@@ -42,8 +43,10 @@ const OID = {
   ONU_MAC:      '1.3.6.1.4.1.50224.3.3.2.1.7',   // MAC (6 byte)
   ONU_HW_VER:   '1.3.6.1.4.1.50224.3.3.2.1.12',  // HW version
   ONU_FW_VER:   '1.3.6.1.4.1.50224.3.3.2.1.14',  // FW version
-  ONU_RX_POWER: '1.3.6.1.4.1.50224.3.3.2.1.15',  // RX Power (uint8)
+  ONU_RX_POWER: '1.3.6.1.4.1.50224.3.3.2.1.15',  // E04I RX uint8; E04R = jarak
   ONU_SEQ:      '1.3.6.1.4.1.50224.3.3.2.1.16',  // Sequence → 0/65535=offline
+  ONU_RX_OPT:   '1.3.6.1.4.1.50224.3.3.3.1.4',   // E04R RX 0.01 dBm
+  ONU_TX_OPT:   '1.3.6.1.4.1.50224.3.3.3.1.5',   // E04R TX 0.01 dBm
 };
 
 // G02ID GPON — isi ONT Table di web IGC (bukan eponONU 3.3)
@@ -122,8 +125,18 @@ class HsgqOltService {
   }
 
   _parseMac(raw) {
-    if (!raw || !Buffer.isBuffer(raw) || raw.length !== 6) return null;
-    return [...raw].map(b => b.toString(16).padStart(2,'0')).join(':').toUpperCase();
+    if (!raw) return null;
+    if (Buffer.isBuffer(raw) && raw.length === 6) {
+      return [...raw].map(b => b.toString(16).padStart(2, '0')).join(':').toUpperCase();
+    }
+    const s = String(raw).trim();
+    const colon = s.match(/^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i);
+    if (colon) return s.toUpperCase();
+    const hex = s.replace(/[^0-9a-f]/gi, '');
+    if (hex.length === 12) {
+      return hex.match(/.{2}/g).join(':').toUpperCase();
+    }
+    return null;
   }
 
   _parseIp(raw) {
@@ -140,10 +153,12 @@ class HsgqOltService {
 
   _parseRxPower(raw) {
     if (raw === null || raw === undefined) return null;
-    // uint8: >=128 → (val-256)/10 dBm  |  <128 → -(val/10) dBm
-    // val=0 → no signal (offline)
-    const val = Buffer.isBuffer(raw) ? raw.readUInt8(0) : parseInt(raw);
-    if (isNaN(val) || val === 0) return null;
+    // uint8 E04I: >=128 → (val-256)/10 dBm  |  <128 → -(val/10) dBm
+    // val=0 → no signal. Nilai >255 (E04R col 15) bukan dBm — abaikan.
+    const val = Buffer.isBuffer(raw)
+      ? (raw.length === 1 ? raw.readUInt8(0) : parseInt(raw.toString(), 10))
+      : parseInt(raw, 10);
+    if (isNaN(val) || val === 0 || val > 255 || val < 0) return null;
     const dbm = val >= 128 ? (val - 256) / 10 : -(val / 10);
     return parseFloat(dbm.toFixed(1));
   }
@@ -163,6 +178,7 @@ class HsgqOltService {
       ? (raw.length ? raw.readIntBE(0, Math.min(raw.length, 4)) : NaN)
       : parseInt(raw, 10);
     if (!Number.isFinite(val) || val === 0) return null;
+    if (Math.abs(val) >= 100000) return null; // sentinel INT_MIN / invalid
     return parseFloat((val / 100).toFixed(2));
   }
 
@@ -251,7 +267,23 @@ class HsgqOltService {
       }
     }
 
-    logger.info(`[HsgqOlt:${this.name}] ${onuMap.size} ONU entries found (E04I)`);
+    const [rxRows, txRows] = await Promise.all([
+      this._walk(OID.ONU_RX_OPT).catch(() => []),
+      this._walk(OID.ONU_TX_OPT).catch(() => []),
+    ]);
+    for (const row of rxRows) {
+      const idx = this._indexG02Optical(row.oid, OID.ONU_RX_OPT);
+      if (!idx) continue;
+      if (!onuMap.has(idx)) onuMap.set(idx, { _index: idx });
+      onuMap.get(idx).rx_opt = row.value;
+    }
+    for (const row of txRows) {
+      const idx = this._indexG02Optical(row.oid, OID.ONU_TX_OPT);
+      if (!idx || !onuMap.has(idx)) continue;
+      onuMap.get(idx).tx_opt = row.value;
+    }
+
+    logger.info(`[HsgqOlt:${this.name}] ${onuMap.size} ONU entries found (E04)`);
     return this._normalizeONTs(onuMap);
   }
 
@@ -363,7 +395,9 @@ class HsgqOltService {
       const { pon, onu } = this._decodeIndex(idx);
       const name    = this._parseName(raw.name);
       const mac     = this._parseMac(raw.mac);
-      const rxPower = this._parseRxPower(raw.rx_power);
+      const rxOpt   = this._parseG02Rx(raw.rx_opt);
+      const txOpt   = this._parseG02Rx(raw.tx_opt);
+      const rxPower = rxOpt !== null ? rxOpt : this._parseRxPower(raw.rx_power);
       const ip      = this._parseIp(raw.ip);
       const hwVer   = this._parseVersion(raw.hw_ver);
       const fwVer   = this._parseVersion(raw.fw_ver);
@@ -388,7 +422,7 @@ class HsgqOltService {
         uptime:          null,
         tr069_params: {
           rx_power:    rxPower,
-          tx_power:    null,
+          tx_power:    txOpt,
           olt_rx_power:null,
           hw_version:  hwVer,
           fw_version:  fwVer,
@@ -416,19 +450,22 @@ class HsgqOltService {
   _toMgmtOnu(o) {
     const rx = o.signal_strength;
     const online = o.status === 'online' || o.status === 'warning';
+    const p = o.tr069_params || {};
+    const name = o.description || null;
+    const type = p.ont_model || p.hw_version || null;
     return {
       onu_id: o.onu_id,
       board: 1,
       pon: o.pon_port,
       onu_if: `${o.pon_port}/${o.onu_id}`,
       gpon_olt: `PON${String(o.pon_port).padStart(2, '0')}`,
-      name: o.description || o.model || null,
-      sn: o.serial_number || null,
-      type: (o.tr069_params && o.tr069_params.ont_model) || o.model || null,
+      name,
+      sn: o.mac_address || o.serial_number || null,
+      type,
       status: online ? 'online' : 'offline',
       phase_state: o.status === 'offline' ? 'offline' : (o.status === 'warning' ? 'working' : 'working'),
       onu_rx_dbm: rx,
-      onu_tx_dbm: (o.tr069_params && o.tr069_params.tx_power) || null,
+      onu_tx_dbm: p.tx_power || null,
       quality: this._quality(rx),
     };
   }

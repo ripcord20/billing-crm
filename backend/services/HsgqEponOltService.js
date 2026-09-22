@@ -392,14 +392,19 @@ class HsgqEponOltService extends BaseCliOltService {
       if (/online|up|working|normal/.test(statusRaw)) status = 'online';
       else if (/initial|offline|down/.test(statusRaw)) status = 'offline';
       const configState = /true/i.test(m[6]);
+      const mac = String(m[3] || '').toUpperCase();
+      const rest = t.slice(m[0].length).trim();
+      const typeTok = rest.match(/(\S+)\s*$/);
+      const type = typeTok && !/^\d{4}\//.test(typeTok[1]) ? typeTok[1] : null;
+      const nameM = rest.match(/\bname(?:\s*[:=]\s*|\s+)([^\s].+?)\s*$/i);
       list.push({
         onu_id:  onuId,
         port:    pon,
         onu_if:  `${pon}/${onuId}`,
-        mac:     m[3],
-        sn:      m[3],                 // alias agar UI yang pakai "sn" tetap jalan
-        type:    null,
-        name:    null,
+        mac,
+        sn:      mac,
+        type,
+        name:    nameM ? nameM[1].trim() : null,
         phase_state: m[4],
         auth_state:  /true/i.test(m[5]),
         config_state: configState,

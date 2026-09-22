@@ -187,7 +187,8 @@ function isHsgq(brand) { return String(brand || '').toLowerCase() === 'hsgq'; }
 function snmpAvailable(cfg) {
   const comm = cfg.snmpCommunity || cfg.community || '';
   if (isHsgq(cfg.brand)) {
-    if (cfg.snmpEnabled === false) return false;
+    // Nama, MAC/SN, dan redaman HSGQ ada di SNMP. CLI list tidak mengisi
+    // nama/RX, jadi selalu coba SNMP dulu (community default public).
     return true;
   }
   return isZteStyle(cfg.brand) && cfg.snmpEnabled && !!comm;
@@ -513,6 +514,19 @@ class OltManagementController {
   // memanggil ini per-PON setelah daftar ONU tampil → redaman mengisi menyusul.
   async onuPowerBatch(req, res) {
     const cfg = getCfgOr404(req, res); if (!cfg) return;
+    if (isHsgq(cfg.brand) && snmpAvailable(cfg)) {
+      try {
+        const all = await makeSnmp(cfg).getAllOnus();
+        const map = {};
+        for (const o of all.onus || []) {
+          map[o.onu_if] = { onu_rx_dbm: o.onu_rx_dbm, quality: o.quality };
+        }
+        return res.json({ success: true, data: map, via: 'snmp' });
+      } catch (err) {
+        logger.warn('[OltMgmt] SNMP power-batch HSGQ gagal: ' + err.message);
+        return res.status(500).json({ success: false, message: err.message });
+      }
+    }
     if (!isZteStyle(cfg.brand)) return res.status(400).json({ success: false, message: 'Fitur ini khusus OLT ZTE' });
     let ifs = req.body?.ifs;
     if (!Array.isArray(ifs) || !ifs.length) {

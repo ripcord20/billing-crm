@@ -109,7 +109,44 @@ assert.strictEqual(noc.signal_strength, -30);
   });
   assert.strictEqual(mapped.status, 'offline');
   assert.strictEqual(mapped.onu_if, '1/11');
-  console.log('✓ HSGQ G02ID MIB tests PASS');
+
+  // E04R: col 15 bukan dBm; redaman dari tabel optik 3.3.3.1.4 (0.01 dBm)
+  const e04 = new Hsgq({ host: '127.0.0.1', mibMode: 'e04i', name: 'e04r' });
+  assert.strictEqual(e04._parseRxPower(357), null, 'E04R col 15 jarak ≠ dBm');
+  assert.strictEqual(e04._parseRxPower(180), -7.6);
+  assert.strictEqual(e04._parseG02Rx(-1826), -18.26);
+  assert.strictEqual(e04._parseG02Rx(-2147483648), null, 'sentinel INT_MIN');
+  assert.strictEqual(e04._parseMac(Buffer.from([0x1c, 0x27, 0x04, 0xb3, 0xbe, 0x9f])), '1C:27:04:B3:BE:9F');
+  assert.strictEqual(e04._indexG02Optical('1.3.6.1.4.1.50224.3.3.3.1.4.16777473.0.0', '1.3.6.1.4.1.50224.3.3.3.1.4'), '16777473');
+  assert.strictEqual(e04._indexG02Optical('1.3.6.1.4.1.50224.3.3.3.1.4.16777472.65535.65535', '1.3.6.1.4.1.50224.3.3.3.1.4'), null);
+
+  const e04map = new Map();
+  e04map.set('16777473', {
+    name: 'BUDI', mac: Buffer.from([0x1c, 0x27, 0x04, 0xb3, 0xbe, 0x9f]),
+    rx_power: 357, rx_opt: -1826, tx_opt: 222, seq: 32, hw_ver: 'V3.1',
+  });
+  e04map.set('16777474', {
+    name: 'BU RU', mac: Buffer.from([0xec, 0x6c, 0xb5, 0x1b, 0xec, 0x0e]),
+    rx_power: 316, rx_opt: -2229, tx_opt: 238, seq: 8, hw_ver: 'V9.0',
+  });
+  const e04onts = e04._normalizeONTs(e04map);
+  const budi = e04onts.find((o) => o.description === 'BUDI');
+  assert.ok(budi);
+  assert.strictEqual(budi.pon_port, 1);
+  assert.strictEqual(budi.onu_id, 1);
+  assert.strictEqual(budi.mac_address, '1C:27:04:B3:BE:9F');
+  assert.strictEqual(budi.signal_strength, -18.26);
+  assert.strictEqual(budi.tr069_params.tx_power, 2.22);
+  assert.strictEqual(budi.status, 'online');
+  const budiMgmt = e04._toMgmtOnu(budi);
+  assert.strictEqual(budiMgmt.name, 'BUDI');
+  assert.strictEqual(budiMgmt.sn, '1C:27:04:B3:BE:9F');
+  assert.strictEqual(budiMgmt.type, 'V3.1');
+  assert.strictEqual(budiMgmt.onu_rx_dbm, -18.26);
+  const buru = e04onts.find((o) => o.description === 'BU RU');
+  assert.strictEqual(buru.signal_strength, -22.29);
+
+  console.log('✓ HSGQ G02ID + E04R MIB tests PASS');
 })().catch((e) => {
   console.error('✗ FAIL:', e.message);
   process.exit(1);
