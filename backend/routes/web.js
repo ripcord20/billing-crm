@@ -52,6 +52,11 @@ router.get('/login', async (req, res) => {
   res.render('pages/login', { title: 'Login', layout: false });
 });
 
+// Alias form daftar SaaS / app.fiberix.my.id/register → halaman login (demo + akun).
+router.get(['/register', '/signup'], (req, res) => {
+  res.redirect('/login?coba=1');
+});
+
 // Root redirect — role-aware
 router.get('/', authenticate, (req, res) => {
   return res.redirect(homePathForRole(req.user?.role?.name));
@@ -66,6 +71,7 @@ router.get('/', authenticate, (req, res) => {
 // ═══════════════════════════════════════════════════════════════════
 const _salesAllowedPaths = new Set([
   '/sales', '/sales/dashboard', '/login', '/logout',
+  '/register', '/signup',
   '/tickets', '/todos', '/work-orders'
 ]);
 // Prefix yang diizinkan (untuk path dinamis seperti /tickets/123).
