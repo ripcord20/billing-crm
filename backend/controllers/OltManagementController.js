@@ -34,6 +34,7 @@ const HiosoOltService = require('../services/HiosoOltService');
 const ZimmlinkOltService = require('../services/ZimmlinkOltService');
 const HsgqEponOltService = require('../services/HsgqEponOltService');
 const ZteSnmpService = require('../services/ZteSnmpService');
+const HsgqOltService = require('../services/HsgqOltService');
 const ConfigCrypto = require('../utils/ConfigCrypto');
 const oltQueue = require('../services/OltQueue');
 const logger = require('../utils/logger');
@@ -179,11 +180,29 @@ function _serialize(svc, cfg) {
   return svc;
 }
 
-// SNMP tersedia untuk ZTE bila dikonfigurasi. Dipakai untuk operasi BACA.
+function isHsgq(brand) { return String(brand || '').toLowerCase() === 'hsgq'; }
+
+// SNMP baca: ZTE (jika diaktifkan) atau HSGQ G02ID (community default public;
+// SSH G02ID sering gagal, ONT Table tetap bisa dibaca via MIB 50224.3.12).
 function snmpAvailable(cfg) {
-  return isZteStyle(cfg.brand) && cfg.snmpEnabled && cfg.snmpCommunity;
+  const comm = cfg.snmpCommunity || cfg.community || '';
+  if (isHsgq(cfg.brand)) {
+    if (cfg.snmpEnabled === false) return false;
+    return true;
+  }
+  return isZteStyle(cfg.brand) && cfg.snmpEnabled && !!comm;
 }
 function makeSnmp(cfg) {
+  if (isHsgq(cfg.brand)) {
+    return new HsgqOltService({
+      host:      cfg.host,
+      community: cfg.snmpCommunity || cfg.community || 'public',
+      port:      cfg.snmpPort || 161,
+      timeout:   cfg.timeout || 15000,
+      name:      cfg.name || cfg.host,
+      mibMode:   'auto',
+    });
+  }
   return new ZteSnmpService({
     host: cfg.host,
     snmpCommunity: cfg.snmpCommunity,
@@ -455,6 +474,14 @@ class OltManagementController {
   // ZTE: ?if=1/2/5:5.  Chipset: ?pon=1&id=5  (atau ?if=1/5)
   async onuDetail(req, res) {
     const cfg = getCfgOr404(req, res); if (!cfg) return;
+    if (snmpAvailable(cfg) && isHsgq(cfg.brand)) {
+      try {
+        const { pon, id } = this._chipsetRef(req);
+        if (pon == null || id == null) return res.status(400).json({ success: false, message: 'Parameter pon & id wajib' });
+        const data = await makeSnmp(cfg).getOnuDetail(pon, id);
+        if (data && !data.error) return res.json({ success: true, data, via: 'snmp' });
+      } catch (e) { logger.warn('[OltMgmt] SNMP detail G02ID gagal, fallback CLI: ' + e.message); }
+    }
     const svc = makeService(cfg);
     try {
       await svc.connect();

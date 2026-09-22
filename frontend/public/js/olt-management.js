@@ -583,10 +583,11 @@ const OltMgmt = {
     document.getElementById('snmpFields').style.display = on ? 'block' : 'none';
   },
 
-  // SNMP hanya relevan untuk ZTE; sembunyikan section untuk brand lain
+  // SNMP: ZTE C320 dan HSGQ G02ID (ONT Table via MIB)
   onBrandChange() {
     const brand = document.getElementById('oltBrand').value;
-    document.getElementById('snmpSection').style.display = (brand === 'zte') ? 'block' : 'none';
+    const snmpOk = (brand === 'zte' || brand === 'hsgq');
+    document.getElementById('snmpSection').style.display = snmpOk ? 'block' : 'none';
   },
 
   async saveOlt() {

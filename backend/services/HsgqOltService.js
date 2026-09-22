@@ -406,6 +406,135 @@ class HsgqOltService {
     return results;
   }
 
+  _quality(rx) {
+    if (rx === null || rx === undefined) return 'unknown';
+    if (rx >= -25) return 'good';
+    if (rx >= -28) return 'warning';
+    return 'critical';
+  }
+
+  _toMgmtOnu(o) {
+    const rx = o.signal_strength;
+    const online = o.status === 'online' || o.status === 'warning';
+    return {
+      onu_id: o.onu_id,
+      board: 1,
+      pon: o.pon_port,
+      onu_if: `${o.pon_port}/${o.onu_id}`,
+      gpon_olt: `PON${String(o.pon_port).padStart(2, '0')}`,
+      name: o.description || o.model || null,
+      sn: o.serial_number || null,
+      type: (o.tr069_params && o.tr069_params.ont_model) || o.model || null,
+      status: online ? 'online' : 'offline',
+      phase_state: o.status === 'offline' ? 'offline' : (o.status === 'warning' ? 'working' : 'working'),
+      onu_rx_dbm: rx,
+      onu_tx_dbm: (o.tr069_params && o.tr069_params.tx_power) || null,
+      quality: this._quality(rx),
+    };
+  }
+
+  // Format yang dipakai dashboard OLT Management (discover / tabel ONU)
+  async getAllOnus() {
+    const onts = await this.getAllONTs();
+    const onus = onts.map((o) => this._toMgmtOnu(o));
+    const byPon = {};
+    for (const o of onus) {
+      const key = String(o.pon);
+      if (!byPon[key]) byPon[key] = { port: key, total: 0, online: 0, offline: 0 };
+      byPon[key].total++;
+      if (o.status === 'online') byPon[key].online++;
+      else byPon[key].offline++;
+    }
+    let system = null;
+    try { system = await this.getSystemInfo(); } catch (e) { system = null; }
+    return {
+      onus,
+      ports: Object.values(byPon),
+      scanned: Object.keys(byPon).length,
+      system: (system && !system.error) ? system : null,
+    };
+  }
+
+  async getOnuState(ref) {
+    const all = await this.getAllOnus();
+    const pon = parseInt(String(ref || '').split(/[\/:]/).filter(Boolean)[0], 10);
+    if (!Number.isFinite(pon)) return all.onus;
+    return all.onus.filter((o) => Number(o.pon) === pon);
+  }
+
+  async getOnuDetail(pon, id) {
+    if (id == null && typeof pon === 'string' && /\/\d+/.test(pon)) {
+      const m = String(pon).match(/(\d+)\s*\/\s*(\d+)/);
+      if (m) { pon = parseInt(m[1], 10); id = parseInt(m[2], 10); }
+    }
+    const all = await this.getAllOnus();
+    const o = all.onus.find((x) => Number(x.pon) === Number(pon) && Number(x.onu_id) === Number(id));
+    if (!o) return { error: 'ONU tidak ditemukan' };
+    return {
+      onu_if: o.onu_if,
+      serial_number: o.sn,
+      name: o.name,
+      type: o.type,
+      state: o.status,
+      phase_state: o.phase_state,
+      power: {
+        onu_rx_dbm: o.onu_rx_dbm,
+        onu_tx_dbm: o.onu_tx_dbm,
+        olt_rx_dbm: null,
+        olt_tx_dbm: null,
+        no_signal: o.onu_rx_dbm == null,
+        quality: o.quality,
+      },
+    };
+  }
+
+  async getOnuPower(pon, id) {
+    const d = await this.getOnuDetail(pon, id);
+    return d.power || { onu_rx_dbm: null, no_signal: true, quality: 'unknown' };
+  }
+
+  async getPortSummary(ports = []) {
+    const all = await this.getAllOnus();
+    if (!ports.length) return all.ports;
+    const want = new Set(ports.map((p) => String(parseInt(String(p).replace(/.*\//, ''), 10))));
+    return all.ports.filter((p) => want.has(String(p.port)));
+  }
+
+  async getSystemInfo() {
+    if (!snmp) return { error: 'net-snmp tidak terinstall' };
+    try {
+      const vbs = await this._get([OID.SYS_DESCR, OID.SYS_NAME, OID.SYS_FW, '1.3.6.1.2.1.1.3.0']);
+      const asTxt = (vb) => Buffer.isBuffer(vb?.value)
+        ? vb.value.toString('utf8').replace(/\x00/g, '').trim()
+        : String(vb?.value || '').trim();
+      const desc = asTxt(vbs[0]);
+      const name = asTxt(vbs[1]);
+      const fw = asTxt(vbs[2]);
+      const ticks = vbs[3] && vbs[3].value != null ? parseInt(vbs[3].value, 10) : NaN;
+      this.closeSession();
+      let uptime = null;
+      if (Number.isFinite(ticks)) {
+        let s = Math.floor(ticks / 100);
+        const d = Math.floor(s / 86400); s %= 86400;
+        const h = Math.floor(s / 3600); s %= 3600;
+        const m = Math.floor(s / 60);
+        uptime = `${d}d ${h}h ${m}m`;
+      }
+      return {
+        model: desc || name || this.name,
+        version: fw || null,
+        hw_version: null,
+        uptime,
+        cpu_percent: null,
+        temperature_c: null,
+        raw: desc,
+      };
+    } catch (err) {
+      this.closeSession();
+      return { error: err.message };
+    }
+  }
+
   async testConnection() {
     if (!snmp) return { success: false, error: 'net-snmp tidak terinstall' };
     try {

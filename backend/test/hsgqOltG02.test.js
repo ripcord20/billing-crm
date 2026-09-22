@@ -95,6 +95,20 @@ assert.strictEqual(noc.signal_strength, -30);
   assert.strictEqual(live[0].serial_number, 'HWTC8c531cad');
   assert.strictEqual(live[0].signal_strength, -21);
   assert.strictEqual(live[0].status, 'online');
+
+  s.getSystemInfo = async () => ({ model: 'HSGQ-G02ID', version: 'IGC_V1.0.11C_Rel' });
+  const mgmt = await s.getAllOnus();
+  assert.strictEqual(mgmt.onus.length, 1);
+  assert.strictEqual(mgmt.onus[0].onu_if, '1/0');
+  assert.strictEqual(mgmt.onus[0].sn, 'HWTC8c531cad');
+  assert.strictEqual(mgmt.onus[0].status, 'online');
+  assert.strictEqual(mgmt.ports[0].total, 1);
+  const mapped = s._toMgmtOnu({
+    onu_id: 11, pon_port: 1, description: 'ONT01/011', serial_number: 'FHTT9b2afd60',
+    status: 'offline', signal_strength: null, tr069_params: {},
+  });
+  assert.strictEqual(mapped.status, 'offline');
+  assert.strictEqual(mapped.onu_if, '1/11');
   console.log('✓ HSGQ G02ID MIB tests PASS');
 })().catch((e) => {
   console.error('✗ FAIL:', e.message);
