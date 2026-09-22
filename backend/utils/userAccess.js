@@ -8,7 +8,11 @@ const { Op } = require('sequelize');
  */
 const ROLE_GRANTS = {
   finance: ['customer_view', 'customer_create', 'customer_update', 'customer_delete'],
-  tenant_owner: ['customer_view', 'customer_create', 'customer_update'],
+  tenant_owner: [
+    'customer_view', 'customer_create', 'customer_update',
+    'device_create', 'device_update', 'device_delete',
+    'infra_create', 'infra_update', 'infra_delete',
+  ],
   noc: ['customer_view', 'customer_create', 'customer_update'],
 };
 
