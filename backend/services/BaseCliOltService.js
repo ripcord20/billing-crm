@@ -291,7 +291,7 @@ class BaseCliOltService {
 
         // 1) Paging "--More--" / C-DATA "--More ( Press 'Q' to quit )--" / "Press any key"
         if (/--more|press ['']?q['']? to quit|press any key|----more----/i.test(tail)) {
-          buf = buf.replace(/--More\s*\([^)]*\)--/gi, '').replace(/--\s*more\s*--/gi, '');
+          buf = buf.replace(/--More\s*\([^)]*\)--/gi, '\n').replace(/--\s*more\s*--/gi, '\n');
           stream.write(' ');
           schedule(800);
           return;

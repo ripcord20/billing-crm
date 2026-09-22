@@ -54,12 +54,16 @@ class CdataOltService extends GponCliOltService {
 
   // Buang jejak pager C-DATA yang bisa memotong baris di tengah nama/SN.
   _cleanCli(out) {
-    return String(out || '')
+    let s = String(out || '')
       .replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')
       .replace(/\x08/g, '')
-      .replace(/--More\s*\([^)]*\)--/gi, '')
-      .replace(/--\s*more\s*--/gi, '')
+      .replace(/--More\s*\([^)]*\)--/gi, ' ')
+      .replace(/--\s*more\s*--/gi, ' ')
       .replace(/\r/g, '');
+    // Pager C-DATA sering menempel baris berikutnya di ujung baris sebelumnya.
+    s = s.replace(/(\S)[ \t]+(?=\d+\/\d+\s+\d+\s+\d+\s+[0-9A-Za-z]{8,})/g, '$1\n');
+    s = s.replace(/(-?\d+\.\d+)\s+(?=\d+\s+-?\d+\.\d+)/g, '$1\n');
+    return s;
   }
 
   async _enterEnable() {
