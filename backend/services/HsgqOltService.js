@@ -146,9 +146,13 @@ class HsgqOltService {
 
   _parseVersion(raw) {
     if (!raw) return null;
-    return Buffer.isBuffer(raw)
-      ? raw.toString('ascii').trim().replace(/\x00/g,'') || null
-      : String(raw).trim() || null;
+    const s = Buffer.isBuffer(raw)
+      ? raw.toString('ascii').trim().replace(/\x00/g, '')
+      : String(raw).trim();
+    if (!s || /[^\x20-\x7e]/.test(s)) return null;
+    // E04R kadang isi HW dengan byte sampah ("323.E"). Terima pola versi saja.
+    if (!/^v\d/i.test(s) && !/^[a-z]{1,8}-v\d/i.test(s)) return null;
+    return s;
   }
 
   _parseRxPower(raw) {

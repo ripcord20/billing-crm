@@ -117,6 +117,10 @@ assert.strictEqual(noc.signal_strength, -30);
   assert.strictEqual(e04._parseG02Rx(-1826), -18.26);
   assert.strictEqual(e04._parseG02Rx(-2147483648), null, 'sentinel INT_MIN');
   assert.strictEqual(e04._parseMac(Buffer.from([0x1c, 0x27, 0x04, 0xb3, 0xbe, 0x9f])), '1C:27:04:B3:BE:9F');
+  assert.strictEqual(e04._parseVersion('V3.1'), 'V3.1');
+  assert.strictEqual(e04._parseVersion('TM-V2.0.6'), 'TM-V2.0.6');
+  assert.strictEqual(e04._parseVersion('323.E'), null);
+  assert.strictEqual(e04._parseVersion('BE9.E'), null);
   assert.strictEqual(e04._indexG02Optical('1.3.6.1.4.1.50224.3.3.3.1.4.16777473.0.0', '1.3.6.1.4.1.50224.3.3.3.1.4'), '16777473');
   assert.strictEqual(e04._indexG02Optical('1.3.6.1.4.1.50224.3.3.3.1.4.16777472.65535.65535', '1.3.6.1.4.1.50224.3.3.3.1.4'), null);
 
