@@ -15,7 +15,6 @@ const {
 } = require('../utils/qosSla');
 
 const METRIC_RETENTION_DAYS = 7;
-const ALERT_DEDUPE_MIN = 30;
 const CUSTOMER_SAMPLE = 40;
 
 async function loadSettings() {
@@ -58,17 +57,10 @@ function severityFromStatus(status) {
 async function raiseAlert({ type, title, message, status, targetKey, metadata }) {
   if (!status || status === 'ok' || status === 'unknown') return null;
   const now = new Date();
-  const since = new Date(now.getTime() - ALERT_DEDUPE_MIN * 60 * 1000);
   const where = { type, status: 'open' };
   if (targetKey) where.target_key = targetKey;
   const existing = await QosAlert.findOne({
-    where: {
-      ...where,
-      [Op.or]: [
-        { last_seen_at: { [Op.gte]: since } },
-        { created_at: { [Op.gte]: since } }
-      ]
-    },
+    where,
     order: [['id', 'DESC']]
   });
   const audience = alertAudience(type);
