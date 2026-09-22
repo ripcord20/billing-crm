@@ -1,16 +1,19 @@
 /**
- * Pull-to-refresh untuk app mobile Fiberix (shell /mobile dan tampilan HP).
- * Tarik ke bawah di puncak halaman → muat ulang data.
+ * Pull-to-refresh Fiberix — app mobile (Capacitor/WebView) dan tampilan HP.
+ *
+ * WAJIB preventDefault pada touchmove saat tarik di puncak .wrap.
+ * Tanpa itu Android WebView memakan gesture sebagai scroll (overscroll contain)
+ * jadi indikator tidak muncul dan refresh tidak jalan.
  *
  * Halaman boleh set window.mobileRefresh = function(){ ... return Promise }
- * supaya refresh tanpa reload penuh. Default: location.reload().
  */
 (function () {
-  if (window.__flynPtr) return;
+  if (window.__flynPtr && window.__flynPtrVer >= 2) return;
   window.__flynPtr = true;
+  window.__flynPtrVer = 2;
 
-  var THRESHOLD = 72;
-  var MAX_PULL = 108;
+  var THRESHOLD = 64;
+  var MAX_PULL = 120;
 
   function ready(fn) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
@@ -22,10 +25,9 @@
   }
 
   function hasOwnPtr() {
-    if (document.getElementById('ptr')) return true;
+    if (document.getElementById('ptr') && !document.getElementById('flynPtr')) return true;
     var path = (location.pathname || '').replace(/\/+$/, '') || '/';
-    if (path === '/hotspot') return true;
-    return false;
+    return path === '/hotspot';
   }
 
   function shouldRun() {
@@ -37,38 +39,36 @@
 
   function scroller() {
     var wrap = document.querySelector('.wrap');
-    if (wrap) {
-      try {
-        var oy = window.getComputedStyle(wrap).overflowY;
-        if (oy === 'auto' || oy === 'scroll') return wrap;
-      } catch (_) {}
-    }
-    return null;
+    return wrap || null;
+  }
+
+  function scrollTop() {
+    var el = scroller();
+    if (el) return el.scrollTop || 0;
+    return window.scrollY || window.pageYOffset || 0;
   }
 
   function atTop() {
-    var el = scroller();
-    if (el) return (el.scrollTop || 0) <= 1;
-    return (window.scrollY || window.pageYOffset || 0) <= 1;
+    return scrollTop() <= 2;
   }
 
   function overlayOpen() {
     if (document.body.classList.contains('sheet-open')) return true;
-    var open = document.querySelector(
-      '.mdr.open, #mdrPanel.open, .mdr-overlay.open, .msearch.open, #mSearch.open,' +
-      '.mnotif.open, .dm-sheet.open, .sheet.open, .add-sheet.open, .add-overlay.open,' +
-      '.pn-sheet.open, .pd-sheet.open, .modal-overlay[style*="flex"], #userModal.open'
+    return !!(
+      document.querySelector('.mdr.open, #mdrPanel.open, .mdr-overlay.open') ||
+      document.querySelector('.msearch.open, #mSearch.open, .mnotif.open') ||
+      document.querySelector('.dm-sheet.open, .sheet.open, .add-sheet.open, .add-overlay.open') ||
+      document.querySelector('.pn-sheet.open, .pd-sheet.open, .modal-overlay[style*="flex"], #userModal.open')
     );
-    return !!open;
   }
 
   function ignoreTouch(target) {
     if (!target || !target.closest) return false;
-    return !!target.closest(
-      'input, textarea, select, .bottomnav, .bottom-nav, .mdr, .mdr-overlay,' +
-      ' .msearch, .mnotif, .dm-sheet, .sheet, .add-sheet, .pn-sheet, .pd-sheet,' +
-      ' .fab, .leaflet-container, .modal-overlay, #userModal'
-    );
+    if (target.closest('input, textarea, select')) return true;
+    if (target.closest('.leaflet-container')) return true;
+    if (target.closest('.bottomnav, .bottom-nav')) return true;
+    if (target.closest('.mdr.open, .msearch.open, .mnotif.open')) return true;
+    return false;
   }
 
   function injectCss() {
@@ -77,7 +77,7 @@
     st.id = 'flynPtrCss';
     st.textContent =
       '.flyn-ptr{position:fixed;top:env(safe-area-inset-top,0px);left:50%;transform:translate(-50%,-56px);' +
-      'z-index:2800;pointer-events:none;display:flex;align-items:center;gap:8px;' +
+      'z-index:4000;pointer-events:none;display:flex;align-items:center;gap:8px;' +
       'background:#fff;border:1px solid #e8edf5;border-radius:999px;padding:8px 14px;' +
       'box-shadow:0 8px 22px rgba(15,27,52,.14);font-family:inherit;font-size:12px;' +
       'font-weight:700;color:#334155;opacity:0;transition:transform .18s ease,opacity .18s ease;' +
@@ -104,14 +104,14 @@
     return el;
   }
 
-  function setBar(el, pull, ready, spinning) {
-    var y = Math.min(pull, MAX_PULL) - 50;
+  function setBar(el, pull, readyPull, spinning) {
+    var y = Math.min(pull, MAX_PULL) - 46;
     el.style.transform = 'translate(-50%,' + y + 'px)';
-    el.classList.toggle('show', pull > 12 || spinning);
-    el.classList.toggle('spin', !!(ready || spinning));
+    el.classList.toggle('show', pull > 8 || spinning);
+    el.classList.toggle('spin', !!(readyPull || spinning));
     var txt = el.querySelector('.flyn-ptr-txt');
     if (txt) {
-      txt.textContent = spinning ? 'Memuat ulang…' : (ready ? 'Lepas untuk refresh' : 'Tarik untuk refresh');
+      txt.textContent = spinning ? 'Memuat ulang…' : (readyPull ? 'Lepas untuk refresh' : 'Tarik untuk refresh');
     }
   }
 
@@ -134,77 +134,163 @@
       }
     } catch (_) {}
     location.reload();
-    return new Promise(function () { /* page unloads */ });
+    return new Promise(function () {});
   }
 
   ready(function () {
     if (!shouldRun()) return;
     injectCss();
     var ptr = indicator();
+    var wrap = scroller();
     var startY = 0;
+    var startX = 0;
     var dist = 0;
     var pulling = false;
+    var tracking = false;
     var refreshing = false;
     var armed = false;
+    var locked = false;
+    var wrapOverflow = '';
+    var wrapOverscroll = '';
 
-    document.addEventListener('touchstart', function (e) {
-      if (refreshing || overlayOpen() || !atTop() || ignoreTouch(e.target)) {
-        pulling = false;
-        return;
-      }
+    function lockScroll() {
+      if (locked || !wrap) return;
+      locked = true;
+      wrapOverflow = wrap.style.overflowY;
+      wrapOverscroll = wrap.style.overscrollBehaviorY;
+      wrap.style.overflowY = 'hidden';
+      wrap.style.overscrollBehaviorY = 'none';
+    }
+
+    function unlockScroll() {
+      if (!locked || !wrap) return;
+      locked = false;
+      wrap.style.overflowY = wrapOverflow;
+      wrap.style.overscrollBehaviorY = wrapOverscroll;
+      wrap.style.transform = '';
+      wrap.style.transition = '';
+    }
+
+    function rubber(pull) {
+      if (!wrap) return;
+      wrap.style.transition = 'none';
+      wrap.style.transform = 'translateY(' + Math.round(pull * 0.38) + 'px)';
+    }
+
+    function onStart(e) {
+      if (refreshing || overlayOpen()) { tracking = pulling = false; return; }
+      if (!e.touches || !e.touches.length) return;
+      if (ignoreTouch(e.target)) { tracking = pulling = false; return; }
+      if (!atTop()) { tracking = pulling = false; return; }
       startY = e.touches[0].clientY;
+      startX = e.touches[0].clientX;
       dist = 0;
-      pulling = true;
+      tracking = true;
+      pulling = false;
       armed = false;
-    }, { passive: true });
+    }
 
-    document.addEventListener('touchmove', function (e) {
-      if (!pulling || refreshing) return;
-      if (!atTop()) {
-        pulling = false;
+    function onMove(e) {
+      if (!tracking || refreshing) return;
+      if (!e.touches || !e.touches.length) return;
+      var y = e.touches[0].clientY;
+      var x = e.touches[0].clientX;
+      var dy = y - startY;
+      var dx = x - startX;
+
+      if (!pulling) {
+        if (Math.abs(dx) > 14 && Math.abs(dx) > Math.abs(dy)) {
+          tracking = false;
+          return;
+        }
+        if (dy > 6 && atTop()) {
+          pulling = true;
+          lockScroll();
+        } else if (dy < -8) {
+          tracking = false;
+          return;
+        } else {
+          return;
+        }
+      }
+
+      if (!atTop() && dy <= 0) {
+        pulling = tracking = false;
+        unlockScroll();
         resetBar(ptr);
         return;
       }
-      dist = e.touches[0].clientY - startY;
+
+      dist = Math.max(0, dy);
       if (dist <= 0) {
         resetBar(ptr);
+        rubber(0);
         return;
       }
-      var pull = Math.min(dist * 0.46, MAX_PULL);
+
+      if (e.cancelable) e.preventDefault();
+      var pull = Math.min(dist * 0.5, MAX_PULL);
       var readyPull = dist >= THRESHOLD;
       if (readyPull && !armed) {
         armed = true;
         haptic();
       }
       if (!readyPull) armed = false;
+      rubber(pull);
       setBar(ptr, pull, readyPull, false);
-    }, { passive: true });
+    }
 
-    document.addEventListener('touchend', function () {
-      if (!pulling || refreshing) {
-        pulling = false;
-        return;
-      }
+    function finish() {
+      if (refreshing) return;
+      var should = pulling && dist >= THRESHOLD;
+      tracking = false;
       pulling = false;
-      if (dist >= THRESHOLD) {
+      if (should) {
         refreshing = true;
-        setBar(ptr, 70, true, true);
+        setBar(ptr, 72, true, true);
+        rubber(36);
         haptic();
         Promise.resolve(doRefresh()).finally(function () {
           setTimeout(function () {
+            if (wrap) wrap.style.transition = 'transform .22s ease';
+            unlockScroll();
             resetBar(ptr);
             refreshing = false;
-          }, 450);
+          }, 280);
         });
       } else {
+        if (wrap) wrap.style.transition = 'transform .18s ease';
+        unlockScroll();
         resetBar(ptr);
       }
       dist = 0;
-    }, { passive: true });
+    }
 
-    document.addEventListener('touchcancel', function () {
-      pulling = false;
-      if (!refreshing) resetBar(ptr);
-    }, { passive: true });
+    function onEnd() {
+      if (!tracking && !pulling) return;
+      finish();
+    }
+
+    function onCancel() {
+      tracking = pulling = false;
+      if (!refreshing) {
+        unlockScroll();
+        resetBar(ptr);
+      }
+      dist = 0;
+    }
+
+    var optsPassive = { passive: true, capture: true };
+    var optsMove = { passive: false, capture: true };
+    document.addEventListener('touchstart', onStart, optsPassive);
+    document.addEventListener('touchmove', onMove, optsMove);
+    document.addEventListener('touchend', onEnd, optsPassive);
+    document.addEventListener('touchcancel', onCancel, optsPassive);
+    if (wrap) {
+      wrap.addEventListener('touchstart', onStart, optsPassive);
+      wrap.addEventListener('touchmove', onMove, optsMove);
+      wrap.addEventListener('touchend', onEnd, optsPassive);
+      wrap.addEventListener('touchcancel', onCancel, optsPassive);
+    }
   });
 })();
