@@ -725,7 +725,9 @@
         ['dtOv', function(){ if(typeof closeDetail==='function') closeDetail(); }],
         ['adOv', function(){ if(typeof closeCreate==='function') closeCreate(); }],
         ['fmOv', function(){ if(typeof closeForm==='function') closeForm(); }],
-        ['cfOv', function(){ if(typeof closeConfirm==='function') closeConfirm(); }],
+        ['sheetOv', function(){ if(typeof closeForm==='function') closeForm(); }],
+        ['actOv', function(){ if(typeof closeActMenu==='function') closeActMenu(); }],
+        ['cfOv', function(){ if(typeof closeConfirm==='function') closeConfirm(); else if(typeof closeCf==='function') closeCf(); }],
         ['mdrPanel', function(){ if(typeof mdrClose==='function') mdrClose(); }]
       ];
       for(var i=0;i<checks.length;i++){
@@ -733,7 +735,7 @@
         if(el && el.classList.contains('open')){ try{ checks[i][1](); }catch(_){ } return true; }
       }
       // overlay generic .ov.open / .cf-overlay.open (per-halaman)
-      var g=document.querySelector('.ov.open, .cf-overlay.open, .pn-overlay.open, .dm-overlay.open');
+      var g=document.querySelector('.ov.open, .cf-overlay.open, .cf-ov.open, .sheet-ov.open, .act-ov.open, .pn-overlay.open, .dm-overlay.open');
       if(g){ g.classList.remove('open'); return true; }
       return false;
     }
