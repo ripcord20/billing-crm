@@ -298,7 +298,7 @@ const App = {
     if (window.__flynPtr) return;
     if (document.querySelector('script[src*="mobile-ptr.js"]')) return;
     const s = document.createElement('script');
-    s.src = '/js/mobile-ptr.js?v=20260922c';
+    s.src = '/js/mobile-ptr.js?v=20260922e';
     s.async = true;
     document.head.appendChild(s);
   },

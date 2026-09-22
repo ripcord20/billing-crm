@@ -56,7 +56,7 @@ body{
   overflow-y:auto;
   overflow-x:hidden;
   -webkit-overflow-scrolling:touch;   /* momentum scroll halus di iOS/WebView */
-  overscroll-behavior:contain;         /* cegah scroll menembus ke body/nav */
+  overscroll-behavior-y:none;          /* jangan biarkan WebView makan gesture tarik-refresh */
   scrollbar-width:none;                /* Firefox */
 }
 .wrap::-webkit-scrollbar{display:none;} /* WebKit: sembunyikan scrollbar */
