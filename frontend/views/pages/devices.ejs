@@ -712,6 +712,10 @@
             <option value="server">Server</option>
             <option value="other">Other</option>
           </select>
+          <div class="field-hint" id="oltDevHint" style="display:none">
+            OLT di sini hanya inventaris &amp; uptime (SNMP). Kelola ONU, redaman, dan authorize di
+            <a href="/monitoring/olt-management">OLT Management</a>.
+          </div>
         </div>
         <div class="field">
           <label class="field-label">Brand / Vendor</label>
@@ -1251,10 +1255,28 @@
 
   function onDevTypeChange() {
     const type = document.getElementById('devType').value;
-    const mon = document.getElementById('devMonType').value;
+    const monSel = document.getElementById('devMonType');
+    const mon = monSel ? monSel.value : 'snmp';
+    const isOltLike = (type === 'olt' || type === 'ont');
     const show = type === 'router' && (mon === 'api' || mon === 'both');
     const grp = document.getElementById('uplinkPinGroup');
     if (grp) grp.classList.toggle('cond-hide', !show);
+    const hint = document.getElementById('oltDevHint');
+    if (hint) hint.style.display = (type === 'olt') ? 'block' : 'none';
+    if (monSel) {
+      Array.from(monSel.options).forEach(function (opt) {
+        opt.hidden = isOltLike && opt.value !== 'snmp';
+      });
+      if (isOltLike && monSel.value !== 'snmp') {
+        monSel.value = 'snmp';
+        onMonTypeChange();
+        return;
+      }
+    }
+    const apiWrap = document.getElementById('apiFields');
+    if (apiWrap && isOltLike) apiWrap.classList.add('cond-hide');
+    const wb = document.getElementById('winboxField');
+    if (wb) wb.style.display = isOltLike ? 'none' : '';
   }
 
   function onUplinkPinChange() {

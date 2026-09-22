@@ -941,8 +941,13 @@
         <div class="form-group" style="flex:1">
           <label class="form-label">Brand</label>
           <select id="oltBrand" class="form-control" onchange="OltMgmt.onBrandChange()">
-            <option value="zte">ZTE (C320/C300)</option>
+            <option value="zte">ZTE (C320/C300) — Telnet/SSH</option>
+            <option value="cdata">CDATA — Telnet/SSH</option>
+            <option value="hioso">HiOSO — Telnet/SSH</option>
+            <option value="zimmlink">Zimmlink — Telnet/SSH</option>
+            <option value="hsgq">HSGQ EPON — Telnet/SSH</option>
           </select>
+          <div class="form-hint" id="oltBrandHint">ZTE: kelola ONU via CLI. SNMP opsional untuk monitoring cepat.</div>
         </div>
       </div>
       <div class="form-row">
@@ -1342,6 +1347,6 @@
 
 <script src="/vendor/apexcharts/apexcharts.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/olt-management.js"></script>
+<script src="/js/olt-management.js?v=20260922olt"></script>
 </body>
 </html>
