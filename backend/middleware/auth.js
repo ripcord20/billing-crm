@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
-const { User, Role, Permission, Tenant } = require('../models');
+const { User, Role, Permission, Tenant, Wilayah } = require('../models');
+const { ROLE_GRANTS, attachUserAccess } = require('../utils/userAccess');
 
 // Bangun URL redirect ke /login sambil menyimpan tujuan awal (?next=...).
 // Hanya path internal yang aman (diawali '/', bukan '//' atau 'http') yang
@@ -49,21 +50,55 @@ const authenticate = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    const user = await User.findByPk(decoded.id, {
+    const include = [{
+      model: Role,
+      as: 'role',
       include: [{
-        model: Role,
-        as: 'role',
-        include: [{
-          model: Permission,
-          as: 'permissions',
-          through: { attributes: [] }
-        }]
-      }, {
-        model: Tenant,
-        as: 'tenant',
-        required: false
+        model: Permission,
+        as: 'permissions',
+        through: { attributes: [] }
       }]
-    });
+    }, {
+      model: Tenant,
+      as: 'tenant',
+      required: false
+    }];
+    if (Wilayah && User.associations?.wilayah_akses) {
+      include.push({
+        model: Wilayah,
+        as: 'wilayah_akses',
+        through: { attributes: [] },
+        required: false
+      });
+    }
+    if (Permission && User.associations?.extra_permissions) {
+      include.push({
+        model: Permission,
+        as: 'extra_permissions',
+        through: { attributes: [] },
+        required: false
+      });
+    }
+    let user;
+    try {
+      user = await User.findByPk(decoded.id, { include });
+    } catch (_) {
+      user = await User.findByPk(decoded.id, {
+        include: [{
+          model: Role,
+          as: 'role',
+          include: [{
+            model: Permission,
+            as: 'permissions',
+            through: { attributes: [] }
+          }]
+        }, {
+          model: Tenant,
+          as: 'tenant',
+          required: false
+        }]
+      });
+    }
 
     if (!user || !user.is_active) {
       const isApiRequest = req.xhr
@@ -77,7 +112,7 @@ const authenticate = async (req, res, next) => {
     }
 
     req.user = user;
-    req.userPermissions = user.role?.permissions?.map(p => p.name) || [];
+    attachUserAccess(req, user);
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -122,10 +157,6 @@ const hasPermission = (...permissions) => {
     //    perlu seed permission ke DB. Role 'finance' kini boleh mengelola
     //    pelanggan penuh (create/update/delete) seperti admin.
     const roleName = (req.user.role?.name || '').toLowerCase();
-    const ROLE_GRANTS = {
-      finance: ['customer_view', 'customer_create', 'customer_update', 'customer_delete'],
-      tenant_owner: ['customer_view', 'customer_create', 'customer_update'],
-    };
     const granted = ROLE_GRANTS[roleName] || [];
     if (granted.length && permissions.some(p => granted.includes(p))) {
       return next();

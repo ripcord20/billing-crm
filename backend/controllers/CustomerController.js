@@ -5,12 +5,13 @@ const { generateUniqueCustomerId, paginateResponse } = require('../utils/helpers
 const { getCompanyName } = require('../utils/companyInfo');
 const InfraSync = require('../services/CustomerInfraSyncService');
 const { applyTenantWhere, getTenantId, assertCustomerTenant, isTenantOwner } = require('../utils/tenantScope');
+const { applyWilayahScope, applyWilayahSql, assertCustomerWilayah } = require('../utils/userAccess');
 
 class CustomerController {
   async index(req, res) {
     try {
       const { page = 1, limit = 20, search, status, package_id, province, regency, district } = req.query;
-      const where = applyTenantWhere(req, {});
+      const where = applyWilayahScope(req, applyTenantWhere(req, {}));
       
       if (search) {
         where[Op.or] = [
@@ -134,6 +135,16 @@ class CustomerController {
       if (ownerTid) data.tenant_id = ownerTid;
       else if (!req.body.tenant_id) delete data.tenant_id;
 
+      if (req.userWilayahIds && req.userWilayahIds.length) {
+        const wid = parseInt(data.wilayah_id, 10);
+        if (!Number.isFinite(wid) || !req.userWilayahIds.includes(wid)) {
+          return res.status(403).json({
+            success: false,
+            message: 'Pilih wilayah akses yang diizinkan untuk akun ini'
+          });
+        }
+      }
+
       // Jika customer_id dikirim manual, validasi uniqueness
       if (data.customer_id) {
         data.customer_id = data.customer_id.trim().toUpperCase();
@@ -251,10 +262,13 @@ class CustomerController {
     try {
       const customer = await Customer.findByPk(req.params.id);
       if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
-      if (!assertCustomerTenant(req, customer)) {
+      if (!assertCustomerTenant(req, customer) || !assertCustomerWilayah(req, customer)) {
         return res.status(404).json({ success: false, message: 'Customer not found' });
       }
       if (isTenantOwner(req)) delete req.body.tenant_id;
+      if (req.body.wilayah_id !== undefined && !assertCustomerWilayah(req, { wilayah_id: req.body.wilayah_id })) {
+        return res.status(403).json({ success: false, message: 'Wilayah di luar hak akses akun ini' });
+      }
 
       if (req.body.billing_date !== undefined) {
         const bd = parseInt(req.body.billing_date);
@@ -310,6 +324,9 @@ class CustomerController {
         attributes: ['id', 'customer_id', 'name', 'phone', 'portal_enabled', 'last_portal_login']
       });
       if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+      if (!assertCustomerTenant(req, customer) || !assertCustomerWilayah(req, customer)) {
+        return res.status(404).json({ success: false, message: 'Customer not found' });
+      }
 
       // Tidak pernah kirim hash password ke frontend.
       // Cuma kirim status: apakah password sudah diset, atau masih fallback ke nomor HP.
@@ -341,6 +358,9 @@ class CustomerController {
     try {
       const customer = await Customer.findByPk(req.params.id);
       if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+      if (!assertCustomerTenant(req, customer) || !assertCustomerWilayah(req, customer)) {
+        return res.status(404).json({ success: false, message: 'Customer not found' });
+      }
 
       const { customer_id, new_password, portal_enabled } = req.body;
       const updates = {};
@@ -444,7 +464,7 @@ class CustomerController {
         ]
       });
       if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
-      if (!assertCustomerTenant(req, customer)) {
+      if (!assertCustomerTenant(req, customer) || !assertCustomerWilayah(req, customer)) {
         return res.status(404).json({ success: false, message: 'Customer not found' });
       }
 
@@ -525,6 +545,9 @@ class CustomerController {
     try {
       const customer = await Customer.findByPk(req.params.id);
       if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+      if (!assertCustomerTenant(req, customer) || !assertCustomerWilayah(req, customer)) {
+        return res.status(404).json({ success: false, message: 'Customer not found' });
+      }
 
       // Parse opsi delete_router_secret (terima dari query atau body)
       const flag = (req.body && req.body.delete_router_secret) ?? req.query?.delete_router_secret;
@@ -613,17 +636,18 @@ class CustomerController {
       const { Invoice } = require('../models');
       const today = new Date().toISOString().slice(0, 10);
       const in3days = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+      const scopeWhere = applyWilayahScope(req, applyTenantWhere(req, {}));
 
-      const total    = await Customer.count();
-      const active   = await Customer.count({ where: { status: 'active' } });
-      const isolated = await Customer.count({ where: { status: 'isolated' } });
-      const inactive = await Customer.count({ where: { status: 'inactive' } });
-      const suspended= await Customer.count({ where: { status: 'suspended' } });
+      const total    = await Customer.count({ where: scopeWhere });
+      const active   = await Customer.count({ where: { ...scopeWhere, status: 'active' } });
+      const isolated = await Customer.count({ where: { ...scopeWhere, status: 'isolated' } });
+      const inactive = await Customer.count({ where: { ...scopeWhere, status: 'inactive' } });
+      const suspended= await Customer.count({ where: { ...scopeWhere, status: 'suspended' } });
 
       // Overdue & due_soon: gunakan logika IDENTIK dengan filter di index()
       // Fetch semua customer aktif beserta invoice terbaru → kalkulasi status → count
       const allForStats = await Customer.findAll({
-        where: { status: { [Op.in]: ['active','isolated','suspended'] } },
+        where: applyWilayahScope(req, applyTenantWhere(req, { status: { [Op.in]: ['active','isolated','suspended'] } })),
         attributes: ['id','status','due_date'],
         include: [{
           model: Invoice, as: 'invoices',
@@ -671,14 +695,24 @@ class CustomerController {
 
       let monthly_revenue = 0;
       try {
+        const wSql = applyWilayahSql(req, 'c');
+        const tSql = (() => {
+          try {
+            const { applyTenantSql } = require('../utils/tenantScope');
+            return applyTenantSql(req, 'c');
+          } catch (_) { return { sql: '', replacements: {} }; }
+        })();
         const revRows = await sequelize.query(`
           SELECT COALESCE(SUM(p.price), 0) AS total
           FROM customers c
           INNER JOIN packages p ON p.id = c.package_id
           WHERE c.status = 'active'
             AND c.package_id IS NOT NULL
+            ${tSql.sql || ''}
+            ${wSql.sql || ''}
         `, {
-          type: sequelize.QueryTypes.SELECT
+          type: sequelize.QueryTypes.SELECT,
+          replacements: { ...(tSql.replacements || {}), ...(wSql.replacements || {}) }
         });
         monthly_revenue = parseFloat((revRows && revRows[0]?.total) || 0);
       } catch (e) {
@@ -698,10 +732,10 @@ class CustomerController {
   // Get all for map
   async mapData(req, res) {
     try {
-      const where = {
+      const where = applyWilayahScope(req, applyTenantWhere(req, {
         latitude: { [Op.not]: null },
         longitude: { [Op.not]: null }
-      };
+      }));
 
       // OPTIMASI skala besar (>5.000 pelanggan): viewport bounds query.
       // Frontend kirim ?bounds=south,west,north,east → hanya pelanggan di

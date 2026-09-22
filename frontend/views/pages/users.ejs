@@ -1,11 +1,108 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="id" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .users-body{padding:0;}
+    .users-table-wrap{
+      overflow-x:auto;
+      -webkit-overflow-scrolling:touch;
+      overscroll-behavior-x:contain;
+      max-width:100%;
+    }
+    .users-table{min-width:720px;}
+    .users-table th,.users-table td{white-space:nowrap;}
+    .users-table .users-aksi,
+    .users-table td:last-child{
+      position:sticky;right:0;background:#fff;z-index:2;
+      box-shadow:-8px 0 12px -8px rgba(15,23,42,.18);
+    }
+    .users-table thead .users-aksi{background:#f8fafc;z-index:3;}
+    .users-actions{display:flex;gap:6px;flex-wrap:nowrap;}
+    .users-cards{display:none;flex-direction:column;gap:10px;padding:12px;}
+    .ucard{border:1px solid #eef1f6;border-radius:14px;padding:14px 14px 12px;background:#fff;}
+    .ucard-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+    .ucard-name{font-size:15px;font-weight:700;color:#0f172a;}
+    .ucard-sub{font-size:12px;color:#94a3b8;margin-top:2px;}
+    .ucard-email{font-size:13px;color:#334155;margin-top:8px;word-break:break-all;}
+    .ucard-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center;}
+    .ucard-login{font-size:12px;color:#64748b;margin-top:8px;}
+    .ucard-act{display:flex;gap:8px;margin-top:12px;}
+    .ucard-act .btn{flex:1;min-height:42px;}
+    .btn-del{background:#dc2626;color:#fff;border:none;}
+    .btn-del:hover{background:#b91c1c;}
+    #userModal{
+      display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:1000;
+      align-items:flex-end;justify-content:center;
+    }
+    #userModal.open{display:flex;}
+    .user-modal-sheet{
+      background:#fff;border-radius:18px 18px 0 0;width:100%;max-width:560px;
+      max-height:94vh;display:flex;flex-direction:column;
+      box-shadow:0 -12px 40px rgba(15,23,42,.18);
+    }
+    .user-modal-head{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+      padding:18px 18px 12px;border-bottom:1px solid #eef2f7;flex-shrink:0;
+    }
+    .user-modal-title{font-size:18px;font-weight:700;margin:0;color:#0f172a;}
+    .user-modal-sub{font-size:12.5px;color:#64748b;margin:6px 0 0;line-height:1.45;}
+    .user-modal-body{padding:16px 18px 8px;overflow:auto;-webkit-overflow-scrolling:touch;flex:1;}
+    .user-modal-foot{
+      padding:12px 18px 16px;border-top:1px solid #eef2f7;display:flex;flex-direction:column;gap:8px;flex-shrink:0;background:#fff;
+    }
+    .user-field{margin-bottom:14px;}
+    .user-field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#0f172a;}
+    .user-field input,.user-field select{
+      width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:10px;
+      font-size:13px;box-sizing:border-box;background:#fff;
+    }
+    .acc-card{
+      border:1px solid #e8edf3;border-radius:14px;padding:14px;margin-bottom:14px;background:#fff;
+    }
+    .acc-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;}
+    .acc-title{font-size:14px;font-weight:700;color:#0f172a;}
+    .acc-count{font-size:12px;color:#64748b;font-weight:600;}
+    .acc-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+    .acc-btns button{
+      border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:7px 12px;
+      font-size:12px;font-weight:600;cursor:pointer;color:#334155;
+    }
+    .acc-list{display:flex;flex-direction:column;gap:2px;max-height:240px;overflow:auto;}
+    .acc-item{
+      display:flex;align-items:center;gap:10px;padding:8px 4px;border-radius:8px;cursor:pointer;
+    }
+    .acc-item:hover{background:#f8fafc;}
+    .acc-item input{width:16px;height:16px;accent-color:#4f46e5;flex-shrink:0;}
+    .acc-item span{font-size:13px;font-weight:600;color:#1e293b;text-transform:uppercase;letter-spacing:.01em;}
+    .acc-warn{
+      margin-top:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;
+      border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.45;
+    }
+    .acc-warn b{color:#b45309;}
+    .perm-mod{border:1px solid #eef2f7;border-radius:12px;padding:10px 12px;margin-bottom:8px;background:#fbfcfe;}
+    .perm-mod h4{margin:0 0 8px;font-size:12px;font-weight:700;color:#0f172a;}
+    .perm-grid{display:flex;flex-wrap:wrap;gap:6px 10px;}
+    .perm-chip{
+      display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#334155;
+      background:#fff;border:1px solid #e2e8f0;border-radius:999px;padding:5px 10px;cursor:pointer;
+    }
+    .perm-chip input{width:14px;height:14px;accent-color:#4f46e5;}
+    @media(min-width:769px){
+      #userModal{align-items:center;}
+      .user-modal-sheet{border-radius:16px;max-height:90vh;margin:24px;}
+    }
+    @media(max-width:768px){
+      .page-header{flex-direction:column;align-items:stretch;gap:10px;}
+      .page-header-right .btn{width:100%;}
+      .users-table-wrap{display:none;}
+      .users-cards{display:flex;}
+    }
+  </style>
 </head>
 <body>
 <div class="app-layout">
@@ -22,17 +119,20 @@
       </div>
 
       <div class="card">
-        <div class="card-body">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="userTable">
-              <tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8;">Memuat...</td></tr>
-            </tbody>
-          </table>
+        <div class="card-body users-body">
+          <div class="users-table-wrap">
+            <table class="data-table users-table">
+              <thead>
+                <tr>
+                  <th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th class="users-aksi">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="userTable">
+                <tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8;">Memuat...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="users-cards" id="userCards"></div>
         </div>
       </div>
 
@@ -40,39 +140,73 @@
   </div>
 </div>
 
-<!-- Modal -->
-<div id="userModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:12px;padding:28px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-      <h3 id="userModalTitle" style="font-size:16px;font-weight:600;margin:0;">Tambah User</h3>
-      <button onclick="closeUserModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#64748b;">x</button>
+<div id="userModal">
+  <div class="user-modal-sheet">
+    <div class="user-modal-head">
+      <div>
+        <h3 id="userModalTitle" class="user-modal-title">Tambah Akun Baru</h3>
+        <p class="user-modal-sub">Isi formulir di bawah untuk menambahkan akun baru ke sistem.</p>
+      </div>
+      <button type="button" onclick="closeUserModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#64748b;line-height:1;">×</button>
     </div>
-    <form id="userForm" onsubmit="event.preventDefault();saveUser();">
-      <div style="margin-bottom:14px;">
-        <label style="display:block;font-size:13px;font-weight:500;margin-bottom:6px;">Nama *</label>
-        <input id="userName" type="text" placeholder="Nama lengkap" required style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;box-sizing:border-box;">
+    <form id="userForm" onsubmit="event.preventDefault();saveUser();" style="display:flex;flex-direction:column;min-height:0;flex:1;">
+      <div class="user-modal-body">
+        <div class="user-field">
+          <label>Nama *</label>
+          <input id="userName" type="text" placeholder="Nama lengkap" required>
+        </div>
+        <div class="user-field">
+          <label>Email *</label>
+          <input id="userEmail" type="email" placeholder="email@domain.com" required>
+        </div>
+        <div class="user-field">
+          <label>No. HP</label>
+          <input id="userPhone" type="text" placeholder="08xxxxxxxxxx">
+        </div>
+        <div id="passwordGroup" class="user-field">
+          <label>Password *</label>
+          <input id="passwordField" type="password" placeholder="Minimal 6 karakter">
+        </div>
+        <div class="user-field">
+          <label>Role *</label>
+          <select id="userRole" required>
+            <option value="">-- Pilih Role --</option>
+          </select>
+        </div>
+
+        <div class="acc-card" id="wilayahCard">
+          <div class="acc-head">
+            <div class="acc-title">Pilih Wilayah Akses</div>
+            <div class="acc-count" id="wilayahCount">0/0 dipilih</div>
+          </div>
+          <div class="acc-btns">
+            <button type="button" onclick="selectAllWilayah()">Pilih Semua</button>
+            <button type="button" onclick="clearAllWilayah()">Hapus Semua</button>
+          </div>
+          <div class="acc-list" id="wilayahList">
+            <div style="padding:12px;color:#94a3b8;font-size:12px;">Memuat wilayah...</div>
+          </div>
+          <div class="acc-warn">
+            <b>Peringatan:</b> Jika tidak ada wilayah yang dipilih, akun akan memiliki akses ke semua wilayah.
+          </div>
+        </div>
+
+        <div class="acc-card" id="permCard">
+          <div class="acc-head">
+            <div class="acc-title">Pengaturan Hak Akses</div>
+            <div class="acc-count" id="permCount">0 dipilih</div>
+          </div>
+          <p style="margin:0 0 10px;font-size:12px;color:#64748b;line-height:1.45;">
+            Sesuaikan modul Fiberix untuk akun ini. Centang aksi yang diizinkan (Lihat / Tambah / Edit / Hapus). Role tetap menjadi dasar akses.
+          </p>
+          <div id="permModules">
+            <div style="padding:12px;color:#94a3b8;font-size:12px;">Memuat hak akses...</div>
+          </div>
+        </div>
       </div>
-      <div style="margin-bottom:14px;">
-        <label style="display:block;font-size:13px;font-weight:500;margin-bottom:6px;">Email *</label>
-        <input id="userEmail" type="email" placeholder="email@domain.com" required style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;box-sizing:border-box;">
-      </div>
-      <div style="margin-bottom:14px;">
-        <label style="display:block;font-size:13px;font-weight:500;margin-bottom:6px;">No. HP</label>
-        <input id="userPhone" type="text" placeholder="08xxxxxxxxxx" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;box-sizing:border-box;">
-      </div>
-      <div id="passwordGroup" style="margin-bottom:14px;">
-        <label style="display:block;font-size:13px;font-weight:500;margin-bottom:6px;">Password *</label>
-        <input id="passwordField" type="password" placeholder="Minimal 6 karakter" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;box-sizing:border-box;">
-      </div>
-      <div style="margin-bottom:20px;">
-        <label style="display:block;font-size:13px;font-weight:500;margin-bottom:6px;">Role *</label>
-        <select id="userRole" required style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;box-sizing:border-box;">
-          <option value="">-- Pilih Role --</option>
-        </select>
-      </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;">
-        <button type="button" onclick="closeUserModal()" class="btn btn-secondary">Batal</button>
-        <button type="submit" class="btn btn-primary">Simpan</button>
+      <div class="user-modal-foot">
+        <button type="submit" class="btn btn-primary" style="width:100%;min-height:46px;">+ Simpan Akun</button>
+        <button type="button" onclick="closeUserModal()" class="btn btn-secondary" style="width:100%;min-height:44px;">Batal</button>
       </div>
     </form>
   </div>
@@ -80,6 +214,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/users.js"></script>
+<script>
+  window.ME_USER_ID = <%- Number(user && user.id) || 0 %>;
+</script>
+<script src="/js/users.js?v=20260922-akses"></script>
 </body>
 </html>

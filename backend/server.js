@@ -1091,6 +1091,84 @@ const startServer = async () => {
       logger.warn('Failed reseller voucher migration: ' + (e.message || e));
     }
 
+    // ── Hak akses per user: extra permissions + wilayah operasional ──
+    try {
+      const hasTable = async (name) => {
+        const [rows] = await db.sequelize.query(
+          `SELECT COUNT(*) AS c FROM information_schema.tables
+            WHERE table_schema = DATABASE() AND table_name = :name`,
+          { replacements: { name } }
+        );
+        return rows && rows[0] && parseInt(rows[0].c, 10) > 0;
+      };
+      const hasCol = async (table, col) => {
+        const [rows] = await db.sequelize.query(
+          `SELECT COUNT(*) AS c FROM information_schema.columns
+            WHERE table_schema = DATABASE() AND table_name = :table AND column_name = :col`,
+          { replacements: { table, col } }
+        );
+        return rows && rows[0] && parseInt(rows[0].c, 10) > 0;
+      };
+
+      if (!(await hasTable('wilayah'))) {
+        await db.sequelize.query(`
+          CREATE TABLE wilayah (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(150) NOT NULL,
+            code VARCHAR(12) NOT NULL,
+            status ENUM('active','inactive') NOT NULL DEFAULT 'active',
+            province VARCHAR(100) NULL,
+            regency VARCHAR(100) NULL,
+            district VARCHAR(100) NULL,
+            village VARCHAR(100) NULL,
+            phone VARCHAR(30) NULL,
+            notes TEXT NULL,
+            created_at DATETIME NULL,
+            updated_at DATETIME NULL,
+            UNIQUE KEY uniq_wilayah_code (code),
+            KEY idx_wilayah_status (status)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        `);
+        logger.info('Migrated: wilayah table created');
+      }
+      if (!(await hasCol('customers', 'wilayah_id'))) {
+        await db.sequelize.query(`ALTER TABLE customers ADD COLUMN wilayah_id INT NULL`);
+        logger.info('Migrated: customers.wilayah_id added');
+      }
+      if (!(await hasTable('user_wilayah'))) {
+        await db.sequelize.query(`
+          CREATE TABLE user_wilayah (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            wilayah_id INT NOT NULL,
+            created_at DATETIME NULL,
+            updated_at DATETIME NULL,
+            UNIQUE KEY uniq_user_wilayah (user_id, wilayah_id),
+            KEY idx_user_wilayah_user (user_id),
+            KEY idx_user_wilayah_area (wilayah_id)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        `);
+        logger.info('Migrated: user_wilayah table created');
+      }
+      if (!(await hasTable('user_permissions'))) {
+        await db.sequelize.query(`
+          CREATE TABLE user_permissions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            permission_id INT NOT NULL,
+            created_at DATETIME NULL,
+            updated_at DATETIME NULL,
+            UNIQUE KEY uniq_user_permission (user_id, permission_id),
+            KEY idx_user_perm_user (user_id),
+            KEY idx_user_perm_perm (permission_id)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        `);
+        logger.info('Migrated: user_permissions table created');
+      }
+    } catch (e) {
+      logger.warn('Failed user access (wilayah/permissions) migration: ' + (e.message || e));
+    }
+
     // Start SNMP monitoring
     const snmpService = new SNMPService(io);
     SNMPService.setInstance(snmpService);

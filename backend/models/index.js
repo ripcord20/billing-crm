@@ -124,6 +124,9 @@ const SalesCommission     = require('./SalesCommission')(sequelize);
 
 // Field Collection module — penagihan lapangan oleh kolektor
 const CollectorProfile      = require('./CollectorProfile')(sequelize);
+const Wilayah               = require('./Wilayah')(sequelize);
+const UserWilayah           = require('./UserWilayah')(sequelize);
+const UserPermission        = require('./UserPermission')(sequelize);
 const CollectionAssignment  = require('./CollectionAssignment')(sequelize);
 const CollectionAssignmentLog = require('./CollectionAssignmentLog')(sequelize);
 const CommissionPayment       = require('./CommissionPayment')(sequelize);
@@ -197,9 +200,21 @@ Customer.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
 Role.belongsToMany(Permission, { through: RolePermission, foreignKey: 'role_id', as: 'permissions' });
 Permission.belongsToMany(Role, { through: RolePermission, foreignKey: 'permission_id', as: 'roles' });
 
+// User <-> Wilayah operasional (kosong = akses semua wilayah)
+User.belongsToMany(Wilayah, { through: UserWilayah, foreignKey: 'user_id', otherKey: 'wilayah_id', as: 'wilayah_akses' });
+Wilayah.belongsToMany(User, { through: UserWilayah, foreignKey: 'wilayah_id', otherKey: 'user_id', as: 'assigned_users' });
+
+// User <-> Permission tambahan per akun (di luar role)
+User.belongsToMany(Permission, { through: UserPermission, foreignKey: 'user_id', otherKey: 'permission_id', as: 'extra_permissions' });
+Permission.belongsToMany(User, { through: UserPermission, foreignKey: 'permission_id', otherKey: 'user_id', as: 'assigned_users' });
+
 // Customer <-> Package
 Package.hasMany(Customer, { foreignKey: 'package_id', as: 'customers' });
 Customer.belongsTo(Package, { foreignKey: 'package_id', as: 'package' });
+
+// Customer <-> Wilayah operasional
+Wilayah.hasMany(Customer, { foreignKey: 'wilayah_id', as: 'customers' });
+Customer.belongsTo(Wilayah, { foreignKey: 'wilayah_id', as: 'wilayah' });
 
 // Customer <-> Device (router MikroTik untuk PPPoE isolir)
 // Asosiasi ini opsional — customer.mikrotik_id boleh NULL (tidak semua
@@ -328,6 +343,9 @@ const db = {
   RegistrationRequest,
   SalesCommission,
   CollectorProfile,
+  Wilayah,
+  UserWilayah,
+  UserPermission,
   CollectionAssignment,
   CollectionAssignmentLog,
   CommissionPayment,
