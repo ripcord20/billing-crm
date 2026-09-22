@@ -33,6 +33,29 @@ function isFinanceAreaUser(req) {
   return r === 'superadmin' || r === 'admin' || r === 'finance' || r === 'tenant_owner';
 }
 
+function isCustomerAreaUser(req) {
+  const r = _roleName(req);
+  return isFinanceAreaUser(req) || r === 'noc';
+}
+
+/**
+ * Page-level guard untuk modul Customer Data.
+ * Izinkan admin/finance/tenant_owner plus NOC (lihat/tambah/edit pelanggan).
+ */
+function allowCustomerArea(req, res, next) {
+  if (!req.user) return res.redirect('/login');
+  if (isCustomerAreaUser(req)) return next();
+
+  const r = _roleName(req);
+  if (r === 'technician') return res.redirect('/technician');
+  if (r === 'sales')      return res.redirect('/sales');
+  return res.status(403).render('pages/403', {
+    title: 'Akses Ditolak',
+    layout: false,
+    message: 'Anda tidak punya akses ke data pelanggan.'
+  });
+}
+
 /**
  * Page-level guard: izinkan superadmin/admin/finance, tolak yang lain.
  * Dipakai di route /finance/*.
@@ -85,7 +108,9 @@ function apiBlockFinanceArea(req, res, next) {
 module.exports = {
   isFinanceRole,
   isFinanceAreaUser,
+  isCustomerAreaUser,
   allowFinanceArea,
+  allowCustomerArea,
   blockFinanceArea,
   apiAllowFinanceArea,
   apiBlockFinanceArea,

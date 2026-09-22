@@ -4,10 +4,13 @@
  *
  * Konsep:
  *   - Role 'noc' adalah role baru yang fokus ke MONITORING JARINGAN:
- *     traffic, PPPoE sessions, OLT/ONT health, devices, infrastructure map,
- *     queue, IP pool, firewall (read-only), host monitor.
- *   - Role NOC TIDAK boleh akses: billing, payments, customers (full),
- *     packages, keuangan, settings, user management, WA gateway.
+ *     traffic, PPPoE sessions (termasuk create user PPPoE di MikroTik),
+ *     OLT/ONT health, devices, infrastructure map, queue, IP pool,
+ *     firewall (read-only), host monitor, plus Customer Data
+ *     (lihat / tambah / edit — tanpa hapus dan tanpa billing).
+ *   - Role NOC TIDAK boleh akses: billing, payments, hapus pelanggan,
+ *     packages (mutasi), keuangan, settings, user management, WA gateway.
+ *     Edit/hapus/disconnect secret PPPoE tetap admin-only.
  *   - Role superadmin & admin tetap bisa akses semua.
  *
  * Helpers:

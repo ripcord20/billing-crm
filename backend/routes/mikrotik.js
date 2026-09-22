@@ -38,7 +38,7 @@ router.get('/pppoe/secrets',               authenticate, PPPoEController.secrets
 router.get('/pppoe/stats',                 authenticate, PPPoEController.stats.bind(PPPoEController));
 router.get('/pppoe/profiles',              authenticate, PPPoEController.getProfiles.bind(PPPoEController));
 router.post('/pppoe/disconnect/:id',       authenticate, authorize('superadmin','admin'), logActivity('disconnect','pppoe'), PPPoEController.disconnect.bind(PPPoEController));
-router.post('/pppoe/secrets',              authenticate, authorize('superadmin','admin'), logActivity('create','pppoe_secret'), PPPoEController.createSecret.bind(PPPoEController));
+router.post('/pppoe/secrets',              authenticate, authorize('superadmin','admin','noc'), logActivity('create','pppoe_secret'), PPPoEController.createSecret.bind(PPPoEController));
 router.put('/pppoe/secrets/:id',           authenticate, authorize('superadmin','admin'), logActivity('update','pppoe_secret'), PPPoEController.updateSecret.bind(PPPoEController));
 router.delete('/pppoe/secrets/:id',        authenticate, authorize('superadmin','admin'), logActivity('delete','pppoe_secret'), PPPoEController.deleteSecret.bind(PPPoEController));
 router.post('/pppoe/secrets/:id/enable',   authenticate, authorize('superadmin','admin'), PPPoEController.enableSecret.bind(PPPoEController));
