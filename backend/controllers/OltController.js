@@ -235,6 +235,7 @@ class OltController {
             last_inform:     ont.last_inform,
             last_synced:     ont.last_synced,
             tr069_params:    ont.tr069_params,
+            source:          ont.source || 'snmp_hsgq',
             // device_id pakai format olt_id:index untuk source tracking
             device_id:       `olt${cfg.id}:${ont.olt_index}`,
           }
@@ -257,6 +258,7 @@ class OltController {
             last_inform:     ont.last_inform,
             last_synced:     ont.last_synced,
             tr069_params:    ont.tr069_params,
+            source:          ont.source || record.source,
             device_id:       record.device_id    || `olt${cfg.id}:${ont.olt_index}`,
           });
 
