@@ -2523,6 +2523,13 @@ router.get ('/sales/customer-points',    authenticate, demoGuard, salesRoles, Sa
 router.get ('/sales/customers',          authenticate, demoGuard, salesRoles, SalesCtrl.listCustomers);
 router.get ('/sales/registrations',      authenticate, demoGuard, salesRoles, SalesCtrl.listRegistrations);
 router.post('/sales/registrations',      authenticate, demoGuard, salesRoles, SalesCtrl.createRegistration);
+// Hapus/trash — path statis HARUS sebelum /:id supaya tidak tertelan param
+router.post  ('/sales/registrations/bulk-delete', authenticate, demoGuard, salesRoles, SalesCtrl.bulkDeleteRegistrations);
+router.get   ('/sales/registrations-trash',       authenticate, demoGuard, salesAdminRoles, SalesCtrl.listDeletedRegistrations);
+router.get   ('/sales/registrations/:id/delete-impact', authenticate, demoGuard, salesRoles, SalesCtrl.registrationDeleteImpact);
+router.post  ('/sales/registrations/:id/delete',  authenticate, demoGuard, salesRoles, SalesCtrl.deleteRegistration);
+router.delete('/sales/registrations/:id',         authenticate, demoGuard, salesRoles, SalesCtrl.deleteRegistration);
+router.post  ('/sales/registrations/:id/restore', authenticate, demoGuard, salesAdminRoles, SalesCtrl.restoreRegistration);
 router.get ('/sales/registrations/:id',  authenticate, demoGuard, salesRoles, SalesCtrl.showRegistration);
 router.put ('/sales/registrations/:id/assign', authenticate, demoGuard, salesAdminRoles, SalesCtrl.assignSales);
 router.post('/sales/registrations/:id/photo', authenticate, demoGuard, salesRoles, SalesCtrl.uploadSingle, SalesCtrl.uploadRegistrationPhoto);

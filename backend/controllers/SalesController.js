@@ -1366,10 +1366,14 @@ exports.deleteRegistration = async (req, res) => {
 
     // Catat siapa & kenapa SEBELUM destroy, karena setelah soft delete
     // baris tidak lagi terjangkau oleh update biasa.
-    await reg.update({
-      deleted_by: req.user?.id || null,
-      delete_reason: reason || null,
-    });
+    try {
+      await reg.update({
+        deleted_by: req.user?.id || null,
+        delete_reason: reason || null,
+      });
+    } catch (auditErr) {
+      logger.warn('[Sales] audit hapus dilewati: ' + auditErr.message);
+    }
     await reg.destroy(); // paranoid → hanya mengisi deleted_at
 
     logger.info(
@@ -1422,7 +1426,11 @@ exports.bulkDeleteRegistrations = async (req, res) => {
         continue;
       }
       try {
-        await reg.update({ deleted_by: req.user?.id || null, delete_reason: reason || null });
+        try {
+          await reg.update({ deleted_by: req.user?.id || null, delete_reason: reason || null });
+        } catch (auditErr) {
+          logger.warn('[Sales] audit bulk-hapus dilewati #' + reg.id + ': ' + auditErr.message);
+        }
         await reg.destroy();
         result.deleted++;
       } catch (e) {
