@@ -136,6 +136,7 @@ router.use('/app-settings', authenticate, (req, res, next) => {
 // Role 'noc' fokus monitoring jaringan. TIDAK boleh akses modul billing,
 // payments, customers (admin), packages, keuangan, settings, users, dll.
 // API monitoring/devices/mikrotik/genieacs/hotspot tetap accessible.
+// Create user PPPoE (POST /mikrotik/pppoe/secrets) diizinkan; billing tetap ditutup.
 // ═══════════════════════════════════════════════════════════════════
 const _nocBlockedPrefixes = [
   '/billing',           // billing & invoice
