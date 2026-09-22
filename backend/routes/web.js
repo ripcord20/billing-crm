@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const {
   allowFinanceArea,
+  allowCustomerArea,
   blockFinanceArea,
   isFinanceRole
 } = require('../middleware/financeAccess');
@@ -287,11 +288,11 @@ router.get('/packages', authenticate, allowFinanceArea, (req, res) => {
 });
 
 // ─── MANAGEMENT ─────────────────────────────────────────────
-router.get('/customers', authenticate, allowFinanceArea, (req, res) => {
+router.get('/customers', authenticate, allowCustomerArea, (req, res) => {
   res.render('pages/customers', { title: 'Customers', user: req.user, active: 'customers' });
 });
 
-router.get('/customers/profile/:id', authenticate, allowFinanceArea, (req, res) => {
+router.get('/customers/profile/:id', authenticate, allowCustomerArea, (req, res) => {
   res.render('pages/customer_profile', { title: 'Profil Pelanggan', user: req.user, active: 'customers', custId: req.params.id });
 });
 

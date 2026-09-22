@@ -134,9 +134,10 @@ router.use('/app-settings', authenticate, (req, res, next) => {
 // ═══════════════════════════════════════════════════════════════════
 // NOC ROLE — API ACCESS RESTRICTIONS
 // Role 'noc' fokus monitoring jaringan. TIDAK boleh akses modul billing,
-// payments, customers (admin), packages, keuangan, settings, users, dll.
+// payments, hapus pelanggan, packages (mutasi), keuangan, settings, users, dll.
 // API monitoring/devices/mikrotik/genieacs/hotspot tetap accessible.
-// Create user PPPoE (POST /mikrotik/pppoe/secrets) diizinkan; billing tetap ditutup.
+// Create user PPPoE (POST /mikrotik/pppoe/secrets) diizinkan.
+// Customer Data: lihat/tambah/edit diizinkan; billing tetap ditutup.
 // ═══════════════════════════════════════════════════════════════════
 const _nocBlockedPrefixes = [
   '/billing',           // billing & invoice
@@ -144,11 +145,9 @@ const _nocBlockedPrefixes = [
   '/keuangan',          // keuangan
   '/finance',           // finance dashboard endpoints
   '/laporan',           // laporan keuangan
-  '/packages',          // paket layanan (price)
   '/voucher',
   '/voucher-template',
   '/invoice-template',
-  '/customers',         // customer CRUD (NOC bisa cek dari monitoring)
   '/wa',                // WA gateway full (NOC bisa lihat status, tapi tidak kirim)
   '/whatsapp',
   '/broadcast',
@@ -169,6 +168,11 @@ for (const p of _nocBlockedPrefixes) {
 }
 // Settings: GET boleh, mutasi tidak
 router.use('/app-settings', authenticate, (req, res, next) => {
+  if (req.method === 'GET') return next();
+  return apiBlockNocArea(req, res, next);
+});
+// Paket: GET dipakai form Customer Data (pilih paket), mutasi tetap ditolak
+router.use('/packages', authenticate, (req, res, next) => {
   if (req.method === 'GET') return next();
   return apiBlockNocArea(req, res, next);
 });

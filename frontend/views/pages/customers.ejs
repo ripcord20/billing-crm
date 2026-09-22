@@ -343,10 +343,12 @@
           <div style="font-size:13px;color:var(--d-muted);margin-top:2px" id="headerSubtitle">Manajemen pelanggan ISP</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <% if (!isNocUser) { %>
           <button onclick="syncDueDates()" class="btn-fin btn-ghost" id="btnSyncDue">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
             <span>Auto Due Date</span>
           </button>
+          <% } %>
           <button id="importExportToggleBtn" type="button" onclick="toggleImpExpMenu(event)" class="btn-fin" style="background:#fff;color:var(--d-text);border:1px solid var(--d-border);">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
             <span>Import / Export</span>
@@ -907,7 +909,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/customers.js?v=1779700000"></script>
+<script>window.CUSTOMER_CAN_DELETE = <%= isNocUser ? 'false' : 'true' %>;</script>
+<script src="/js/customers.js?v=1779700001"></script>
 <script>
 /* ── Extra stat update from loadCustomerStats ── */
 const _origStats = window.loadCustomerStats;

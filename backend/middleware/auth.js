@@ -125,6 +125,9 @@ const hasPermission = (...permissions) => {
     const ROLE_GRANTS = {
       finance: ['customer_view', 'customer_create', 'customer_update', 'customer_delete'],
       tenant_owner: ['customer_view', 'customer_create', 'customer_update'],
+      // NOC: data pelanggan (lihat/tambah/edit) supaya user PPPoE masuk Customer Data.
+      // Hapus pelanggan & generate tagihan tetap tidak diizinkan.
+      noc: ['customer_view', 'customer_create', 'customer_update'],
     };
     const granted = ROLE_GRANTS[roleName] || [];
     if (granted.length && permissions.some(p => granted.includes(p))) {
