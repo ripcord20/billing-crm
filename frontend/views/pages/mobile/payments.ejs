@@ -408,6 +408,9 @@
     });
 
     loadStats(); loadTrend(); loadPayments(true);
+    window.mobileRefresh = function(){
+      return Promise.all([loadStats(), loadTrend(), loadPayments(true)]);
+    };
   </script>
 </body>
 </html>

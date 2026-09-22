@@ -297,6 +297,9 @@
 
     setupPeriod();
     loadStats(); loadInvoices(true);
+    window.mobileRefresh = function(){
+      return Promise.all([loadStats(), loadInvoices(true)]);
+    };
   </script>
   <div class="toast" id="toast"></div>
 </body>

@@ -151,6 +151,7 @@
       _t=setTimeout(()=>{ if(!v){renderList(_all);return;} renderList(_all.filter(r=>(String(r.name||'')+String(r.customer_id||'')).toLowerCase().includes(v))); },250);
     });
     loadHotspot(false);
+    window.mobileRefresh = function(){ return loadHotspot(true); };
   </script>
 </body>
 </html>

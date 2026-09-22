@@ -259,6 +259,8 @@
     function doLogout(){ try{ localStorage.removeItem('token'); }catch(_){} document.cookie='token=; Max-Age=0; path=/;'; location.href='/login'; }
 
     loadProfile();
+    window.mobileRefresh = function(){ return loadProfile(); };
   </script>
+<script src="/js/mobile-ptr.js?v=20260922e"></script>
 </body>
 </html>

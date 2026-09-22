@@ -315,6 +315,7 @@
     document.getElementById('cfOverlay').addEventListener('click',function(e){ if(e.target===this) closeConfirm(); });
 
     loadReminders();
+    window.mobileRefresh = function(){ return loadReminders(); };
   </script>
 </body>
 </html>

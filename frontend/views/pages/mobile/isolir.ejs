@@ -361,6 +361,7 @@
 
     (function(){ const cf=document.getElementById('cfOverlay'); if(cf){ cf.addEventListener('click',function(e){ if(e.target===this)closeConfirm(); }); } })();
     loadAll(false);
+    window.mobileRefresh = function(){ return loadAll(true); };
   </script>
 </body>
 </html>

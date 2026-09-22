@@ -1110,6 +1110,9 @@
 
     setupSocket();
     loadStats(); loadSessions();
+    window.mobileRefresh = function(){
+      return Promise.all([loadStats(), loadSessions()]);
+    };
 
     /* Segarkan status saat halaman kembali aktif (user balik dari app lain).
        Tanpa ini, status yang tampil bisa basi setelah app lama di-background. */

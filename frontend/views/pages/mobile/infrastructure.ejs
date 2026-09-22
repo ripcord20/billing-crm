@@ -257,6 +257,7 @@
     document.getElementById('typeChips').addEventListener('click',function(e){ const c=e.target.closest('.chip'); if(!c)return; _type=c.dataset.t||''; syncTypeUI(); render(); renderMap(); });
     let _t=null; document.getElementById('infSearch').addEventListener('input',function(){ clearTimeout(_t); _t=setTimeout(render,200); });
     loadInfra();
+    window.mobileRefresh = function(){ return loadInfra(true); };
   </script>
 </body>
 </html>
