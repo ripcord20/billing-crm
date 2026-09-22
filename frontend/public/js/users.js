@@ -217,6 +217,8 @@ function closeUserModal() {
 function openAddUser() {
   _editUserId = null;
   document.getElementById('userModalTitle').textContent = 'Tambah Akun Baru';
+  const sub = document.querySelector('.user-modal-sub');
+  if (sub) sub.textContent = 'Isi formulir di bawah untuk menambahkan akun baru ke sistem.';
   document.getElementById('userForm').reset();
   document.getElementById('passwordGroup').style.display = 'block';
   document.getElementById('passwordField').required = true;
@@ -235,6 +237,8 @@ async function editUser(id) {
   const u = d.data;
   _editUserId = id;
   document.getElementById('userModalTitle').textContent = 'Edit Akun';
+  const sub = document.querySelector('.user-modal-sub');
+  if (sub) sub.textContent = 'Ubah data, hak akses modul, dan wilayah untuk akun ini.';
   document.getElementById('userName').value    = u.name;
   document.getElementById('userEmail').value   = u.email;
   document.getElementById('userPhone').value   = u.phone || '';
