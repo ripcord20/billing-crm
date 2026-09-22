@@ -54,8 +54,7 @@ function getKey() {
   const raw = process.env.CONFIG_ENCRYPTION_KEY;
   if (!raw || raw.length < 16) {
     throw new Error(
-      'CONFIG_ENCRYPTION_KEY missing or too short (need >= 16 chars in .env). ' +
-      'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'base64\'))"'
+      'Kunci enkripsi konfigurasi belum diset. Isi CONFIG_ENCRYPTION_KEY di .env (minimal 16 karakter), lalu restart aplikasi.'
     );
   }
   // scrypt stretches the user-supplied key into a uniform 32-byte key.

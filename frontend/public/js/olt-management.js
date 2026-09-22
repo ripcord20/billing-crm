@@ -583,10 +583,17 @@ const OltMgmt = {
     document.getElementById('snmpFields').style.display = on ? 'block' : 'none';
   },
 
-  // SNMP hanya relevan untuk ZTE; sembunyikan section untuk brand lain
+  // SNMP cepat hanya untuk ZTE. Brand lain tetap CLI (Telnet/SSH).
   onBrandChange() {
     const brand = document.getElementById('oltBrand').value;
-    document.getElementById('snmpSection').style.display = (brand === 'zte') ? 'block' : 'none';
+    const isZte = brand === 'zte';
+    document.getElementById('snmpSection').style.display = isZte ? 'block' : 'none';
+    const hint = document.getElementById('oltBrandHint');
+    if (hint) {
+      hint.textContent = isZte
+        ? 'ZTE: kelola ONU via CLI. SNMP opsional untuk monitoring cepat.'
+        : 'Brand ini terhubung lewat Telnet/SSH (bukan Winbox). SNMP cepat khusus ZTE.';
+    }
   },
 
   async saveOlt() {
