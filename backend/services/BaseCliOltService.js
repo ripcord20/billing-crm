@@ -37,6 +37,20 @@ let SSHClient;
 try { SSHClient = require('ssh2').Client; }
 catch (e) { logger.warn('[OltCli] ssh2 belum terinstall — jalankan: npm install ssh2'); }
 
+function friendlySshError(err) {
+  const m = String((err && err.message) || err || '');
+  if (/all configured authentication methods failed|permission denied/i.test(m)) {
+    return 'Login SSH ditolak OLT. Username atau password salah — isi ulang password, Simpan, lalu Test Koneksi lagi.';
+  }
+  if (/timed? ?out/i.test(m)) {
+    return 'Timeout SSH. Pastikan IP OLT bisa diakses dari server Fiberix.';
+  }
+  if (/no matching/i.test(m)) {
+    return 'Handshake SSH gagal (algoritma). Coba Test Koneksi lagi, atau pakai Telnet jika OLT membukanya.';
+  }
+  return m;
+}
+
 class BaseCliOltService {
   constructor(config = {}) {
     this.host     = config.host;
@@ -96,11 +110,11 @@ class BaseCliOltService {
     return new Promise((resolve, reject) => {
       const conn = new SSHClient();
       this._ssh = conn;
-      const timer = setTimeout(() => { try { conn.end(); } catch (e) {} reject(new Error('SSH timeout')); }, this.timeout);
+      const timer = setTimeout(() => { try { conn.end(); } catch (e) {} reject(new Error(friendlySshError('SSH timeout'))); }, this.timeout);
 
       conn.on('ready', () => {
         conn.shell({ term: 'vt100' }, (err, stream) => {
-          if (err) { clearTimeout(timer); return reject(err); }
+          if (err) { clearTimeout(timer); return reject(new Error(friendlySshError(err))); }
           this._sshStream = stream;
           let buf = '';
           let pagingSent = false;
@@ -138,18 +152,28 @@ class BaseCliOltService {
           setTimeout(() => { try { stream.write('\n'); } catch (e) {} }, 300);
         });
       });
-      conn.on('error', (e) => { clearTimeout(timer); reject(e); });
+      conn.on('keyboard-interactive', (name, instructions, lang, prompts, finish) => {
+        finish((prompts || []).map(() => this.password || ''));
+      });
+      conn.on('error', (e) => { clearTimeout(timer); reject(new Error(friendlySshError(e))); });
       conn.connect({
         host: this.host,
         port: this.port,
-        username: this.username,
-        password: this.password,
+        username: String(this.username || '').trim(),
+        password: String(this.password || ''),
+        tryKeyboard: true,
         readyTimeout: this.timeout,
-        // OLT lama sering pakai algoritma legacy
+        // Dropbear / OLT lama: ssh-rsa + cipher/kex campur modern & legacy
         algorithms: {
-          kex: ['diffie-hellman-group1-sha1', 'diffie-hellman-group14-sha1', 'diffie-hellman-group-exchange-sha1', 'diffie-hellman-group14-sha256'],
-          cipher: ['aes128-cbc', '3des-cbc', 'aes128-ctr', 'aes256-ctr'],
-          serverHostKey: ['ssh-rsa', 'ssh-dss'],
+          kex: [
+            'curve25519-sha256', 'curve25519-sha256@libssh.org',
+            'ecdh-sha2-nistp256', 'ecdh-sha2-nistp384', 'ecdh-sha2-nistp521',
+            'diffie-hellman-group14-sha256', 'diffie-hellman-group14-sha1',
+            'diffie-hellman-group1-sha1', 'diffie-hellman-group-exchange-sha1',
+          ],
+          cipher: ['aes128-ctr', 'aes256-ctr', 'aes128-cbc', 'aes256-cbc', '3des-cbc'],
+          serverHostKey: ['ssh-rsa', 'ssh-dss', 'rsa-sha2-256', 'rsa-sha2-512', 'ecdsa-sha2-nistp256', 'ssh-ed25519'],
+          hmac: ['hmac-sha2-256', 'hmac-sha1', 'hmac-sha1-96'],
         },
       });
     });
@@ -265,9 +289,9 @@ class BaseCliOltService {
         const clean = stripAnsi(buf);
         const tail = clean.slice(-80);
 
-        // 1) Paging "--More--" / "Press any key" → kirim spasi, lanjut.
-        if (/--\s*more\s*--|press any key|----more----/i.test(tail)) {
-          buf = buf.replace(/--\s*more\s*--/gi, '');
+        // 1) Paging "--More--" / C-DATA "--More ( Press 'Q' to quit )--" / "Press any key"
+        if (/--more|press ['']?q['']? to quit|press any key|----more----/i.test(tail)) {
+          buf = buf.replace(/--More\s*\([^)]*\)--/gi, '\n').replace(/--\s*more\s*--/gi, '\n');
           stream.write(' ');
           schedule(800);
           return;

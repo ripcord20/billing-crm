@@ -34,6 +34,8 @@ const HiosoOltService = require('../services/HiosoOltService');
 const ZimmlinkOltService = require('../services/ZimmlinkOltService');
 const HsgqEponOltService = require('../services/HsgqEponOltService');
 const ZteSnmpService = require('../services/ZteSnmpService');
+const HsgqOltService = require('../services/HsgqOltService');
+const HiosoSnmpService = require('../services/HiosoSnmpService');
 const ConfigCrypto = require('../utils/ConfigCrypto');
 const oltQueue = require('../services/OltQueue');
 const logger = require('../utils/logger');
@@ -179,11 +181,58 @@ function _serialize(svc, cfg) {
   return svc;
 }
 
-// SNMP tersedia untuk ZTE bila dikonfigurasi. Dipakai untuk operasi BACA.
+function isHsgq(brand) { return String(brand || '').toLowerCase() === 'hsgq'; }
+function isHioso(brand) { return String(brand || '').toLowerCase() === 'hioso'; }
+
+function markLastStatus(id, ok) {
+  try {
+    const cfgs = loadConfigs();
+    const idx = cfgs.findIndex((c) => c.id === id);
+    if (idx === -1) return;
+    cfgs[idx].lastTest = new Date().toISOString();
+    cfgs[idx].lastStatus = ok ? 'ok' : 'error';
+    saveConfigs(cfgs);
+  } catch (e) { /* abaikan */ }
+}
+
+function persistProtocol(id, protocol, port) {
+  try {
+    const cfgs = loadConfigs();
+    const idx = cfgs.findIndex((c) => c.id === id);
+    if (idx === -1) return;
+    cfgs[idx].protocol = protocol;
+    cfgs[idx].port = port;
+    saveConfigs(cfgs);
+  } catch (e) { /* abaikan */ }
+}
+
+// SNMP baca: ZTE (jika diaktifkan), HSGQ, atau HIOSO EPON 25355
+// (Telnet/SSH Hioso sering tertutup dari VPS; ONU tetap ada di MIB).
 function snmpAvailable(cfg) {
-  return isZteStyle(cfg.brand) && cfg.snmpEnabled && cfg.snmpCommunity;
+  const comm = cfg.snmpCommunity || cfg.community || '';
+  if (isHsgq(cfg.brand) || isHioso(cfg.brand)) return true;
+  return isZteStyle(cfg.brand) && cfg.snmpEnabled && !!comm;
 }
 function makeSnmp(cfg) {
+  if (isHioso(cfg.brand)) {
+    return new HiosoSnmpService({
+      host: cfg.host,
+      community: cfg.snmpCommunity || cfg.community || 'public',
+      port: cfg.snmpPort || 161,
+      timeout: cfg.timeout || 15000,
+      name: cfg.name || cfg.host,
+    });
+  }
+  if (isHsgq(cfg.brand)) {
+    return new HsgqOltService({
+      host:      cfg.host,
+      community: cfg.snmpCommunity || cfg.community || 'public',
+      port:      cfg.snmpPort || 161,
+      timeout:   cfg.timeout || 15000,
+      name:      cfg.name || cfg.host,
+      mibMode:   'auto',
+    });
+  }
   return new ZteSnmpService({
     host: cfg.host,
     snmpCommunity: cfg.snmpCommunity,
@@ -297,26 +346,50 @@ class OltManagementController {
     }
   }
 
-  // ── Test koneksi CLI ──────────────────────────────────────────────
+  // ── Test koneksi (SNMP dulu untuk HSGQ/HIOSO, lalu CLI; Telnet→SSH) ──
   async test(req, res) {
     const cfg = getCfgOr404(req, res); if (!cfg) return;
-    const svc = makeService(cfg);
-    try {
-      const result = await svc.testConnection();
-      // Simpan hasil test ke config
-      const cfgs = loadConfigs();
-      const idx = cfgs.findIndex(c => c.id === cfg.id);
-      if (idx !== -1) {
-        cfgs[idx].lastTest = new Date().toISOString();
-        cfgs[idx].lastStatus = result.success ? 'ok' : 'error';
-        saveConfigs(cfgs);
+
+    if (snmpAvailable(cfg)) {
+      try {
+        const snmpRes = await makeSnmp(cfg).testConnection();
+        if (snmpRes && snmpRes.success) {
+          markLastStatus(cfg.id, true);
+          return res.json({ ...snmpRes, via: 'snmp' });
+        }
+      } catch (e) {
+        logger.warn('[OltMgmt] SNMP test gagal: ' + e.message);
       }
-      res.json(result);
-    } catch (err) {
-      res.json({ success: false, error: err.message });
-    } finally {
-      await svc.disconnect().catch(() => {});
     }
+
+    const tryCli = async (c) => {
+      const svc = makeService(c);
+      try { return await svc.testConnection(); }
+      finally { await svc.disconnect().catch(() => {}); }
+    };
+
+    let result = await tryCli(cfg);
+    if (result && result.success) {
+      markLastStatus(cfg.id, true);
+      return res.json(result);
+    }
+
+    if ((cfg.protocol || 'telnet') === 'telnet') {
+      const sshTry = await tryCli({ ...cfg, protocol: 'ssh', port: 22 });
+      if (sshTry && sshTry.success) {
+        persistProtocol(cfg.id, 'ssh', 22);
+        markLastStatus(cfg.id, true);
+        return res.json({
+          ...sshTry,
+          via: 'ssh',
+          message: (sshTry.message || 'Terhubung') + ' · protokol disetel ke SSH',
+        });
+      }
+      result = sshTry || result;
+    }
+
+    markLastStatus(cfg.id, false);
+    res.json(result || { success: false, error: 'Tidak bisa terhubung ke OLT' });
   }
 
   // ── Daftar kartu/slot (hanya ZTE) ─────────────────────────────────
@@ -362,29 +435,49 @@ class OltManagementController {
         const snmpSvc = makeSnmp(cfg);
         const result = await snmpSvc.getAllOnus({ withPower: true, ports: explicitPorts, maxPorts });
         setCache(cfg.id, result);                                  // simpan snapshot
+        if (result && Array.isArray(result.onus) && result.onus.length) markLastStatus(cfg.id, true);
         return res.json({ success: true, data: { ...result, cachedAt: new Date().toISOString() }, via: 'snmp' });
       } catch (err) {
         logger.warn('[OltMgmt] SNMP discover gagal, fallback CLI: ' + err.message);
       }
     }
 
-    const svc = makeService(cfg);
-    try {
-      await svc.connect();
-      if (typeof svc.getAllOnus !== 'function') {
-        return res.status(400).json({ success: false, message: 'Auto-discover belum didukung untuk brand ini' });
+    const runCliDiscover = async (c) => {
+      const svc = makeService(c);
+      try {
+        await svc.connect();
+        if (typeof svc.getAllOnus !== 'function') {
+          return { error: 'Auto-discover belum didukung untuk brand ini', status: 400 };
+        }
+        const result = await svc.getAllOnus({ withPower, ports: explicitPorts, maxPorts });
+        let system = null;
+        try { system = await svc.getSystemInfo(); } catch (e) { /* abaikan */ }
+        return { payload: { ...result, system } };
+      } finally {
+        await svc.disconnect().catch(() => {});
       }
-      const result = await svc.getAllOnus({ withPower, ports: explicitPorts, maxPorts });
-      // Sertakan info sistem dalam koneksi yang sama (best-effort)
-      let system = null;
-      try { system = await svc.getSystemInfo(); } catch (e) { /* abaikan */ }
-      const payload = { ...result, system };
-      setCache(cfg.id, payload);                                   // simpan snapshot
-      res.json({ success: true, data: { ...payload, cachedAt: new Date().toISOString() } });
+    };
+
+    try {
+      let out;
+      try {
+        out = await runCliDiscover(cfg);
+      } catch (err) {
+        const down = /cannot connect|econnrefused|etimedout|ehostunreach/i.test(err.message || '');
+        if ((cfg.protocol || 'telnet') === 'telnet' && down) {
+          logger.warn('[OltMgmt] Telnet gagal, coba SSH: ' + err.message);
+          out = await runCliDiscover({ ...cfg, protocol: 'ssh', port: 22 });
+          persistProtocol(cfg.id, 'ssh', 22);
+        } else {
+          throw err;
+        }
+      }
+      if (out.error) return res.status(out.status || 400).json({ success: false, message: out.error });
+      setCache(cfg.id, out.payload);
+      if (out.payload && Array.isArray(out.payload.onus) && out.payload.onus.length) markLastStatus(cfg.id, true);
+      res.json({ success: true, data: { ...out.payload, cachedAt: new Date().toISOString() } });
     } catch (err) {
       res.status(500).json({ success: false, message: err.message });
-    } finally {
-      await svc.disconnect().catch(() => {});
     }
   }
 
@@ -455,6 +548,14 @@ class OltManagementController {
   // ZTE: ?if=1/2/5:5.  Chipset: ?pon=1&id=5  (atau ?if=1/5)
   async onuDetail(req, res) {
     const cfg = getCfgOr404(req, res); if (!cfg) return;
+    if (snmpAvailable(cfg) && (isHsgq(cfg.brand) || isHioso(cfg.brand))) {
+      try {
+        const { pon, id } = this._chipsetRef(req);
+        if (pon == null || id == null) return res.status(400).json({ success: false, message: 'Parameter pon & id wajib' });
+        const data = await makeSnmp(cfg).getOnuDetail(pon, id);
+        if (data && !data.error) return res.json({ success: true, data, via: 'snmp' });
+      } catch (e) { logger.warn('[OltMgmt] SNMP detail G02ID gagal, fallback CLI: ' + e.message); }
+    }
     const svc = makeService(cfg);
     try {
       await svc.connect();
@@ -486,6 +587,19 @@ class OltManagementController {
   // memanggil ini per-PON setelah daftar ONU tampil → redaman mengisi menyusul.
   async onuPowerBatch(req, res) {
     const cfg = getCfgOr404(req, res); if (!cfg) return;
+    if ((isHsgq(cfg.brand) || isHioso(cfg.brand)) && snmpAvailable(cfg)) {
+      try {
+        const all = await makeSnmp(cfg).getAllOnus();
+        const map = {};
+        for (const o of all.onus || []) {
+          map[o.onu_if] = { onu_rx_dbm: o.onu_rx_dbm, quality: o.quality };
+        }
+        return res.json({ success: true, data: map, via: 'snmp' });
+      } catch (err) {
+        logger.warn('[OltMgmt] SNMP power-batch HSGQ gagal: ' + err.message);
+        return res.status(500).json({ success: false, message: err.message });
+      }
+    }
     if (!isZteStyle(cfg.brand)) return res.status(400).json({ success: false, message: 'Fitur ini khusus OLT ZTE' });
     let ifs = req.body?.ifs;
     if (!Array.isArray(ifs) || !ifs.length) {
