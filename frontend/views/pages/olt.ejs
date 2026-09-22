@@ -402,7 +402,7 @@
       <div class="form-group">
         <label class="form-label">Brand / Model</label>
         <select id="oltBrand" class="form-control" onchange="OltPage.onBrandChange()">
-          <option value="hsgq">HSGQ (E04I, E08I, dll)</option>
+          <option value="hsgq">HSGQ (E04I, E08I, G02ID)</option>
           <option value="zte">ZTE (C320, C600, dll)</option>
           <option value="huawei">Huawei (MA5600, MA5800)</option>
           <option value="fiberhome">Fiberhome (AN5516)</option>
@@ -423,7 +423,8 @@
         <label class="form-label">MIB Mode <span class="opt">(opsional)</span></label>
         <select id="oltMibMode" class="form-control">
           <option value="auto">Auto Detect (Recommended)</option>
-          <option value="hsgq">HSGQ Private MIB</option>
+          <option value="hsgq">HSGQ EPON (E04I)</option>
+          <option value="g02id">HSGQ GPON (G02ID / ONT Table)</option>
           <option value="zte">ZTE Compatible MIB</option>
           <option value="gpon">Generic GPON MIB</option>
         </select>
@@ -454,6 +455,6 @@
 </div>
 
 <script src="/js/app.js"></script>
-<script src="/js/olt.js"></script>
+<script src="/js/olt.js?v=20260922g02"></script>
 </body>
 </html>
