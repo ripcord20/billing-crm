@@ -212,15 +212,15 @@ router.get('/monitoring/pppoe', authenticate, blockFinanceArea, (req, res) => {
 });
 
 router.get('/monitoring/queue', authenticate, blockFinanceArea, (req, res) => {
-  res.render('pages/queue', { title: 'Simple Queue', user: req.user, active: 'queue' });
+  res.redirect('/monitoring/pppoe');
 });
 
 router.get('/monitoring/ippool', authenticate, blockFinanceArea, (req, res) => {
-  res.render('pages/ippool', { title: 'IP Pool Usage', user: req.user, active: 'ippool' });
+  res.redirect('/monitoring/pppoe');
 });
 
 router.get('/monitoring/firewall', authenticate, blockFinanceArea, (req, res) => {
-  res.render('pages/firewall', { title: 'Firewall Rules', user: req.user, active: 'firewall' });
+  res.redirect('/monitoring/pppoe');
 });
 
 router.get('/monitoring/olt', authenticate, blockFinanceArea, (req, res) => {
@@ -340,7 +340,7 @@ router.get('/mobile/finance',    authenticate, renderMobile('finance',    'Lapor
 router.get('/mobile/keuangan',   authenticate, renderMobile('keuangan',   'Keuangan',         'm-keuangan'));
 router.get('/mobile/monitoring', authenticate, renderMobile('monitoring', 'Monitoring',       'm-monitoring'));
 router.get('/mobile/content',    authenticate, renderMobile('content',    'Content Monitoring','m-content'));
-router.get('/mobile/queue',      authenticate, renderMobile('queue',      'Simple Queue',     'm-queue'));
+router.get('/mobile/queue',      authenticate, (req, res) => res.redirect('/mobile/monitoring'));
 router.get('/mobile/isolir',     authenticate, renderMobile('isolir',     'Isolir',           'm-isolir'));
 router.get('/mobile/noc',        authenticate, renderMobile('noc',        'NOC / Jaringan',   'm-noc'));
 router.get('/mobile/hotspot',    authenticate, renderMobile('hotspot',    'Hotspot',          'm-hotspot'));
