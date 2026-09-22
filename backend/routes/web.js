@@ -610,8 +610,9 @@ router.get('/isolir', authenticate, blockFinanceArea, (req, res) =>
 router.get('/hotspot-binding', authenticate, blockFinanceArea, (req, res) =>
   res.render('pages/hotspot-binding', { title: 'Hotspot Binding Management', user: req.user, active: 'hotspot-binding' }));
 
-router.get('/ip-addressing', authenticate, blockFinanceArea, (req, res) =>
-  res.render('pages/ip-addressing', { title: 'IP Addressing', user: req.user, active: 'ip-addressing' }));
+router.get('/ip-addressing', authenticate, blockFinanceArea, (req, res) => {
+  res.redirect('/isolir');
+});
 
 // Redirect lama → halaman baru
 router.get('/tools', authenticate, (req, res) => res.redirect('/hotspot-binding'));
