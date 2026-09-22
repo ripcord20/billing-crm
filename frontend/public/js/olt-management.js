@@ -291,6 +291,7 @@ const OltMgmt = {
   // Load snapshot dari cache server (instan) → render → refresh live di background
   async loadFromCacheThenRefresh() {
     if (!this.activeOltId) return;
+    const oltId = this.activeOltId;
     const o = this.olts.find(x => x.id === this.activeOltId);
     if (o && o.enabled === false) { this.autoDiscover(); return; }
     const body = document.getElementById('onuBody');
@@ -299,9 +300,11 @@ const OltMgmt = {
       const res = await App.api(`/olt-mgmt/${this.activeOltId}/discover?cached=1`);
       if (res?.success && res.data && (res.data.onus || res.data.ports)) {
         hadCache = true;
+        if (this.activeOltId !== oltId) return;
         this.applyDiscoverData(res.data, { cached: true });
       }
     } catch (e) { /* lanjut ke live */ }
+    if (this.activeOltId !== oltId) return;
     if (!hadCache && body) {
       body.innerHTML = `<tr class="loading-row"><td colspan="6"><span class="spin"></span> Menemukan PON port &amp; memuat ONU otomatis...</td></tr>`;
     }
@@ -349,6 +352,7 @@ const OltMgmt = {
   // ════════════════════ Auto-discover (muat semua ONU) ════════════════════
   async autoDiscover(silent) {
     if (!this.activeOltId) return;
+    const oltId = this.activeOltId;
     const o = this.olts.find(x => x.id === this.activeOltId);
     if (o && o.enabled === false) {
       // OLT dinonaktifkan — jangan paksa konek
@@ -365,7 +369,8 @@ const OltMgmt = {
     try {
       // Muat daftar ONU DULU tanpa redaman → tabel tampil instan.
       // Redaman diisi menyusul (progressive load) untuk jalur CLI yang lambat.
-      const res = await App.api(`/olt-mgmt/${this.activeOltId}/discover?power=0`);
+      const res = await App.api(`/olt-mgmt/${oltId}/discover?power=0`);
+      if (this.activeOltId !== oltId) return;
       if (!res?.success) {
         if (!silent) body.innerHTML = `<tr><td colspan="6"><div class="ot-empty" style="padding:40px 20px"><h3>Gagal auto-load</h3><p>${esc(res?.message || 'Error')}</p><button class="btn btn-blue btn-sm" style="margin-top:12px" onclick="OltMgmt.autoDiscover()">Coba lagi</button></div></td></tr>`;
         this.onus = []; this._resetStats();
