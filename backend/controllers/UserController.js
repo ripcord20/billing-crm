@@ -93,13 +93,20 @@ class UserController {
   // Delete user
   async destroy(req, res) {
     try {
-      const user = await User.findByPk(req.params.id);
-      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+      const user = await User.findByPk(req.params.id, {
+        include: [{ model: Role, as: 'role', attributes: ['id', 'name'] }]
+      });
+      if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
       if (user.id === req.user.id) {
-        return res.status(400).json({ success: false, message: 'Cannot delete yourself' });
+        return res.status(400).json({ success: false, message: 'Tidak bisa menghapus akun sendiri' });
+      }
+      const targetRole = (user.role?.name || '').toLowerCase();
+      const actorRole = (req.user?.role?.name || '').toLowerCase();
+      if (targetRole === 'superadmin' && actorRole !== 'superadmin') {
+        return res.status(403).json({ success: false, message: 'Hanya superadmin yang bisa menghapus superadmin' });
       }
       await user.destroy();
-      res.json({ success: true, message: 'User deleted' });
+      res.json({ success: true, message: `User ${user.name} dihapus` });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }

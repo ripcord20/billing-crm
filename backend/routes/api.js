@@ -237,7 +237,7 @@ router.get('/users', authenticate, demoGuard, authorize('superadmin', 'admin'), 
 router.post('/users', authenticate, demoGuard, authorize('superadmin'), logActivity('create', 'user'), UserController.create);
 router.get('/users/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), UserController.show);
 router.put('/users/:id', authenticate, demoGuard, authorize('superadmin'), logActivity('update', 'user'), UserController.update);
-router.delete('/users/:id', authenticate, demoGuard, authorize('superadmin'), logActivity('delete', 'user'), UserController.destroy);
+router.delete('/users/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('delete', 'user'), UserController.destroy);
 
 // ===== ROLES & PERMISSIONS =====
 router.get('/roles', authenticate, demoGuard, UserController.getRoles);
