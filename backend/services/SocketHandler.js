@@ -36,6 +36,21 @@ module.exports = (io) => {
     socket.on('monitoring:subscribe',   () => socket.join('monitoring'));
     socket.on('monitoring:unsubscribe', () => socket.leave('monitoring'));
 
+    let _subbedDevices = false;
+    const resourcePoller = require('./DeviceResourcePoller');
+    socket.on('devices:subscribe', () => {
+      if (_subbedDevices) return;
+      _subbedDevices = true;
+      socket.join('device_management');
+      resourcePoller.addSubscriber();
+    });
+    socket.on('devices:unsubscribe', () => {
+      if (!_subbedDevices) return;
+      _subbedDevices = false;
+      socket.leave('device_management');
+      resourcePoller.removeSubscriber();
+    });
+
     // ─── Customer Traffic Monitoring (halaman /infrastructure) ─────────
     // Polling MikroTik disentralisasi di CustomerTrafficPoller. Tiap admin
     // yang membuka halaman join room 'traffic_monitoring' dan menerima
@@ -72,6 +87,10 @@ module.exports = (io) => {
       if (_subbedTraffic) {
         _subbedTraffic = false;
         trafficPoller.removeSubscriber();
+      }
+      if (_subbedDevices) {
+        _subbedDevices = false;
+        resourcePoller.removeSubscriber();
       }
       logger.debug(`Socket disconnected: ${socket.id}`);
     });
