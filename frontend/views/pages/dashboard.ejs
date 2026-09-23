@@ -45,6 +45,25 @@
         </div>
 
         <!-- Dashboard styles live in app.css (token + dark mode) -->
+        <style>
+          #alertsList{max-height:none;}
+          .ont-off-wrap{margin-top:8px;border:1px solid var(--border,#e4ecf7);border-radius:12px;overflow:hidden;background:var(--bg-card,#fff);}
+          .ont-off-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;padding:10px 14px;font-size:13px;font-weight:700;color:#0f172a;background:#fff7ed;border-bottom:1px solid #fed7aa;}
+          .ont-off-head b{color:#c2410c;}
+          .ont-off-sub{font-size:11px;font-weight:600;color:#9a3412;}
+          .ont-off-scroll{max-height:420px;overflow:auto;}
+          .ont-off-table{width:100%;border-collapse:collapse;font-size:12px;}
+          .ont-off-table th{text-align:left;padding:8px 10px;font-size:10.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;background:#f8fafc;position:sticky;top:0;z-index:1;}
+          .ont-off-table td{padding:8px 10px;border-top:1px solid #f1f5f9;color:#334155;vertical-align:top;}
+          .ont-off-table tr:hover td{background:#fff7ed;}
+          .ont-off-table .oo-name{font-weight:700;color:#0f172a;text-decoration:none;}
+          .ont-off-table .oo-name:hover{color:#c2410c;}
+          .ont-off-table .oo-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;}
+          .ont-off-table .oo-olt{display:inline-block;padding:2px 7px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-weight:700;font-size:10.5px;}
+          .ont-off-table .oo-cid{color:#64748b;font-size:10.5px;}
+          .ont-off-table .oo-time{color:#94a3b8;white-space:nowrap;font-size:11px;}
+          .summary-card.is-click{cursor:pointer;}
+        </style>
 
         <!-- Summary Cards -->
         <div class="summary-cards ui-enter">
@@ -63,7 +82,7 @@
             <div class="sc-value" id="ontOnlineCount">0</div>
             <div class="sc-sub">Active ONTs</div>
           </div>
-          <div class="summary-card gradient-blue">
+          <div class="summary-card gradient-blue is-click" id="ontOfflineCard" title="Lihat ONT offline di Needs Attention">
             <div class="sc-label">Total Number<br>ONT Offline</div>
             <div class="sc-value" id="ontOfflineCount">0</div>
             <div class="sc-sub">Need attention</div>
@@ -481,7 +500,7 @@
   <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
   <script src="/js/app.js"></script>
   <script src="/js/mikrotik-selector.js"></script>
-  <script src="/js/dashboard.js"></script>
-  <script src="/js/dashboard-analytics.js"></script>
+  <script src="/js/dashboard.js?v=20260923ontoff"></script>
+  <script src="/js/dashboard-analytics.js?v=20260923ontoff"></script>
 </body>
 </html>

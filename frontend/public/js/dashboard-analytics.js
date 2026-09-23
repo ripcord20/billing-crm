@@ -837,25 +837,70 @@ async function loadAlerts(){
     list.innerHTML='<div class="alerts-empty">Gagal memuat alert.</div>';
   }
 }
+function _fmtRx(v){
+  if(v==null||v==='') return '—';
+  const n=Number(v);
+  return Number.isFinite(n) ? n.toFixed(2)+' dBm' : String(v);
+}
+function renderOntOfflineTable(items){
+  if(!items.length) return '';
+  const byOlt={};
+  items.forEach(a=>{
+    const k=(a.ont&&a.ont.olt_name)||'OLT';
+    byOlt[k]=(byOlt[k]||0)+1;
+  });
+  const sub=Object.keys(byOlt).sort().map(k=>escHtml(k)+' '+byOlt[k]).join(' · ');
+  const rows=items.map(a=>{
+    const o=a.ont||{};
+    const pon=(o.pon!=null||o.onu_id!=null)?escHtml(String(o.pon||'-'))+' / '+escHtml(String(o.onu_id??'-')):escHtml(o.onu_if||'—');
+    const href=a.link||'/monitoring/olt-management';
+    const cust=o.customer_name
+      ? escHtml(o.customer_name)+(o.customer_cid?' <span class="oo-cid">'+escHtml(o.customer_cid)+'</span>':'')
+      : '—';
+    return `<tr>
+      <td><a class="oo-name" href="${href}">${escHtml(o.name||a.title||'ONT')}</a></td>
+      <td class="oo-mono">${escHtml(o.serial_number||'—')}</td>
+      <td><span class="oo-olt">${escHtml(o.olt_name||'—')}</span></td>
+      <td class="oo-mono">${pon}</td>
+      <td class="oo-mono">${escHtml(_fmtRx(o.rx_dbm))}</td>
+      <td>${cust}</td>
+      <td class="oo-time">${escHtml(_alertTimeAgo(a.time||o.cached_at))}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="ont-off-wrap">
+    <div class="ont-off-head">ONT Offline <b>${items.length}</b><span class="ont-off-sub">${sub}</span></div>
+    <div class="ont-off-scroll"><table class="ont-off-table">
+      <thead><tr><th>Nama</th><th>SN</th><th>OLT</th><th>PON / ONU</th><th>RX</th><th>Pelanggan</th><th>Update</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </div>`;
+}
 function renderAlerts(){
   const list=document.getElementById('alertsList');
   if(!list) return;
   const items=_alertsFilter==='all'?_alertsData:_alertsData.filter(a=>a.kind===_alertsFilter);
+  const ontItems=items.filter(a=>a.kind==='ont_offline');
+  const otherItems=items.filter(a=>a.kind!=='ont_offline');
   if(!items.length){
     list.innerHTML='<div class="alerts-empty"><span class="ok">✓ Semua aman</span><br>Tidak ada kejadian yang perlu perhatian.</div>';
     return;
   }
-  list.innerHTML=items.map(a=>{
-    const ic=_alertIcon(a.kind);
-    return `<a class="alert-item sev-${a.severity}" href="${a.link||'#'}">
-      <span class="ai-ic" style="background:${ic.bg};color:${ic.fg}"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">${ic.svg}</svg></span>
-      <span class="ai-body">
-        <span class="ai-title">${escHtml(a.title||'-')}</span>
-        <span class="ai-detail">${escHtml(a.detail||'')}</span>
-      </span>
-      <span class="ai-time">${_alertTimeAgo(a.time)}</span>
-    </a>`;
-  }).join('');
+  let html='';
+  if(otherItems.length){
+    html+=otherItems.map(a=>{
+      const ic=_alertIcon(a.kind);
+      return `<a class="alert-item sev-${a.severity}" href="${a.link||'#'}">
+        <span class="ai-ic" style="background:${ic.bg};color:${ic.fg}"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">${ic.svg}</svg></span>
+        <span class="ai-body">
+          <span class="ai-title">${escHtml(a.title||'-')}</span>
+          <span class="ai-detail">${escHtml(a.detail||'')}</span>
+        </span>
+        <span class="ai-time">${_alertTimeAgo(a.time)}</span>
+      </a>`;
+    }).join('');
+  }
+  if(ontItems.length) html+=renderOntOfflineTable(ontItems);
+  list.innerHTML=html||'<div class="alerts-empty"><span class="ok">✓ Semua aman</span><br>Tidak ada kejadian yang perlu perhatian.</div>';
 }
 // Filter chips + refresh + auto-refresh 60s
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -872,6 +917,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
   const rf=document.getElementById('alertsRefresh');
   if(rf) rf.addEventListener('click', ()=>loadAlerts());
+  const ontCard=document.getElementById('ontOfflineCard');
+  if(ontCard){
+    ontCard.addEventListener('click', ()=>{
+      const chip=document.querySelector('#alertsFilters .alert-chip[data-f="ont_offline"]');
+      if(chip) chip.click();
+      const box=document.getElementById('alertsCard');
+      if(box) box.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  }
   setInterval(()=>{ if(typeof loadAlerts==='function') loadAlerts(); }, 60000);
 });
 
