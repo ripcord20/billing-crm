@@ -37,6 +37,7 @@ const OltMgmt = {
       if (chk && saved) { chk.checked = true; this.setAutoRefresh(true, true); }
     } catch (e) {}
     await this.loadOlts();
+    this.loadAttenuationEventList();
   },
 
   bindEvents() {
@@ -1792,6 +1793,51 @@ const OltMgmt = {
       this._loadAttenuationEvents(res.data);
     } catch (e) {
       body.innerHTML = `<div class="ot-alert err show">${esc(e.message)}</div>`;
+    }
+  },
+
+  async loadAttenuationEventList() {
+    const box = document.getElementById('attEventListBox');
+    if (!box) return;
+    const hint = document.getElementById('attEventListHint');
+    try {
+      const res = await App.api('/ont/attenuation-events?days=30&limit=50');
+      const rows = (res && res.success && Array.isArray(res.data)) ? res.data : [];
+      if (hint) hint.textContent = rows.length ? (rows.length + ' kejadian (30 hari)') : 'belum ada event';
+      if (!rows.length) {
+        box.innerHTML = '<div class="ot-empty" style="padding:24px 10px"><p>Belum ada event naiknya redaman. Tercatat otomatis saat sinyal memburuk ≥2 dB — tidak perlu buka ONU satu-satu.</p></div>';
+        return;
+      }
+      const fmtRx = (v) => (v == null || v === '' ? 'LOS' : (Number(v).toFixed(1) + ' dBm'));
+      box.innerHTML = `<table class="ot-mini" style="width:100%;font-size:12px;border-collapse:collapse">
+        <thead><tr>
+          <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border,#e2e8f0)">Waktu</th>
+          <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border,#e2e8f0)">Serial</th>
+          <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border,#e2e8f0)">OLT</th>
+          <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border,#e2e8f0)">Sebelum</th>
+          <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border,#e2e8f0)">Sesudah</th>
+          <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border,#e2e8f0)">Naik</th>
+          <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border,#e2e8f0)">Tingkat</th>
+        </tr></thead>
+        <tbody>${rows.map((r) => {
+          const t = r.created_at ? new Date(r.created_at).toLocaleString('id-ID') : '—';
+          const sev = r.severity === 'critical' ? '#b91c1c' : '#b45309';
+          const label = r.quality_after === 'los' ? 'LOS' : (r.severity || '');
+          const dlt = r.delta_db == null ? '—' : ('+' + r.delta_db + ' dB');
+          return `<tr>
+            <td style="padding:6px 8px">${esc(t)}</td>
+            <td style="padding:6px 8px" class="mono">${esc(r.serial_number || '—')}</td>
+            <td style="padding:6px 8px">${esc(r.olt_name || '—')}</td>
+            <td style="padding:6px 8px">${esc(fmtRx(r.rx_before))}</td>
+            <td style="padding:6px 8px">${esc(fmtRx(r.rx_after))}</td>
+            <td style="padding:6px 8px">${esc(dlt)}</td>
+            <td style="padding:6px 8px;color:${sev};font-weight:600">${esc(label)}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>`;
+    } catch (_) {
+      if (hint) hint.textContent = '';
+      box.innerHTML = '<div class="ot-empty" style="padding:24px 10px"><p>Gagal memuat daftar event redaman.</p></div>';
     }
   },
 

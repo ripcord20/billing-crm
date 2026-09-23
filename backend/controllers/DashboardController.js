@@ -1134,6 +1134,33 @@ class DashboardController {
         });
       } catch (_) {}
 
+      // 6) Event naiknya redaman ONT (7 hari) — satu daftar, tidak perlu buka per ONU
+      try {
+        const { OntAttenuationEvent } = require('../models');
+        if (OntAttenuationEvent) {
+          const since = new Date(Date.now() - 7 * 86400000);
+          const evs = await OntAttenuationEvent.findAll({
+            where: { created_at: { [Op.gte]: since } },
+            order: [['created_at', 'DESC']],
+            limit: 20
+          });
+          evs.forEach((e) => {
+            const before = e.rx_before == null ? 'LOS' : (Number(e.rx_before).toFixed(1) + ' dBm');
+            const after = e.rx_after == null ? 'LOS' : (Number(e.rx_after).toFixed(1) + ' dBm');
+            const dlt = e.delta_db == null ? '' : ('+' + e.delta_db + ' dB');
+            alerts.push({
+              kind: 'ont_attenuation',
+              severity: e.severity === 'critical' ? 'critical' : 'warning',
+              icon: 'ont',
+              title: e.serial_number || 'ONT',
+              detail: `Redaman naik ${dlt} • ${before} → ${after}${e.olt_name ? ' • ' + e.olt_name : ''}`,
+              time: e.created_at,
+              link: '/monitoring/olt-management',
+            });
+          });
+        }
+      } catch (_) {}
+
       // Urutkan: critical dulu, lalu terbaru
       const sevRank = { critical: 0, warning: 1, info: 2 };
       alerts.sort((a, b) => {
@@ -1150,6 +1177,7 @@ class DashboardController {
         customer_isolated: alerts.filter(a => a.kind === 'customer_isolated').length,
         ticket_urgent: alerts.filter(a => a.kind === 'ticket_urgent').length,
         uplink_down: alerts.filter(a => a.kind === 'uplink_down').length,
+        ont_attenuation: alerts.filter(a => a.kind === 'ont_attenuation').length,
       };
 
       res.json({ success: true, data: alerts.slice(0, 30), counts });

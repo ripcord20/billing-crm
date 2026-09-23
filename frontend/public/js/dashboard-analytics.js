@@ -806,9 +806,10 @@ const _ALERT_ICONS = {
   isolir:  {bg:'#fff5e9',fg:'#fb8c00',svg:'<circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>'},
   ticket:  {bg:'#eef4ff',fg:'#1d4ed8',svg:'<path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1a2 2 0 0 0 0 4v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 0 0-4z"/>'},
   uplink:  {bg:'#fdecef',fg:'#dc2626',svg:'<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>'},
+  atten:   {bg:'#fff5e9',fg:'#b45309',svg:'<path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/>'},
 };
 function _alertIcon(kind){
-  const map={device_offline:'device',ont_offline:'ont',customer_isolated:'isolir',ticket_urgent:'ticket',uplink_down:'uplink'};
+  const map={device_offline:'device',ont_offline:'ont',customer_isolated:'isolir',ticket_urgent:'ticket',uplink_down:'uplink',ont_attenuation:'atten'};
   return _ALERT_ICONS[map[kind]] || _ALERT_ICONS.device;
 }
 function _alertTimeAgo(t){
