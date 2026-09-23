@@ -224,6 +224,7 @@ class OntController {
       if (req.params.id) where.ont_device_id = req.params.id;
       if (req.query.serial) where.serial_number = String(req.query.serial).trim();
       if (req.query.severity) where.severity = req.query.severity;
+      if (req.query.olt) where.olt_name = String(req.query.olt).trim();
       const rows = await OntAttenuationEvent.findAll({
         where,
         order: [['created_at', 'DESC']],
