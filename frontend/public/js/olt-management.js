@@ -1789,8 +1789,50 @@ const OltMgmt = {
       const res = await App.api(`/olt-mgmt/${this.activeOltId}/onu/detail?if=${encodeURIComponent(onuIf)}`);
       if (!res?.success) { body.innerHTML = `<div class="ot-alert err show">${esc(res?.message || 'Gagal')}</div>`; return; }
       body.innerHTML = this._renderDetail(res.data);
+      this._loadAttenuationEvents(res.data);
     } catch (e) {
       body.innerHTML = `<div class="ot-alert err show">${esc(e.message)}</div>`;
+    }
+  },
+
+  async _loadAttenuationEvents(d) {
+    const box = document.getElementById('attEventBox');
+    if (!box) return;
+    const serial = (d && d.serial_number) ? String(d.serial_number).trim() : '';
+    if (!serial) { box.innerHTML = ''; return; }
+    try {
+      const res = await App.api('/ont/attenuation-events?serial=' + encodeURIComponent(serial) + '&days=30&limit=20');
+      const rows = (res && res.success && Array.isArray(res.data)) ? res.data : [];
+      if (!rows.length) {
+        box.innerHTML = '<div class="info-note" style="margin-top:14px">Belum ada event naiknya redaman (30 hari). Tercatat otomatis saat sinyal memburuk ≥2 dB atau melewati batas.</div>';
+        return;
+      }
+      const fmtRx = (v) => (v == null || v === '' ? 'LOS' : (Number(v).toFixed(1) + ' dBm'));
+      box.innerHTML = `<div class="det-k" style="margin:16px 0 8px">Histori naiknya redaman <span class="mut">(disimpan 30 hari)</span></div>
+        <table class="ot-mini" style="width:100%;font-size:12px;border-collapse:collapse">
+          <thead><tr>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--border,#e2e8f0)">Waktu</th>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--border,#e2e8f0)">Sebelum</th>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--border,#e2e8f0)">Sesudah</th>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--border,#e2e8f0)">Naik</th>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--border,#e2e8f0)">Tingkat</th>
+          </tr></thead>
+          <tbody>${rows.map((r) => {
+            const t = r.created_at ? new Date(r.created_at).toLocaleString('id-ID') : '—';
+            const sev = r.severity === 'critical' ? '#b91c1c' : '#b45309';
+            const label = r.quality_after === 'los' ? 'LOS' : (r.severity || '');
+            const dlt = r.delta_db == null ? '—' : ('+' + r.delta_db + ' dB');
+            return `<tr>
+              <td style="padding:4px 6px">${esc(t)}</td>
+              <td style="padding:4px 6px">${esc(fmtRx(r.rx_before))}</td>
+              <td style="padding:4px 6px">${esc(fmtRx(r.rx_after))}</td>
+              <td style="padding:4px 6px">${esc(dlt)}</td>
+              <td style="padding:4px 6px;color:${sev};font-weight:600">${esc(label)}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>`;
+    } catch (_) {
+      box.innerHTML = '';
     }
   },
 
@@ -1830,7 +1872,8 @@ const OltMgmt = {
         <div class="det-cell"><div class="det-k">Jarak (Distance)</div><div class="det-v">${d.distance_m != null ? d.distance_m + ' m' : '—'}</div></div>
         <div class="det-cell"><div class="det-k">Online Duration</div><div class="det-v">${esc(d.online_duration||'—')}</div></div>
         <div class="det-cell full"><div class="det-k">Deskripsi</div><div class="det-v">${esc(d.description||'—')}</div></div>
-      </div>`;
+      </div>
+      <div id="attEventBox"></div>`;
   },
 
   closeDetail() { document.getElementById('detailModal').classList.remove('show'); },

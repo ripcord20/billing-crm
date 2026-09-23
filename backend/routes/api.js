@@ -2196,6 +2196,9 @@ router.get('/mikrotik/customer-traffic', authenticate, demoGuard, async (req, re
 // ===== ONT / GenieACS =====
 router.get('/ont', authenticate, demoGuard, OntController.index);
 router.get('/ont/stats', authenticate, demoGuard, OntController.stats);
+router.get('/ont/attenuation-events', authenticate, demoGuard, (req, res) => OntController.listAttenuationEvents(req, res));
+router.get('/ont/:id/attenuation-events', authenticate, demoGuard, (req, res) => OntController.listAttenuationEvents(req, res));
+router.get('/ont/:id/signal-history', authenticate, demoGuard, (req, res) => OntController.getSignalHistory(req, res));
 router.get('/ont/:id', authenticate, demoGuard, OntController.show);
 router.post('/ont/sync', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('sync', 'ont'), OntController.syncFromGenieACS);
 router.post('/ont/:id/reboot', authenticate, demoGuard, hasPermission('ont_reboot'), logActivity('reboot', 'ont'), OntController.reboot);

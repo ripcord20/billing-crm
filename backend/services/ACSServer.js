@@ -232,6 +232,8 @@ async function saveOnt(sn, inform, extraParams, remoteIp) {
       defaults: { serial_number:sn, manufacturer:mfr, model, firmware, status, signal_strength:rxPower, ip_address:ip, uptime, last_inform:new Date(), last_synced:new Date(), tr069_params, source:'tr069', device_id:`tr069:${sn}` }
     });
 
+    const prevRx = isNew ? null : rec.signal_strength;
+
     if (!isNew) {
       await rec.update({
         manufacturer: mfr      || rec.manufacturer,
@@ -252,6 +254,15 @@ async function saveOnt(sn, inform, extraParams, remoteIp) {
       await OntSignalHistory.create({
         ont_device_id: rec.id, rx_power: rxPower, tx_power: txPower, olt_rx_power: null, recorded_at: new Date()
       }).catch(() => {});
+      try {
+        require('./AttenuationEventService').recordIfWorsened({
+          ontDeviceId: rec.id,
+          rxNew: rxPower,
+          rxOld: prevRx,
+          serialNumber: sn,
+          source: 'tr069'
+        });
+      } catch (_) {}
     }
 
     logger.info(`[ACS] ${isNew?'NEW':'UPD'} ${sn} | ${mfr} ${model} | rx:${rxPower} dBm | wifi:${wifi.ssid||'-'} | fw:${firmware} | ${status}`);
