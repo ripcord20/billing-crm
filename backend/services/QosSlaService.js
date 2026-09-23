@@ -11,7 +11,7 @@ const {
   mergeSettings, settingsToRows, SETTING_KEYS,
   computeJitter, classifyRtt, classifyLoss, classifyJitter,
   classifyBandwidth, classifyAuthFails, classifyTrafficAnomaly,
-  classifyDns, alertAudience, alertRoles
+  classifyDns, alertAudience, alertRoles, formatAlertWhen
 } = require('../utils/qosSla');
 
 const METRIC_RETENTION_DAYS = 7;
@@ -73,12 +73,15 @@ async function raiseAlert({ type, title, message, status, targetKey, metadata })
   });
   const audience = alertAudience(type);
   const severity = severityFromStatus(status);
+  const whenIso = now.toISOString();
+  const whenLabel = formatAlertWhen(now);
+  const nextMeta = Object.assign({}, (existing && existing.metadata) || {}, metadata || {}, { occurred_at: whenIso });
   if (existing) {
     await existing.update({
       title,
       message,
       severity,
-      metadata: metadata || existing.metadata,
+      metadata: nextMeta,
       hit_count: (existing.hit_count || 1) + 1,
       last_seen_at: now
     });
@@ -94,22 +97,47 @@ async function raiseAlert({ type, title, message, status, targetKey, metadata })
     status: 'open',
     hit_count: 1,
     last_seen_at: now,
-    metadata: metadata || null
+    metadata: nextMeta
   });
   try {
     const Notif = require('./NotificationService');
     await Notif.pushByRoles(alertRoles(type), {
       type,
       title,
-      message,
+      message: message + ' · ' + whenLabel,
       severity,
       action_url: '/monitoring/qos',
-      metadata: { audience, target_key: targetKey, ...(metadata || {}) }
+      metadata: { audience, target_key: targetKey, occurred_at: whenIso, ...(metadata || {}) }
     });
   } catch (e) {
     console.error('[QosSla] notify error:', e.message);
   }
   return alert;
+}
+
+function toIso(value) {
+  if (value == null || value === '') return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  if (typeof value === 'object') {
+    const keys = Object.keys(value);
+    if (keys.length && keys.every((k) => /^\d+$/.test(k))) {
+      return toIso(keys.sort((a, b) => Number(a) - Number(b)).map((k) => value[k]).join(''));
+    }
+  }
+  const dt = new Date(value);
+  return Number.isNaN(dt.getTime()) ? null : dt.toISOString();
+}
+
+function serializeQosAlert(alert) {
+  const json = alert && typeof alert.toJSON === 'function' ? alert.toJSON() : Object.assign({}, alert || {});
+  const last = toIso(json.last_seen_at || json.lastSeenAt);
+  const first = toIso(json.created_at || json.createdAt);
+  json.last_seen_at = last;
+  json.created_at = first;
+  json.createdAt = first;
+  json.occurred_at = last || first || toIso(json.metadata && json.metadata.occurred_at);
+  json.first_seen_at = first;
+  return json;
 }
 
 async function recordAuthFail({ source, identifier, ip_address, user_agent, reason, metadata }) {
@@ -581,7 +609,7 @@ async function overview() {
       metadata: r.metadata,
       recorded_at: r.recorded_at
     })),
-    alerts: openAlerts,
+    alerts: openAlerts.map(serializeQosAlert),
     alert_counts: { total: openAlerts.length, by_type: alertsByType, by_audience: alertsByAudience },
     upsell: bw.filter((r) => r.source === 'customer' && r.status !== 'ok').slice(0, 20),
     device_count: devices
@@ -598,5 +626,7 @@ module.exports = {
   runDnsChecks,
   runAuthFailChecks,
   overview,
-  ingestMikrotikAuthFails
+  ingestMikrotikAuthFails,
+  serializeQosAlert,
+  formatAlertWhen
 };
