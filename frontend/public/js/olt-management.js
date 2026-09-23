@@ -228,7 +228,7 @@ const OltMgmt = {
       const dot = o.lastStatus === 'ok' ? 'dot-ok' : (o.lastStatus === 'error' ? 'dot-err' : 'dot-idle');
       const active = o.id === this.activeOltId ? 'active' : '';
       const offCls = enabled ? '' : 'off';
-      const brandLbl = (o.brand || 'zte').toUpperCase();
+      const brandLbl = ({ zte:'ZTE', hioso:'HIOSO', hsgq:'HSGQ', cdata:'C-DATA', zimmlink:'ZIMMLINK' }[o.brand] || String(o.brand || 'zte').toUpperCase());
       return `<div class="olt-chip ${active} ${offCls}" onclick="OltMgmt.selectOlt(${o.id})">
         <span class="olt-chip-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="7" rx="2"/><rect x="2" y="13" width="20" height="7" rx="2"/><line x1="6" y1="7.5" x2="6.01" y2="7.5"/><line x1="6" y1="16.5" x2="6.01" y2="16.5"/></svg></span>
         <span class="olt-chip-txt"><span class="olt-chip-name">${esc(o.name)}</span><span class="olt-chip-host">${esc(o.host)} · ${brandLbl} · ${(o.protocol||'telnet').toUpperCase()}</span></span>
