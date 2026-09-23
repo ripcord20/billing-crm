@@ -131,10 +131,11 @@
     /* Usage */
     .cp-card{background:var(--white);border-radius:16px;border:1px solid var(--border);padding:16px;box-shadow:0 2px 12px rgba(13,27,62,.05);}
     .cp-card-title{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px;}
-    .usage-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+    .usage-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;}
     .uc{border-radius:14px;padding:15px 16px;position:relative;overflow:hidden;color:#fff;min-height:85px;}
     .uc.dl{background:linear-gradient(135deg,#1a6ef5,#0047cc);}
     .uc.ul{background:linear-gradient(135deg,#00c896,#00a07a);}
+    .uc.tot{background:linear-gradient(135deg,#4f46e5,#312e81);}
     .uc-orb{position:absolute;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.08);right:-16px;top:-16px;pointer-events:none;}
     .uc-lbl{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.8;margin-bottom:5px;display:flex;align-items:center;gap:4px;}
     .uc-val{font-size:24px;font-weight:800;font-family:'DM Mono',monospace;line-height:1;}
@@ -1085,7 +1086,8 @@ function renderUsage(d) {
   var online  = d.online;
   var dlUtil  = d.utilDown||0;
   var ulUtil  = d.utilUp||0;
-  var dlB = fmtBytes(d.bytesDown).split(' '), ulB = fmtBytes(d.bytesUp).split(' ');
+  var totBytes = (Number(d.bytesDown)||0) + (Number(d.bytesUp)||0);
+  var dlB = fmtBytes(d.bytesDown).split(' '), ulB = fmtBytes(d.bytesUp).split(' '), totB = fmtBytes(totBytes).split(' ');
 
   var html = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
     +'<span class="uso '+(online?'uso-on':'uso-off')+'"><span class="uso-dot"></span>'+(online?'Online':'Offline')+'</span>'
@@ -1095,14 +1097,19 @@ function renderUsage(d) {
     +'</div>'
     +'<div class="usage-grid">'
       +'<div class="uc dl"><div class="uc-orb"></div>'
-        +'<div class="uc-lbl"><svg width="11" height="11" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>Total Download</div>'
+        +'<div class="uc-lbl"><svg width="11" height="11" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>Download terpakai</div>'
         +'<div class="uc-val">'+dlB[0]+'<span class="uc-unit">'+(dlB[1]||'')+'</span></div>'
         +'<div class="uc-rate">↓ '+fmtRate(d.rateDown)+' real-time</div>'
       +'</div>'
       +'<div class="uc ul"><div class="uc-orb"></div>'
-        +'<div class="uc-lbl"><svg width="11" height="11" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>Total Upload</div>'
+        +'<div class="uc-lbl"><svg width="11" height="11" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>Upload terpakai</div>'
         +'<div class="uc-val">'+ulB[0]+'<span class="uc-unit">'+(ulB[1]||'')+'</span></div>'
         +'<div class="uc-rate">↑ '+fmtRate(d.rateUp)+' real-time</div>'
+      +'</div>'
+      +'<div class="uc tot"><div class="uc-orb"></div>'
+        +'<div class="uc-lbl"><svg width="11" height="11" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 12h16"/></svg>Total terpakai</div>'
+        +'<div class="uc-val">'+totB[0]+'<span class="uc-unit">'+(totB[1]||'')+'</span></div>'
+        +'<div class="uc-rate">Download + Upload</div>'
       +'</div>'
     +'</div>';
 

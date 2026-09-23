@@ -78,6 +78,11 @@
     .cust-av{width:44px;height:44px;border-radius:14px;background:#f5f7fb;color:#3a4a68;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex-shrink:0;}
     .cust-body{flex:1;min-width:0;}
     .cust-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .cust-quota{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;}
+    .cust-quota span{padding:2px 7px;border-radius:999px;background:#f1f5f9;color:#475569;}
+    .cust-quota .qd{color:#1d4ed8;background:#eff6ff;}
+    .cust-quota .qu{color:#0f766e;background:#f0fdfa;}
+    .cust-quota .qt{color:#0f172a;background:#eef2ff;}
     .cust-meta{font-size:11.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .badge{display:inline-block;padding:4px 10px;border-radius:100px;font-size:10px;font-weight:800;flex-shrink:0;}
     .b-active{background:#dcf7ec;color:#0f9d63;}
@@ -318,6 +323,11 @@
     let _status='',_search='',_page=1,_loading=false; const PAGE_SIZE=20;
     function statusBadge(st){ st=(st||'').toLowerCase(); if(st==='active')return '<span class="badge b-active">Aktif</span>'; if(st==='isolated'||st==='isolir')return '<span class="badge b-isolir">Isolir</span>'; if(st==='suspended')return '<span class="badge b-suspend">Suspend</span>'; return '<span class="badge b-inactive">Nonaktif</span>'; }
     function fmtRpShort(n){ n=Number(n)||0; if(n>=1000000)return 'Rp '+(n/1000000).toFixed(n%1000000?1:0).replace('.0','')+'jt'; if(n>=1000)return 'Rp '+Math.round(n/1000)+'rb'; return 'Rp '+n.toLocaleString('id-ID'); }
+    function fmtQuotaBytes(n){ n=Number(n)||0; if(n<1024)return n+' B'; if(n<1048576)return (n/1024).toFixed(1).replace(/\.0$/,'')+' KB'; if(n<1073741824)return (n/1048576).toFixed(1).replace(/\.0$/,'')+' MB'; return (n/1073741824).toFixed(2).replace(/\.00$/,'')+' GB'; }
+    function quotaPills(q){
+      if(!q||!q.has_data) return '';
+      return '<div class="cust-quota"><span class="qd">↓ '+esc(fmtQuotaBytes(q.download))+'</span><span class="qu">↑ '+esc(fmtQuotaBytes(q.upload))+'</span><span class="qt">Σ '+esc(fmtQuotaBytes(q.total))+'</span></div>';
+    }
     function overdueDays(dueStr){
       if(!dueStr)return 0;
       const due=new Date(dueStr+'T00:00:00'); if(isNaN(due))return 0;
@@ -339,6 +349,7 @@
         extra='<div class="cust-due"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'+esc(parts.join(' · ')||'Menunggak')+'</div>';
         badge='<span class="badge b-overdue">Nunggak</span>';
       }
+      extra+=quotaPills(c.quota_used);
       return '<div class="cust" onclick="openDetail('+c.id+')"><div class="cust-av">'+esc(init)+'</div><div class="cust-body"><div class="cust-name">'+esc(nm)+'</div><div class="cust-meta">'+esc(meta)+'</div>'+extra+'</div>'+badge+'</div>';
     }
     async function loadCustomers(reset){
@@ -446,6 +457,17 @@
       if(conn) html+=row('Koneksi', esc(conn));
       html+=row('IP / PPPoE', esc(ipInfo));
       if(c.mikrotik&&c.mikrotik.name) html+=row('Router', esc(c.mikrotik.name));
+      html+='</div>';
+
+      const q=c.quota_used;
+      html+='<div class="dm-sec">Kuota terpakai</div><div class="dm-card">';
+      if(q&&q.has_data){
+        html+=row('Download', esc(fmtQuotaBytes(q.download)));
+        html+=row('Upload', esc(fmtQuotaBytes(q.upload)));
+        html+=row('Total', '<b>'+esc(fmtQuotaBytes(q.total))+'</b>');
+      } else {
+        html+='<div class="dm-pay-load">Belum ada data queue / PPPoE</div>';
+      }
       html+='</div>';
 
       // Tagihan / masa aktif

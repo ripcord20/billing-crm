@@ -5,6 +5,7 @@ const { generateUniqueCustomerId, paginateResponse } = require('../utils/helpers
 const { getCompanyName } = require('../utils/companyInfo');
 const InfraSync = require('../services/CustomerInfraSyncService');
 const { applyTenantWhere, getTenantId, assertCustomerTenant, isTenantOwner } = require('../utils/tenantScope');
+const { attachCustomerQuota, snapshotFromPoller } = require('../utils/customerQuota');
 
 class CustomerController {
   async index(req, res) {
@@ -110,6 +111,7 @@ class CustomerController {
 
       // Hitung total yang benar untuk pagination
       const filteredCount = (status === 'overdue' || status === 'due_soon') ? filtered.length : count;
+      attachCustomerQuota(filtered, snapshotFromPoller());
       res.json({ success: true, ...paginateResponse(filtered, filteredCount, page, limit) });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -495,6 +497,7 @@ class CustomerController {
       }
       result.latest_due_date         = dueDate;
       result.latest_invoice_status   = dueStatus2;
+      attachCustomerQuota([result], snapshotFromPoller());
 
       res.json({ success: true, data: result });
     } catch (error) {

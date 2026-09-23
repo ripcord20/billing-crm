@@ -123,17 +123,19 @@ async function computeSnapshot(opts = {}) {
     // beserta map lookup. Dipakai berulang per-router lalu hasilnya digabung.
     const fetchRouter = async (devId) => {
       const inst = await getMikrotikInstanceByDevice(devId);
-      const [q, s, a, d] = await Promise.allSettled([
+      const [q, s, a, d, i] = await Promise.allSettled([
         inst.getQueues(),
         inst.getPPPoESessions(),
         inst.get('/ip/arp'),
-        inst.get('/ip/dhcp-server/lease')
+        inst.get('/ip/dhcp-server/lease'),
+        inst.get('/interface', { timeout: 12000 }),
       ]);
       const errs = {};
-      if (q.status === 'rejected') errs.queues   = q.reason?.message || String(q.reason);
-      if (s.status === 'rejected') errs.sessions = s.reason?.message || String(s.reason);
-      if (a.status === 'rejected') errs.arp      = a.reason?.message || String(a.reason);
-      if (d.status === 'rejected') errs.dhcp     = d.reason?.message || String(d.reason);
+      if (q.status === 'rejected') errs.queues      = q.reason?.message || String(q.reason);
+      if (s.status === 'rejected') errs.sessions    = s.reason?.message || String(s.reason);
+      if (a.status === 'rejected') errs.arp         = a.reason?.message || String(a.reason);
+      if (d.status === 'rejected') errs.dhcp        = d.reason?.message || String(d.reason);
+      if (i.status === 'rejected') errs.interfaces  = i.reason?.message || String(i.reason);
       return {
         inst,
         host: inst.host,
@@ -141,6 +143,7 @@ async function computeSnapshot(opts = {}) {
         sessions: s.status === 'fulfilled' ? (s.value || []) : [],
         arp:      a.status === 'fulfilled' ? (Array.isArray(a.value) ? a.value : []) : [],
         dhcp:     d.status === 'fulfilled' ? (Array.isArray(d.value) ? d.value : []) : [],
+        ifaces:   i.status === 'fulfilled' ? (Array.isArray(i.value) ? i.value : []) : [],
         errs
       };
     };
@@ -157,6 +160,9 @@ async function computeSnapshot(opts = {}) {
     const sessionData = routers.flatMap(r => r.sessions);
     const arpData     = routers.flatMap(r => r.arp);
     const dhcpData    = routers.flatMap(r => r.dhcp);
+    const ifaceData   = routers.flatMap(r => r.ifaces || []);
+    const { indexPppoeInterfaces, resolveUsedBytes } = require('../utils/customerQuota');
+    const ifaceByPPPoEUser = indexPppoeInterfaces(ifaceData);
 
     const fetchErrors = {};
     routers.forEach((r, i) => {
@@ -329,6 +335,8 @@ async function computeSnapshot(opts = {}) {
         }
       }
 
+      const usedBytes = resolveUsedBytes(queue, pppoeLc ? ifaceByPPPoEUser[pppoeLc] : null);
+
       return {
         id: cust.id, customer_id: cust.customer_id, name: cust.name,
         ip, pppoe, latitude: cust.latitude, longitude: cust.longitude,
@@ -341,8 +349,8 @@ async function computeSnapshot(opts = {}) {
         maxDown, maxUp,
         utilDown: maxDown > 0 ? Math.min(100, Math.round(qRateIn  / maxDown * 100)) : 0,
         utilUp:   maxUp   > 0 ? Math.min(100, Math.round(qRateOut / maxUp   * 100)) : 0,
-        bytesDown: queue ? parseInt(queue.bytesIn  || 0) : 0,
-        bytesUp:   queue ? parseInt(queue.bytesOut || 0) : 0,
+        bytesDown: usedBytes.download,
+        bytesUp:   usedBytes.upload,
         queueName: queue?.name || null, queueId: queue?.id || null,
         disabled:  queue?.disabled || false,
         // Sinyal mentah L2 — dipakai sebagai fallback HANYA saat ping dimatikan

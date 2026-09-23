@@ -14,6 +14,23 @@ let _pppoeManuallyEdited = false;
 let _originalPppoeUsername = '';
 const AVATAR_BG = ['#2563eb','#0891b2','#059669','#d97706','#dc2626','#0284c7','#16a34a','#ea580c','#0369a1','#0d9488'];
 
+function _fmtQuotaBytes(n) {
+  n = Number(n) || 0;
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n / 1024).toFixed(1).replace(/\.0$/, '') + ' KB';
+  if (n < 1073741824) return (n / 1048576).toFixed(1).replace(/\.0$/, '') + ' MB';
+  return (n / 1073741824).toFixed(2).replace(/\.00$/, '') + ' GB';
+}
+
+function _quotaUsedCell(q) {
+  if (!q || !q.has_data) return '<div class="qused"><span class="na">—</span></div>';
+  return '<div class="qused">'
+    + '<div class="qd">↓ ' + _fmtQuotaBytes(q.download) + '</div>'
+    + '<div class="qu">↑ ' + _fmtQuotaBytes(q.upload) + '</div>'
+    + '<div class="qt">Σ ' + _fmtQuotaBytes(q.total) + '</div>'
+    + '</div>';
+}
+
 // Toggle field MAC Address — hanya relevan untuk tipe koneksi Hotspot (IP Binding).
 window.onConnTypeChange = function() {
   const ct  = document.getElementById('custConnType')?.value || '';
@@ -575,7 +592,7 @@ async function loadCustomers() {
   const countEl= document.getElementById('customerCount');
 
   if (!data?.success) {
-    if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><p style="color:var(--danger);">Gagal memuat data</p></td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="10" class="empty-state"><p style="color:var(--danger);">Gagal memuat data</p></td></tr>';
     return;
   }
 
@@ -584,7 +601,7 @@ async function loadCustomers() {
 
   if (!data.data?.length) {
     if (tbody) tbody.innerHTML =
-      '<tr><td colspan="9">' +
+      '<tr><td colspan="10">' +
         '<div class="empty-state" style="padding:48px 16px;text-align:center;color:#94a3b8;">' +
           '<svg width="56" height="56" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="display:block;margin:0 auto 12px;color:#cbd5e1;">' +
             '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/>' +
@@ -653,6 +670,7 @@ async function loadCustomers() {
     var addrShort = c.address ? _esc(c.address.substring(0,30))+(c.address.length>30?'...':'') : '';
     var pkgName   = (c.package && c.package.name) ? _esc(c.package.name) : (c.package_name ? _esc(c.package_name) : '–');
     var actDate   = c.installation_date ? new Date(c.installation_date).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'}) : '–';
+    var quotaHtml = _quotaUsedCell(c.quota_used);
 
     return '<tr data-id="'+c.id+'">'
       + '<td><span class="cid-badge">'+_esc(c.customer_id)+'</span></td>'
@@ -673,6 +691,7 @@ async function loadCustomers() {
       + '</td>'
       + '<td style="font-weight:700;color:#1a6ef5;font-size:13px">'+price+'</td>'
       + '<td style="color:#6b7fa8">'+actDate+'</td>'
+      + '<td>'+quotaHtml+'</td>'
       + '<td><div style="line-height:1.5">'+dueDateHtml+'</div></td>'
       + '<td><span class="sb '+stCls+'"><span class="sb-dot" style="background:'+stDot+'"></span>'+stLabel+'</span></td>'
       + '<td style="text-align:right;padding-right:18px">'
