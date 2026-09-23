@@ -929,6 +929,13 @@
     return esc(u);
   }
 
+  // CSS/SwOS tidak expose CPU% / RAM lewat SNMP — jangan tampilkan 0 palsu
+  function isCssSwos(d) {
+    const model = String((d && d.model) || '');
+    const fw = String((d && d.firmware) || '');
+    return /^CSS/i.test(model) || /SwOS/i.test(model) || /SwOS/i.test(fw);
+  }
+
   // ── Metric bar color by pct ──
   function mbClass(pct) {
     const p = parseFloat(pct) || 0;
@@ -962,20 +969,20 @@
     }
 
     tbody.innerHTML = list.map(d => {
-      const cpu = d.cpu_load != null ? Math.round(d.cpu_load) : null;
-      const mem = d.memory_usage != null ? Math.round(d.memory_usage) : null;
+      const cpu = isCssSwos(d) ? null : (d.cpu_load != null ? Math.round(d.cpu_load) : null);
+      const mem = isCssSwos(d) ? null : (d.memory_usage != null ? Math.round(d.memory_usage) : null);
 
       const cpuHtml = cpu != null ? `
         <div class="metric-bar">
           <div class="mb-track"><div class="mb-fill ${mbClass(cpu)}" style="width:${cpu}%"></div></div>
           <span class="mb-pct">${cpu}%</span>
-        </div>` : '<span class="mb-pct" style="color:var(--faint)">—</span>';
+        </div>` : '<span class="mb-pct" style="color:var(--faint)" title="SwOS tidak menyediakan CPU% via SNMP">—</span>';
 
       const memHtml = mem != null ? `
         <div class="metric-bar">
           <div class="mb-track"><div class="mb-fill ${mbClass(mem)}" style="width:${mem}%"></div></div>
           <span class="mb-pct">${mem}%</span>
-        </div>` : '<span class="mb-pct" style="color:var(--faint)">—</span>';
+        </div>` : '<span class="mb-pct" style="color:var(--faint)" title="SwOS tidak menyediakan memory% via SNMP">—</span>';
 
       const status = d.status || 'offline';
       const brandLine = [d.brand, d.model].filter(Boolean).join(' · ');
@@ -1035,8 +1042,8 @@
     }
 
     wrap.innerHTML = list.map(d => {
-      const cpu = d.cpu_load != null ? Math.round(d.cpu_load) : null;
-      const mem = d.memory_usage != null ? Math.round(d.memory_usage) : null;
+      const cpu = isCssSwos(d) ? null : (d.cpu_load != null ? Math.round(d.cpu_load) : null);
+      const mem = isCssSwos(d) ? null : (d.memory_usage != null ? Math.round(d.memory_usage) : null);
       const status = d.status || 'offline';
       const type = d.type || 'other';
       const brandLine = [d.brand, d.model].filter(Boolean).join(' · ');
@@ -1249,12 +1256,18 @@
     onDevTypeChange();
   }
 
+  function isWinboxType(type) {
+    return type === 'router';
+  }
+
   function onDevTypeChange() {
     const type = document.getElementById('devType').value;
     const mon = document.getElementById('devMonType').value;
     const show = type === 'router' && (mon === 'api' || mon === 'both');
     const grp = document.getElementById('uplinkPinGroup');
     if (grp) grp.classList.toggle('cond-hide', !show);
+    const wb = document.getElementById('winboxField');
+    if (wb) wb.style.display = isWinboxType(type) ? '' : 'none';
   }
 
   function onUplinkPinChange() {

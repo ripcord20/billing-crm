@@ -1,7 +1,7 @@
 const logger = require('../utils/logger');
 const { Device, DeviceLog, TrafficData, Notification, User } = require('../models');
 const { SNMP_OIDS, DEVICE_STATUS } = require('../config/constants');
-const { formatUptime, sanitizeSnmpValue } = require('../utils/helpers');
+const { collectSnmpResources } = require('../utils/snmpDeviceMetrics');
 
 let snmp;
 try {
@@ -84,24 +84,27 @@ class SNMPService {
 
     try {
       const data = await this.getDeviceData(session, device);
+      const cpu = data.cpuKnown ? (data.cpu || 0) : null;
+      const mem = data.memoryKnown ? (data.memory || 0) : null;
 
       // Update device status
       const prevStatus = device.status;
-      await Device.update({
+      const patch = {
         status: DEVICE_STATUS.ONLINE,
-        cpu_load: data.cpu || 0,
-        memory_usage: data.memory || 0,
-        uptime: data.uptime || '',
-        firmware: data.firmware || device.firmware,
         last_polled: new Date()
-      }, { where: { id: device.id } });
+      };
+      if (data.uptime) patch.uptime = data.uptime;
+      if (data.firmware) patch.firmware = data.firmware;
+      if (cpu != null) patch.cpu_load = cpu;
+      if (mem != null) patch.memory_usage = mem;
+      await Device.update(patch, { where: { id: device.id } });
 
       // Log
       try {
         await DeviceLog.create({
           device_id: device.id,
-          cpu_load: data.cpu || 0,
-          memory_usage: data.memory || 0,
+          cpu_load: cpu == null ? 0 : cpu,
+          memory_usage: mem == null ? 0 : mem,
           uptime: data.uptime || '',
           status: 'online',
           interfaces: data.interfaces || null,
@@ -119,8 +122,8 @@ class SNMPService {
         this.io.to(`device_${device.id}`).emit('device:update', {
           device_id: device.id,
           status: 'online',
-          cpu_load: data.cpu,
-          memory_usage: data.memory,
+          cpu_load: cpu,
+          memory_usage: mem,
           uptime: data.uptime,
           interfaces: data.interfaces,
           timestamp: new Date()
@@ -130,8 +133,8 @@ class SNMPService {
           device_id: device.id,
           name: device.name,
           status: 'online',
-          cpu_load: data.cpu,
-          memory_usage: data.memory
+          cpu_load: cpu,
+          memory_usage: mem
         });
       }
 
@@ -142,9 +145,9 @@ class SNMPService {
       }
 
       // CPU overload alert
-      if (data.cpu > 90) {
+      if (cpu != null && cpu > 90) {
         await this.createAlert(device, 'cpu_overload', 'warning',
-          `CPU load on ${device.name}: ${data.cpu}%`);
+          `CPU load on ${device.name}: ${cpu}%`);
       }
 
     } catch (error) {
@@ -182,48 +185,17 @@ class SNMPService {
     }
   }
 
-  getDeviceData(session, device) {
-    return new Promise((resolve, reject) => {
-      const oids = [
-        SNMP_OIDS.SYSTEM_UPTIME,
-        SNMP_OIDS.SYSTEM_NAME,
-        SNMP_OIDS.SYSTEM_DESCR
-      ];
-
-      // Add Mikrotik specific OIDs
-      if (device.brand?.toLowerCase() === 'mikrotik') {
-        oids.push(SNMP_OIDS.MT_CPU_LOAD);
-        oids.push(SNMP_OIDS.MT_TOTAL_MEMORY);
-        oids.push(SNMP_OIDS.MT_USED_MEMORY);
-        oids.push(SNMP_OIDS.MT_FIRMWARE);
-      }
-
-      session.get(oids, (error, varbinds) => {
-        if (error) return reject(error);
-
-        const data = { cpu: 0, memory: 0, uptime: '', firmware: '', interfaces: [] };
-
-        for (const vb of varbinds) {
-          if (snmp.isVarbindError(vb)) continue;
-
-          const oid = vb.oid.join ? vb.oid.join('.') : vb.oid;
-          
-          if (oid === SNMP_OIDS.SYSTEM_UPTIME) {
-            data.uptime = formatUptime(vb.value);
-          } else if (oid === SNMP_OIDS.MT_CPU_LOAD) {
-            data.cpu = parseInt(vb.value) || 0;
-          } else if (oid === SNMP_OIDS.MT_FIRMWARE) {
-            data.firmware = sanitizeSnmpValue(vb) || '';
-          }
-        }
-
-        // Get interface data
-        this.getInterfaces(session).then(interfaces => {
-          data.interfaces = interfaces;
-          resolve(data);
-        }).catch(() => resolve(data));
-      });
-    });
+  async getDeviceData(session, device) {
+    const data = await collectSnmpResources(device, { session });
+    if (!data.reachable) {
+      throw new Error('SNMP system OIDs unreachable');
+    }
+    try {
+      data.interfaces = await this.getInterfaces(session);
+    } catch (_) {
+      data.interfaces = [];
+    }
+    return data;
   }
 
   getInterfaces(session) {
