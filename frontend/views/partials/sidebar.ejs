@@ -1,17 +1,5 @@
-<link rel="stylesheet" href="/css/theme-nightops.css?v=1">
 <script>
-(function(){
-  try {
-    var t = localStorage.getItem('ui-theme');
-    if (t !== 'light' && t !== 'dark') t = 'dark';
-    document.documentElement.setAttribute('data-theme', t);
-    var a = localStorage.getItem('ui-accent');
-    document.documentElement.setAttribute('data-accent', a === 'violet' ? 'violet' : 'cyan');
-  } catch (e) {
-    document.documentElement.setAttribute('data-theme', 'dark');
-    document.documentElement.setAttribute('data-accent', 'cyan');
-  }
-})();
+(function(){ try { var t = localStorage.getItem('ui-theme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) {} })();
 </script>
 <!-- White-label theme override (dari Settings > Tema Warna) -->
 <% if (locals.themePrimary) { %>

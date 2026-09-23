@@ -17,11 +17,7 @@
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       min-height: 100vh;
       display: flex;
-      background:
-        radial-gradient(1200px 500px at 10% -10%, rgba(62,200,200,.08), transparent 50%),
-        radial-gradient(800px 400px at 100% 0%, rgba(197,107,154,.06), transparent 45%),
-        #0b141a;
-      color: #d7e4ea;
+      background: #f8fafc;
       overflow-x: hidden;
     }
 
@@ -40,7 +36,7 @@
       align-items: center;
       justify-content: center;
       padding: 40px 20px;
-      background: transparent;
+      background: #ffffff;
     }
 
     .login-box {
@@ -71,24 +67,24 @@
     .logo-text {
       font-size: 22px;
       font-weight: 700;
-      color: #d7e4ea;
+      color: #1e293b;
     }
 
     .login-header h1 {
       font-size: 32px;
       font-weight: 700;
-      color: #d7e4ea;
+      color: #0f172a;
       margin-bottom: 8px;
     }
 
     .login-header p {
-      color: #7f9aa6;
+      color: #64748b;
       font-size: 15px;
       margin-bottom: 32px;
     }
 
     .login-header p a {
-      color: #3ec8c8;
+      color: #3b82f6;
       text-decoration: none;
       font-weight: 600;
     }
@@ -105,7 +101,7 @@
       display: block;
       font-size: 14px;
       font-weight: 600;
-      color: #3ec8c8;
+      color: #334155;
       margin-bottom: 8px;
     }
 
@@ -116,10 +112,10 @@
     .form-input {
       width: 100%;
       padding: 13px 16px;
-      background: #12202a;
-      border: 1.5px solid #1d3340;
+      background: #ffffff;
+      border: 1.5px solid #e2e8f0;
       border-radius: 10px;
-      color: #d7e4ea;
+      color: #0f172a;
       font-size: 15px;
       font-family: inherit;
       transition: all 0.2s ease;
@@ -127,8 +123,8 @@
 
     .form-input:focus {
       outline: none;
-      border-color: #3ec8c8;
-      box-shadow: 0 0 0 4px rgba(62, 200, 200, 0.14);
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
     }
 
     .form-input::placeholder {
@@ -142,7 +138,7 @@
       transform: translateY(-50%);
       background: none;
       border: none;
-      color: #7f9aa6;
+      color: #64748b;
       cursor: pointer;
       padding: 4px;
       display: flex;
@@ -151,7 +147,7 @@
     }
 
     .password-toggle:hover {
-      color: #3ec8c8;
+      color: #3b82f6;
     }
 
     .form-footer {
@@ -172,20 +168,20 @@
     .remember-me input[type="checkbox"] {
       width: 18px;
       height: 18px;
-      accent-color: #3ec8c8;
+      accent-color: #3b82f6;
       cursor: pointer;
     }
 
     .remember-me label {
       font-size: 14px;
-      color: #7f9aa6;
+      color: #475569;
       cursor: pointer;
       margin: 0;
       font-weight: 500;
     }
 
     .forgot-link {
-      color: #c56b9a;
+      color: #3b82f6;
       text-decoration: none;
       font-size: 14px;
       font-weight: 600;
@@ -198,21 +194,21 @@
     .login-btn {
       width: 100%;
       padding: 14px;
-      background: linear-gradient(135deg, #3ec8c8, #2aa8a8);
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
       border: none;
       border-radius: 10px;
-      color: #0b141a;
+      color: white;
       font-size: 16px;
       font-weight: 600;
       font-family: inherit;
       cursor: pointer;
       transition: all 0.3s ease;
-      box-shadow: 0 4px 14px rgba(62, 200, 200, 0.28);
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
     }
 
     .login-btn:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(62, 200, 200, 0.35);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
     }
 
     .login-btn:active {
@@ -564,9 +560,9 @@
        PENTING: blok ini dijalankan SEBELUM render form. Sembunyikan body
        sementara supaya user tidak melihat flicker form sebelum redirect.
        ════════════════════════════════════════════════════════════════ -->
-  <div id="loginShade" style="position:fixed;inset:0;background:#0b141a;z-index:9999;display:flex;align-items:center;justify-content:center;">
-    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;color:#7f9aa6;font-family:Inter,sans-serif;font-size:13px;">
-      <div style="width:32px;height:32px;border:3px solid #1d3340;border-top-color:#3ec8c8;border-radius:50%;animation:lspin 0.8s linear infinite;"></div>
+  <div id="loginShade" style="position:fixed;inset:0;background:#f8fafc;z-index:9999;display:flex;align-items:center;justify-content:center;">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;color:#64748b;font-family:Inter,sans-serif;font-size:13px;">
+      <div style="width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#3b82f6;border-radius:50%;animation:lspin 0.8s linear infinite;"></div>
       <div>Memulihkan sesi…</div>
     </div>
   </div>
