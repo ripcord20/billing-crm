@@ -981,6 +981,18 @@ class MikrotikService {
     }, { timeout, retries: 0 });
   }
 
+  /**
+   * DNS lookup via router (/tool/dns-lookup), sama seperti resolve dari CORE.
+   * @param {string} hostname
+   * @param {object} opts { server, timeout=8000 }
+   */
+  async dnsLookup(hostname, opts = {}) {
+    const timeout = opts.timeout != null ? opts.timeout : 8000;
+    const body = { address: hostname, name: hostname };
+    if (opts.server) body.server = opts.server;
+    return this.request('POST', '/tool/dns-lookup', body, { timeout, retries: 0 });
+  }
+
   async testConnection() {
     try {
       const identity = await this.getSystemIdentity();
