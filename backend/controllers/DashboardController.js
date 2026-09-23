@@ -37,35 +37,21 @@ class DashboardController {
         totalBandwidthMbps = (bwResult[0]?.total_download || 0) / 1000;
       }
 
-      // ── ONT stats — dari GenieACS langsung ──────────────────
+      // ── ONT stats — dari snapshot OLT Management (semua OLT) ──
       let ontOnline = 0, ontOffline = 0;
       try {
-        const { AppSetting } = require('../models');
-        const row = await AppSetting.findOne({ where: { key: 'genieacs_nbi_url' } });
-        const genieUrl = row?.value || process.env.GENIEACS_NBI_URL || '';
-        if (genieUrl) {
-          const axios = require('axios');
-          const resp  = await axios.get(`${genieUrl}/devices`, { timeout: 5000 });
-          const devices = Array.isArray(resp.data) ? resp.data : [];
-          const now = Date.now();
-          devices.forEach(d => {
-            const lastInform = d._lastInform;
-            if (lastInform) {
-              const minutesAgo = (now - new Date(lastInform).getTime()) / 60000;
-              if (minutesAgo < 5) ontOnline++; else ontOffline++;
-            } else {
-              ontOffline++;
-            }
-          });
+        const { summarizeFromCache, loadOltMgmtCache } = require('../utils/offlineOnts');
+        const ontSum = summarizeFromCache(loadOltMgmtCache());
+        if (ontSum.total > 0) {
+          ontOnline  = ontSum.online;
+          ontOffline = ontSum.offline;
         } else {
-          // Fallback ke DB jika GenieACS belum dikonfigurasi
           ontOnline  = await OntDevice.count({ where: { status: 'online' } });
           ontOffline = await OntDevice.count({ where: { status: 'offline' } });
         }
-      } catch (genieErr) {
-        // Fallback ke DB
-        ontOnline  = await OntDevice.count({ where: { status: 'online' } });
-        ontOffline = await OntDevice.count({ where: { status: 'offline' } });
+      } catch (ontErr) {
+        ontOnline  = await OntDevice.count({ where: { status: 'online' } }).catch(() => 0);
+        ontOffline = await OntDevice.count({ where: { status: 'offline' } }).catch(() => 0);
       }
 
       // ── CPU Load — dari MikroTik /system/resource ────────────
@@ -1057,25 +1043,32 @@ class DashboardController {
         }));
       } catch (_) {}
 
-      // 2) ONT offline (yang baru putus diutamakan via updatedAt)
+      // 2) ONT offline — SEMUA ONU down dari snapshot tiap OLT (nama, SN, PON, RX, OLT asal)
       try {
-        const onts = await OntDevice.findAll({
-          where: { status: 'offline' },
-          attributes: ['id', 'serial_number', 'name', 'updatedAt'],
-          include: [{ model: Customer, as: 'customer', attributes: ['name', 'customer_id'], required: false }],
-          order: [['updatedAt', 'DESC']],
-          limit: 20,
+        const { collectAllOfflineOnts } = require('../utils/offlineOnts');
+        const pack = await collectAllOfflineOnts();
+        (pack.rows || []).forEach((o) => {
+          const ponLabel = (o.pon != null || o.onu_id != null)
+            ? `PON ${o.pon || '-'} / ONU ${o.onu_id ?? '-'}`
+            : (o.onu_if || 'PON -');
+          const rx = o.rx_dbm != null && o.rx_dbm !== '' ? `RX ${o.rx_dbm} dBm` : 'RX -';
+          const cust = o.customer_name
+            ? ` • ${o.customer_name}${o.customer_cid ? ' (' + o.customer_cid + ')' : ''}`
+            : '';
+          alerts.push({
+            kind: 'ont_offline',
+            severity: 'warning',
+            icon: 'ont',
+            title: o.name || o.serial_number || 'ONT',
+            detail: `${o.olt_name || 'OLT'} • ${ponLabel} • SN ${o.serial_number || '-'} • ${rx}${cust}`,
+            time: o.cached_at,
+            link: '/monitoring/olt-management?olt=' + encodeURIComponent(o.olt_id || ''),
+            ont: o,
+          });
         });
-        onts.forEach(o => alerts.push({
-          kind: 'ont_offline',
-          severity: 'warning',
-          icon: 'ont',
-          title: (o.customer?.name) || o.name || o.serial_number || 'ONT',
-          detail: `ONT offline${o.customer?.customer_id ? ' • ' + o.customer.customer_id : ''} • SN ${o.serial_number || '-'}`,
-          time: o.updatedAt,
-          link: '/ont-management',
-        }));
-      } catch (_) {}
+      } catch (ontAlertErr) {
+        console.error('Error collecting offline ONTs:', ontAlertErr.message);
+      }
 
       // 3) Pelanggan terisolir
       try {
@@ -1142,17 +1135,33 @@ class DashboardController {
         return new Date(b.time || 0) - new Date(a.time || 0);
       });
 
+      const ontAlerts = alerts.filter(a => a.kind === 'ont_offline').sort((a, b) => {
+        const oa = a.ont || {}, ob = b.ont || {};
+        const n = String(oa.olt_name || '').localeCompare(String(ob.olt_name || ''));
+        if (n !== 0) return n;
+        const pa = parseInt(oa.pon, 10) || 0;
+        const pb = parseInt(ob.pon, 10) || 0;
+        if (pa !== pb) return pa - pb;
+        return (parseInt(oa.onu_id, 10) || 0) - (parseInt(ob.onu_id, 10) || 0);
+      });
+      const otherAlerts = alerts.filter(a => a.kind !== 'ont_offline');
       const counts = {
         total: alerts.length,
         critical: alerts.filter(a => a.severity === 'critical').length,
         device_offline: alerts.filter(a => a.kind === 'device_offline').length,
-        ont_offline: alerts.filter(a => a.kind === 'ont_offline').length,
+        ont_offline: ontAlerts.length,
         customer_isolated: alerts.filter(a => a.kind === 'customer_isolated').length,
         ticket_urgent: alerts.filter(a => a.kind === 'ticket_urgent').length,
         uplink_down: alerts.filter(a => a.kind === 'uplink_down').length,
+        ont_offline_by_olt: ontAlerts.reduce((m, a) => {
+          const k = (a.ont && a.ont.olt_name) || 'OLT';
+          m[k] = (m[k] || 0) + 1;
+          return m;
+        }, {}),
       };
 
-      res.json({ success: true, data: alerts.slice(0, 30), counts });
+      // ONT offline dikirim semua (dari OLT); jenis alert lain tetap dibatasi.
+      res.json({ success: true, data: otherAlerts.slice(0, 30).concat(ontAlerts), counts });
     } catch (error) {
       console.error('Error fetching dashboard alerts:', error);
       res.status(500).json({ success: false, message: error.message });
