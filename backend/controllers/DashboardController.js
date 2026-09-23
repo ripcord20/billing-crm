@@ -1135,7 +1135,15 @@ class DashboardController {
         return new Date(b.time || 0) - new Date(a.time || 0);
       });
 
-      const ontAlerts = alerts.filter(a => a.kind === 'ont_offline');
+      const ontAlerts = alerts.filter(a => a.kind === 'ont_offline').sort((a, b) => {
+        const oa = a.ont || {}, ob = b.ont || {};
+        const n = String(oa.olt_name || '').localeCompare(String(ob.olt_name || ''));
+        if (n !== 0) return n;
+        const pa = parseInt(oa.pon, 10) || 0;
+        const pb = parseInt(ob.pon, 10) || 0;
+        if (pa !== pb) return pa - pb;
+        return (parseInt(oa.onu_id, 10) || 0) - (parseInt(ob.onu_id, 10) || 0);
+      });
       const otherAlerts = alerts.filter(a => a.kind !== 'ont_offline');
       const counts = {
         total: alerts.length,
