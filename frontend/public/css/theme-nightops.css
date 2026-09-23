@@ -2,25 +2,25 @@
    Aktif saat [data-theme="dark"]. Violet: [data-accent="violet"]. */
 
 [data-theme="dark"] {
-  --primary: #3ec8c8 !important;
-  --primary-dark: #2aa8a8 !important;
-  --primary-light: #5edada !important;
-  --accent: #3ec8c8 !important;
+  --primary: #3ec8c8;
+  --primary-dark: #2aa8a8;
+  --primary-light: #5edada;
+  --accent: #3ec8c8;
   --success: #3ecf8e;
   --warning: #e8a54b;
   --danger: #e25b6a;
   --orange: #e8a54b;
-  --bg: #0b141a !important;
-  --bg-card: #12202a !important;
-  --bg-sidebar: #0d171e !important;
-  --bg-hover: #16303a !important;
-  --bg-input: #0f1a22 !important;
-  --border: #1d3340 !important;
-  --text: #d7e4ea !important;
-  --text-primary: #d7e4ea !important;
-  --text-secondary: #7f9aa6 !important;
-  --text-muted: #7f9aa6 !important;
-  --text-tertiary: #7f9aa6 !important;
+  --bg: #0b141a;
+  --bg-card: #12202a;
+  --bg-sidebar: #0d171e;
+  --bg-hover: #16303a;
+  --bg-input: #0f1a22;
+  --border: #1d3340;
+  --text: #d7e4ea;
+  --text-primary: #d7e4ea;
+  --text-secondary: #7f9aa6;
+  --text-muted: #7f9aa6;
+  --text-tertiary: #7f9aa6;
   --chart-rx: #3ec8c8;
   --chart-tx: #c56b9a;
   --chart-grid: #1d3340;
@@ -29,21 +29,21 @@
 }
 
 [data-theme="dark"][data-accent="violet"] {
-  --primary: #8b7cff !important;
-  --primary-dark: #6f62e0 !important;
-  --primary-light: #a79cff !important;
-  --accent: #8b7cff !important;
-  --bg: #12101a !important;
-  --bg-card: #1b1830 !important;
-  --bg-sidebar: #161322 !important;
-  --bg-hover: #241f3c !important;
-  --bg-input: #161322 !important;
-  --border: #2c2750 !important;
-  --text: #e4e0f5 !important;
-  --text-primary: #e4e0f5 !important;
-  --text-secondary: #9a93b8 !important;
-  --text-muted: #9a93b8 !important;
-  --text-tertiary: #9a93b8 !important;
+  --primary: #8b7cff;
+  --primary-dark: #6f62e0;
+  --primary-light: #a79cff;
+  --accent: #8b7cff;
+  --bg: #12101a;
+  --bg-card: #1b1830;
+  --bg-sidebar: #161322;
+  --bg-hover: #241f3c;
+  --bg-input: #161322;
+  --border: #2c2750;
+  --text: #e4e0f5;
+  --text-primary: #e4e0f5;
+  --text-secondary: #9a93b8;
+  --text-muted: #9a93b8;
+  --text-tertiary: #9a93b8;
   --chart-rx: #8b7cff;
   --chart-tx: #d46aa8;
   --chart-grid: #2c2750;
