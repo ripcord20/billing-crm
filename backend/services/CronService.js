@@ -420,6 +420,13 @@ class CronService {
       } catch (err) {
         logger.error('[Cron] ONT signal history cleanup error: ' + (err.message || err));
       }
+      try {
+        const AttenuationEventService = require('./AttenuationEventService');
+        const evDel = await AttenuationEventService.pruneOlderThan(30);
+        if (evDel > 0) logger.info(`[Cron] Cleaned ${evDel} ONT attenuation events (>30 hari)`);
+      } catch (err) {
+        logger.error('[Cron] ONT attenuation event cleanup error: ' + (err.message || err));
+      }
     }));
 
     // ── 9b. Perekam ONT signal history BERKALA (setiap 10 menit) ─────
@@ -469,6 +476,16 @@ class CronService {
           .filter(r => !isNaN(r.rx_power));
 
         if (toInsert.length) {
+          try {
+            const AttenuationEventService = require('./AttenuationEventService');
+            for (const row of toInsert) {
+              await AttenuationEventService.recordIfWorsened({
+                ontDeviceId: row.ont_device_id,
+                rxNew: row.rx_power,
+                source: 'snapshot'
+              });
+            }
+          } catch (_) { /* event redaman tidak boleh mengganggu snapshot */ }
           await OntSignalHistory.bulkCreate(toInsert);
           logger.info(`[Cron] ONT signal snapshot: ${toInsert.length} record disimpan`);
         }

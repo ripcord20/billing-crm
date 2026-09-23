@@ -240,11 +240,13 @@ class OltController {
           }
         });
 
+        let prevRx = null;
         if (isNew) {
           created++;
         } else {
           // Cek status change untuk notifikasi
           const prevStatus = record.status;
+          prevRx = record.signal_strength;
 
           await record.update({
             model:           ont.model           || record.model,
@@ -283,6 +285,16 @@ class OltController {
             olt_rx_power:  ont.tr069_params?.olt_rx_power || null,
             recorded_at:   new Date(),
           }).catch(() => {}); // silent jika model belum ada kolom
+          try {
+            require('../services/AttenuationEventService').recordIfWorsened({
+              ontDeviceId: record.id,
+              rxNew: ont.signal_strength,
+              rxOld: prevRx,
+              serialNumber: record.serial_number,
+              oltName: cfg.name,
+              source: 'olt'
+            });
+          } catch (_) {}
         }
 
       } catch(e) {

@@ -1067,6 +1067,7 @@ const startServer = async () => {
       await safeSync(db.MonitorState,            'monitor_states');
       await safeSync(db.NotifLog,                'notif_logs');
       await safeSync(db.BotCommand,              'bot_commands');
+      await safeSync(db.OntAttenuationEvent,     'ont_attenuation_events');
       // Seed perintah bot bawaan (idempotent — hanya menambah yang belum ada).
       try { await require('./services/BotCommandSeed').seedDefaults(); }
       catch (e) { logger.warn('Seed bot_commands skipped: ' + e.message); }

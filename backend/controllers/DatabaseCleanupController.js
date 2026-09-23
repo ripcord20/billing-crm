@@ -132,6 +132,16 @@ const TABLES = [
     defaultDays:90,
     priority:   'low',
   },
+  {
+    key:        'ont_attenuation_events',
+    label:      'Event Naiknya Redaman ONT',
+    description:'Riwayat kejadian redaman memburuk (bukan snapshot). Default 30 hari.',
+    model:      null,
+    rawTable:   'ont_attenuation_events',
+    timeField:  'created_at',
+    defaultDays:30,
+    priority:   'medium',
+  },
 ];
 
 const BATCH_SIZE = 5000; // delete per batch supaya tidak lock table besar
