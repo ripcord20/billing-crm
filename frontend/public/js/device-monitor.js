@@ -612,7 +612,15 @@ function openAddDevice() {
   $('fPollInterval').value = '60';
   setProto('api');
   clearTestResult();
+  if (typeof onMonitorTypeChange === 'function') onMonitorTypeChange();
   $('deviceModal').classList.add('show');
+}
+
+function onMonitorTypeChange() {
+  const typeEl = $('fType');
+  const wb = $('winboxField');
+  if (!wb || !typeEl) return;
+  wb.style.display = typeEl.value === 'router' ? '' : 'none';
 }
 
 async function openEditDevice(id) {
@@ -632,6 +640,7 @@ async function openEditDevice(id) {
     $('fLocation').value = d.location || '';
     $('fType').value     = d.type || 'router';
     $('fPollInterval').value = d.poll_interval || '60';
+    if (typeof onMonitorTypeChange === 'function') onMonitorTypeChange();
 
     const proto = d.monitoring_type || 'api';
     setProto(proto);

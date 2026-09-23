@@ -1249,12 +1249,18 @@
     onDevTypeChange();
   }
 
+  function isWinboxType(type) {
+    return type === 'router';
+  }
+
   function onDevTypeChange() {
     const type = document.getElementById('devType').value;
     const mon = document.getElementById('devMonType').value;
     const show = type === 'router' && (mon === 'api' || mon === 'both');
     const grp = document.getElementById('uplinkPinGroup');
     if (grp) grp.classList.toggle('cond-hide', !show);
+    const wb = document.getElementById('winboxField');
+    if (wb) wb.style.display = isWinboxType(type) ? '' : 'none';
   }
 
   function onUplinkPinChange() {
