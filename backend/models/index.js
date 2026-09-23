@@ -50,6 +50,8 @@ const DeviceLog = require('./DeviceLog')(sequelize);
 const InfrastructurePoint = require('./InfrastructurePoint')(sequelize);
 const InfrastructureLink  = require('./InfrastructureLink')(sequelize);
 const OntDevice = require('./OntDevice')(sequelize);
+const OntSignalHistory = require('./OntSignalHistory')(sequelize);
+const OntAttenuationEvent = require('./OntAttenuationEvent')(sequelize);
 const FinancialReport = require('./FinancialReport')(sequelize);
 const ActivityLog = require('./ActivityLog')(sequelize);
 const Notification = require('./Notification')(sequelize);
@@ -239,6 +241,11 @@ TrafficData.belongsTo(Device, { foreignKey: 'device_id', as: 'device' });
 Customer.hasOne(OntDevice, { foreignKey: 'customer_id', as: 'ont_device' });
 OntDevice.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
 
+OntDevice.hasMany(OntSignalHistory, { foreignKey: 'ont_device_id', as: 'signal_history' });
+OntSignalHistory.belongsTo(OntDevice, { foreignKey: 'ont_device_id', as: 'ont_device' });
+OntDevice.hasMany(OntAttenuationEvent, { foreignKey: 'ont_device_id', as: 'attenuation_events' });
+OntAttenuationEvent.belongsTo(OntDevice, { foreignKey: 'ont_device_id', as: 'ont_device' });
+
 // ActivityLog <-> User
 User.hasMany(ActivityLog, { foreignKey: 'user_id', as: 'activity_logs' });
 ActivityLog.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
@@ -273,6 +280,8 @@ const db = {
   InfrastructurePoint,
   InfrastructureLink,
   OntDevice,
+  OntSignalHistory,
+  OntAttenuationEvent,
   FinancialReport,
   ActivityLog,
   Notification,

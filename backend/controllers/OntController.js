@@ -207,6 +207,35 @@ class OntController {
     }
   }
 
+  /**
+   * Event naiknya redaman (bukan snapshot). Default 30 hari.
+   * GET /api/ont/attenuation-events
+   * GET /api/ont/:id/attenuation-events
+   */
+  async listAttenuationEvents(req, res) {
+    try {
+      const { OntAttenuationEvent } = require('../models');
+      if (!OntAttenuationEvent) {
+        return res.json({ success: true, data: [] });
+      }
+      const days = Math.min(90, Math.max(1, parseInt(req.query.days, 10) || 30));
+      const since = new Date(Date.now() - days * 86400000);
+      const where = { created_at: { [Op.gte]: since } };
+      if (req.params.id) where.ont_device_id = req.params.id;
+      if (req.query.serial) where.serial_number = String(req.query.serial).trim();
+      if (req.query.severity) where.severity = req.query.severity;
+      if (req.query.olt) where.olt_name = String(req.query.olt).trim();
+      const rows = await OntAttenuationEvent.findAll({
+        where,
+        order: [['created_at', 'DESC']],
+        limit: Math.min(500, parseInt(req.query.limit, 10) || 100)
+      });
+      res.json({ success: true, data: rows, days });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
   // ─────────────────────────────────────────────────────────
   // LINK PELANGGAN
   // ─────────────────────────────────────────────────────────
@@ -389,6 +418,7 @@ class OntController {
         });
 
         const prevStatus = ontRecord?.status;
+        const prevRx = ontRecord?.signal_strength;
 
         const updateData = {
           device_id:     info.device_id,
@@ -427,6 +457,16 @@ class OntController {
             olt_rx_power:  info.olt_rx_power,
             status:        info.status
           });
+          try {
+            require('../services/AttenuationEventService').recordIfWorsened({
+              ontDeviceId: ontRecord.id,
+              rxNew: info.rx_power,
+              rxOld: prevRx,
+              serialNumber: ontRecord.serial_number,
+              customerId: ontRecord.customer_id,
+              source: 'genieacs'
+            });
+          } catch (_) {}
         }
 
         // Deteksi perubahan status online -> offline
