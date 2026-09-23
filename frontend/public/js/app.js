@@ -20,9 +20,14 @@ const App = {
   initTheme() {
     try {
       const saved = localStorage.getItem('ui-theme');
-      const theme = saved === 'dark' || saved === 'light' ? saved : (document.documentElement.getAttribute('data-theme') || 'light');
+      const theme = saved === 'dark' || saved === 'light' ? saved : 'dark';
       document.documentElement.setAttribute('data-theme', theme);
-    } catch (_) {}
+      const accent = localStorage.getItem('ui-accent') === 'violet' ? 'violet' : 'cyan';
+      document.documentElement.setAttribute('data-accent', accent);
+    } catch (_) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.documentElement.setAttribute('data-accent', 'cyan');
+    }
   },
 
   toggleTheme() {
@@ -30,6 +35,15 @@ const App = {
     document.documentElement.setAttribute('data-theme', next);
     try { localStorage.setItem('ui-theme', next); } catch (_) {}
     window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: next } }));
+  },
+
+  toggleAccent() {
+    const next = document.documentElement.getAttribute('data-accent') === 'violet' ? 'cyan' : 'violet';
+    document.documentElement.setAttribute('data-accent', next);
+    try { localStorage.setItem('ui-accent', next); } catch (_) {}
+    window.dispatchEvent(new CustomEvent('themechange', {
+      detail: { theme: document.documentElement.getAttribute('data-theme'), accent: next }
+    }));
   },
 
   chartTheme() {

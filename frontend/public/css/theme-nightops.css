@@ -1,0 +1,130 @@
+/* Night Ops Cyan / Violet Dusk — tampilan saja, tidak mengubah fitur.
+   Aktif saat [data-theme="dark"]. Violet: [data-accent="violet"]. */
+
+[data-theme="dark"] {
+  --primary: #3ec8c8;
+  --primary-dark: #2aa8a8;
+  --primary-light: #5edada;
+  --accent: #3ec8c8;
+  --success: #3ecf8e;
+  --warning: #e8a54b;
+  --danger: #e25b6a;
+  --orange: #e8a54b;
+  --bg: #0b141a;
+  --bg-card: #12202a;
+  --bg-sidebar: #0d171e;
+  --bg-hover: #16303a;
+  --bg-input: #0f1a22;
+  --border: #1d3340;
+  --text: #d7e4ea;
+  --text-primary: #d7e4ea;
+  --text-secondary: #7f9aa6;
+  --text-muted: #7f9aa6;
+  --text-tertiary: #7f9aa6;
+  --chart-rx: #3ec8c8;
+  --chart-tx: #c56b9a;
+  --chart-grid: #1d3340;
+  --cyan-dim: rgba(62, 200, 200, .14);
+  --glow: 0 0 0 1px rgba(62, 200, 200, .18), 0 12px 40px rgba(0, 0, 0, .35);
+}
+
+[data-theme="dark"][data-accent="violet"] {
+  --primary: #8b7cff;
+  --primary-dark: #6f62e0;
+  --primary-light: #a79cff;
+  --accent: #8b7cff;
+  --bg: #12101a;
+  --bg-card: #1b1830;
+  --bg-sidebar: #161322;
+  --bg-hover: #241f3c;
+  --bg-input: #161322;
+  --border: #2c2750;
+  --text: #e4e0f5;
+  --text-primary: #e4e0f5;
+  --text-secondary: #9a93b8;
+  --text-muted: #9a93b8;
+  --text-tertiary: #9a93b8;
+  --chart-rx: #8b7cff;
+  --chart-tx: #d46aa8;
+  --chart-grid: #2c2750;
+  --cyan-dim: rgba(139, 124, 255, .16);
+  --glow: 0 0 0 1px rgba(139, 124, 255, .2), 0 12px 40px rgba(0, 0, 0, .4);
+}
+
+[data-theme="dark"] body {
+  background:
+    radial-gradient(1200px 500px at 10% -10%, rgba(62, 200, 200, .08), transparent 50%),
+    radial-gradient(800px 400px at 100% 0%, rgba(197, 107, 154, .06), transparent 45%),
+    var(--bg);
+}
+
+[data-theme="dark"][data-accent="violet"] body {
+  background:
+    radial-gradient(1200px 500px at 10% -10%, rgba(139, 124, 255, .10), transparent 50%),
+    radial-gradient(800px 400px at 100% 0%, rgba(212, 106, 168, .07), transparent 45%),
+    var(--bg);
+}
+
+[data-theme="dark"] .nav-item.active {
+  background: var(--cyan-dim);
+  color: var(--primary);
+}
+
+[data-theme="dark"] .nav-item:hover {
+  background: var(--bg-hover);
+}
+
+[data-theme="dark"] .card,
+[data-theme="dark"] .kpi,
+[data-theme="dark"] .summary-cards {
+  box-shadow: var(--glow);
+}
+
+[data-theme="dark"] .btn-primary:hover {
+  box-shadow: 0 4px 14px rgba(62, 200, 200, .28);
+}
+
+[data-theme="dark"][data-accent="violet"] .btn-primary:hover {
+  box-shadow: 0 4px 14px rgba(139, 124, 255, .28);
+}
+
+[data-theme="dark"] .search-box:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--cyan-dim);
+}
+
+[data-theme="light"] .accent-toggle-btn {
+  display: none !important;
+}
+
+.accent-toggle-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+.accent-toggle-btn::after { content: "C"; }
+[data-accent="violet"] .accent-toggle-btn::after { content: "V"; }
+
+.accent-toggle-btn:hover {
+  background: var(--bg-hover);
+  color: var(--primary);
+}
+
+[data-theme="dark"] .notif-panel-hdr > div > div:first-child {
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] .outstanding-box {
+  background: linear-gradient(135deg, #3b2a10 0%, #4a3210 100%);
+}
+
+[data-theme="dark"] .revenue-box-new {
+  background: linear-gradient(135deg, #12202a 0%, #16303a 100%);
+}
