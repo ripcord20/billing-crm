@@ -337,6 +337,8 @@ async function computeSnapshot(opts = {}) {
         onlineSource: onlineSource,
         offlineReason,
         uptime:      session?.uptime || null,
+        sessionIp:   sessionIP || null,
+        callerId:    session?.callerID || null,
         rateDown: qRateIn, rateUp: qRateOut,
         maxDown, maxUp,
         utilDown: maxDown > 0 ? Math.min(100, Math.round(qRateIn  / maxDown * 100)) : 0,

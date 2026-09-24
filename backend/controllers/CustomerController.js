@@ -110,6 +110,7 @@ class CustomerController {
 
       // Hitung total yang benar untuk pagination
       const filteredCount = (status === 'overdue' || status === 'due_soon') ? filtered.length : count;
+      try { await attachCustomerListExtras(filtered); } catch (_) {}
       res.json({ success: true, ...paginateResponse(filtered, filteredCount, page, limit) });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -1391,6 +1392,71 @@ async function ensureWelcomeTemplate() {
   } catch(e) {
     console.error('[CustomerController] ensureWelcomeTemplate error:', e.message);
   }
+}
+
+/**
+ * Data tambahan daftar pelanggan (tidak mengubah kolom/query utama).
+ * Online, uptime, dan kuota diambil dari snapshot poller yang sudah ada.
+ */
+async function attachCustomerListExtras(rows) {
+  if (!rows || !rows.length) return;
+  const ids = rows.map(r => r.id).filter(Boolean);
+  if (!ids.length) return;
+  const { sequelize, InfrastructurePoint, CustomerPushSubscription } = require('../models');
+  const parentIds = [...new Set(rows.map(r => r.infra_parent_id).filter(Boolean))];
+
+  const [paidRows, odps, appRows] = await Promise.all([
+    sequelize.query(
+      `SELECT customer_id, COUNT(*) AS paid_count, MAX(paid_date) AS last_paid
+       FROM invoices
+       WHERE status = 'paid' AND customer_id IN (:ids)
+       GROUP BY customer_id`,
+      { replacements: { ids }, type: sequelize.QueryTypes.SELECT }
+    ).catch(() => []),
+    parentIds.length
+      ? InfrastructurePoint.findAll({
+          where: { id: parentIds },
+          attributes: ['id', 'name', 'capacity', 'used_ports'],
+          raw: true
+        }).catch(() => [])
+      : [],
+    CustomerPushSubscription
+      ? CustomerPushSubscription.findAll({
+          attributes: ['customer_id'],
+          where: { customer_id: ids },
+          group: ['customer_id'],
+          raw: true
+        }).catch(() => [])
+      : []
+  ]);
+
+  const paidMap = new Map((paidRows || []).map(r => [Number(r.customer_id), r]));
+  const odpMap = new Map((odps || []).map(r => [Number(r.id), r]));
+  const appSet = new Set((appRows || []).map(r => Number(r.customer_id)));
+
+  let sessMap = new Map();
+  try {
+    const snap = require('../services/CustomerTrafficPoller').getSnapshot();
+    const list = snap && Array.isArray(snap.data) ? snap.data : [];
+    sessMap = new Map(list.map(s => [Number(s.id), s]));
+  } catch (_) {}
+
+  rows.forEach((row) => {
+    const paid = paidMap.get(Number(row.id));
+    const odp = row.infra_parent_id ? odpMap.get(Number(row.infra_parent_id)) : null;
+    const sess = sessMap.get(Number(row.id));
+    row.paid_count = paid ? Number(paid.paid_count) || 0 : 0;
+    row.last_paid_at = paid ? (paid.last_paid || null) : null;
+    row.has_app = appSet.has(Number(row.id));
+    row.odp_name = odp ? odp.name : null;
+    row.odp_ports = odp && odp.capacity != null ? Number(odp.capacity) : null;
+    row.session_online = sess ? !!sess.online : null;
+    row.session_uptime = sess ? (sess.uptime || null) : null;
+    row.session_ip = sess ? (sess.sessionIp || null) : null;
+    row.session_mac = sess ? (sess.callerId || null) : null;
+    row.bytes_down = sess ? (Number(sess.bytesDown) || 0) : null;
+    row.bytes_up = sess ? (Number(sess.bytesUp) || 0) : null;
+  });
 }
 
 // Jalankan migration di module load
