@@ -266,7 +266,7 @@ function _confirmCustomerDelete(customer) {
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:14px;">
           <div style="font-weight:600;color:#0f172a;font-size:13.5px;">${_esc(customer.name)}</div>
           ${hasPppoe ? `<div style="font-size:12px;color:#64748b;font-family:'DM Mono',monospace;margin-top:3px;">PPPoE: ${_esc(customer.pppoe_username)}</div>` : ''}
-          ${hasRouter ? `<div style="font-size:11.5px;color:#64748b;margin-top:2px;">Router: ${customer.mikrotik_name ? _esc(customer.mikrotik_name) : `<span style="color:#94a3b8;">ID #${_esc(customer.mikrotik_id)}</span>`}</div>` : ''}
+          ${hasRouter ? `<div style="font-size:11.5px;color:#64748b;margin-top:2px;">Router: ${customer.mikrotik_name ? _esc(customer.mikrotik_name) : `<span style="color:#334155;">ID #${_esc(customer.mikrotik_id)}</span>`}</div>` : ''}
         </div>
         ${canSync ? `
           <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:12px;color:#92400e;line-height:1.5;margin-bottom:6px;">
@@ -585,7 +585,7 @@ async function loadCustomers() {
   if (!data.data?.length) {
     if (tbody) tbody.innerHTML =
       '<tr><td colspan="13">' +
-        '<div class="empty-state" style="padding:48px 16px;text-align:center;color:#94a3b8;">' +
+        '<div class="empty-state" style="padding:48px 16px;text-align:center;color:#334155;">' +
           '<svg width="56" height="56" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="display:block;margin:0 auto 12px;color:#cbd5e1;">' +
             '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/>' +
           '</svg>' +
@@ -610,7 +610,7 @@ async function loadCustomers() {
       c.latest_due_date = c.due_date;
     }
 
-    var dueDateHtml = '<span style="color:#94a3b8">–</span>';
+    var dueDateHtml = '<span style="color:#334155">–</span>';
     if (c.latest_due_date) {
       var due      = new Date(c.latest_due_date+'T00:00:00');
       var diffDays = Math.round((due - today)/86400000);
@@ -663,12 +663,12 @@ async function loadCustomers() {
     var onlineHtml = '';
     if (c.session_online === true) onlineHtml = '<div style="margin-top:4px"><span style="font-size:10px;font-weight:700;background:#ecfdf5;color:#047857;padding:2px 7px;border-radius:10px">Online</span></div>';
     else if (c.session_online === false && (c.pppoe_username || c.static_ip)) onlineHtml = '<div style="margin-top:4px"><span style="font-size:10px;font-weight:700;background:#f8fafc;color:#64748b;padding:2px 7px;border-radius:10px">Offline</span></div>';
-    var appHtml = '<div style="margin-top:3px;font-size:10px;color:#94a3b8">'+(c.has_app ? 'Apps' : '× Apps')+'</div>';
+    var appHtml = '<div style="margin-top:3px;font-size:10px;color:#334155">'+(c.has_app ? 'Apps' : '× Apps')+'</div>';
     var billChip = (c.connection_type === 'hotspot') ? '' : '<div style="margin-bottom:3px"><span style="font-size:10px;font-weight:700;background:#eff6ff;color:#1d4ed8;padding:1px 6px;border-radius:4px">Postpaid</span></div>';
     var odpHtml = c.odp_name
-      ? '<div style="font-weight:600;font-size:12px;color:#0d1b3e">'+_esc(c.odp_name)+'</div>'+(c.odp_ports ? '<div style="font-size:10px;color:#94a3b8">'+c.odp_ports+' Port</div>' : '')
-      : '<span style="color:#94a3b8">–</span>';
-    var actHtml = '<span style="color:#94a3b8">–</span>';
+      ? '<div style="font-weight:600;font-size:12px;color:#0d1b3e">'+_esc(c.odp_name)+'</div>'+(c.odp_ports ? '<div style="font-size:10px;color:#334155">'+c.odp_ports+' Port</div>' : '')
+      : '<span style="color:#334155">–</span>';
+    var actHtml = '<span style="color:#334155">–</span>';
     if (c.session_uptime || c.bytes_down != null) {
       actHtml = '<div style="font-size:12px;font-weight:600;color:#0d1b3e">'+_esc(c.session_uptime || '–')+'</div>'
         + '<div style="font-size:11px;color:#2563eb">↓ '+_fmtBytes(c.bytes_down)+'</div>'
@@ -680,8 +680,8 @@ async function loadCustomers() {
       if (!isNaN(lp.getTime())) lastPay = lp.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
     }
     var wilayah = c.village || c.district || c.regency || '';
-    var wilayahHtml = (wilayah ? '<div style="font-weight:600;font-size:12px">'+_esc(wilayah)+'</div>' : '<span style="color:#94a3b8">–</span>')
-      + '<div style="font-size:10px;color:#94a3b8">Tidak ada reseller</div>';
+    var wilayahHtml = (wilayah ? '<div style="font-weight:600;font-size:12px">'+_esc(wilayah)+'</div>' : '<span style="color:#334155">–</span>')
+      + '<div style="font-size:10px;color:#334155">Tidak ada reseller</div>';
 
     return '<tr data-id="'+c.id+'">'
       + '<td><span class="cid-badge">'+_esc(c.customer_id)+'</span></td>'
@@ -690,27 +690,27 @@ async function loadCustomers() {
           + '<div class="av-circle" style="background:'+color+'">'+initial+'</div>'
           + '<div>'
             + '<a href="/customers/profile/'+c.id+'" class="cust-name-link">'+_esc(c.name)+'</a>'
-            + (addrShort ? '<div style="font-size:11px;color:#6b7fa8;margin-top:1px;max-width:160px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+addrShort+'</div>' : '')
+            + (addrShort ? '<div style="font-size:11px;color:#334155;margin-top:1px;max-width:160px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+addrShort+'</div>' : '')
           + '</div>'
         + '</div>'
       + '</td>'
-      + '<td style="color:#6b7fa8">'
+      + '<td style="color:#334155">'
         + '<div>'+_esc(c.phone||'–')+'</div>'
         + (c.phone ? '<div style="margin-top:4px;display:flex;gap:4px"><button class="rb rb-wa" onclick="sendWA(\''+_esc(c.phone)+'\')">WA</button><button class="rb rb-edit" onclick="copyPhone(\''+_esc(c.phone)+'\')">Copy</button></div>' : '')
       + '</td>'
       + '<td>'
         + '<div style="font-weight:600;font-size:13px;color:#0d1b3e">'+pkgName+'</div>'
-        + (c.pppoe_username ? '<div style="font-size:10px;color:#94a3b8;font-family:monospace">'+_esc(c.pppoe_username)+'</div>' : '')
+        + (c.pppoe_username ? '<div style="font-size:10px;color:#334155;font-family:monospace">'+_esc(c.pppoe_username)+'</div>' : '')
         + (liveIp ? '<div style="font-size:11px;color:#2563eb;font-family:monospace;margin-top:2px">'+_esc(liveIp)+' '+connBadge+'</div>' : (connBadge ? '<div style="margin-top:2px">'+connBadge+'</div>' : ''))
-        + (macShow ? '<div style="font-size:10px;color:#94a3b8;font-family:monospace">'+_esc(macShow)+'</div>' : '')
+        + (macShow ? '<div style="font-size:10px;color:#334155;font-family:monospace">'+_esc(macShow)+'</div>' : '')
       + '</td>'
       + '<td style="font-weight:700;color:#1a6ef5;font-size:13px">'+price+'</td>'
-      + '<td style="color:#6b7fa8">'+actDate+'</td>'
+      + '<td style="color:#334155">'+actDate+'</td>'
       + '<td><div style="line-height:1.5">'+billChip+dueDateHtml+'</div></td>'
       + '<td><span class="sb '+stCls+'"><span class="sb-dot" style="background:'+stDot+'"></span>'+stLabel+'</span>'+onlineHtml+appHtml+'</td>'
       + '<td>'+odpHtml+'</td>'
       + '<td>'+actHtml+'</td>'
-      + '<td><div style="font-size:12px">'+_esc(lastPay)+'</div><div style="font-size:10px;color:#94a3b8">Total Lunas: '+(Number(c.paid_count)||0)+'</div></td>'
+      + '<td><div style="font-size:12px">'+_esc(lastPay)+'</div><div style="font-size:10px;color:#334155">Total Lunas: '+(Number(c.paid_count)||0)+'</div></td>'
       + '<td>'+wilayahHtml+'</td>'
       + '<td style="text-align:right;padding-right:18px">'
         + '<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">'
@@ -852,8 +852,8 @@ function _confirmPppoeRename(oldName, newName) {
       <div style="padding:18px 22px;font-size:13px;color:#334155;line-height:1.6;">
         <div style="margin-bottom:12px;">Anda mengubah PPPoE username:</div>
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-family:'DM Mono',monospace;font-size:12.5px;margin-bottom:14px;">
-          <div style="color:#64748b;"><span style="color:#94a3b8;">lama:</span> ${_esc(oldName) || '<i style="font-style:italic">(kosong)</i>'}</div>
-          <div style="color:#0f172a;font-weight:600;margin-top:4px;"><span style="color:#94a3b8;font-weight:400;">baru:</span> ${_esc(newName)}</div>
+          <div style="color:#64748b;"><span style="color:#334155;">lama:</span> ${_esc(oldName) || '<i style="font-style:italic">(kosong)</i>'}</div>
+          <div style="color:#0f172a;font-weight:600;margin-top:4px;"><span style="color:#334155;font-weight:400;">baru:</span> ${_esc(newName)}</div>
         </div>
         <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:12px;color:#92400e;line-height:1.5;margin-bottom:6px;">
           <strong>Apa yang ingin Anda lakukan?</strong><br>
@@ -1802,11 +1802,11 @@ function ppShowResultModal(custId, password) {
     +     '</div>'
     +     '<div style="background:#f8fafd;border:1.5px solid #e4ecf7;border-radius:12px;padding:14px;margin-bottom:14px;font-family:DM Mono,ui-monospace,monospace;">'
     +       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">'
-    +         '<span style="font-size:10.5px;color:#94a3b8;text-transform:uppercase;font-weight:700;font-family:DM Sans,sans-serif;letter-spacing:.05em;">Customer ID</span>'
+    +         '<span style="font-size:10.5px;color:#334155;text-transform:uppercase;font-weight:700;font-family:DM Sans,sans-serif;letter-spacing:.05em;">Customer ID</span>'
     +         '<span id="ppResCid" style="font-size:13.5px;color:#0d1b3e;font-weight:600;">' + _esc(custId||'') + '</span>'
     +       '</div>'
     +       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">'
-    +         '<span style="font-size:10.5px;color:#94a3b8;text-transform:uppercase;font-weight:700;font-family:DM Sans,sans-serif;letter-spacing:.05em;">Password</span>'
+    +         '<span style="font-size:10.5px;color:#334155;text-transform:uppercase;font-weight:700;font-family:DM Sans,sans-serif;letter-spacing:.05em;">Password</span>'
     +         '<span id="ppResPw" style="font-size:13.5px;color:#0d1b3e;font-weight:600;letter-spacing:.05em;">' + _esc(password||'') + '</span>'
     +       '</div>'
     +     '</div>'
