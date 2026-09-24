@@ -404,6 +404,7 @@ input, select, textarea { font-family: inherit; }
   color: #fff;
 }
 .sc-ico svg { width: 18px; height: 18px; }
+.sc-ico-warn { color: #f472b6; background: rgba(244,114,182,.22); }
 .sc-ico.is-beat { animation: scBeat .65s ease-out; }
 @keyframes scBeat {
   0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,.55); }
