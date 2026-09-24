@@ -390,6 +390,26 @@ input, select, textarea { font-family: inherit; }
 }
 .sc-value { font-size: 36px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
 .sc-sub { font-size: 12px; opacity: 0.6; }
+.sc-ico {
+  position: absolute;
+  top: 16px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+.sc-ico svg { width: 18px; height: 18px; }
+.sc-ico.is-beat { animation: scBeat .65s ease-out; }
+@keyframes scBeat {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,.55); }
+  45% { transform: scale(var(--sc-beat, 1.14)); box-shadow: 0 0 0 8px rgba(255,255,255,0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+}
 
 /* ===== Dashboard Grid ===== */
 .dashboard-grid {
