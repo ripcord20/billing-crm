@@ -11,7 +11,7 @@
   <style>
     :root {
       --d-bg:#eef2f9; --d-card:#fff; --d-border:#e0e7f3;
-      --d-text:#0d1b3e; --d-muted:#6b7fa8;
+      --d-text:#0d1b3e; --d-muted:#334155;
       --d-blue1:#1a6ef5; --d-blue2:#0047cc;
       --d-green:#00c896; --d-red:#f5365c; --d-orange:#fb8c00;
     }
@@ -100,7 +100,7 @@
     .filter-select:focus { border-color:var(--d-blue1); }
 
     /* ── Table ── */
-    .cust-table { width:100%;border-collapse:collapse;min-width:860px;font-family:'Plus Jakarta Sans',sans-serif; }
+    .cust-table { width:100%;border-collapse:collapse;min-width:1180px;font-family:'Plus Jakarta Sans',sans-serif; }
     .cust-table thead th { text-align:left;padding:10px 16px;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--d-muted);border-bottom:1px solid var(--d-border);background:#f8faff;white-space:nowrap; }
     .cust-table tbody tr { border-bottom:1px solid #f0f4fc;transition:background .1s; }
     .cust-table tbody tr:hover { background:#f4f8ff; }
@@ -495,11 +495,15 @@
                 <th class="col-hide-mob">Aktivasi</th>
                 <th>Jatuh Tempo</th>
                 <th>Status</th>
+                <th class="col-hide-mob">ODP</th>
+                <th class="col-hide-mob">Aktivitas</th>
+                <th class="col-hide-mob">Terakhir Bayar</th>
+                <th class="col-hide-mob">Wilayah</th>
                 <th style="text-align:right;padding-right:20px">Aksi</th>
               </tr>
             </thead>
             <tbody id="customerTable">
-              <tr><td colspan="9" style="text-align:center;padding:52px;color:var(--d-muted)">
+              <tr><td colspan="13" style="text-align:center;padding:52px;color:var(--d-muted)">
                 <div style="font-size:34px;margin-bottom:10px">📋</div>
                 <div style="font-size:14px;font-weight:600;color:var(--d-text)">Memuat data…</div>
               </td></tr>
