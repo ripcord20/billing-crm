@@ -594,7 +594,24 @@ function initRefresh() {
 // ─── HELPERS ─────────────────────────────────────────────────
 function setText(id, val) {
   const el = document.getElementById(id);
-  if (el) el.textContent = val;
+  if (!el) return;
+  const next = String(val);
+  const prev = el.textContent;
+  el.textContent = next;
+  if ((id === 'totalBandwidth' || id === 'cpuLoadAvg') && prev !== next) pulseOverviewIcon(id, prev, next);
+}
+function pulseOverviewIcon(id, prev, next) {
+  const icon = document.getElementById(id)?.closest('.summary-card')?.querySelector('.sc-ico-live');
+  if (!icon) return;
+  const a = parseFloat(String(prev).replace('%', '')) || 0;
+  const b = parseFloat(String(next).replace('%', '')) || 0;
+  const delta = Math.abs(b - a);
+  const base = Math.max(Math.abs(a), 0.1);
+  const mag = Math.min(1.42, 1.06 + Math.min(delta / base, 0.7) * 0.5);
+  icon.style.setProperty('--sc-beat', mag.toFixed(3));
+  icon.classList.remove('is-beat');
+  void icon.offsetWidth;
+  icon.classList.add('is-beat');
 }
 function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
