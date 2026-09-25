@@ -749,7 +749,7 @@
     // Terpisah dari openAdd() supaya form Tambah Pelanggan tidak berubah.
     let _lfMap=null, _lfMarker=null, _lfMapInit=false, _lfPkgLoaded=false;
     window.openLead = function openLead(){
-      ['lfName','lfPhone','lfAddr','lfLat','lfLng'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+      ['lfName','lfPhone','lfAddr','lfLat','lfLng'].forEach(function(id){ var e=document.getElementById(id); if(e){ e.value=''; if(e.dataset) e.dataset.auto=''; } });
       var pkg=document.getElementById('lfPkg'); if(pkg) pkg.value='';
       var cov=document.getElementById('lfCoverage'); if(cov){ cov.style.display='none'; cov.textContent=''; }
       var hint=document.getElementById('lfGeoHint'); if(hint) hint.textContent='Ketuk peta atau ambil GPS.';
@@ -830,19 +830,29 @@
     }
     async function reverseLfAddress(lat,lng){
       var el=document.getElementById('lfAddr');
-      if(!el || el.value.trim()) return;
+      if(!el) return;
+      var manual=el.value.trim() && el.dataset.auto!=='1';
+      if(manual) return;
+      var hint=document.getElementById('lfGeoHint');
+      if(hint) hint.textContent='Mencari alamat dari koordinat…';
       try{
-        const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=id&lat='+lat+'&lon='+lng);
-        const j=await r.json();
-        const a=j.address||{};
-        const road=a.road||a.pedestrian||a.residential||'';
-        const num=a.house_number?(' No. '+a.house_number):'';
-        const area=a.village||a.suburb||a.neighbourhood||'';
-        const kec=a.subdistrict||a.city_district||a.county||'';
-        const kota=a.city||a.town||a.regency||'';
-        const txt=[road?road+num:'',area,kec,kota].filter(Boolean).join(', ')||j.display_name||'';
-        if(txt && !el.value.trim()) el.value=txt;
-      }catch(_){}
+        const t=getToken();
+        const r=await fetch('/api/sales/reverse-geocode?lat='+encodeURIComponent(lat)+'&lng='+encodeURIComponent(lng),{
+          credentials:'include',
+          headers:Object.assign({'Accept':'application/json'}, t?{'Authorization':'Bearer '+t}:{})
+        });
+        const j=await r.json().catch(function(){return null;});
+        const txt=(j&&j.success&&j.data&&j.data.address)||'';
+        if(txt && (el.dataset.auto==='1' || !el.value.trim())){
+          el.value=txt;
+          el.dataset.auto='1';
+          if(hint) hint.textContent='Alamat terisi dari pin. Bisa diedit.';
+        } else if(!txt && hint){
+          hint.textContent='Alamat tidak ditemukan. Isi manual atau geser pin.';
+        }
+      }catch(_){
+        if(hint) hint.textContent='Gagal mengambil alamat. Isi manual.';
+      }
     }
     async function saveLead(){
       const name=(document.getElementById('lfName').value||'').trim();
@@ -1314,7 +1324,7 @@
       <input type="hidden" id="lfLat"><input type="hidden" id="lfLng">
       <button type="button" class="as-geo" onclick="lfUseMyLocation()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a8 8 0 0 0-8 8c0 5.4 8 12 8 12s8-6.6 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg><span id="lfGeoLbl">Ambil lokasi saya</span></button>
       <label class="as-lbl">Alamat (otomatis dari pin, bisa diedit)</label>
-      <textarea class="as-in" id="lfAddr" rows="2" placeholder="Akan terisi dari pin peta"></textarea>
+      <textarea class="as-in" id="lfAddr" rows="2" placeholder="Akan terisi dari pin peta" oninput="this.dataset.auto=''"></textarea>
     </div>
     <div class="as-foot">
       <button class="as-cancel" onclick="closeLead()">Batal</button>

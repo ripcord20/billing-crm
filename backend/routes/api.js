@@ -2516,6 +2516,7 @@ router.post('/sales/team/:userId/regenerate-code',authenticate, demoGuard, sales
 
 // Coverage checker
 router.post('/sales/coverage-check',     authenticate, demoGuard, salesRoles, SalesCtrl.coverageCheck);
+router.get ('/sales/reverse-geocode',    authenticate, demoGuard, salesRoles, SalesCtrl.reverseGeocode);
 router.get ('/sales/coverage-points',    authenticate, demoGuard, salesRoles, SalesCtrl.coveragePoints);
 router.get ('/sales/customer-points',    authenticate, demoGuard, salesRoles, SalesCtrl.customerPoints);
 

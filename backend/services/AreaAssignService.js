@@ -62,6 +62,47 @@ async function reverseGeocode(lat, lng) {
   return names;
 }
 
+const _addrCache = new Map(); // key: "lat,lng" (5 desimal) → { address }
+
+function formatNominatimAddress(j) {
+  const a = (j && j.address) || {};
+  const road = a.road || a.pedestrian || a.residential || '';
+  const num = a.house_number ? (' No. ' + a.house_number) : '';
+  const area = a.village || a.suburb || a.neighbourhood || a.hamlet || '';
+  const kec = a.subdistrict || a.city_district || a.municipality || '';
+  const kota = a.city || a.town || a.regency || a.county || '';
+  const prov = a.state || '';
+  const parts = [(road ? road + num : ''), area, kec, kota, prov].filter(Boolean);
+  const uniq = parts.filter((p, i) => i === 0 || p.toLowerCase() !== parts[i - 1].toLowerCase());
+  return uniq.join(', ') || (j && j.display_name) || '';
+}
+
+/** Reverse geocode lat/lng → teks alamat lengkap untuk form Lead Baru. */
+async function reverseGeocodeAddress(lat, lng) {
+  const key = `${(+lat).toFixed(5)},${(+lng).toFixed(5)}`;
+  if (_addrCache.has(key)) return _addrCache.get(key);
+
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=id&zoom=18&addressdetails=1`;
+  let address = '';
+  try {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 6000);
+    const r = await fetch(url, {
+      headers: { 'User-Agent': 'Fiberix-Sales/1.0', 'Accept': 'application/json' },
+      signal: ctrl.signal
+    });
+    clearTimeout(to);
+    if (r.ok) {
+      const j = await r.json();
+      address = formatNominatimAddress(j);
+    }
+  } catch (_) { /* timeout / network */ }
+
+  const out = { address };
+  if (address) _addrCache.set(key, out);
+  return out;
+}
+
 /**
  * Cari sales_id yang area-nya cocok dengan koordinat lead.
  * @returns {Promise<{sales_id:number, sales_name:string, referral_code:string, matched_area:string} | null>}
@@ -101,4 +142,4 @@ async function assignByArea(lat, lng) {
   return null;
 }
 
-module.exports = { assignByArea, reverseGeocode, norm };
+module.exports = { assignByArea, reverseGeocode, reverseGeocodeAddress, formatNominatimAddress, norm };
