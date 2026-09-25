@@ -1183,7 +1183,7 @@
     <div class="reg-sec"><span class="reg-sec-t">Data Lead</span></div>
     <div class="row">
       <div class="field"><label>Nama <i>*</i></label><input id="rgName" placeholder="Nama lengkap" autocomplete="name"></div>
-      <div class="field"><label>No. WhatsApp <i>*</i></label><input id="rgPhone" placeholder="08xxxxxxxxxx" inputmode="tel" autocomplete="tel"></div>
+      <div class="field"><label>No. WhatsApp <i>*</i></label><input id="rgPhone" placeholder="08xxxxxxxxxx" inputmode="tel" autocomplete="tel" onblur="checkLeadDuplicate()"><div id="rgPhoneDup" class="reg-loc-hint" style="display:none;color:#dc2626;margin-top:4px"></div></div>
     </div>
     <div class="field"><label>Paket <span style="font-weight:400;color:var(--muted2)">(opsional)</span></label><select id="rgPkg"><option value="">— pilih —</option></select></div>
 
@@ -1225,7 +1225,7 @@
     <div class="reg-more" id="rgMore">
       <div class="row">
         <div class="field"><label>Email</label><input id="rgEmail" placeholder="email@contoh.com" inputmode="email"></div>
-        <div class="field"><label>No. KTP</label><input id="rgKtp" placeholder="16 digit" inputmode="numeric"></div>
+        <div class="field"><label>No. KTP</label><input id="rgKtp" placeholder="16 digit" inputmode="numeric" onblur="checkLeadDuplicate()"><div id="rgKtpDup" class="reg-loc-hint" style="display:none;color:#dc2626;margin-top:4px"></div></div>
       </div>
       <div class="row">
         <div class="field"><label>Provinsi</label><select id="rgProv" onchange="onProvChange()"><option value="">— pilih provinsi —</option></select></div>
@@ -1842,6 +1842,7 @@ function regPinIcon(){
 let _provLoaded=false;
 function openRegModal(){
   ['rgName','rgPhone','rgEmail','rgKtp','rgAddr','rgLat','rgLng','rgNotes','rgJalan','rgNoRumah','rgRt','rgRw'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['rgPhoneDup','rgKtpDup'].forEach(id=>{const e=document.getElementById(id);if(e){e.style.display='none';e.textContent='';}});
   document.getElementById('rgPkg').value='';
   // reset dropdown wilayah
   ['rgKab','rgKec','rgDesa'].forEach(id=>{const e=document.getElementById(id);if(e){e.innerHTML='<option value="">— pilih —</option>';e.disabled=true;}});
@@ -2081,6 +2082,26 @@ async function uploadPhoto(regId,kind,file){
   const fd=new FormData();fd.append('photo',file);fd.append('kind',kind);
   try{await fetch('/api/sales/registrations/'+regId+'/photo',{method:'POST',credentials:'include',body:fd});}catch(_){}
 }
+async function checkLeadDuplicate(silent){
+  const phone=(document.getElementById('rgPhone')?.value||'').trim();
+  const ktp=(document.getElementById('rgKtp')?.value||'').trim();
+  const phoneHint=document.getElementById('rgPhoneDup');
+  const ktpHint=document.getElementById('rgKtpDup');
+  const hide=()=>{ if(phoneHint){phoneHint.style.display='none';phoneHint.textContent='';} if(ktpHint){ktpHint.style.display='none';ktpHint.textContent='';} };
+  if(!phone && !ktp){ hide(); return {success:true,available:true}; }
+  const qs=new URLSearchParams();
+  if(phone) qs.set('phone',phone);
+  if(ktp) qs.set('id_card_number',ktp);
+  const j=await api('/sales/registrations/check-duplicate?'+qs.toString());
+  if(j&&j.available===false){
+    const msg=j.message||'Data ganda ditolak';
+    const target=/NIK/i.test(msg)?ktpHint:phoneHint;
+    if(target){ target.style.display='block'; target.textContent=msg; }
+    return j;
+  }
+  hide();
+  return j||{success:true,available:true};
+}
 async function saveReg(){
   const btn=document.getElementById('saveRegBtn');btn.disabled=true;btn.textContent='Menyimpan...';
   const lat=(document.getElementById('rgLat').value||'').trim();
@@ -2090,6 +2111,8 @@ async function saveReg(){
   const body={name:rgName.value.trim(),phone:rgPhone.value.trim(),email:(document.getElementById('rgEmail').value||'').trim()||null,id_card_number:(document.getElementById('rgKtp').value||'').trim()||null,address:address,latitude:lat||null,longitude:lng||null,package_id:rgPkg.value||null,notes:(document.getElementById('rgNotes').value||'').trim()||null};
   if(!body.name||!body.phone){btn.disabled=false;btn.textContent='Simpan Lead';return toast('Nama dan WhatsApp wajib diisi',false);}
   if(!body.address && !(body.latitude&&body.longitude)){btn.disabled=false;btn.textContent='Simpan Lead';return toast('Pin lokasi di peta atau isi alamat',false);}
+  const dup=await checkLeadDuplicate(true);
+  if(dup&&dup.available===false){btn.disabled=false;btn.textContent='Simpan Lead';return toast(dup.message||'Data ganda ditolak',false);}
   const j=await api('/sales/registrations',{method:'POST',body:JSON.stringify(body)});
   if(!j.success){btn.disabled=false;btn.textContent='Simpan Lead';return toast(j.message,false);}
   // upload foto yang dipilih

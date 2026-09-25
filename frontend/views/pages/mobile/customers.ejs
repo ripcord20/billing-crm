@@ -750,6 +750,7 @@
     let _lfMap=null, _lfMarker=null, _lfMapInit=false, _lfPkgLoaded=false;
     window.openLead = function openLead(){
       ['lfName','lfPhone','lfAddr','lfLat','lfLng'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+      var dupHint=document.getElementById('lfPhoneDup'); if(dupHint){ dupHint.style.display='none'; dupHint.textContent=''; }
       var pkg=document.getElementById('lfPkg'); if(pkg) pkg.value='';
       var cov=document.getElementById('lfCoverage'); if(cov){ cov.style.display='none'; cov.textContent=''; }
       var hint=document.getElementById('lfGeoHint'); if(hint) hint.textContent='Ketuk peta atau ambil GPS.';
@@ -844,6 +845,27 @@
         if(txt && !el.value.trim()) el.value=txt;
       }catch(_){}
     }
+    async function checkMobileLeadDup(silent){
+      const phone=(document.getElementById('lfPhone')?.value||'').trim();
+      const hint=document.getElementById('lfPhoneDup');
+      if(!phone){ if(hint){ hint.style.display='none'; hint.textContent=''; } return {success:true,available:true}; }
+      const t=getToken();
+      try{
+        const r=await fetch('/api/sales/registrations/check-duplicate?phone='+encodeURIComponent(phone),{
+          credentials:'include',
+          headers:t?{'Authorization':'Bearer '+t}:{}
+        });
+        const d=await r.json().catch(function(){return null;});
+        if(d&&d.available===false){
+          if(hint){ hint.style.display='block'; hint.textContent=d.message||'Data ganda ditolak'; }
+          return d;
+        }
+        if(hint){ hint.style.display='none'; hint.textContent=''; }
+        return d||{success:true,available:true};
+      }catch(_){
+        return {success:true,available:true};
+      }
+    }
     async function saveLead(){
       const name=(document.getElementById('lfName').value||'').trim();
       const phone=(document.getElementById('lfPhone').value||'').trim();
@@ -853,6 +875,8 @@
       if(!name||!phone){ toast('Nama dan WhatsApp wajib diisi','err'); return; }
       if(!address && lat && lng) address='Pin lokasi ('+lat+', '+lng+')';
       if(!address && !(lat&&lng)){ toast('Pin lokasi di peta atau isi alamat','err'); return; }
+      const dup=await checkMobileLeadDup(true);
+      if(dup&&dup.available===false){ toast(dup.message||'Data ganda ditolak','err'); return; }
       const btn=document.getElementById('lfSave');
       btn.disabled=true; btn.textContent='Menyimpan…';
       const t=getToken();
@@ -1303,7 +1327,8 @@
       <label class="as-lbl">Nama <span class="req">*</span></label>
       <input class="as-in" id="lfName" placeholder="Nama lengkap" autocomplete="name">
       <label class="as-lbl">No. WhatsApp <span class="req">*</span></label>
-      <input class="as-in" id="lfPhone" inputmode="tel" placeholder="08xxxxxxxxxx" autocomplete="tel">
+      <input class="as-in" id="lfPhone" inputmode="tel" placeholder="08xxxxxxxxxx" autocomplete="tel" onblur="checkMobileLeadDup()">
+      <div class="as-hint" id="lfPhoneDup" style="display:none;color:#dc2626;margin:4px 0 8px"></div>
       <label class="as-lbl">Paket (opsional)</label>
       <select class="as-in" id="lfPkg"><option value="">— pilih paket (opsional) —</option></select>
 

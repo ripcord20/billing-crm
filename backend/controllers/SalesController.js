@@ -8,6 +8,7 @@ const {
   SalesProfile, RegistrationRequest, SalesCommission, InfrastructurePoint, Notification
 } = require('../models');
 const { generateUniqueCustomerId } = require('../utils/helpers');
+const { assertUniqueLead, assertUniqueCustomer, sendDuplicate } = require('../utils/duplicateGuard');
 const logger = require('../utils/logger');
 const CoverageService   = require('../services/CoverageService');
 const CommissionService = require('../services/CommissionService');
@@ -740,6 +741,16 @@ exports.createRegistration = async (req, res) => {
       else return res.status(400).json({ success: false, message: 'Lengkapi alamat atau pin lokasi di peta' });
     }
 
+    try {
+      await assertUniqueLead({
+        phone: b.phone,
+        id_card_number: b.id_card_number || null
+      });
+    } catch (dupErr) {
+      if (sendDuplicate(res, dupErr)) return;
+      throw dupErr;
+    }
+
     const reg = await RegistrationRequest.create({
       name: b.name, phone: b.phone, email: b.email || null,
       id_card_number: b.id_card_number || null,
@@ -755,6 +766,30 @@ exports.createRegistration = async (req, res) => {
 
     res.status(201).json({ success: true, data: reg, message: 'Lead tersimpan' });
   } catch (e) { res.status(400).json({ success: false, message: e.message }); }
+};
+
+// GET /api/sales/registrations/check-duplicate?phone=&id_card_number=
+exports.checkDuplicate = async (req, res) => {
+  try {
+    const phone = String(req.query.phone || '').trim();
+    const idCard = String(req.query.id_card_number || '').trim();
+    if (!phone && !idCard) return res.json({ success: true, available: true });
+    try {
+      await assertUniqueLead({ phone, id_card_number: idCard || null });
+      res.json({ success: true, available: true });
+    } catch (dupErr) {
+      if (dupErr && dupErr.status === 409) {
+        return res.json({
+          success: true,
+          available: false,
+          message: dupErr.message,
+          code: dupErr.code,
+          duplicate: dupErr.duplicate || null
+        });
+      }
+      throw dupErr;
+    }
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 };
 
 // Jalankan coverage check & simpan snapshot ke registrasi
@@ -969,7 +1004,10 @@ exports.generateWorkOrder = async (req, res) => {
 exports.activate = async (req, res) => {
   try {
     const result = await activateRegistration(parseInt(req.params.id), { activated_by: req.user.id });
-    if (!result.ok) return res.status(400).json({ success: false, message: result.message });
+    if (!result.ok) {
+      const status = result.code === 'DUPLICATE_CUSTOMER' || result.code === 'DUPLICATE_LEAD' ? 409 : 400;
+      return res.status(status).json({ success: false, message: result.message, code: result.code, duplicate: result.duplicate || null });
+    }
     res.json({ success: true, data: result, message: 'Pelanggan diaktifkan & komisi tercatat' });
   } catch (e) { res.status(400).json({ success: false, message: e.message }); }
 };
@@ -985,11 +1023,22 @@ async function activateRegistration(regId, { activated_by = null } = {}) {
     if (!reg) { await t.rollback(); return { ok: false, message: 'Registrasi tidak ditemukan' }; }
     if (reg.status === 'activated' && reg.customer_id) { await t.rollback(); return { ok: true, message: 'Sudah aktif', already: true }; }
 
+    try {
+      await assertUniqueCustomer({
+        phone: reg.phone,
+        nik: reg.id_card_number || null
+      }, { transaction: t });
+    } catch (dupErr) {
+      await t.rollback();
+      return { ok: false, message: dupErr.message, code: dupErr.code, duplicate: dupErr.duplicate || null };
+    }
+
     // Buat customer baru
     const newCid = await generateUniqueCustomerId(Customer);
     const customer = await Customer.create({
       customer_id: newCid,
       name: reg.name, phone: reg.phone, email: reg.email,
+      nik: reg.id_card_number || null,
       address: reg.address, latitude: reg.latitude, longitude: reg.longitude,
       package_id: reg.package_id,
       status: 'active',
