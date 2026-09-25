@@ -783,6 +783,20 @@ exports.coverageCheck = async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 };
 
+// GET /api/sales/reverse-geocode?lat=&lng= — isi alamat Lead Baru dari pin peta.
+exports.reverseGeocode = async (req, res) => {
+  try {
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return res.status(400).json({ success: false, message: 'Koordinat tidak valid' });
+    }
+    const AreaAssign = require('../services/AreaAssignService');
+    const data = await AreaAssign.reverseGeocodeAddress(lat, lng);
+    res.json({ success: true, data });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+};
+
 // GET /api/sales/coverage-points — titik ODP/ODC/POP utk peta coverage.
 // Sales diblok dari /api/infrastructure, jadi data disajikan via endpoint ini
 // (hanya field aman: nama, tipe, koordinat, kapasitas/port).

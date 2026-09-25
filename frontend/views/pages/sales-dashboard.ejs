@@ -1198,7 +1198,7 @@
     </div>
     <div id="rgMap" class="reg-map"></div>
     <div id="rgCoverage" class="reg-cov" style="display:none"></div>
-    <div class="field" style="margin-top:12px"><label>Alamat <span style="font-weight:400;color:var(--muted2);font-size:11px">(otomatis dari pin, bisa diedit)</span></label><textarea id="rgAddr" placeholder="Akan terisi dari pin peta" rows="2"></textarea></div>
+    <div class="field" style="margin-top:12px"><label>Alamat <span style="font-weight:400;color:var(--muted2);font-size:11px">(otomatis dari pin, bisa diedit)</span></label><textarea id="rgAddr" placeholder="Akan terisi dari pin peta" rows="2" oninput="this.dataset.auto=''"></textarea></div>
 
     <div class="reg-sec"><span class="reg-sec-t">Foto <span style="font-weight:400;color:var(--muted2);font-size:11px">(opsional)</span></span></div>
     <div class="row">
@@ -1841,7 +1841,7 @@ function regPinIcon(){
 }
 let _provLoaded=false;
 function openRegModal(){
-  ['rgName','rgPhone','rgEmail','rgKtp','rgAddr','rgLat','rgLng','rgNotes','rgJalan','rgNoRumah','rgRt','rgRw'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['rgName','rgPhone','rgEmail','rgKtp','rgAddr','rgLat','rgLng','rgNotes','rgJalan','rgNoRumah','rgRt','rgRw'].forEach(id=>{const e=document.getElementById(id);if(e){e.value='';if(e.dataset)e.dataset.auto='';}});
   document.getElementById('rgPkg').value='';
   // reset dropdown wilayah
   ['rgKab','rgKec','rgDesa'].forEach(id=>{const e=document.getElementById(id);if(e){e.innerHTML='<option value="">— pilih —</option>';e.disabled=true;}});
@@ -2039,29 +2039,33 @@ async function checkRegCoverage(lat,lng){
     } else { box.style.display='none'; }
   }catch(e){ box.style.display='none'; }
 }
-// Reverse-geocode → isi alamat otomatis HANYA bila benar-benar kosong &
-// belum ada wilayah dipilih (agar tidak bentrok dgn dropdown wilayah).
+// Reverse-geocode via API server → isi alamat dari koordinat pin.
+// Menimpa hanya jika kosong atau hasil otomatis sebelumnya (bukan ketikan manual).
 async function reverseRegAddress(lat,lng){
   const addrEl=document.getElementById('rgAddr');
+  if(!addrEl) return;
   const hasWilayah=document.getElementById('rgProv').value||document.getElementById('rgJalan').value.trim();
-  if(addrEl.value.trim()||hasWilayah) return; // jangan timpa isian manual/komposisi
+  if(hasWilayah) return;
+  const manual=addrEl.value.trim() && addrEl.dataset.auto!=='1';
+  if(manual) return;
   clearTimeout(_rgAddrTimer);
   _rgAddrTimer=setTimeout(async()=>{
+    const hint=document.getElementById('rgGeoHint');
+    if(hint) hint.textContent='Mencari alamat dari koordinat…';
     try{
-      const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=id&lat='+lat+'&lon='+lng);
-      const j=await r.json();
-      const a=j.address||{};
-      const road=a.road||a.pedestrian||a.residential||'';
-      const num=a.house_number?(' No. '+a.house_number):'';
-      const area=a.village||a.suburb||a.neighbourhood||a.hamlet||'';
-      const kec=a.subdistrict||a.city_district||a.municipality||a.county||'';
-      const kota=a.city||a.town||a.regency||'';
-      const parts=[(road?road+num:''),area,kec,kota].filter(Boolean);
-      const uniq=parts.filter((p,i)=>i===0||p.toLowerCase()!==parts[i-1].toLowerCase());
-      const txt=uniq.join(', ')||j.display_name||'';
-      if(txt && !addrEl.value.trim()) addrEl.value=txt;
-    }catch(_){}
-  },500);
+      const j=await api('/sales/reverse-geocode?lat='+encodeURIComponent(lat)+'&lng='+encodeURIComponent(lng));
+      const txt=(j&&j.success&&j.data&&j.data.address)||'';
+      if(txt && (addrEl.dataset.auto==='1' || !addrEl.value.trim())){
+        addrEl.value=txt;
+        addrEl.dataset.auto='1';
+        if(hint) hint.textContent='Alamat terisi dari pin. Bisa diedit.';
+      } else if(!txt && hint){
+        hint.textContent='Alamat tidak ditemukan. Isi manual atau geser pin.';
+      }
+    }catch(_){
+      if(hint) hint.textContent='Gagal mengambil alamat. Isi manual.';
+    }
+  },350);
 }
 function resetUpBox(kind,label){
   const box=document.getElementById('up_'+kind);box.classList.remove('filled');
