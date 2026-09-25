@@ -144,16 +144,14 @@ exports.submit = async (req, res) => {
     }
     const notes = clean(b.notes).slice(0, 500) || null;
 
-    // 3) Anti-spam: tolak duplikat phone yang masih lead < 24 jam
-    const { Op } = require('sequelize');
-    const dup = await RegistrationRequest.findOne({
-      where: {
-        phone: phone,
-        status: { [Op.in]: ['lead', 'survey_request'] },
-        created_at: { [Op.gte]: new Date(Date.now() - 24 * 3600 * 1000) }
-      }
-    });
-    if (dup) return res.status(409).json({ success: false, message: 'Pendaftaran dengan nomor ini sudah masuk dan sedang diproses.' });
+    // 3) Tolak data ganda: nomor/NIK sudah jadi pelanggan atau masih di pipeline
+    const { assertUniqueLead, sendDuplicate } = require('../utils/duplicateGuard');
+    try {
+      await assertUniqueLead({ phone, id_card_number: idCard });
+    } catch (dupErr) {
+      if (sendDuplicate(res, dupErr)) return;
+      throw dupErr;
+    }
 
     let sales = await resolveSales(b.referral_code || req.params.code);
 

@@ -550,7 +550,8 @@
 
         <div class="form-field">
           <label class="flbl">No HP / WA *</label>
-          <input type="text" class="finput" id="custPhone" placeholder="08xx / 628xx">
+          <input type="text" class="finput" id="custPhone" placeholder="08xx / 628xx" onblur="checkCustomerDuplicate('phone')">
+          <div class="form-hint" id="custPhoneDup" hidden></div>
         </div>
         <div class="form-field">
           <label class="flbl">Email</label>
@@ -614,8 +615,9 @@
         <div class="form-sec"><span class="form-sec-t">Alamat</span><span class="form-sec-hint">Wilayah dari data resmi — alamat lengkap tersusun otomatis</span></div>
         <div class="form-field span-all">
           <label class="flbl">No. KTP / NIK</label>
-          <input type="text" class="finput" id="custNik" placeholder="16 digit" maxlength="16" inputmode="numeric" style="font-family:'DM Mono',monospace">
+          <input type="text" class="finput" id="custNik" placeholder="16 digit" maxlength="16" inputmode="numeric" style="font-family:'DM Mono',monospace" onblur="checkCustomerDuplicate('nik')">
           <div class="form-hint">Nomor KTP pelanggan (opsional)</div>
+          <div class="form-hint" id="custNikDup" hidden></div>
         </div>
 
         <!-- ═══ Alamat berjenjang (Provinsi → Kab → Kec → Desa, dari API wilayah) ═══ -->

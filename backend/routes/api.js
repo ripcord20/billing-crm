@@ -260,6 +260,7 @@ router.get('/customers/stats', authenticate, demoGuard, CustomerController.stats
 router.get('/customers/map', authenticate, demoGuard, CustomerController.mapData);
 router.get('/customers/next-id', authenticate, demoGuard, CustomerController.nextCustomerId);
 router.get('/customers/check-id', authenticate, demoGuard, CustomerController.checkCustomerId);
+router.get('/customers/check-duplicate', authenticate, demoGuard, CustomerController.checkDuplicate);
 // Filter per-area (berjenjang) + backfill area dari teks alamat (data lama)
 router.get('/customers/areas', authenticate, demoGuard, CustomerController.areas);
 router.post('/customers/backfill-areas', authenticate, demoGuard, hasPermission('customer_create'), logActivity('update', 'customer'), CustomerController.backfillAreas);
@@ -2523,6 +2524,7 @@ router.get ('/sales/customer-points',    authenticate, demoGuard, salesRoles, Sa
 router.get ('/sales/customers',          authenticate, demoGuard, salesRoles, SalesCtrl.listCustomers);
 router.get ('/sales/registrations',      authenticate, demoGuard, salesRoles, SalesCtrl.listRegistrations);
 router.post('/sales/registrations',      authenticate, demoGuard, salesRoles, SalesCtrl.createRegistration);
+router.get ('/sales/registrations/check-duplicate', authenticate, demoGuard, salesRoles, SalesCtrl.checkDuplicate);
 // Hapus/trash — path statis HARUS sebelum /:id supaya tidak tertelan param
 router.post  ('/sales/registrations/bulk-delete', authenticate, demoGuard, salesRoles, SalesCtrl.bulkDeleteRegistrations);
 router.get   ('/sales/registrations-trash',       authenticate, demoGuard, salesAdminRoles, SalesCtrl.listDeletedRegistrations);
