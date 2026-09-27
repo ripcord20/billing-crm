@@ -446,6 +446,16 @@
 
     // ── Real-time traffic interface + Total Bytes ──
     function fmtbps(bits){ bits=Number(bits)||0; if(bits>=1e9)return (bits/1e9).toFixed(2)+' Gbps'; if(bits>=1e6)return (bits/1e6).toFixed(2)+' Mbps'; if(bits>=1e3)return (bits/1e3).toFixed(1)+' Kbps'; return Math.round(bits)+' bps'; }
+    function isCustomerTunnelIface(name, type){
+      const n=String(name||'').toLowerCase(); const t=String(type||'').toLowerCase();
+      if(/-(out)\d*$/.test(n)||t==='pppoe-out'||/pppoe-out|l2tp-out|pptp-out|sstp-out|ovpn-out/.test(n)) return false;
+      if((n.startsWith('<')&&n.endsWith('>'))||t==='pppoe-in') return true;
+      return n.includes('<pppoe')||n.startsWith('pppoe-')||n.startsWith('pppoe<');
+    }
+    function customerFacingStat(s, type){
+      if(!s||!isCustomerTunnelIface(s.name,type)) return s;
+      return Object.assign({},s,{rxBitsPerSecond:s.txBitsPerSecond||0,txBitsPerSecond:s.rxBitsPerSecond||0});
+    }
     let _iface='', _rxHist=[], _txHist=[], _rtTimer=null, _ifaceLoaded=false, _device=''; const MAXPTS=30;
 
     async function loadDevices(){
@@ -492,7 +502,10 @@
       // Pilih interface sesuai filter; kosong = semua.
       const src=_byteIface?_lastIfaces.filter(i=>i.name===_byteIface):_lastIfaces;
       let totRx=0, totTx=0;
-      src.forEach(function(i){ totRx+=Number(i.rxByte)||0; totTx+=Number(i.txByte)||0; });
+      src.forEach(function(i){
+        if(isCustomerTunnelIface(i.name,i.type)){ totRx+=Number(i.txByte)||0; totTx+=Number(i.rxByte)||0; }
+        else { totRx+=Number(i.rxByte)||0; totTx+=Number(i.txByte)||0; }
+      });
       const dl=fmtBytes(totRx), ul=fmtBytes(totTx);
       document.getElementById('byteDlVal').textContent=dl.val;
       document.getElementById('byteDlUnit').textContent=dl.unit;
@@ -506,7 +519,9 @@
     async function pollTraffic(){
       const j=await api('/api/mikrotik/interfaces/monitor'+devQs());
       if(!j||!j.success){ return; }
-      const stats=j.data||[]; const ifaces=j.interfaces||[];
+      const ifaces=j.interfaces||[];
+      const typeByName={}; ifaces.forEach(function(i){ typeByName[i.name]=i.type; });
+      const stats=(j.data||[]).map(function(s){ return customerFacingStat(s, typeByName[s.name]); });
       updateTotalBytes(ifaces);
       if(!_ifaceLoaded && ifaces.length){
         const sel=document.getElementById('ifaceSel');

@@ -9,6 +9,30 @@ function _withDev(url) {
     : url;
 }
 
+// Tunnel pelanggan (<pppoe-user> / pppoe-in): RX router = upload user, TX router = download user.
+// WAN / pppoe-out tetap RX=download, TX=upload. Jangan terapkan ke *-out.
+function isCustomerTunnelIface(name, type) {
+  const n = String(name || '').toLowerCase();
+  const t = String(type || '').toLowerCase();
+  if (/-(out)\d*$/.test(n) || t === 'pppoe-out' || /pppoe-out|l2tp-out|pptp-out|sstp-out|ovpn-out/.test(n)) {
+    return false;
+  }
+  if ((n.startsWith('<') && n.endsWith('>')) || t === 'pppoe-in') return true;
+  return n.includes('<pppoe') || n.startsWith('pppoe-') || n.startsWith('pppoe<');
+}
+
+function customerFacingStat(s, type) {
+  if (!s) return s;
+  if (!isCustomerTunnelIface(s.name, type)) return s;
+  return {
+    ...s,
+    rxBitsPerSecond: s.txBitsPerSecond || 0,
+    txBitsPerSecond: s.rxBitsPerSecond || 0,
+    rxPacketsPerSecond: s.txPacketsPerSecond || 0,
+    txPacketsPerSecond: s.rxPacketsPerSecond || 0
+  };
+}
+
 const TrafficPage = {
   interfaces: [],
   selected: new Set(),
@@ -82,7 +106,12 @@ const TrafficPage = {
     if (!data?.success) return;
 
     const statsMap = {};
-    data.data.forEach(s => { statsMap[s.name] = s; });
+    const facing = (data.data || []).map((s) => {
+      const iface = this.interfaces.find((i) => i.name === s.name);
+      const norm = customerFacingStat(s, iface && iface.type);
+      statsMap[norm.name] = norm;
+      return norm;
+    });
 
     // Sinkronkan rx/tx rate ke objek interface, reset ke 0 jika tidak ada di statsMap
     this.interfaces.forEach(iface => {
@@ -97,7 +126,7 @@ const TrafficPage = {
     });
 
     this.updateCards(statsMap);
-    this.pushChartData(data.data);
+    this.pushChartData(facing);
     this.updateSummary();
   },
 
