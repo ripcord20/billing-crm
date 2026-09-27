@@ -72,11 +72,16 @@ function openAddUser() {
   document.getElementById('passwordField').required = true;
   document.getElementById('passwordField').placeholder = 'Minimal 6 karakter';
   populateRoleSelect();
-  document.getElementById("userModal").style.display = "flex";
+  hideUserAssignments();
+  const m = document.getElementById('userModal');
+  m.style.display = 'flex';
+  m.classList.add('open');
 }
 
 function closeUserModal() {
-  document.getElementById("userModal").style.display = "none";
+  const m = document.getElementById('userModal');
+  m.style.display = 'none';
+  m.classList.remove('open');
 }
 
 async function editUser(id) {
@@ -93,7 +98,10 @@ async function editUser(id) {
   document.getElementById('passwordField').placeholder = 'Kosongkan jika tidak diubah';
   document.getElementById('passwordField').value = '';
   populateRoleSelect(u.role_id);
-  document.getElementById("userModal").style.display = "flex";
+  const m = document.getElementById('userModal');
+  m.style.display = 'flex';
+  m.classList.add('open');
+  loadUserAssignments(id);
 }
 
 function populateRoleSelect(selectedId = null) {
@@ -139,6 +147,94 @@ async function deleteUser(id, name) {
   const d = await App.api(`/users/${id}`, { method: 'DELETE' });
   if (d?.success) { loadUsers(); App.showToast('User dihapus', 'success'); }
   else App.showToast(d?.message || 'Gagal menghapus', 'error');
+}
+
+function hideUserAssignments() {
+  const wrap = document.getElementById('userAssignWrap');
+  if (wrap) wrap.style.display = 'none';
+}
+
+function fmtAssignDate(v) {
+  if (!v) return '—';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return String(v);
+  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function assignBadge(text) {
+  return `<span class="assign-badge">${esc(text)}</span>`;
+}
+
+const TICKET_STATUS = { open:'Open', in_progress:'Proses', pending:'Pending', resolved:'Selesai', closed:'Ditutup' };
+const TODO_STATUS   = { todo:'To Do', in_progress:'Proses', done:'Selesai' };
+const WO_STATUS     = { pending:'Pending', assigned:'Ditugaskan', in_progress:'Proses', done:'Selesai', cancelled:'Batal' };
+const PRIO_LABEL    = { low:'Rendah', medium:'Sedang', high:'Tinggi', critical:'Kritis' };
+
+function assignEmpty(colspan, text) {
+  return `<tr><td colspan="${colspan}" class="assign-empty">${esc(text)}</td></tr>`;
+}
+
+function renderAssignCount(id, shown, total, noun) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = total > shown ? `${shown} dari ${total} ${noun}` : `${total} ${noun}`;
+}
+
+async function loadUserAssignments(id) {
+  const wrap = document.getElementById('userAssignWrap');
+  if (!wrap) return;
+  wrap.style.display = 'block';
+  const ticketBody = document.getElementById('assignTicketBody');
+  const todoBody   = document.getElementById('assignTodoBody');
+  const woBody     = document.getElementById('assignWoBody');
+  if (ticketBody) ticketBody.innerHTML = assignEmpty(4, 'Memuat...');
+  if (todoBody)   todoBody.innerHTML   = assignEmpty(4, 'Memuat...');
+  if (woBody)     woBody.innerHTML     = assignEmpty(4, 'Memuat...');
+
+  const d = await App.api(`/users/${id}/assignments`);
+  if (!d?.success) {
+    const msg = d?.message || 'Gagal memuat penugasan';
+    if (ticketBody) ticketBody.innerHTML = assignEmpty(4, msg);
+    if (todoBody)   todoBody.innerHTML   = assignEmpty(4, msg);
+    if (woBody)     woBody.innerHTML     = assignEmpty(4, msg);
+    return;
+  }
+
+  const tickets = d.data?.tickets || [];
+  const todos   = d.data?.todos || [];
+  const wos     = d.data?.work_orders || [];
+  const totals  = d.data?.totals || {};
+
+  renderAssignCount('assignTicketCount', tickets.length, totals.tickets || tickets.length, 'tiket');
+  renderAssignCount('assignTodoCount', todos.length, totals.todos || todos.length, 'to-do');
+  renderAssignCount('assignWoCount', wos.length, totals.work_orders || wos.length, 'work order');
+
+  ticketBody.innerHTML = tickets.length
+    ? tickets.map((t) => `<tr>
+        <td><a href="/tickets/${t.id}">${esc(t.ticket_number || ('#' + t.id))}</a></td>
+        <td>${esc(t.title)}${t.customer?.name ? `<div style="font-size:11px;color:#94a3b8;">${esc(t.customer.name)}</div>` : ''}</td>
+        <td>${assignBadge(TICKET_STATUS[t.status] || t.status)}</td>
+        <td>${fmtAssignDate(t.created_at)}</td>
+      </tr>`).join('')
+    : assignEmpty(4, 'Belum ada tiket ditugaskan');
+
+  todoBody.innerHTML = todos.length
+    ? todos.map((t) => `<tr>
+        <td><a href="/todos">${esc(t.title)}</a></td>
+        <td>${assignBadge(TODO_STATUS[t.status] || t.status)}</td>
+        <td>${esc(PRIO_LABEL[t.priority] || t.priority || '—')}</td>
+        <td>${fmtAssignDate(t.due_date)}</td>
+      </tr>`).join('')
+    : assignEmpty(4, 'Belum ada to-do ditugaskan');
+
+  woBody.innerHTML = wos.length
+    ? wos.map((w) => `<tr>
+        <td><a href="/work-orders">${esc(w.wo_number || ('#' + w.id))}</a></td>
+        <td>${esc(w.title)}${w.customer?.name ? `<div style="font-size:11px;color:#94a3b8;">${esc(w.customer.name)}</div>` : ''}</td>
+        <td>${assignBadge(WO_STATUS[w.status] || w.status)}</td>
+        <td>${fmtAssignDate(w.scheduled_date || w.created_at)}</td>
+      </tr>`).join('')
+    : assignEmpty(4, 'Belum ada work order ditugaskan');
 }
 
 function esc(s) {

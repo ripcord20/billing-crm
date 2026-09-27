@@ -1,6 +1,8 @@
-const { User, Role, Permission, RolePermission } = require('../models');
+const { User, Role, Permission, RolePermission, Ticket, Todo, WorkOrder, Customer } = require('../models');
 const { Op } = require('sequelize');
 const { paginateResponse } = require('../utils/helpers');
+
+const ASSIGN_LIMIT = 20;
 
 class UserController {
   /**
@@ -22,6 +24,61 @@ class UserController {
         role: u.role ? (u.role.display_name || u.role.name || '') : ''
       }));
       res.json({ success: true, data });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * Tiket / to-do / work order yang ditugaskan ke akun (bukan yang dibuat akun).
+   * Dipakai modal Edit Akun.
+   */
+  async assignments(req, res) {
+    try {
+      const userId = parseInt(req.params.id, 10);
+      if (!userId) return res.status(400).json({ success: false, message: 'User tidak valid' });
+
+      const user = await User.findByPk(userId, { attributes: ['id', 'name'] });
+      if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+
+      const customerInc = { model: Customer, as: 'customer', attributes: ['id', 'name'], required: false };
+
+      const [tickets, todos, workOrders, ticketTotal, todoTotal, woTotal] = await Promise.all([
+        Ticket.findAll({
+          where: { assigned_to: userId },
+          attributes: ['id', 'ticket_number', 'title', 'type', 'priority', 'status', 'created_at'],
+          include: [customerInc],
+          order: [['created_at', 'DESC']],
+          limit: ASSIGN_LIMIT
+        }),
+        Todo.findAll({
+          where: { assigned_to: userId },
+          attributes: ['id', 'title', 'status', 'priority', 'due_date', 'created_at'],
+          order: [['created_at', 'DESC']],
+          limit: ASSIGN_LIMIT
+        }),
+        WorkOrder.findAll({
+          where: { assigned_user_id: userId },
+          attributes: ['id', 'wo_number', 'title', 'type', 'status', 'priority', 'scheduled_date', 'created_at'],
+          include: [customerInc],
+          order: [['created_at', 'DESC']],
+          limit: ASSIGN_LIMIT
+        }),
+        Ticket.count({ where: { assigned_to: userId } }),
+        Todo.count({ where: { assigned_to: userId } }),
+        WorkOrder.count({ where: { assigned_user_id: userId } })
+      ]);
+
+      res.json({
+        success: true,
+        data: {
+          tickets: tickets.map((t) => t.toJSON()),
+          todos: todos.map((t) => t.toJSON()),
+          work_orders: workOrders.map((w) => w.toJSON()),
+          totals: { tickets: ticketTotal, todos: todoTotal, work_orders: woTotal },
+          limit: ASSIGN_LIMIT
+        }
+      });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }

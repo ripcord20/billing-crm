@@ -242,6 +242,7 @@ router.get('/customer-options', authenticate, demoGuard, (r, s) => CustomerContr
 // ===== USERS =====
 router.get('/users', authenticate, demoGuard, authorize('superadmin', 'admin'), UserController.index);
 router.post('/users', authenticate, demoGuard, authorize('superadmin'), logActivity('create', 'user'), UserController.create);
+router.get('/users/:id/assignments', authenticate, demoGuard, authorize('superadmin', 'admin'), (r, s) => UserController.assignments(r, s));
 router.get('/users/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), UserController.show);
 router.put('/users/:id', authenticate, demoGuard, authorize('superadmin'), logActivity('update', 'user'), UserController.update);
 router.delete('/users/:id', authenticate, demoGuard, authorize('superadmin'), logActivity('delete', 'user'), UserController.destroy);
