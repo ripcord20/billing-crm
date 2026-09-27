@@ -7,6 +7,32 @@ const InfraSync = require('../services/CustomerInfraSyncService');
 const { applyTenantWhere, getTenantId, assertCustomerTenant, isTenantOwner } = require('../utils/tenantScope');
 
 class CustomerController {
+  /**
+   * Daftar pelanggan ringkas untuk dropdown (tiket / work order).
+   * Hanya id + kode + nama — tanpa data billing.
+   */
+  async options(req, res) {
+    try {
+      const where = applyTenantWhere(req, {});
+      const q = String(req.query.q || '').trim();
+      if (q) {
+        where[Op.or] = [
+          { name: { [Op.like]: `%${q}%` } },
+          { customer_id: { [Op.like]: `%${q}%` } }
+        ];
+      }
+      const rows = await Customer.findAll({
+        where,
+        attributes: ['id', 'customer_id', 'name'],
+        order: [['name', 'ASC']],
+        limit: 500
+      });
+      res.json({ success: true, data: rows });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
   async index(req, res) {
     try {
       const { page = 1, limit = 20, search, status, package_id, province, regency, district } = req.query;

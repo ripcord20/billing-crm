@@ -337,6 +337,14 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 0 0-2 2v3a2 2 0 0 1 0 4v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3a2 2 0 0 1 0-4V7a2 2 0 0 0-2-2z"/></svg>
       Tiket
     </a>
+    <a class="mdr-item<%= _on('m-todo') %>" href="/todos?create=1">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      To Do List
+    </a>
+    <a class="mdr-item<%= _on('m-wo') %>" href="/work-orders?create=1">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></svg>
+      Work Order
+    </a>
 
     <div class="mdr-group">Laporan</div>
     <a class="mdr-item<%= _on('m-keuangan') %>" href="/mobile/keuangan">
@@ -444,6 +452,21 @@
     <span class="fabsheet-tx">Generate Invoice<span class="fabsheet-sub">Semua · periode · pelanggan</span></span>
     <span class="fabsheet-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
   </button>
+  <a class="fabsheet-item" href="/mobile/ticket">
+    <span class="fabsheet-ic" style="background:#e8f0ff;color:#2563eb;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 0 0-2 2v3a2 2 0 0 1 0 4v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3a2 2 0 0 1 0-4V7a2 2 0 0 0-2-2z"/></svg></span>
+    <span class="fabsheet-tx">Buat Tiket<span class="fabsheet-sub">Gangguan, request, instalasi</span></span>
+    <span class="fabsheet-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+  </a>
+  <a class="fabsheet-item" href="/todos?create=1">
+    <span class="fabsheet-ic" style="background:#e8f8ff;color:#0ea5e9;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+    <span class="fabsheet-tx">Buat To-do<span class="fabsheet-sub">Tugas follow-up tim</span></span>
+    <span class="fabsheet-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+  </a>
+  <a class="fabsheet-item" href="/work-orders?create=1">
+    <span class="fabsheet-ic" style="background:#eef4ff;color:#1d4ed8;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></svg></span>
+    <span class="fabsheet-tx">Buat Work Order<span class="fabsheet-sub">Tugas lapangan teknisi</span></span>
+    <span class="fabsheet-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+  </a>
   <a class="fabsheet-item" href="/mobile/queue?add=1">
     <span class="fabsheet-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
     <span class="fabsheet-tx">Tambah Simple Queue<span class="fabsheet-sub">Buat limit bandwidth baru</span></span>

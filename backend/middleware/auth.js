@@ -122,10 +122,7 @@ const hasPermission = (...permissions) => {
     //    perlu seed permission ke DB. Role 'finance' kini boleh mengelola
     //    pelanggan penuh (create/update/delete) seperti admin.
     const roleName = (req.user.role?.name || '').toLowerCase();
-    const ROLE_GRANTS = {
-      finance: ['customer_view', 'customer_create', 'customer_update', 'customer_delete'],
-      tenant_owner: ['customer_view', 'customer_create', 'customer_update'],
-    };
+    const { ROLE_GRANTS } = require('../utils/userAccess');
     const granted = ROLE_GRANTS[roleName] || [];
     if (granted.length && permissions.some(p => granted.includes(p))) {
       return next();

@@ -1197,6 +1197,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const validValues = Array.from(sel.options).map(o => o.value);
       if (validValues.includes(status)) sel.value = status;
     }
+    if (params.get('create') === '1') showCreateModal();
   } catch(_) { /* abaikan */ }
 
   loadTickets();

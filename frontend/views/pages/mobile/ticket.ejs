@@ -403,7 +403,7 @@
 
     async function loadTechnicians(){
       if(_technicians) return _technicians;
-      const r=await api('/api/users?limit=100');
+      const r=await api('/api/assignees');
       const rows=(r&&r.success&&Array.isArray(r.data))?r.data:(r&&Array.isArray(r.data&&r.data.rows)?r.data.rows:(Array.isArray(r)?r:[]));
       _technicians=Array.isArray(rows)?rows:[];
       return _technicians;
