@@ -60,9 +60,9 @@ async function loadUsers() {
 
 async function loadCustomers() {
   try {
-    const r = await fetch(`${API}/customers?limit=500`, { headers: authH() });
+    const r = await fetch(`${API}/customer-options`, { headers: authH() });
     const j = await r.json();
-    allCustomers = j.success ? (j.data?.customers||j.data||[]) : [];
+    allCustomers = j.success && Array.isArray(j.data) ? j.data : [];
     const opts = '<option value="">— Pilih customer (opsional) —</option>' +
       allCustomers.map(c=>`<option value="${c.id}">[${esc(c.customer_id)}] ${esc(c.name)}</option>`).join('');
     document.getElementById('f_customer_id').innerHTML = opts;
@@ -639,5 +639,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById(id)?.addEventListener('change',()=>{ activeStatusFilter=''; renderTable(); });
   });
 
-  loadAll();
+  loadAll().then(() => {
+    try {
+      if (new URLSearchParams(location.search).get('create') === '1') openAdd();
+    } catch (_) { /* abaikan */ }
+  });
 });
