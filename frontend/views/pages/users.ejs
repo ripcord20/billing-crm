@@ -6,25 +6,6 @@
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
-  <style>
-    #userModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;}
-    #userModal.open{display:flex;}
-    .user-modal-sheet{
-      background:#fff;border-radius:12px;padding:28px;width:100%;max-width:560px;
-      max-height:90vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,0.15);
-    }
-    .acc-card{border:1px solid #e8edf3;border-radius:14px;padding:14px;margin-bottom:14px;background:#fff;}
-    .acc-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;}
-    .acc-title{font-size:14px;font-weight:700;color:#0f172a;}
-    .acc-count{font-size:12px;color:#64748b;font-weight:600;}
-    .assign-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-    .assign-table{width:100%;border-collapse:collapse;font-size:12px;}
-    .assign-table th{text-align:left;color:#64748b;font-weight:600;padding:6px 4px;border-bottom:1px solid #eef2f7;white-space:nowrap;}
-    .assign-table td{padding:7px 4px;border-bottom:1px solid #f1f5f9;color:#1e293b;vertical-align:top;}
-    .assign-table a{color:#4f46e5;text-decoration:none;font-weight:600;}
-    .assign-empty{padding:12px 4px;color:#94a3b8;font-size:12px;}
-    .assign-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:#f1f5f9;color:#334155;}
-  </style>
 </head>
 <body>
 <div class="app-layout">
@@ -60,8 +41,8 @@
 </div>
 
 <!-- Modal -->
-<div id="userModal">
-  <div class="user-modal-sheet">
+<div id="userModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:28px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
       <h3 id="userModalTitle" style="font-size:16px;font-weight:600;margin:0;">Tambah User</h3>
       <button onclick="closeUserModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#64748b;">x</button>
@@ -89,46 +70,6 @@
           <option value="">-- Pilih Role --</option>
         </select>
       </div>
-
-      <div id="userAssignWrap" style="display:none;">
-        <div class="acc-card">
-          <div class="acc-head">
-            <div class="acc-title">Tiket ditugaskan</div>
-            <div class="acc-count" id="assignTicketCount">0</div>
-          </div>
-          <div class="assign-table-wrap">
-            <table class="assign-table">
-              <thead><tr><th>No</th><th>Judul</th><th>Status</th><th>Tanggal</th></tr></thead>
-              <tbody id="assignTicketBody"></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="acc-card">
-          <div class="acc-head">
-            <div class="acc-title">To Do List ditugaskan</div>
-            <div class="acc-count" id="assignTodoCount">0</div>
-          </div>
-          <div class="assign-table-wrap">
-            <table class="assign-table">
-              <thead><tr><th>Judul</th><th>Status</th><th>Prioritas</th><th>Jatuh tempo</th></tr></thead>
-              <tbody id="assignTodoBody"></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="acc-card">
-          <div class="acc-head">
-            <div class="acc-title">Work Order ditugaskan</div>
-            <div class="acc-count" id="assignWoCount">0</div>
-          </div>
-          <div class="assign-table-wrap">
-            <table class="assign-table">
-              <thead><tr><th>No</th><th>Judul</th><th>Status</th><th>Jadwal</th></tr></thead>
-              <tbody id="assignWoBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
       <div style="display:flex;gap:10px;justify-content:flex-end;">
         <button type="button" onclick="closeUserModal()" class="btn btn-secondary">Batal</button>
         <button type="submit" class="btn btn-primary">Simpan</button>

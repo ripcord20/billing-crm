@@ -241,8 +241,8 @@ router.get('/customer-options', authenticate, demoGuard, (r, s) => CustomerContr
 
 // ===== USERS =====
 router.get('/users', authenticate, demoGuard, authorize('superadmin', 'admin'), UserController.index);
+router.get('/users/access-catalog', authenticate, demoGuard, authorize('superadmin', 'admin'), (r, s) => UserController.accessCatalog(r, s));
 router.post('/users', authenticate, demoGuard, authorize('superadmin'), logActivity('create', 'user'), UserController.create);
-router.get('/users/:id/assignments', authenticate, demoGuard, authorize('superadmin', 'admin'), (r, s) => UserController.assignments(r, s));
 router.get('/users/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), UserController.show);
 router.put('/users/:id', authenticate, demoGuard, authorize('superadmin'), logActivity('update', 'user'), UserController.update);
 router.delete('/users/:id', authenticate, demoGuard, authorize('superadmin'), logActivity('delete', 'user'), UserController.destroy);
@@ -2446,23 +2446,23 @@ router.post('/topology/refresh-all',         authenticate, demoGuard, TopologyCo
 const TodoController = require('../controllers/TodoController');
 router.get('/todos/stats',   authenticate, demoGuard, (r,s) => TodoController.stats(r,s));
 router.get('/todos',         authenticate, demoGuard, (r,s) => TodoController.index(r,s));
-router.post('/todos',        authenticate, demoGuard, (r,s) => TodoController.create(r,s));
+router.post('/todos',        authenticate, demoGuard, hasPermission('todo_create'), (r,s) => TodoController.create(r,s));
 router.get('/todos/:id',     authenticate, demoGuard, (r,s) => TodoController.show(r,s));
-router.put('/todos/:id',     authenticate, demoGuard, (r,s) => TodoController.update(r,s));
-router.patch('/todos/:id/status', authenticate, demoGuard, (r,s) => TodoController.updateStatus(r,s));
-router.delete('/todos/:id',  authenticate, demoGuard, (r,s) => TodoController.destroy(r,s));
+router.put('/todos/:id',     authenticate, demoGuard, hasPermission('todo_update'), (r,s) => TodoController.update(r,s));
+router.patch('/todos/:id/status', authenticate, demoGuard, hasPermission('todo_update'), (r,s) => TodoController.updateStatus(r,s));
+router.delete('/todos/:id',  authenticate, demoGuard, hasPermission('todo_delete'), (r,s) => TodoController.destroy(r,s));
 
 
 // ===== WORK ORDERS =====
 const WOCtrl = require('../controllers/WorkOrderController');
 router.get   ('/work-orders/stats',              authenticate, demoGuard, WOCtrl.stats);
 router.get   ('/work-orders',                    authenticate, demoGuard, WOCtrl.index);
-router.post  ('/work-orders',                    authenticate, demoGuard, WOCtrl.create);
+router.post  ('/work-orders',                    authenticate, demoGuard, hasPermission('work_order_create'), WOCtrl.create);
 router.get   ('/work-orders/:id',                authenticate, demoGuard, WOCtrl.show);
-router.put   ('/work-orders/:id',                authenticate, demoGuard, WOCtrl.update);
-router.post  ('/work-orders/:id/photos',         authenticate, demoGuard, WOCtrl.uploadMiddleware, WOCtrl.uploadPhotos);
-router.delete('/work-orders/:id/photos/:photoIndex', authenticate, demoGuard, WOCtrl.deletePhoto);
-router.delete('/work-orders/:id',                authenticate, demoGuard, WOCtrl.destroy);
+router.put   ('/work-orders/:id',                authenticate, demoGuard, hasPermission('work_order_update'), WOCtrl.update);
+router.post  ('/work-orders/:id/photos',         authenticate, demoGuard, hasPermission('work_order_update'), WOCtrl.uploadMiddleware, WOCtrl.uploadPhotos);
+router.delete('/work-orders/:id/photos/:photoIndex', authenticate, demoGuard, hasPermission('work_order_update'), WOCtrl.deletePhoto);
+router.delete('/work-orders/:id',                authenticate, demoGuard, hasPermission('work_order_delete'), WOCtrl.destroy);
 
 // ===== ANNOUNCEMENTS (Pengumuman Portal) =====
 const AnnCtrl = require('../controllers/AnnouncementController');
