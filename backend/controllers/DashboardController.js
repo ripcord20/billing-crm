@@ -1144,16 +1144,19 @@ class DashboardController {
             order: [['created_at', 'DESC']],
             limit: 20
           });
-          evs.forEach((e) => {
+          const { enrichAttenuationRows } = require('../utils/onuDisplayName');
+          const named = await enrichAttenuationRows(evs);
+          named.forEach((e) => {
             const before = e.rx_before == null ? 'LOS' : (Number(e.rx_before).toFixed(1) + ' dBm');
             const after = e.rx_after == null ? 'LOS' : (Number(e.rx_after).toFixed(1) + ' dBm');
             const dlt = e.delta_db == null ? '' : ('+' + e.delta_db + ' dB');
+            const who = e.onu_name || e.display_name || e.serial_number || 'ONT';
             alerts.push({
               kind: 'ont_attenuation',
               severity: e.severity === 'critical' ? 'critical' : 'warning',
               icon: 'ont',
-              title: e.serial_number || 'ONT',
-              detail: `Redaman naik ${dlt} • ${before} → ${after}${e.olt_name ? ' • ' + e.olt_name : ''}`,
+              title: who,
+              detail: `Redaman naik ${dlt} • ${before} → ${after}${e.serial_number && e.serial_number !== who ? ' • SN ' + e.serial_number : ''}${e.olt_name ? ' • ' + e.olt_name : ''}`,
               time: e.created_at,
               link: '/monitoring/olt-management',
             });

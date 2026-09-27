@@ -1812,7 +1812,7 @@ const OltMgmt = {
       box.innerHTML = `<table class="ot-mini" style="width:100%;font-size:12px;border-collapse:collapse">
         <thead><tr>
           <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border,#e2e8f0)">Waktu</th>
-          <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border,#e2e8f0)">Serial</th>
+          <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border,#e2e8f0)">Nama</th>
           <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border,#e2e8f0)">OLT</th>
           <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border,#e2e8f0)">Sebelum</th>
           <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border,#e2e8f0)">Sesudah</th>
@@ -1824,9 +1824,14 @@ const OltMgmt = {
           const sev = r.severity === 'critical' ? '#b91c1c' : '#b45309';
           const label = r.quality_after === 'los' ? 'LOS' : (r.severity || '');
           const dlt = r.delta_db == null ? '—' : ('+' + r.delta_db + ' dB');
+          const nama = r.onu_name || r.display_name || r.serial_number || '—';
+          const sn = r.serial_number || '';
+          const namaCell = sn && nama !== sn
+            ? `${esc(nama)}<div class="mut mono" style="font-size:11px">${esc(sn)}</div>`
+            : `<span class="mono">${esc(nama)}</span>`;
           return `<tr>
             <td style="padding:6px 8px">${esc(t)}</td>
-            <td style="padding:6px 8px" class="mono">${esc(r.serial_number || '—')}</td>
+            <td style="padding:6px 8px">${namaCell}</td>
             <td style="padding:6px 8px">${esc(r.olt_name || '—')}</td>
             <td style="padding:6px 8px">${esc(fmtRx(r.rx_before))}</td>
             <td style="padding:6px 8px">${esc(fmtRx(r.rx_after))}</td>

@@ -230,7 +230,9 @@ class OntController {
         order: [['created_at', 'DESC']],
         limit: Math.min(500, parseInt(req.query.limit, 10) || 100)
       });
-      res.json({ success: true, data: rows, days });
+      const { enrichAttenuationRows } = require('../utils/onuDisplayName');
+      const data = await enrichAttenuationRows(rows);
+      res.json({ success: true, data, days });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
