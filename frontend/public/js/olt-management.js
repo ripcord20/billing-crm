@@ -37,6 +37,7 @@ const OltMgmt = {
       if (chk && saved) { chk.checked = true; this.setAutoRefresh(true, true); }
     } catch (e) {}
     await this.loadOlts();
+    this.loadAttenuationEventList();
   },
 
   bindEvents() {
@@ -1789,6 +1790,7 @@ const OltMgmt = {
       const res = await App.api(`/olt-mgmt/${this.activeOltId}/onu/detail?if=${encodeURIComponent(onuIf)}`);
       if (!res?.success) { body.innerHTML = `<div class="ot-alert err show">${esc(res?.message || 'Gagal')}</div>`; return; }
       body.innerHTML = this._renderDetail(res.data);
+      this._loadAttenuationEvents(res.data);
     } catch (e) {
       body.innerHTML = `<div class="ot-alert err show">${esc(e.message)}</div>`;
     }
@@ -1830,7 +1832,94 @@ const OltMgmt = {
         <div class="det-cell"><div class="det-k">Jarak (Distance)</div><div class="det-v">${d.distance_m != null ? d.distance_m + ' m' : '—'}</div></div>
         <div class="det-cell"><div class="det-k">Online Duration</div><div class="det-v">${esc(d.online_duration||'—')}</div></div>
         <div class="det-cell full"><div class="det-k">Deskripsi</div><div class="det-v">${esc(d.description||'—')}</div></div>
-      </div>`;
+      </div>
+      <div id="attEventBox"></div>`;
+  },
+
+  async loadAttenuationEventList() {
+    const box = document.getElementById('attEventListBox');
+    if (!box) return;
+    const hint = document.getElementById('attEventListHint');
+    try {
+      const res = await App.api('/ont/attenuation-events?days=30&limit=50');
+      const rows = (res && res.success && Array.isArray(res.data)) ? res.data : [];
+      if (hint) hint.textContent = rows.length ? (rows.length + ' kejadian (30 hari)') : 'belum ada event';
+      if (!rows.length) {
+        box.innerHTML = '<div class="ot-empty" style="padding:24px 10px"><p>Belum ada event naiknya redaman. Tercatat otomatis saat sinyal memburuk ≥2 dB — tidak perlu buka ONU satu-satu.</p></div>';
+        return;
+      }
+      const fmtRx = (v) => (v == null || v === '' ? 'LOS' : (Number(v).toFixed(1) + ' dBm'));
+      box.innerHTML = `<div class="att-event-scroll"><table class="ot-mini att-event-table">
+        <thead><tr>
+          <th>Waktu</th>
+          <th>Serial</th>
+          <th>OLT</th>
+          <th>Sebelum</th>
+          <th>Sesudah</th>
+          <th>Naik</th>
+          <th>Tingkat</th>
+        </tr></thead>
+        <tbody>${rows.map((r) => {
+          const t = r.created_at ? new Date(r.created_at).toLocaleString('id-ID') : '—';
+          const sev = r.severity === 'critical' ? '#b91c1c' : '#b45309';
+          const label = r.quality_after === 'los' ? 'LOS' : (r.severity || '');
+          const dlt = r.delta_db == null ? '—' : ('+' + r.delta_db + ' dB');
+          return `<tr>
+            <td>${esc(t)}</td>
+            <td class="mono">${esc(r.serial_number || '—')}</td>
+            <td>${esc(r.olt_name || '—')}</td>
+            <td>${esc(fmtRx(r.rx_before))}</td>
+            <td>${esc(fmtRx(r.rx_after))}</td>
+            <td>${esc(dlt)}</td>
+            <td style="color:${sev};font-weight:600">${esc(label)}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`;
+    } catch (_) {
+      if (hint) hint.textContent = '';
+      box.innerHTML = '<div class="ot-empty" style="padding:24px 10px"><p>Gagal memuat daftar event redaman.</p></div>';
+    }
+  },
+
+  async _loadAttenuationEvents(d) {
+    const box = document.getElementById('attEventBox');
+    if (!box) return;
+    const serial = (d && d.serial_number) ? String(d.serial_number).trim() : '';
+    if (!serial) { box.innerHTML = ''; return; }
+    try {
+      const res = await App.api('/ont/attenuation-events?serial=' + encodeURIComponent(serial) + '&days=30&limit=20');
+      const rows = (res && res.success && Array.isArray(res.data)) ? res.data : [];
+      if (!rows.length) {
+        box.innerHTML = '<div class="info-note" style="margin-top:14px">Belum ada event naiknya redaman (30 hari). Tercatat otomatis saat sinyal memburuk ≥2 dB atau melewati batas.</div>';
+        return;
+      }
+      const fmtRx = (v) => (v == null || v === '' ? 'LOS' : (Number(v).toFixed(1) + ' dBm'));
+      box.innerHTML = `<div class="det-k" style="margin:16px 0 8px">Histori naiknya redaman <span class="mut">(disimpan 30 hari)</span></div>
+        <div class="att-event-scroll"><table class="ot-mini att-event-table">
+          <thead><tr>
+            <th>Waktu</th>
+            <th>Sebelum</th>
+            <th>Sesudah</th>
+            <th>Naik</th>
+            <th>Tingkat</th>
+          </tr></thead>
+          <tbody>${rows.map((r) => {
+            const t = r.created_at ? new Date(r.created_at).toLocaleString('id-ID') : '—';
+            const sev = r.severity === 'critical' ? '#b91c1c' : '#b45309';
+            const label = r.quality_after === 'los' ? 'LOS' : (r.severity || '');
+            const dlt = r.delta_db == null ? '—' : ('+' + r.delta_db + ' dB');
+            return `<tr>
+              <td>${esc(t)}</td>
+              <td>${esc(fmtRx(r.rx_before))}</td>
+              <td>${esc(fmtRx(r.rx_after))}</td>
+              <td>${esc(dlt)}</td>
+              <td style="color:${sev};font-weight:600">${esc(label)}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`;
+    } catch (_) {
+      box.innerHTML = '';
+    }
   },
 
   closeDetail() { document.getElementById('detailModal').classList.remove('show'); },
