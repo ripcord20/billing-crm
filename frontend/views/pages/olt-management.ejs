@@ -510,9 +510,33 @@
     .rxq-detail-close { width:28px; height:28px; border:1px solid #e2e8f0; border-radius:8px; background:#fff; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; color:#64748b; }
     .rxq-detail-close:hover { background:#f8fafc; border-color:#cbd5e1; }
     .rxq-detail-close svg { width:15px; height:15px; }
-    .rxq-detail-body { max-height:320px; overflow:auto; }
-    .rxq-table-wrap { overflow-x:auto; border:1px solid #eef2f7; border-radius:12px; }
-    .rxq-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+    .rxq-detail-body { max-height:320px; overflow:auto; -webkit-overflow-scrolling:touch; }
+    .rxq-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; touch-action:pan-x pan-y; overscroll-behavior-x:contain; max-width:100%; border:1px solid #eef2f7; border-radius:12px; }
+    .rxq-table { width:max-content; min-width:100%; border-collapse:collapse; font-size:12.5px; }
+
+    /* Tabel event redaman: 7 kolom lebih lebar dari HP — geser horizontal */
+    .att-event-box { padding:4px 16px 16px; min-width:0; }
+    .att-event-scroll {
+      width:100%;
+      overflow-x:auto;
+      overflow-y:hidden;
+      -webkit-overflow-scrolling:touch;
+      touch-action:pan-x pan-y;
+      overscroll-behavior-x:contain;
+      max-width:100%;
+      margin:0;
+      padding:0 0 6px;
+    }
+    .att-event-scroll table.att-event-table,
+    .att-event-scroll table.ot-mini {
+      width:max-content;
+      min-width:640px;
+      border-collapse:collapse;
+      font-size:12px;
+    }
+    .att-event-scroll th,
+    .att-event-scroll td { white-space:nowrap; padding:6px 8px; text-align:left; }
+    .att-event-scroll thead th { border-bottom:1px solid var(--border,#e2e8f0); font-weight:700; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
     .rxq-table thead th { position:sticky; top:0; background:#f8fafc; z-index:1;
       text-align:left; padding:9px 14px; font-size:11px; font-weight:700; color:#94a3b8;
       text-transform:uppercase; letter-spacing:.03em; border-bottom:1px solid #eef2f7; white-space:nowrap; }
@@ -695,6 +719,18 @@
               </button>
             </div>
             <div class="rxq-detail-body" id="rxqDetailBody"></div>
+          </div>
+        </div>
+
+        <div class="ot-panel" style="margin-top:16px">
+          <div class="ot-panel-hdr">
+            <div class="ot-panel-hdr-l">
+              <h2>Event naiknya redaman</h2>
+            </div>
+            <span class="card-sub" id="attEventListHint">memuat…</span>
+          </div>
+          <div class="att-event-box" id="attEventListBox">
+            <div class="ot-empty" style="padding:24px 10px"><p>Memuat daftar event…</p></div>
           </div>
         </div>
       </section>
@@ -1342,6 +1378,6 @@
 
 <script src="/vendor/apexcharts/apexcharts.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/olt-management.js"></script>
+<script src="/js/olt-management.js?v=attscroll1"></script>
 </body>
 </html>
