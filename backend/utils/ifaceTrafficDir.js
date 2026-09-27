@@ -1,12 +1,12 @@
 'use strict';
 
 /**
- * Arah traffic untuk UI Download/Upload.
+ * Arah traffic untuk UI Download/Upload (sudut pelanggan).
  *
- * WAN / pppoe-out: RX router = download, TX router = upload.
- * Tunnel pelanggan (<pppoe-user> / pppoe-in): RX router = upload user,
- * TX router = download user. Setelah customerFacingStat(),
- * rx* = download pelanggan, tx* = upload pelanggan.
+ * WAN / uplink / pppoe-out: RX = download, TX = upload.
+ * Tunnel pelanggan + port downlink (ether ke switch, sfp DOWNLINK, VLAN GPON):
+ *   TX router = download pelanggan, RX router = upload pelanggan.
+ * Setelah customerFacingStat(), rx* = download, tx* = upload.
  */
 
 function isCustomerTunnelIface(name, type) {
@@ -19,9 +19,26 @@ function isCustomerTunnelIface(name, type) {
   return n.includes('<pppoe') || n.startsWith('pppoe-') || n.startsWith('pppoe<');
 }
 
-function customerFacingStat(s, type) {
+function isUplinkFacing(name, type, comment) {
+  const n = String(name || '').toLowerCase();
+  const t = String(type || '').toLowerCase();
+  const blob = `${n} ${String(comment || '').toLowerCase()}`;
+  if (/-(out)\d*$/.test(n) || t === 'pppoe-out' || /pppoe-out|l2tp-out|pptp-out|sstp-out|ovpn-out/.test(n)) {
+    return true;
+  }
+  return /uplink|\bwan\b|\binet\b|internet|innercity/.test(blob);
+}
+
+function isCustomerFacingIface(name, type, comment) {
+  if (isUplinkFacing(name, type, comment)) return false;
+  if (isCustomerTunnelIface(name, type)) return true;
+  const blob = `${String(name || '')} ${String(comment || '')}`.toLowerCase();
+  return /downlink|crs\d*|gpon|olt|pelanggan|hsgq|hioso|c-data|cdata|hisos|hisfocus/.test(blob);
+}
+
+function customerFacingStat(s, type, comment) {
   if (!s) return s;
-  if (!isCustomerTunnelIface(s.name, type)) return s;
+  if (!isCustomerFacingIface(s.name, type, comment)) return s;
   return {
     ...s,
     rxBitsPerSecond: s.txBitsPerSecond || 0,
@@ -33,4 +50,9 @@ function customerFacingStat(s, type) {
   };
 }
 
-module.exports = { isCustomerTunnelIface, customerFacingStat };
+module.exports = {
+  isCustomerTunnelIface,
+  isUplinkFacing,
+  isCustomerFacingIface,
+  customerFacingStat,
+};
