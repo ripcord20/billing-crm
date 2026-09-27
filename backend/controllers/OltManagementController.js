@@ -33,6 +33,7 @@ const CdataOltService = require('../services/CdataOltService');
 const HiosoOltService = require('../services/HiosoOltService');
 const ZimmlinkOltService = require('../services/ZimmlinkOltService');
 const HsgqEponOltService = require('../services/HsgqEponOltService');
+const HsgqOltService = require('../services/HsgqOltService');
 const ZteSnmpService = require('../services/ZteSnmpService');
 const ConfigCrypto = require('../utils/ConfigCrypto');
 const oltQueue = require('../services/OltQueue');
@@ -179,11 +180,27 @@ function _serialize(svc, cfg) {
   return svc;
 }
 
-// SNMP tersedia untuk ZTE bila dikonfigurasi. Dipakai untuk operasi BACA.
+function isHsgq(brand) { return String(brand || '').toLowerCase() === 'hsgq'; }
+
+// SNMP baca: ZTE (jika diaktifkan) atau HSGQ (MIB + overlay IGC untuk redaman presisi).
 function snmpAvailable(cfg) {
-  return isZteStyle(cfg.brand) && cfg.snmpEnabled && cfg.snmpCommunity;
+  const comm = cfg.snmpCommunity || cfg.community || '';
+  if (isHsgq(cfg.brand)) return true;
+  return isZteStyle(cfg.brand) && cfg.snmpEnabled && !!comm;
 }
 function makeSnmp(cfg) {
+  if (isHsgq(cfg.brand)) {
+    return new HsgqOltService({
+      host:      cfg.host,
+      community: cfg.snmpCommunity || cfg.community || 'public',
+      port:      cfg.snmpPort || 161,
+      timeout:   cfg.timeout || 15000,
+      name:      cfg.name || cfg.host,
+      mibMode:   cfg.mibMode || 'auto',
+      username:  cfg.username || '',
+      password:  cfg.password || '',
+    });
+  }
   return new ZteSnmpService({
     host: cfg.host,
     snmpCommunity: cfg.snmpCommunity,

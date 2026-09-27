@@ -178,7 +178,7 @@ const OntPage = (() => {
     const color = rxPower >= -23 ? 'var(--ot-green)' : rxPower >= -27 ? 'var(--ot-amber)' : 'var(--ot-red)';
     return `<div class="signal-wrap ${cls}">
       <div class="signal-track"><div class="signal-fill" style="width:${pct}%"></div></div>
-      <span class="signal-val" style="color:${color}">${rxPower.toFixed(1)} dBm</span>
+      <span class="signal-val" style="color:${color}">${Number(rxPower).toFixed(4).replace(/0+$/, '').replace(/\.$/, '')} dBm</span>
     </div>`;
   }
 

@@ -289,7 +289,7 @@ class ZteSnmpService {
     // Bila masih positif besar (encoding 0.002 dBm + offset), abaikan kalibrasi rumit:
     // batasi ke rentang wajar -40..0
     if (n > 5) return null;          // nilai tak wajar → anggap tidak ada bacaan
-    return Math.round(n * 100) / 100;
+    return parseFloat(n.toFixed(4));
   }
 
   _ticksToStr(ticks) {

@@ -25,10 +25,10 @@ class GenieacsService {
     // Nilai normal RX: -50 sampai 0 dBm
     // Nilai normal TX: 0 sampai 10 dBm
     // Jika nilai absolut > 100, kemungkinan dalam satuan 0.001 dBm
-    if (Math.abs(n) > 100) return (n / 1000).toFixed(2);
+    if (Math.abs(n) > 100) return (n / 1000).toFixed(4);
     // Jika nilai absolut > 50 tapi <= 100, kemungkinan 0.01 dBm
-    if (Math.abs(n) > 50)  return (n / 100).toFixed(2);
-    return n.toFixed(2);
+    if (Math.abs(n) > 50)  return (n / 100).toFixed(4);
+    return n.toFixed(4);
   }
 
   // Normalisasi nilai power dBm dari device
@@ -40,21 +40,21 @@ class GenieacsService {
     if (isNaN(n)) return null;
 
     // Jika sudah dalam range normal dBm (-50 s/d 15), langsung pakai
-    if (n >= -50 && n <= 15) return n.toFixed(2);
+    if (n >= -50 && n <= 15) return n.toFixed(4);
 
     if (type === 'tx') {
       // TX Power: raw dalam 0.0001 mW (μW×10)
       // Formula: 10 * log10(raw / 10000)
       if (n > 0 && n > 100) {
         const mw = n / 10000;
-        return (10 * Math.log10(mw)).toFixed(2);
+        return (10 * Math.log10(mw)).toFixed(4);
       }
     }
 
     // RX Power: raw dalam 0.001 dBm → dibagi 1000
-    if (Math.abs(n) > 100) return (n / 1000).toFixed(2);
-    if (Math.abs(n) > 15)  return (n / 100).toFixed(2);
-    return n.toFixed(2);
+    if (Math.abs(n) > 100) return (n / 1000).toFixed(4);
+    if (Math.abs(n) > 15)  return (n / 100).toFixed(4);
+    return n.toFixed(4);
   }
 
     _getAxios() {

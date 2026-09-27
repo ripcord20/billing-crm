@@ -2186,7 +2186,7 @@ async function loadSignal() {
     var rx = parseFloat(d.rx_power), rxC = isNaN(rx)?'':rx>-25?'sig-good':rx>-28?'sig-warn':'sig-bad';
     var temp = d.temperature?parseFloat(d.temperature):null, tC = temp===null?'':temp<50?'sig-good':temp<60?'sig-warn':'sig-bad';
     document.getElementById('signalRow').innerHTML =
-      '<div class="sig-card"><div class="sig-val ' + rxC + '">' + (isNaN(rx)?'—':rx.toFixed(1)) + ' <small style="font-size:12px;font-weight:600">dBm</small></div><div class="sig-lbl">RX Power</div></div>' +
+      '<div class="sig-card"><div class="sig-val ' + rxC + '">' + (isNaN(rx)?'—':rx.toFixed(4).replace(/0+$/,'').replace(/\.$/,'')) + ' <small style="font-size:12px;font-weight:600">dBm</small></div><div class="sig-lbl">RX Power</div></div>' +
       '<div class="sig-card"><div class="sig-val ' + tC + '">' + (temp!==null?temp.toFixed(0):'—') + ' <small style="font-size:12px;font-weight:600">°C</small></div><div class="sig-lbl">Suhu ONT</div></div>';
     document.getElementById('btnReboot').style.display = '';
   } catch(e) { console.error('Signal:', e); }
@@ -2302,7 +2302,7 @@ async function loadWifi() {
     html += '<div class="info-item"><div class="ii-label">Status</div><div class="ii-value" style="color:' + (d.online ? 'var(--green)' : 'var(--red)') + '"><span class="status-dot ' + (d.online ? 'dot-green' : 'dot-red') + '"></span>' + (d.online ? 'Online' : 'Offline') + '</div></div>';
     html += '<div class="info-item"><div class="ii-label">Uptime</div><div class="ii-value">' + (d.uptime || '—') + '</div></div>';
     if (d.rx_power !== null && d.rx_power !== undefined) {
-      html += '<div class="info-item"><div class="ii-label">RX Power</div><div class="ii-value ' + rxClass + '">' + parseFloat(d.rx_power).toFixed(1) + ' dBm</div></div>';
+      html += '<div class="info-item"><div class="ii-label">RX Power</div><div class="ii-value ' + rxClass + '">' + parseFloat(d.rx_power).toFixed(4).replace(/0+$/,'').replace(/\.$/,'') + ' dBm</div></div>';
     }
     if (d.temperature !== null && d.temperature !== undefined) {
       html += '<div class="info-item"><div class="ii-label">Suhu ONT</div><div class="ii-value">' + parseFloat(d.temperature).toFixed(0) + ' °C</div></div>';
