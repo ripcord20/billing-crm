@@ -90,12 +90,23 @@ async function recordIfWorsened(opts = {}) {
       }
     }
 
+    let oltName = opts.oltName || null;
+    let onuIf = opts.onuIf || null;
+    try {
+      const { resolveOnuFromCache } = require('../utils/onuDisplayName');
+      const best = resolveOnuFromCache(serial, { hintOlt: oltName });
+      if (best) {
+        if (best.oltName) oltName = best.oltName;
+        if (!onuIf && best.onuIf) onuIf = best.onuIf;
+      }
+    } catch (_) { /* cache opsional */ }
+
     return await OntAttenuationEvent.create({
       ont_device_id: ontId,
       customer_id: customerId || null,
       serial_number: serial || null,
-      olt_name: opts.oltName || null,
-      onu_if: opts.onuIf || null,
+      olt_name: oltName,
+      onu_if: onuIf,
       rx_before: rxOld,
       rx_after: rxNew,
       delta_db: delta,
