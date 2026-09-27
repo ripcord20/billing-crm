@@ -54,6 +54,8 @@ function createOltService(cfg) {
         retries:   cfg.retries   || 2,
         name:      cfg.name      || cfg.host,
         mibMode:   cfg.mibMode   || 'auto',
+        username:  cfg.username  || cfg.cliUser || '',
+        password:  cfg.password  || cfg.cliPassword || '',
       });
   }
 }

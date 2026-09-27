@@ -153,7 +153,7 @@ function getRx(p) {
   for (const k of keys) {
     if (p[k] !== undefined && p[k] !== '') {
       const v = parseFloat(p[k]);
-      if (!isNaN(v)) return Math.abs(v) > 100 ? parseFloat((v/1000).toFixed(2)) : parseFloat(v.toFixed(2));
+      if (!isNaN(v)) return Math.abs(v) > 100 ? parseFloat((v/1000).toFixed(4)) : parseFloat(v.toFixed(4));
     }
   }
   return null;
@@ -166,7 +166,7 @@ function getTx(p) {
   for (const k of keys) {
     if (p[k] !== undefined && p[k] !== '') {
       const v = parseFloat(p[k]);
-      if (!isNaN(v)) return Math.abs(v) > 100 ? parseFloat((v/1000).toFixed(2)) : parseFloat(v.toFixed(2));
+      if (!isNaN(v)) return Math.abs(v) > 100 ? parseFloat((v/1000).toFixed(4)) : parseFloat(v.toFixed(4));
     }
   }
   return null;

@@ -1,5 +1,23 @@
 // olt-management.js — OLT Management Dashboard (multi-brand, tab-based)
 // Pola UI & helper mengikuti olt.js / app.js (App.api, App.showToast).
+
+function formatDbm(n, min, max) {
+  if (n === null || n === undefined || n === '') return null;
+  const x = Number(n);
+  if (!Number.isFinite(x)) return null;
+  const mn = min == null ? 2 : min;
+  const mx = max == null ? 4 : max;
+  const trimmed = x.toFixed(mx).replace(/0+$/, '').replace(/\.$/, '');
+  const dot = trimmed.indexOf('.');
+  if (dot === -1) return x.toFixed(mn);
+  if (trimmed.length - dot - 1 < mn) return x.toFixed(mn);
+  return trimmed;
+}
+function formatDbmLabel(n, suffix) {
+  const s = formatDbm(n);
+  return s == null ? null : s + (suffix == null ? ' dBm' : suffix);
+}
+
 const OltMgmt = {
   olts: [],
   activeOltId: null,
@@ -881,7 +899,7 @@ const OltMgmt = {
     }
     const q = o.quality || 'unknown';
     const cls = 'rx-' + (['good','warning','critical','los'].includes(q) ? q : 'unknown');
-    return `<span class="rx-badge ${cls}">${o.onu_rx_dbm.toFixed(1)} dBm</span>`;
+    return `<span class="rx-badge ${cls}">${formatDbmLabel(o.onu_rx_dbm)}</span>`;
   },
 
   updateStats() {
@@ -985,7 +1003,7 @@ const OltMgmt = {
         // Kualitas: ≥-25 baik, -25..-27 waspada, <-27 buruk (GPON umum)
         const cls = v >= -25 ? 'rx-ok' : (v >= -27 ? 'rx-warn' : 'rx-bad');
         const lbl = v >= -25 ? 'sinyal baik' : (v >= -27 ? 'waspada' : 'sinyal lemah');
-        rxEl.innerHTML = `${v.toFixed(1)} <span class="ts-unit">dBm</span>`;
+        rxEl.innerHTML = `${formatDbm(v)} <span class="ts-unit">dBm</span>`;
         rxEl.className = 'ts-value ' + cls;
         if (rxNote) { rxNote.textContent = lbl; rxNote.style.display = ''; }
       }
@@ -1028,7 +1046,7 @@ const OltMgmt = {
           min: (min) => Math.max(0, Math.floor(min * 0.9)), forceNiceScale: true },
         { seriesName: 'Rata-rata Rx (dBm)', opposite: true, min: rxMin, max: rxMax, tickAmount: 4,
           title: { text: 'dBm', style: { fontSize: '11px', color: '#0891b2', fontWeight: 600 } },
-          labels: { style: { colors: '#7ccadb', fontSize: '10px' }, formatter: (v) => v == null ? '' : v.toFixed(1) + ' dBm' } },
+          labels: { style: { colors: '#7ccadb', fontSize: '10px' }, formatter: (v) => v == null ? '' : formatDbmLabel(v) } },
       ] : { tickAmount: 4,
             title: { text: 'Online', style: { fontSize: '11px', color: '#94a3b8', fontWeight: 600 } },
             labels: { style: { colors: '#cbd5e1', fontSize: '10px' }, formatter: (v) => Math.round(v) },
@@ -1044,7 +1062,7 @@ const OltMgmt = {
         y: { formatter: (val, opts) => {
           if (val == null) return '—';
           const isRx = opts?.seriesIndex === 1;
-          return isRx ? `${val.toFixed(1)} dBm` : `${Math.round(val)} ONU`;
+          return isRx ? formatDbmLabel(val) : `${Math.round(val)} ONU`;
         } },
       },
     };
@@ -1219,7 +1237,7 @@ const OltMgmt = {
     } else {
       const rows = list.map(o => {
         const name = o.name || o.description || '(tanpa nama)';
-        const rx = (typeof o.onu_rx_dbm === 'number') ? `${o.onu_rx_dbm.toFixed(1)} dBm` : (o.quality === 'los' ? 'LOS' : '—');
+        const rx = (typeof o.onu_rx_dbm === 'number') ? formatDbmLabel(o.onu_rx_dbm) : (o.quality === 'los' ? 'LOS' : '—');
         const idx = (o.onu_if || '').replace('gpon-onu_', '');
         const ifEsc = this._esc(o.onu_if || '');
         return `<tr class="rxq-clickable" onclick="OltMgmt.showDetail('${ifEsc}')" title="Lihat detail ONU">
@@ -1797,7 +1815,11 @@ const OltMgmt = {
   _renderDetail(d) {
     const p = d.power || {};
     const rxClass = (q) => 'rx-' + (['good','warning','critical','los'].includes(q) ? q : 'unknown');
-    const fmt = (v, suf='') => (v === null || v === undefined) ? '<span class="mut">—</span>' : `${v}${suf}`;
+    const fmt = (v, suf='') => {
+      if (v === null || v === undefined) return '<span class="mut">—</span>';
+      if (suf && /dbm/i.test(suf) && typeof v === 'number') return `${formatDbm(v)}${suf}`;
+      return `${v}${suf}`;
+    };
     const colorFor = (q) => ({ good:'#15803d', warning:'#b45309', critical:'#b91c1c', los:'#b91c1c' }[q] || '#94a3b8');
 
     let powerHtml = '';
