@@ -6,6 +6,7 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
 const { MikrotikApiClient } = require('./MikrotikApiClient');
+const { customerFacingStat } = require('../utils/ifaceTrafficDir');
 
 /**
  * Port → protokol detection (FALLBACK MODE — dipakai kalau caller tidak
@@ -152,6 +153,14 @@ class MikrotikService {
       });
       this._apiClient = null;
     }
+
+    // Nama → { type, comment } untuk arah Download/Upload (downlink vs uplink).
+    this._ifaceMeta = new Map();
+  }
+
+  async _ensureIfaceMeta() {
+    if (this._ifaceMeta && this._ifaceMeta.size) return;
+    try { await this.getInterfaces(); } catch (_) { /* silent */ }
   }
 
   async request(method, endpoint, data, opts = {}) {
@@ -697,7 +706,7 @@ class MikrotikService {
   // ── INTERFACES ─────────────────────────────────────────────
   async getInterfaces() {
     const ifaces = await this.get('/interface');
-    return (Array.isArray(ifaces) ? ifaces : []).map(i => ({
+    const mapped = (Array.isArray(ifaces) ? ifaces : []).map(i => ({
       id: i['.id'], name: i.name, type: i.type || 'ether',
       mtu: i.mtu || 1500, running: i.running === 'true',
       disabled: i.disabled === 'true', comment: i.comment || '',
@@ -705,6 +714,8 @@ class MikrotikService {
       txByte: parseInt(i['tx-byte']) || 0, rxByte: parseInt(i['rx-byte']) || 0,
       txPacket: parseInt(i['tx-packet']) || 0, rxPacket: parseInt(i['rx-packet']) || 0
     }));
+    this._ifaceMeta = new Map(mapped.map(i => [i.name, { type: i.type, comment: i.comment }]));
+    return mapped;
   }
 
   // ── IP SCAN (Tools > IP Scan) ──────────────────────────────
@@ -778,7 +789,7 @@ class MikrotikService {
       }, { timeout: 8000, retries: 0 });
       const s = Array.isArray(res) ? res[0] : res;
       if (s && typeof s === 'object') {
-        return {
+        const raw = {
           name,
           rxBitsPerSecond:    parseInt(s['rx-bits-per-second'])    || 0,
           txBitsPerSecond:    parseInt(s['tx-bits-per-second'])    || 0,
@@ -787,6 +798,10 @@ class MikrotikService {
           fpRxBitsPerSecond:  parseInt(s['fp-rx-bits-per-second']) || 0,
           fpTxBitsPerSecond:  parseInt(s['fp-tx-bits-per-second']) || 0,
         };
+        // Tunnel + port downlink: UI Download/Upload = arah pelanggan.
+        await this._ensureIfaceMeta();
+        const meta = (this._ifaceMeta && this._ifaceMeta.get(name)) || {};
+        return customerFacingStat(raw, meta.type, meta.comment);
       }
     } catch (e) { /* silent */ }
     return { name, rxBitsPerSecond: 0, txBitsPerSecond: 0, rxPacketsPerSecond: 0, txPacketsPerSecond: 0 };
@@ -798,6 +813,7 @@ class MikrotikService {
    */
   async getInterfacesBulkStats(names) {
     if (!names || !names.length) return [];
+    await this._ensureIfaceMeta();
     // Parallel requests, max 8 sekaligus
     const chunks = [];
     for (let i = 0; i < names.length; i += 8) {

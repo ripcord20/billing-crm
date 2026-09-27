@@ -446,6 +446,24 @@
 
     // ── Real-time traffic interface + Total Bytes ──
     function fmtbps(bits){ bits=Number(bits)||0; if(bits>=1e9)return (bits/1e9).toFixed(2)+' Gbps'; if(bits>=1e6)return (bits/1e6).toFixed(2)+' Mbps'; if(bits>=1e3)return (bits/1e3).toFixed(1)+' Kbps'; return Math.round(bits)+' bps'; }
+    function isCustomerTunnelIface(name, type){
+      const n=String(name||'').toLowerCase(); const t=String(type||'').toLowerCase();
+      if(/-(out)\d*$/.test(n)||t==='pppoe-out'||/pppoe-out|l2tp-out|pptp-out|sstp-out|ovpn-out/.test(n)) return false;
+      if((n.startsWith('<')&&n.endsWith('>'))||t==='pppoe-in') return true;
+      return n.includes('<pppoe')||n.startsWith('pppoe-')||n.startsWith('pppoe<');
+    }
+    function isUplinkFacing(name, type, comment){
+      const n=String(name||'').toLowerCase(); const t=String(type||'').toLowerCase();
+      const blob=n+' '+String(comment||'').toLowerCase();
+      if(/-(out)\d*$/.test(n)||t==='pppoe-out'||/pppoe-out|l2tp-out|pptp-out|sstp-out|ovpn-out/.test(n)) return true;
+      return /uplink|\bwan\b|\binet\b|internet|innercity/.test(blob);
+    }
+    function isCustomerFacingIface(name, type, comment){
+      if(isUplinkFacing(name,type,comment)) return false;
+      if(isCustomerTunnelIface(name,type)) return true;
+      const blob=String(name||'')+' '+String(comment||'');
+      return /downlink|crs\d*|gpon|olt|pelanggan|hsgq|hioso|c-data|cdata|hisos|hisfocus/i.test(blob);
+    }
     let _iface='', _rxHist=[], _txHist=[], _rtTimer=null, _ifaceLoaded=false, _device=''; const MAXPTS=30;
 
     async function loadDevices(){
@@ -492,7 +510,10 @@
       // Pilih interface sesuai filter; kosong = semua.
       const src=_byteIface?_lastIfaces.filter(i=>i.name===_byteIface):_lastIfaces;
       let totRx=0, totTx=0;
-      src.forEach(function(i){ totRx+=Number(i.rxByte)||0; totTx+=Number(i.txByte)||0; });
+      src.forEach(function(i){
+        if(isCustomerFacingIface(i.name,i.type,i.comment)){ totRx+=Number(i.txByte)||0; totTx+=Number(i.rxByte)||0; }
+        else { totRx+=Number(i.rxByte)||0; totTx+=Number(i.txByte)||0; }
+      });
       const dl=fmtBytes(totRx), ul=fmtBytes(totTx);
       document.getElementById('byteDlVal').textContent=dl.val;
       document.getElementById('byteDlUnit').textContent=dl.unit;
