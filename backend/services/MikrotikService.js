@@ -6,6 +6,7 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
 const { MikrotikApiClient } = require('./MikrotikApiClient');
+const { customerFacingStat } = require('../utils/ifaceTrafficDir');
 
 /**
  * Port → protokol detection (FALLBACK MODE — dipakai kalau caller tidak
@@ -778,7 +779,7 @@ class MikrotikService {
       }, { timeout: 8000, retries: 0 });
       const s = Array.isArray(res) ? res[0] : res;
       if (s && typeof s === 'object') {
-        return {
+        const raw = {
           name,
           rxBitsPerSecond:    parseInt(s['rx-bits-per-second'])    || 0,
           txBitsPerSecond:    parseInt(s['tx-bits-per-second'])    || 0,
@@ -787,6 +788,8 @@ class MikrotikService {
           fpRxBitsPerSecond:  parseInt(s['fp-rx-bits-per-second']) || 0,
           fpTxBitsPerSecond:  parseInt(s['fp-tx-bits-per-second']) || 0,
         };
+        // PPPoE/L2TP pelanggan: UI Download/Upload = arah pelanggan, bukan RX/TX router.
+        return customerFacingStat(raw);
       }
     } catch (e) { /* silent */ }
     return { name, rxBitsPerSecond: 0, txBitsPerSecond: 0, rxPacketsPerSecond: 0, txPacketsPerSecond: 0 };

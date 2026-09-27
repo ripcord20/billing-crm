@@ -338,9 +338,7 @@
     async function pollTraffic(){
       const j=await api('/api/mikrotik/interfaces/monitor'+devQs());
       if(!j||!j.success)return;
-      const ifaces=j.interfaces||[];
-      const typeByName={}; ifaces.forEach(function(i){ typeByName[i.name]=i.type; });
-      const stats=(j.data||[]).map(function(s){ return customerFacingStat(s, typeByName[s.name]); });
+      const stats=j.data||[]; const ifaces=j.interfaces||[];
       if(!_ifaceLoaded && ifaces.length){ const sel=document.getElementById('ifaceSel'); sel.innerHTML=ifaces.map(i=>'<option value="'+i.name+'">'+i.name+(i.comment?(' — '+i.comment):'')+'</option>').join(''); _iface=ifaces[0].name; sel.value=_iface; _ifaceLoaded=true; }
       document.getElementById('ifaceList').innerHTML=stats.map(function(s){ return '<div class="iface-row"><div class="if-ic">'+ifaceIcon()+'</div><div class="if-body"><div class="if-name">'+s.name+'</div><div class="if-rates"><span class="rx">↓ '+fmtbps(s.rxBitsPerSecond)+'</span> &nbsp; <span class="tx">↑ '+fmtbps(s.txBitsPerSecond)+'</span></div></div></div>'; }).join('')||'<div style="padding:16px;text-align:center;color:#7c93a0;font-size:12.5px;">Tidak ada interface aktif</div>';
       const cur=stats.find(s=>s.name===_iface);

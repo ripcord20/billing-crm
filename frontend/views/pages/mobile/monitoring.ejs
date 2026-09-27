@@ -519,9 +519,7 @@
     async function pollTraffic(){
       const j=await api('/api/mikrotik/interfaces/monitor'+devQs());
       if(!j||!j.success){ return; }
-      const ifaces=j.interfaces||[];
-      const typeByName={}; ifaces.forEach(function(i){ typeByName[i.name]=i.type; });
-      const stats=(j.data||[]).map(function(s){ return customerFacingStat(s, typeByName[s.name]); });
+      const stats=j.data||[]; const ifaces=j.interfaces||[];
       updateTotalBytes(ifaces);
       if(!_ifaceLoaded && ifaces.length){
         const sel=document.getElementById('ifaceSel');
