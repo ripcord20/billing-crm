@@ -6,6 +6,8 @@
  *   - Role 'noc' adalah role baru yang fokus ke MONITORING JARINGAN:
  *     traffic, PPPoE sessions, OLT/ONT health, devices, infrastructure map,
  *     queue, IP pool, firewall (read-only), host monitor.
+ *   - Role NOC BOLEH membuat & mengelola tiket, to-do, dan work order
+ *     (gangguan jaringan, follow-up teknisi).
  *   - Role NOC TIDAK boleh akses: billing, payments, customers (full),
  *     packages, keuangan, settings, user management, WA gateway.
  *   - Role superadmin & admin tetap bisa akses semua.

@@ -148,6 +148,8 @@ const _nocBlockedPrefixes = [
   '/voucher-template',
   '/invoice-template',
   '/customers',         // customer CRUD (NOC bisa cek dari monitoring)
+  // /tickets, /todos, /work-orders, /assignees SENGAJA tidak diblok —
+  // role NOC boleh membuat & mengelola tiket, to-do, work order.
   '/wa',                // WA gateway full (NOC bisa lihat status, tapi tidak kirim)
   '/whatsapp',
   '/broadcast',
@@ -231,6 +233,10 @@ router.get('/dashboard/layout', authenticate, demoGuard, DashboardLayoutControll
 router.post('/dashboard/layout', authenticate, demoGuard, DashboardLayoutController.saveLayout);
 router.post('/dashboard/layout/reset', authenticate, demoGuard, DashboardLayoutController.resetLayout);
 
+
+// Daftar assignee (id+nama) untuk tiket / to-do / work order.
+// NOC & sales tidak boleh GET /users (manajemen akun), jadi pakai endpoint ini.
+router.get('/assignees', authenticate, demoGuard, (r, s) => UserController.assignees(r, s));
 
 // ===== USERS =====
 router.get('/users', authenticate, demoGuard, authorize('superadmin', 'admin'), UserController.index);

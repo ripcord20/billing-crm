@@ -3,6 +3,30 @@ const { Op } = require('sequelize');
 const { paginateResponse } = require('../utils/helpers');
 
 class UserController {
+  /**
+   * Daftar user aktif untuk dropdown assignee (tiket / to-do / work order).
+   * Hanya id + nama + label role — tanpa email/password.
+   */
+  async assignees(req, res) {
+    try {
+      const users = await User.findAll({
+        where: { is_active: true },
+        attributes: ['id', 'name'],
+        include: [{ model: Role, as: 'role', attributes: ['name', 'display_name'], required: false }],
+        order: [['name', 'ASC']],
+        limit: 300
+      });
+      const data = users.map((u) => ({
+        id: u.id,
+        name: u.name,
+        role: u.role ? (u.role.display_name || u.role.name || '') : ''
+      }));
+      res.json({ success: true, data });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
   // List users
   async index(req, res) {
     try {

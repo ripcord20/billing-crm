@@ -49,9 +49,9 @@ async function loadAll() {
 
 async function loadUsers() {
   try {
-    const r = await fetch(`${API}/users`, { headers: authH() });
+    const r = await fetch(`${API}/assignees`, { headers: authH() });
     const j = await r.json();
-    allUsers = j.success ? (j.data||[]) : [];
+    allUsers = j.success && Array.isArray(j.data) ? j.data : [];
     const opts = '<option value="">— Pilih user —</option>' +
       allUsers.map(u=>`<option value="${u.id}">${esc(u.name||u.email)}</option>`).join('');
     document.getElementById('f_assigned_user_id').innerHTML = opts;

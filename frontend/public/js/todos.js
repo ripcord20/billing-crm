@@ -37,10 +37,10 @@ async function loadAll() {
 
 async function loadUsers() {
   try {
-    const r = await fetch(`${API}/users`, { headers: authH() });
+    const r = await fetch(`${API}/assignees`, { headers: authH() });
     const j = await r.json();
     if (!j.success) return;
-    allUsers = j.data || [];
+    allUsers = Array.isArray(j.data) ? j.data : [];
     populateUserSelects();
   } catch(e) {}
 }
@@ -425,5 +425,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); saveTask(); }
   });
 
-  loadAll();
+  loadAll().then(() => {
+    try {
+      if (new URLSearchParams(location.search).get('create') === '1') openAdd('todo');
+    } catch (_) { /* abaikan */ }
+  });
 });
