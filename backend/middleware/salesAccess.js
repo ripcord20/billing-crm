@@ -10,12 +10,15 @@
  *   - Role superadmin & admin tetap bisa akses semua, termasuk /sales.
  *
  * Helpers:
- *   - allowSalesArea  : page-level guard, izinkan superadmin/admin/sales.
+ *   - allowSalesArea  : page-level guard, izinkan superadmin/admin/sales
+ *                       atau role lain yang punya module.sales (mis. NOC).
  *   - blockSalesArea  : page-level guard, blok role sales (redirect ke /sales).
  *   - isSalesRole     : utility check role.
  *   - isSalesAreaUser : utility — true untuk admin/superadmin/sales.
  *   - apiAllowSalesArea / apiBlockSalesArea : API-level variant (403 JSON).
  */
+
+const { hasModule, hasModuleForPath } = require('../utils/moduleAccess');
 
 function _roleName(req) {
   return (req.user?.role?.name || '').toLowerCase();
@@ -31,12 +34,12 @@ function isSalesAreaUser(req) {
 }
 
 /**
- * Page-level guard: izinkan superadmin/admin/sales, tolak yang lain.
- * Dipakai di route /sales.
+ * Page-level guard: izinkan superadmin/admin/sales, atau role yang punya
+ * module.sales (NOC default). Dipakai di route /sales.
  */
 function allowSalesArea(req, res, next) {
   if (!req.user) return res.redirect('/login');
-  if (isSalesAreaUser(req)) return next();
+  if (isSalesAreaUser(req) || hasModule(req, 'sales') || hasModuleForPath(req, req.path)) return next();
 
   // Role lain diarahkan ke home masing-masing
   const r = _roleName(req);
@@ -56,16 +59,18 @@ function allowSalesArea(req, res, next) {
  */
 function blockSalesArea(req, res, next) {
   if (!req.user) return res.redirect('/login');
-  if (isSalesRole(req)) return res.redirect('/sales');
+  if (isSalesRole(req) && !hasModuleForPath(req, req.path)) return res.redirect('/sales');
   next();
 }
 
 /**
- * API-level guard: izinkan hanya superadmin/admin/sales.
+ * API-level guard: izinkan superadmin/admin/sales, atau role yang punya
+ * module.sales (NOC default). Dipakai di /api/sales/*.
  */
 function apiAllowSalesArea(req, res, next) {
   if (!req.user) return res.status(401).json({ success: false, message: 'Authentication required' });
-  if (isSalesAreaUser(req)) return next();
+  const path = req.path || req.originalUrl || '';
+  if (isSalesAreaUser(req) || hasModule(req, 'sales') || hasModuleForPath(req, path)) return next();
   return res.status(403).json({ success: false, message: 'Akses ditolak untuk role Anda' });
 }
 
@@ -74,7 +79,7 @@ function apiAllowSalesArea(req, res, next) {
  */
 function apiBlockSalesArea(req, res, next) {
   if (!req.user) return res.status(401).json({ success: false, message: 'Authentication required' });
-  if (isSalesRole(req)) {
+  if (isSalesRole(req) && !hasModuleForPath(req, req.path)) {
     return res.status(403).json({ success: false, message: 'Modul ini tidak tersedia untuk role Sales' });
   }
   next();

@@ -116,7 +116,16 @@
       </div>
 
       <div class="card">
-        <div class="card-title">Informasi</div>
+        <div class="card-title">Pengaturan</div>
+        <% var _roleNm = (typeof user !== 'undefined' && user && user.role && user.role.name) ? String(user.role.name).toLowerCase() : '';
+           var _canRoles = (typeof canManageRoles !== 'undefined') ? !!canManageRoles : (_roleNm === 'admin' || _roleNm === 'superadmin');
+           if (_canRoles) { %>
+        <a class="prow" href="/mobile/roles" style="text-decoration:none;color:inherit;">
+          <div class="prow-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <div class="prow-body"><div class="prow-lbl">Hak akses</div><div class="prow-val">Atur modul per role</div></div>
+          <div class="prow-arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </a>
+        <% } %>
         <div class="prow" style="cursor:default;">
           <div class="prow-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
           <div class="prow-body"><div class="prow-lbl">Peran</div><div class="prow-val" id="vRole" style="text-transform:capitalize;">—</div></div>

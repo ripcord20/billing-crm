@@ -20,6 +20,8 @@
  *   - isFinanceAreaUser : utility — return true untuk admin/superadmin/finance.
  */
 
+const { hasModule, hasModuleForPath } = require('../utils/moduleAccess');
+
 function _roleName(req) {
   return (req.user?.role?.name || '').toLowerCase();
 }
@@ -39,7 +41,7 @@ function isFinanceAreaUser(req) {
  */
 function allowFinanceArea(req, res, next) {
   if (!req.user) return res.redirect('/login');
-  if (isFinanceAreaUser(req)) return next();
+  if (isFinanceAreaUser(req) || hasModule(req, 'finance') || hasModuleForPath(req, req.path)) return next();
 
   // Technician → arahkan ke dashboard technician
   if (_roleName(req) === 'technician') return res.redirect('/technician');
@@ -57,7 +59,7 @@ function allowFinanceArea(req, res, next) {
  */
 function blockFinanceArea(req, res, next) {
   if (!req.user) return res.redirect('/login');
-  if (isFinanceRole(req)) return res.redirect('/finance');
+  if (isFinanceRole(req) && !hasModuleForPath(req, req.path)) return res.redirect('/finance');
   next();
 }
 
@@ -76,7 +78,7 @@ function apiAllowFinanceArea(req, res, next) {
  */
 function apiBlockFinanceArea(req, res, next) {
   if (!req.user) return res.status(401).json({ success: false, message: 'Authentication required' });
-  if (isFinanceRole(req)) {
+  if (isFinanceRole(req) && !hasModuleForPath(req, req.path)) {
     return res.status(403).json({ success: false, message: 'Modul ini tidak tersedia untuk role Finance' });
   }
   next();

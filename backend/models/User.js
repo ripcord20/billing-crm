@@ -84,6 +84,25 @@ module.exports = (sequelize) => {
     refresh_token: {
       type: DataTypes.TEXT,
       allowNull: true
+    },
+    // Override hak akses modul per akun. null = ikut role.
+    // JSON: { modules: ['dashboard','customers'], actions: ['customer_create'] }
+    module_access: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      get() {
+        const raw = this.getDataValue('module_access');
+        if (raw == null || raw === '') return null;
+        if (typeof raw === 'object') return raw;
+        try { return JSON.parse(raw); } catch (_) { return null; }
+      },
+      set(val) {
+        if (val == null || val === '') {
+          this.setDataValue('module_access', null);
+        } else {
+          this.setDataValue('module_access', typeof val === 'string' ? val : JSON.stringify(val));
+        }
+      }
     }
   }, {
     tableName: 'users',

@@ -17,6 +17,8 @@
  *   - apiAllowNocArea / apiBlockNocArea : API-level variant (return 403 JSON).
  */
 
+const { hasModule, hasModuleForPath } = require('../utils/moduleAccess');
+
 function _roleName(req) {
   return (req.user?.role?.name || '').toLowerCase();
 }
@@ -36,7 +38,7 @@ function isNocAreaUser(req) {
  */
 function allowNocArea(req, res, next) {
   if (!req.user) return res.redirect('/login');
-  if (isNocAreaUser(req)) return next();
+  if (isNocAreaUser(req) || hasModule(req, 'noc') || hasModuleForPath(req, req.path)) return next();
 
   // Role lain → redirect ke dashboard masing-masing
   const r = _roleName(req);
@@ -55,7 +57,7 @@ function allowNocArea(req, res, next) {
  */
 function blockNocArea(req, res, next) {
   if (!req.user) return res.redirect('/login');
-  if (isNocRole(req)) return res.redirect('/noc');
+  if (isNocRole(req) && !hasModuleForPath(req, req.path)) return res.redirect('/noc');
   next();
 }
 
@@ -73,7 +75,7 @@ function apiAllowNocArea(req, res, next) {
  */
 function apiBlockNocArea(req, res, next) {
   if (!req.user) return res.status(401).json({ success: false, message: 'Authentication required' });
-  if (isNocRole(req)) {
+  if (isNocRole(req) && !hasModuleForPath(req, req.path)) {
     return res.status(403).json({ success: false, message: 'Modul ini tidak tersedia untuk role NOC' });
   }
   next();
