@@ -1,7 +1,7 @@
 'use strict';
 
 const { Permission, Role, RolePermission, AppSetting } = require('../models');
-const { SIDEBAR_MODULES, DEFAULT_ROLE_MODULES, ACTION_PERMISSIONS } = require('../config/sidebarModules');
+const { SIDEBAR_MODULES, DEFAULT_ROLE_MODULES, ENSURE_ROLE_MODULES, ACTION_PERMISSIONS } = require('../config/sidebarModules');
 const logger = require('../utils/logger');
 
 const SEED_FLAG = 'sidebar_module_perms_seeded';
@@ -66,6 +66,8 @@ async function seedSidebarPermissions() {
     } else {
       keys = [];
     }
+    const extra = ENSURE_ROLE_MODULES[role.name] || [];
+    if (extra.length) keys = [...new Set([...keys, ...extra])];
 
     const toCreate = [];
     for (const key of keys) {

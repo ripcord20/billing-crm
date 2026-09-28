@@ -7,7 +7,7 @@ const {
   grantedModuleKeys,
   isSuperadmin
 } = require('../utils/moduleAccess');
-const { SIDEBAR_MODULES, ALL_KEYS, MOBILE_DRAWER_MODULES, accountModuleForm } = require('../config/sidebarModules');
+const { SIDEBAR_MODULES, ALL_KEYS, MOBILE_DRAWER_MODULES, DEFAULT_ROLE_MODULES, ENSURE_ROLE_MODULES, accountModuleForm } = require('../config/sidebarModules');
 
 assert.ok(ALL_KEYS.includes('dashboard'));
 assert.ok(ALL_KEYS.includes('collect'));
@@ -85,5 +85,23 @@ const overrideReq = {
 };
 assert.strictEqual(hasModule(overrideReq, 'tickets'), true);
 assert.strictEqual(hasModule(overrideReq, 'finance'), false);
+
+assert.ok(DEFAULT_ROLE_MODULES.noc.includes('sales'), 'NOC default includes Sales Dashboard');
+assert.ok(ENSURE_ROLE_MODULES.noc.includes('sales'), 'NOC always gets module.sales even after seed');
+
+const nocSalesReq = {
+  user: { role: { name: 'noc' } },
+  userPermissions: ['module.noc', 'module.sales', 'module.nms']
+};
+assert.strictEqual(hasModule(nocSalesReq, 'sales'), true);
+assert.strictEqual(hasModuleForPath(nocSalesReq, '/sales'), true);
+assert.strictEqual(hasModuleForPath(nocSalesReq, '/api/sales/stats'), true);
+
+const nocNoSalesReq = {
+  user: { role: { name: 'noc' } },
+  userPermissions: ['module.noc', 'module.nms']
+};
+assert.strictEqual(hasModule(nocNoSalesReq, 'sales'), false);
+assert.strictEqual(hasModuleForPath(nocNoSalesReq, '/sales'), false);
 
 console.log('moduleAccess.test.js OK');

@@ -153,7 +153,7 @@ router.get('/finance', authenticate, allowFinanceArea, (req, res) => {
 router.get('/finance/dashboard', authenticate, allowFinanceArea, (req, res) => res.redirect('/finance'));
 
 // ═══════════════════════════════════════════════════════════════════
-// SALES DASHBOARD — halaman utama role sales (juga dapat diakses admin)
+// SALES DASHBOARD — sales, admin, dan role yang punya module.sales (NOC default)
 // Registrasi pelanggan, survey, instalasi, coverage checker, komisi.
 // ═══════════════════════════════════════════════════════════════════
 router.get('/sales', authenticate, allowSalesArea, (req, res) => {

@@ -192,6 +192,13 @@ const DEFAULT_ROLE_MODULES = {
   technician: ['tickets', 'todos', 'work-orders']
 };
 
+/** Grant yang selalu dipasang ke role existing (idempotent).
+ *  Tidak menimpa hak yang sudah diedit manual; hanya menambah yang belum ada.
+ *  Dipakai setelah seed pertama supaya role lama tetap kebagian modul baru. */
+const ENSURE_ROLE_MODULES = {
+  noc: ['sales']
+};
+
 /** Aksi tambahan di form Edit Akun (selain Lihat = akses menu). */
 const MODULE_EXTRA_ACTIONS = {
   customers: [
@@ -275,6 +282,7 @@ module.exports = {
   SECTION_ORDER,
   ALL_KEYS,
   DEFAULT_ROLE_MODULES,
+  ENSURE_ROLE_MODULES,
   MODULE_EXTRA_ACTIONS,
   ACTION_PERMISSIONS,
   actionsForModule,

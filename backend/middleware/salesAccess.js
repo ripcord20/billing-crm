@@ -10,7 +10,8 @@
  *   - Role superadmin & admin tetap bisa akses semua, termasuk /sales.
  *
  * Helpers:
- *   - allowSalesArea  : page-level guard, izinkan superadmin/admin/sales.
+ *   - allowSalesArea  : page-level guard, izinkan superadmin/admin/sales
+ *                       atau role lain yang punya module.sales (mis. NOC).
  *   - blockSalesArea  : page-level guard, blok role sales (redirect ke /sales).
  *   - isSalesRole     : utility check role.
  *   - isSalesAreaUser : utility — true untuk admin/superadmin/sales.
@@ -33,8 +34,8 @@ function isSalesAreaUser(req) {
 }
 
 /**
- * Page-level guard: izinkan superadmin/admin/sales, tolak yang lain.
- * Dipakai di route /sales.
+ * Page-level guard: izinkan superadmin/admin/sales, atau role yang punya
+ * module.sales (NOC default). Dipakai di route /sales.
  */
 function allowSalesArea(req, res, next) {
   if (!req.user) return res.redirect('/login');
@@ -63,11 +64,13 @@ function blockSalesArea(req, res, next) {
 }
 
 /**
- * API-level guard: izinkan hanya superadmin/admin/sales.
+ * API-level guard: izinkan superadmin/admin/sales, atau role yang punya
+ * module.sales (NOC default). Dipakai di /api/sales/*.
  */
 function apiAllowSalesArea(req, res, next) {
   if (!req.user) return res.status(401).json({ success: false, message: 'Authentication required' });
-  if (isSalesAreaUser(req)) return next();
+  const path = req.path || req.originalUrl || '';
+  if (isSalesAreaUser(req) || hasModule(req, 'sales') || hasModuleForPath(req, path)) return next();
   return res.status(403).json({ success: false, message: 'Akses ditolak untuk role Anda' });
 }
 
