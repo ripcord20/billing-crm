@@ -863,10 +863,13 @@ async function _saveCustomerInner() {
   }
 
   // ═══ Validasi PPPoE create (kalau diaktifkan, hanya saat tambah baru) ═══
+  // NAS / router TIDAK wajib untuk simpan CRM. Kalau PPPoE diminta tapi
+  // router belum ada, customer tetap disimpan dan secret dilewati.
   const createPppoe = !_custEditId
     && !!document.getElementById('custCreatePppoe')?.checked;
 
   let pppoeData = null;
+  let pppoeSkipReason = '';
   if (createPppoe) {
     const mkId        = document.getElementById('custPppoeRouter')?.value?.trim() || '';
     const pppoeUser   = document.getElementById('custPPPoE')?.value?.trim() || '';
@@ -876,27 +879,28 @@ async function _saveCustomerInner() {
     const pppoeLocal  = document.getElementById('custPppoeLocalAddr')?.value?.trim() || '';
     const pppoeRemote = document.getElementById('custPppoeRemoteAddr')?.value?.trim() || '';
 
-    if (!mkId)      { App.showToast('Pilih Router MikroTik untuk PPPoE', 'error'); return; }
-    if (!pppoeUser) { App.showToast('PPPoE Username wajib diisi', 'error'); return; }
-    if (!pppoePass) { App.showToast('Password PPPoE wajib diisi', 'error'); return; }
-    if (!pppoeProf) { App.showToast('Pilih Profile PPPoE', 'error'); return; }
-
-    pppoeData = {
-      device_id:     mkId,
-      name:          pppoeUser,
-      password:      pppoePass,
-      profile:       pppoeProf,
-      service:       pppoeSvc,
-      localAddress:  pppoeLocal,
-      remoteAddress: pppoeRemote,
-      comment:       (custId ? custId + ' — ' : '') + name
-    };
+    if (!mkId) {
+      pppoeSkipReason = 'NAS/router belum dipilih — customer tetap disimpan, akun PPPoE bisa dibuat nanti';
+    } else if (!pppoeUser || !pppoePass || !pppoeProf) {
+      pppoeSkipReason = 'Username, password, atau profile PPPoE belum lengkap — customer tetap disimpan';
+    } else {
+      pppoeData = {
+        device_id:     mkId,
+        name:          pppoeUser,
+        password:      pppoePass,
+        profile:       pppoeProf,
+        service:       pppoeSvc,
+        localAddress:  pppoeLocal,
+        remoteAddress: pppoeRemote,
+        comment:       (custId ? custId + ' — ' : '') + name
+      };
+    }
   }
 
   btn.disabled = true; btn.textContent = 'Menyimpan...';
 
-  // ═══ STEP 1: Buat akun PPPoE di MikroTik dulu (kalau diminta) ═══
-  // Alasan: kalau gagal, jangan lanjutkan create customer (rollback gampang).
+  // ═══ STEP 1: Buat akun PPPoE di MikroTik (opsional) ═══
+  // Gagal/tidak ada NAS tidak membatalkan simpan customer.
   let pppoeStatus = 'skipped';
   if (pppoeData) {
     btn.textContent = 'Membuat akun PPPoE...';
@@ -915,16 +919,14 @@ async function _saveCustomerInner() {
         })
       });
       if (!ppRes?.success) {
-        const errMsg = ppRes?.message || 'Gagal membuat akun PPPoE';
-        App.showToast('PPPoE gagal: ' + errMsg + '. Customer TIDAK disimpan.', 'error');
-        btn.disabled = false; btn.textContent = 'Simpan Customer';
-        return;
+        pppoeStatus = 'failed';
+        pppoeSkipReason = ppRes?.message || 'Gagal membuat akun PPPoE';
+      } else {
+        pppoeStatus = 'created';
       }
-      pppoeStatus = 'created';
     } catch (e) {
-      App.showToast('PPPoE gagal: ' + e.message + '. Customer TIDAK disimpan.', 'error');
-      btn.disabled = false; btn.textContent = 'Simpan Customer';
-      return;
+      pppoeStatus = 'failed';
+      pppoeSkipReason = e.message || 'Gagal membuat akun PPPoE';
     }
   }
 
@@ -1037,7 +1039,9 @@ async function _saveCustomerInner() {
     static_ip:        document.getElementById('custStaticIP')?.value  || null,
     connection_type:  document.getElementById('custConnType')?.value  || null,
     mac_address:      (document.getElementById('custMacAddress')?.value || '').trim().toUpperCase() || null,
-    mikrotik_id:      document.getElementById('custMikrotikId')?.value || null,
+    mikrotik_id:      document.getElementById('custMikrotikId')?.value
+                      || (pppoeData && pppoeData.device_id)
+                      || null,
     status:           document.getElementById('custStatus')?.value   || 'active',
     latitude,
     longitude,
@@ -1096,6 +1100,9 @@ async function _saveCustomerInner() {
     // Info status pembuatan PPPoE
     if (pppoeStatus === 'created') {
       msg += ' • Akun PPPoE dibuat ✓';
+    } else if (pppoeSkipReason) {
+      msg += ' • PPPoE dilewati (NAS belum siap)';
+      toastType = 'warning';
     }
 
     // Info status auto-sync ke peta infrastruktur

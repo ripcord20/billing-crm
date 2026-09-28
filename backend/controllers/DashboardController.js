@@ -761,7 +761,9 @@ class DashboardController {
   async bandwidthInterfaces(req, res) {
     try {
       const deviceId = req.query.device_id ? parseInt(req.query.device_id) : null;
-      const days     = req.query.days ? parseInt(req.query.days) : 30;
+      // Default 2 hari — scan 30 hari di traffic_data mengunci DB (login/customer/device).
+      const rawDays = req.query.days ? parseInt(req.query.days) : 2;
+      const days = Number.isFinite(rawDays) ? Math.min(Math.max(rawDays, 1), 7) : 2;
       const startDate = moment().subtract(days, 'days').toDate();
 
       const extraWhere  = [];
