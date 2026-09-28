@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { User, Role, Permission, Tenant } = require('../models');
+const { attachLocals } = require('../utils/moduleAccess');
 
 // Bangun URL redirect ke /login sambil menyimpan tujuan awal (?next=...).
 // Hanya path internal yang aman (diawali '/', bukan '//' atau 'http') yang
@@ -78,6 +79,7 @@ const authenticate = async (req, res, next) => {
 
     req.user = user;
     req.userPermissions = user.role?.permissions?.map(p => p.name) || [];
+    if (res) attachLocals(req, res);
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {

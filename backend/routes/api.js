@@ -242,9 +242,9 @@ router.delete('/users/:id', authenticate, demoGuard, authorize('superadmin'), lo
 // ===== ROLES & PERMISSIONS =====
 router.get('/roles', authenticate, demoGuard, UserController.getRoles);
 router.post('/roles', authenticate, demoGuard, authorize('superadmin'), logActivity('create', 'role'), UserController.createRole);
-router.put('/roles/:id', authenticate, demoGuard, authorize('superadmin'), logActivity('update', 'role'), UserController.updateRole);
+router.put('/roles/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'role'), UserController.updateRole);
 router.delete('/roles/:id', authenticate, demoGuard, authorize('superadmin'), logActivity('delete', 'role'), UserController.deleteRole);
-router.get('/permissions', authenticate, demoGuard, authorize('superadmin'), UserController.getPermissions);
+router.get('/permissions', authenticate, demoGuard, authorize('superadmin', 'admin'), UserController.getPermissions);
 
 // ===== WILAYAH INDONESIA (data sendiri, untuk dropdown alamat) =====
 // Publik: data referensi non-sensitif, dipakai juga oleh halaman registrasi publik.

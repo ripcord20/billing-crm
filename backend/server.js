@@ -453,6 +453,11 @@ const startServer = async () => {
           is_system: true
         }
       });
+      try {
+        await require('./services/PermissionSeed').seedSidebarPermissions();
+      } catch (seedErr) {
+        logger.warn('Failed to seed sidebar permissions: ' + (seedErr.message || seedErr));
+      }
     } catch (e) {
       logger.warn('Failed to ensure finance role: ' + (e.message || e));
     }
@@ -977,6 +982,8 @@ const startServer = async () => {
           }
         });
         logger.info('Ensured: role sales');
+        try { await require('./services/PermissionSeed').seedSidebarPermissions(); }
+        catch (seedErr) { logger.warn('Failed to seed sidebar permissions: ' + (seedErr.message || seedErr)); }
       } catch (roleErr) {
         logger.warn('Failed to ensure sales role: ' + (roleErr.message || roleErr));
       }

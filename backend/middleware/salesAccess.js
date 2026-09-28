@@ -17,6 +17,8 @@
  *   - apiAllowSalesArea / apiBlockSalesArea : API-level variant (403 JSON).
  */
 
+const { hasModule, hasModuleForPath } = require('../utils/moduleAccess');
+
 function _roleName(req) {
   return (req.user?.role?.name || '').toLowerCase();
 }
@@ -36,7 +38,7 @@ function isSalesAreaUser(req) {
  */
 function allowSalesArea(req, res, next) {
   if (!req.user) return res.redirect('/login');
-  if (isSalesAreaUser(req)) return next();
+  if (isSalesAreaUser(req) || hasModule(req, 'sales') || hasModuleForPath(req, req.path)) return next();
 
   // Role lain diarahkan ke home masing-masing
   const r = _roleName(req);
@@ -56,7 +58,7 @@ function allowSalesArea(req, res, next) {
  */
 function blockSalesArea(req, res, next) {
   if (!req.user) return res.redirect('/login');
-  if (isSalesRole(req)) return res.redirect('/sales');
+  if (isSalesRole(req) && !hasModuleForPath(req, req.path)) return res.redirect('/sales');
   next();
 }
 
@@ -74,7 +76,7 @@ function apiAllowSalesArea(req, res, next) {
  */
 function apiBlockSalesArea(req, res, next) {
   if (!req.user) return res.status(401).json({ success: false, message: 'Authentication required' });
-  if (isSalesRole(req)) {
+  if (isSalesRole(req) && !hasModuleForPath(req, req.path)) {
     return res.status(403).json({ success: false, message: 'Modul ini tidak tersedia untuk role Sales' });
   }
   next();

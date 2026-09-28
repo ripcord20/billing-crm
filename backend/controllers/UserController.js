@@ -1,6 +1,7 @@
 const { User, Role, Permission, RolePermission } = require('../models');
 const { Op } = require('sequelize');
 const { paginateResponse } = require('../utils/helpers');
+const { SIDEBAR_MODULES } = require('../config/sidebarModules');
 
 class UserController {
   // List users
@@ -139,15 +140,33 @@ class UserController {
     try {
       const role = await Role.findByPk(req.params.id);
       if (!role) return res.status(404).json({ success: false, message: 'Role not found' });
-      if (role.is_system) return res.status(400).json({ success: false, message: 'Cannot edit system role' });
 
       const { display_name, description, permissions } = req.body;
-      await role.update({ display_name, description });
+      const patch = {};
+      if (typeof display_name === 'string' && display_name.trim()) patch.display_name = display_name.trim();
+      if (typeof description === 'string') patch.description = description;
+      if (Object.keys(patch).length) await role.update(patch);
 
-      if (permissions) {
-        await RolePermission.destroy({ where: { role_id: role.id } });
-        const rolePerms = permissions.map(pid => ({ role_id: role.id, permission_id: pid }));
-        await RolePermission.bulkCreate(rolePerms);
+      if (Array.isArray(permissions)) {
+        const modulePerms = await Permission.findAll({
+          where: { name: { [Op.like]: 'module.%' } },
+          attributes: ['id']
+        });
+        const moduleIds = modulePerms.map(p => p.id);
+        const allowed = new Set(moduleIds);
+        const selected = [...new Set(permissions.map(Number).filter(id => allowed.has(id)))];
+
+        if (moduleIds.length) {
+          await RolePermission.destroy({
+            where: { role_id: role.id, permission_id: { [Op.in]: moduleIds } }
+          });
+        }
+        if (selected.length) {
+          await RolePermission.bulkCreate(
+            selected.map(pid => ({ role_id: role.id, permission_id: pid })),
+            { ignoreDuplicates: true }
+          );
+        }
       }
 
       const full = await Role.findByPk(role.id, {
@@ -181,7 +200,17 @@ class UserController {
   async getPermissions(req, res) {
     try {
       const permissions = await Permission.findAll({ order: [['module', 'ASC'], ['name', 'ASC']] });
-      res.json({ success: true, data: permissions });
+      res.json({
+        success: true,
+        data: permissions,
+        modules: SIDEBAR_MODULES.map(m => ({
+          key: m.key,
+          name: m.name,
+          display: m.display,
+          section: m.section,
+          href: m.href
+        }))
+      });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }

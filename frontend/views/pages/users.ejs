@@ -6,6 +6,39 @@
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .um-tabs{display:flex;gap:6px;margin-bottom:18px;border-bottom:1px solid var(--border,#e2e8f0);padding-bottom:0;}
+    .um-tab{background:none;border:none;padding:10px 16px;font-size:13px;font-weight:600;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:inherit;}
+    .um-tab.active{color:var(--primary,#1a6ef5);border-bottom-color:var(--primary,#1a6ef5);}
+    .um-panel{display:none;}
+    .um-panel.show{display:block;}
+    .perm-layout{display:grid;grid-template-columns:240px 1fr;gap:16px;min-height:520px;}
+    @media(max-width:860px){.perm-layout{grid-template-columns:1fr;}}
+    .perm-roles{background:#fff;border:1px solid #e8eef6;border-radius:12px;overflow:hidden;}
+    .perm-role{display:block;width:100%;text-align:left;padding:12px 14px;border:none;background:#fff;border-bottom:1px solid #f1f5f9;cursor:pointer;font-family:inherit;}
+    .perm-role:hover{background:#f8fafc;}
+    .perm-role.active{background:#eff6ff;box-shadow:inset 3px 0 0 var(--primary,#1a6ef5);}
+    .perm-role-name{font-size:13px;font-weight:700;color:#0f172a;}
+    .perm-role-desc{font-size:11px;color:#94a3b8;margin-top:2px;line-height:1.35;}
+    .perm-role-meta{font-size:11px;color:#64748b;margin-top:4px;}
+    .perm-main{background:#fff;border:1px solid #e8eef6;border-radius:12px;display:flex;flex-direction:column;min-height:520px;}
+    .perm-head{padding:16px 18px 12px;border-bottom:1px solid #f1f5f9;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+    .perm-head h2{margin:0;font-size:15px;font-weight:700;color:#0f172a;}
+    .perm-head p{margin:4px 0 0;font-size:12px;color:#64748b;max-width:560px;line-height:1.45;}
+    .perm-body{padding:8px 18px 18px;overflow:auto;flex:1;}
+    .perm-sec{margin-top:14px;}
+    .perm-sec-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+    .perm-sec-h span{font-size:11px;font-weight:800;letter-spacing:.06em;color:#94a3b8;}
+    .perm-sec-h button{background:none;border:none;color:var(--primary,#1a6ef5);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;padding:0;}
+    .perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;}
+    .perm-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid #eef2f7;border-radius:8px;background:#fafbfc;cursor:pointer;}
+    .perm-item:hover{border-color:#dbeafe;background:#f8fbff;}
+    .perm-item input{margin-top:2px;accent-color:var(--primary,#1a6ef5);}
+    .perm-item b{display:block;font-size:12.5px;font-weight:600;color:#0f172a;}
+    .perm-item small{display:block;font-size:10.5px;color:#94a3b8;margin-top:1px;}
+    .perm-empty{padding:48px 20px;text-align:center;color:#94a3b8;font-size:13px;}
+    .perm-foot{padding:12px 18px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:8px;}
+  </style>
 </head>
 <body>
 <div class="app-layout">
@@ -15,24 +48,57 @@
     <main class="page-content">
 
       <div class="page-header">
-        <div class="page-header-left"><h1>User Management</h1></div>
-        <div class="page-header-right">
+        <div class="page-header-left"><h1>Users &amp; Roles</h1></div>
+        <div class="page-header-right" id="userHeaderActions">
           <button class="btn btn-primary" onclick="openAddUser()">+ Tambah User</button>
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-body">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="userTable">
-              <tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8;">Memuat...</td></tr>
-            </tbody>
-          </table>
+      <div class="um-tabs">
+        <button type="button" class="um-tab active" id="tabUsersBtn" onclick="showUmTab('users')">Users</button>
+        <button type="button" class="um-tab" id="tabRolesBtn" onclick="showUmTab('roles')">Hak Akses Role</button>
+      </div>
+
+      <div class="um-panel show" id="panelUsers">
+        <div class="card">
+          <div class="card-body">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="userTable">
+                <tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8;">Memuat...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="um-panel" id="panelRoles">
+        <div class="perm-layout">
+          <div class="perm-roles" id="roleList">
+            <div class="perm-empty">Memuat role...</div>
+          </div>
+          <div class="perm-main">
+            <div class="perm-head">
+              <div>
+                <h2 id="permTitle">Pilih role</h2>
+                <p>Semua modul sidebar kiri tampil di sini. Centang yang boleh diakses, lalu simpan. Superadmin tetap melihat semua menu.</p>
+              </div>
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:#334155;cursor:pointer;">
+                <input type="checkbox" id="permSelectAll" onchange="toggleAllModules(this.checked)">
+                Pilih semua
+              </label>
+            </div>
+            <div class="perm-body" id="permBody">
+              <div class="perm-empty">Pilih role di kiri untuk mengatur hak akses modul.</div>
+            </div>
+            <div class="perm-foot">
+              <button type="button" class="btn btn-primary" id="permSaveBtn" onclick="saveRolePermissions()" disabled>Simpan Hak Akses</button>
+            </div>
+          </div>
         </div>
       </div>
 

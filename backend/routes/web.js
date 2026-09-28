@@ -3,13 +3,11 @@ const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const {
   allowFinanceArea,
-  blockFinanceArea,
-  isFinanceRole
+  blockFinanceArea
 } = require('../middleware/financeAccess');
 const {
   allowNocArea,
-  blockNocArea,
-  isNocRole
+  blockNocArea
 } = require('../middleware/nocAccess');
 const {
   allowSalesArea,
@@ -18,6 +16,7 @@ const {
 const { allowHrisAdmin } = require('../middleware/hrisAccess');
 const { allowTenantArea } = require('../middleware/tenantAccess');
 const { homePathForRole } = require('../utils/tenantScope');
+const { hasModuleForPath } = require('../utils/moduleAccess');
 
 // Login page — auto-redirect kalau user sudah punya session valid.
 // Cek cookie 'token' (HttpOnly yang di-set saat login berhasil). Kalau JWT
@@ -58,47 +57,28 @@ router.get('/', authenticate, (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// SALES CONFINEMENT — role 'sales' hanya boleh akses halaman /sales.
-// Guard global ini mengunci role sales: setiap GET halaman selain yang
-// di-whitelist akan di-redirect ke /sales. Mencegah sales membuka
-// dashboard admin, monitoring, billing, dll lewat URL langsung.
-// (Admin/superadmin & role lain tidak terpengaruh.)
+// ROLE CONFINEMENT — sales / collector / tenant_owner dikunci ke
+// halaman default masing-masing. Modul tambahan yang dicentang di
+// Hak Akses Role boleh diakses (dicek lewat permission module.*).
 // ═══════════════════════════════════════════════════════════════════
-const _salesAllowedPaths = new Set([
-  '/sales', '/sales/dashboard', '/login', '/logout',
-  '/tickets', '/todos', '/work-orders'
-]);
-// Prefix yang diizinkan (untuk path dinamis seperti /tickets/123).
-const _salesAllowedPrefixes = ['/tickets/', '/work-orders/'];
-router.use((req, res, next) => {
-  // Hanya berlaku untuk GET halaman; lewati aset & request lain.
-  if (req.method !== 'GET') return next();
-  const token = req.cookies && req.cookies.token;
-  if (!token) return next(); // biar route auth masing-masing yang urus
-  try {
-    const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // role disematkan di token? kalau tidak, fallback aman: lanjut.
-    const roleName = (decoded.role || decoded.roleName || '').toLowerCase();
-    if (roleName === 'sales') {
-      const allowed = _salesAllowedPaths.has(req.path)
-        || _salesAllowedPrefixes.some(p => req.path.startsWith(p));
-      if (!allowed) return res.redirect('/sales');
-    }
-  } catch (_) { /* token invalid → biarkan authenticate yang menangani */ }
-  next();
-});
-
-// ═══════════════════════════════════════════════════════════════════
-// COLLECTOR CONFINEMENT — role 'collector' hanya boleh akses halaman
-// lapangan + beberapa halaman operasional. Setiap GET halaman lain
-// di-redirect ke /collect/field. (Admin/superadmin tidak terpengaruh.)
-// ═══════════════════════════════════════════════════════════════════
-const _collectorAllowedPaths = new Set([
-  '/collect/field', '/login', '/logout'
-]);
-const _collectorAllowedPrefixes = ['/collect/field'];
-router.use((req, res, next) => {
+const _confinedRoles = {
+  sales: {
+    home: '/sales',
+    paths: new Set(['/sales', '/sales/dashboard', '/login', '/logout', '/tickets', '/todos', '/work-orders']),
+    prefixes: ['/tickets/', '/work-orders/']
+  },
+  collector: {
+    home: '/collect/field',
+    paths: new Set(['/collect/field', '/login', '/logout']),
+    prefixes: ['/collect/field']
+  },
+  tenant_owner: {
+    home: '/tenant',
+    paths: new Set(['/tenant', '/customers', '/billing', '/payments', '/packages', '/login', '/logout']),
+    prefixes: ['/customers/', '/billing/', '/payments/', '/packages/']
+  }
+};
+router.use(async (req, res, next) => {
   if (req.method !== 'GET') return next();
   const token = req.cookies && req.cookies.token;
   if (!token) return next();
@@ -106,34 +86,25 @@ router.use((req, res, next) => {
     const jwt = require('jsonwebtoken');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const roleName = (decoded.role || decoded.roleName || '').toLowerCase();
-    if (roleName === 'collector') {
-      const allowed = _collectorAllowedPaths.has(req.path)
-        || _collectorAllowedPrefixes.some(p => req.path.startsWith(p));
-      if (!allowed) return res.redirect('/collect/field');
+    const conf = _confinedRoles[roleName];
+    if (!conf) return next();
+    const allowed = conf.paths.has(req.path) || conf.prefixes.some(p => req.path.startsWith(p));
+    if (allowed) return next();
+
+    const { User, Role, Permission } = require('../models');
+    const user = await User.findByPk(decoded.id, {
+      include: [{
+        model: Role,
+        as: 'role',
+        include: [{ model: Permission, as: 'permissions', through: { attributes: [] } }]
+      }]
+    });
+    const perms = user?.role?.permissions?.map(p => p.name) || [];
+    if (user && hasModuleForPath({ user, userPermissions: perms }, req.path)) {
+      return next();
     }
+    return res.redirect(conf.home);
   } catch (_) { /* token invalid → authenticate yang urus */ }
-  next();
-});
-
-const _tenantAllowedPaths = new Set([
-  '/tenant', '/customers', '/billing', '/payments', '/packages',
-  '/login', '/logout'
-]);
-const _tenantAllowedPrefixes = ['/customers/', '/billing/', '/payments/', '/packages/'];
-router.use((req, res, next) => {
-  if (req.method !== 'GET') return next();
-  const token = req.cookies && req.cookies.token;
-  if (!token) return next();
-  try {
-    const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const roleName = (decoded.role || decoded.roleName || '').toLowerCase();
-    if (roleName === 'tenant_owner') {
-      const allowed = _tenantAllowedPaths.has(req.path)
-        || _tenantAllowedPrefixes.some(p => req.path.startsWith(p));
-      if (!allowed) return res.redirect('/tenant');
-    }
-  } catch (_) { /* token invalid → authenticate */ }
   next();
 });
 
