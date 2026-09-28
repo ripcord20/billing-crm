@@ -2137,6 +2137,8 @@ router.put('/infrastructure/:id', authenticate, demoGuard, hasPermission('infra_
 router.delete('/infrastructure/:id', authenticate, demoGuard, hasPermission('infra_delete'), logActivity('delete', 'infrastructure'), (r,s) => InfrastructureController.destroy(r,s));
 
 // ===== INFRASTRUCTURE LINKS =====
+router.get   ('/infrastructure-links/route', authenticate, demoGuard, (r,s)=>InfrastructureLinkController.route(r,s));
+router.post  ('/infrastructure-links/route', authenticate, demoGuard, (r,s)=>InfrastructureLinkController.route(r,s));
 router.get   ('/infrastructure-links',     authenticate, demoGuard, (r,s)=>InfrastructureLinkController.index(r,s));
 router.post  ('/infrastructure-links',     authenticate, demoGuard, (r,s)=>InfrastructureLinkController.create(r,s));
 router.put   ('/infrastructure-links/:id', authenticate, demoGuard, (r,s)=>InfrastructureLinkController.update(r,s));

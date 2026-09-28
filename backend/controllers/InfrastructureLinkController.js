@@ -1,5 +1,6 @@
 const { InfrastructureLink, InfrastructurePoint, Customer } = require('../models');
 const { Op } = require('sequelize');
+const { routeAlongRoad } = require('../services/RoadRouteService');
 
 const pointAttrs = ['id','name','type','latitude','longitude','status','parent_id','metadata'];
 
@@ -35,6 +36,34 @@ function resolveParentChild(ptA, ptB) {
 }
 
 class InfrastructureLinkController {
+
+  // GET /api/infrastructure-links/route
+  async route(req, res) {
+    try {
+      let fromLat = req.query.from_lat;
+      let fromLng = req.query.from_lng;
+      let toLat = req.query.to_lat;
+      let toLng = req.query.to_lng;
+      const pts = req.body && req.body.points;
+      if (Array.isArray(pts) && pts.length >= 2) {
+        fromLat = pts[0][0]; fromLng = pts[0][1];
+        toLat = pts[pts.length - 1][0]; toLng = pts[pts.length - 1][1];
+      }
+      const result = await routeAlongRoad(fromLat, fromLng, toLat, toLng);
+      if (!result.ok) {
+        return res.status(502).json({ success: false, message: result.message || 'Rute jalan gagal' });
+      }
+      res.json({
+        success: true,
+        coordinates: result.coordinates,
+        path: result.coordinates,
+        waypoints: result.coordinates.slice(1, -1),
+        distance_m: result.distance_m
+      });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  }
 
   // GET /api/infrastructure-links
   async index(req, res) {

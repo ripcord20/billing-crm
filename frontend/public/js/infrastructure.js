@@ -113,6 +113,24 @@ const TILES = {
       background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.35);
       border-radius:8px; color:#fff; padding:3px 10px; font-size:11px; cursor:pointer;
     }
+    #drawModeBar .draw-follow-toggle {
+      display:flex; align-items:center; gap:5px; font-size:11px; font-weight:700;
+      background:rgba(255,255,255,.16); border-radius:8px; padding:3px 8px; cursor:pointer;
+    }
+    #drawModeBar .draw-follow-toggle input { accent-color:#fff; }
+    .map-follow-btn.active { background:#0f766e; color:#fff; border-color:#0f766e; }
+    .draw-wp-handle {
+      width:22px; height:22px; margin-left:-11px; margin-top:-11px;
+      border-radius:50%; background:#00e5cc; border:3px solid #fff;
+      box-shadow:0 0 0 2px rgba(0,229,204,.45), 0 2px 8px rgba(0,0,0,.35);
+      cursor:grab; touch-action:none;
+    }
+    .draw-wp-handle.dragging { cursor:grabbing; transform:scale(1.15); }
+    #infraMap.draw-freehand { cursor:crosshair !important; }
+    #infraMap.draw-freehand, #infraMap.draw-freehand .leaflet-container,
+    #infraMap.draw-freehand .leaflet-pane, #infraMap.draw-freehand .leaflet-tile-pane {
+      touch-action: none !important;
+    }
     /* Draw link button - inline di map-topbar */
     .map-draw-btn {
       background:#fff; color:#1e3a8a; border:2px solid #3b82f6;
@@ -355,16 +373,17 @@ function initMap() {
       return;
     }
     if (drawMode && drawFrom) {
-      // Add waypoint on empty map click (not on a marker)
-      const ll = [e.latlng.lat, e.latlng.lng];
-      drawWaypoints.push(ll);
-      // Draw a committed dot at waypoint
-      const dot = L.circleMarker(ll, {
-        radius:5, color:'#00e5cc', fillColor:'#00e5cc', fillOpacity:1,
-        weight:2, interactive:false, className:'draw-waypoint-dot'
-      }).addTo(map);
-      drawSegLines.push(dot);
-      showToast('Titik waypoint ditambahkan — klik marker untuk selesai', 'success');
+      if (_drawStrokeMoved) { _drawStrokeMoved = false; return; }
+      maybeAddDrawPoint(e.latlng);
+    }
+  });
+
+  bindDrawFreehand(map);
+
+  map.on('contextmenu', function(e) {
+    if (drawMode && drawFrom && drawWaypoints.length) {
+      L.DomEvent.preventDefault(e);
+      undoLastDrawWaypoint();
     }
   });
 
@@ -1826,37 +1845,237 @@ function toggleDrawMode() {
   drawFrom = null;
   document.getElementById('infraMap').classList.add('draw-mode');
   document.getElementById('drawModeBar').classList.add('active');
-  document.getElementById('drawModeText').textContent = 'Klik titik PERTAMA (Pelanggan/ODP/ODC)';
+  document.getElementById('drawModeText').textContent = 'Klik node AWAL, lalu ketuk sepanjang jalan atau tarik untuk gambar bebas';
   document.getElementById('drawBtn').classList.add('active');
   map.closePopup();
 }
 
+function isFollowRoadOn() {
+  const cb = document.getElementById('drawFollowRoad');
+  return !!(cb && cb.checked);
+}
+
+function setFollowRoad(on) {
+  const cb = document.getElementById('drawFollowRoad');
+  if (cb) cb.checked = !!on;
+  const btn = document.getElementById('followRoadBtn');
+  if (btn) btn.classList.toggle('active', !!on);
+}
+
+function toggleFollowRoadDraw() {
+  const turningOn = !drawMode || !isFollowRoadOn();
+  if (!drawMode) toggleDrawMode();
+  setFollowRoad(turningOn);
+  const bar = document.getElementById('drawModeText');
+  if (bar && turningOn && !drawFrom) {
+    bar.textContent = 'Kabel Jalan: klik node AWAL, lalu klik node tujuan — jalur menempel ke jalan';
+  }
+}
+
 function cancelDrawMode() {
+  endDrawStroke();
+  lockMapForDraw(false);
   drawMode = false; drawFrom = null;
   drawWaypoints = [];
   if (drawTempLine) { map.removeLayer(drawTempLine); drawTempLine = null; }
   drawSegLines.forEach(l => map.removeLayer(l)); drawSegLines = [];
   document.getElementById('infraMap').classList.remove('draw-mode');
+  document.getElementById('infraMap').classList.remove('draw-freehand');
   document.getElementById('drawModeBar').classList.remove('active');
-  document.getElementById('drawBtn').classList.remove('active');
+  const drawBtn = document.getElementById('drawBtn');
+  if (drawBtn) drawBtn.classList.remove('active');
+  const fr = document.getElementById('followRoadBtn');
+  if (fr) fr.classList.remove('active');
+  const cb = document.getElementById('drawFollowRoad');
+  if (cb) cb.checked = false;
 }
 
-function handleDrawClick(pt) {
-  if (!drawFrom) {
-    // First point
-    drawFrom = pt; drawWaypoints = [];
-    document.getElementById('drawModeText').innerHTML =
-      `<strong>${pt.name}</strong> dipilih &middot; klik peta untuk belokkan garis, klik marker untuk selesai`;
-    showSelectRing(pt.lat, pt.lng);
-  } else {
-    // Second marker — finish line
-    if (drawFrom.id === pt.id) { showToast('Pilih titik yang berbeda', 'warning'); return; }
-    // Auto-calculate distance along waypoints
-    const pts = [[drawFrom.lat, drawFrom.lng], ...drawWaypoints, [pt.lat, pt.lng]];
-    let totalM = 0;
-    for (let i = 0; i < pts.length-1; i++) totalM += map.distance(pts[i], pts[i+1]);
-    openLinkModal(drawFrom, pt, Math.round(totalM), drawWaypoints);
+function undoLastDrawWaypoint() {
+  if (!drawMode || !drawFrom || !drawWaypoints.length) return;
+  drawWaypoints.pop();
+  const last = drawSegLines.pop();
+  if (last) map.removeLayer(last);
+  if (typeof showToast === 'function') showToast('Titik belok terakhir dihapus', 'info', 1400);
+}
+
+function lockMapForDraw(on) {
+  if (!map) return;
+  if (on) {
+    if (map.dragging && map.dragging.enabled()) _drawMapDragWasOn = true;
+    if (map.dragging) map.dragging.disable();
+    if (map.tap && map.tap.disable) map.tap.disable();
+  } else if (_drawMapDragWasOn) {
+    if (map.dragging) map.dragging.enable();
+    if (map.tap && map.tap.enable) map.tap.enable();
+    _drawMapDragWasOn = false;
   }
+}
+
+async function fetchRoadRoute(fromLL, toLL) {
+  if (!fromLL || !toLL) return null;
+  const q = `from_lat=${fromLL[0]}&from_lng=${fromLL[1]}&to_lat=${toLL[0]}&to_lng=${toLL[1]}`;
+  const res = await apiWithRetry('/infrastructure-links/route?' + q, { method: 'GET' });
+  const coords = (res && (res.coordinates || res.path)) || [];
+  if (!res?.success || !Array.isArray(coords) || coords.length < 2) return null;
+  return { coords, distance_m: res.distance_m };
+}
+
+function addDrawWaypoint(latlng, opts) {
+  if (!drawMode || !drawFrom || !latlng) return;
+  const silent = !!(opts && opts.silent);
+  const ll = [latlng.lat, latlng.lng];
+  const idx = drawWaypoints.length;
+  drawWaypoints.push(ll);
+  const marker = L.marker(ll, {
+    icon: L.divIcon({ className: '', html: '<div class="draw-wp-handle"></div>', iconSize: [22, 22], iconAnchor: [11, 11] }),
+    draggable: true,
+    autoPan: false,
+    zIndexOffset: 540
+  }).addTo(map);
+  marker._drawWpIndex = idx;
+  marker.on('dragstart', function () {
+    _drawDraggingWp = true;
+    if (marker._icon) {
+      const h = marker._icon.querySelector('.draw-wp-handle');
+      if (h) h.classList.add('dragging');
+    }
+  });
+  marker.on('drag', function (ev) {
+    const i = marker._drawWpIndex;
+    if (i == null || !drawWaypoints[i]) return;
+    const p = ev.target.getLatLng();
+    drawWaypoints[i] = [p.lat, p.lng];
+  });
+  marker.on('dragend', function () {
+    _drawDraggingWp = false;
+    if (marker._icon) {
+      const h = marker._icon.querySelector('.draw-wp-handle');
+      if (h) h.classList.remove('dragging');
+    }
+  });
+  marker.on('click', function (ev) { L.DomEvent.stop(ev); });
+  drawSegLines.push(marker);
+  if (!silent && typeof showToast === 'function') {
+    showToast('Titik belok ditambahkan — ketuk lagi di sepanjang jalan, atau tarik untuk bentuk bebas', 'success', 1800);
+  }
+}
+
+async function maybeAddDrawPoint(latlng) {
+  if (!drawMode || !drawFrom || !latlng) return;
+  if (isFollowRoadOn()) {
+    const last = drawWaypoints.length
+      ? drawWaypoints[drawWaypoints.length - 1]
+      : [drawFrom.lat, drawFrom.lng];
+    const routed = await fetchRoadRoute(last, [latlng.lat, latlng.lng]);
+    if (routed) {
+      const mids = routed.coords.slice(1);
+      mids.forEach((p) => addDrawWaypoint({ lat: p[0], lng: p[1] }, { silent: true }));
+      if (typeof showToast === 'function') showToast('Segmen menempel ke jalan', 'success', 1400);
+      return;
+    }
+  }
+  addDrawWaypoint(latlng);
+}
+
+let _drawStroke = false;
+let _drawStrokeMoved = false;
+let _drawDraggingWp = false;
+let _drawMapDragWasOn = false;
+
+function pointerOnMapCanvas(ev) {
+  const t = ev && ev.target;
+  if (!t || !t.closest) return true;
+  if (t.closest('.leaflet-marker-icon') || t.closest('.leaflet-popup') || t.closest('.draw-wp-handle')) return false;
+  if (t.closest('.map-topbar-wrap') || t.closest('.tile-switcher') || t.closest('#drawModeBar') || t.closest('#pathEditBar')) return false;
+  return true;
+}
+
+function beginDrawStroke(ev, latlng) {
+  if (!drawMode || !drawFrom || _drawDraggingWp) return;
+  if (!pointerOnMapCanvas(ev)) return;
+  _drawStroke = true;
+  _drawStrokeMoved = false;
+  lockMapForDraw(true);
+  const el = document.getElementById('infraMap');
+  if (el) el.classList.add('draw-freehand');
+  try { if (ev && ev.target && ev.pointerId != null) ev.target.setPointerCapture(ev.pointerId); } catch (_) {}
+}
+
+function continueDrawStroke(latlng) {
+  if (!_drawStroke || !drawMode || !drawFrom || !latlng) return;
+  const last = drawWaypoints[drawWaypoints.length - 1];
+  if (!last) { addDrawWaypoint(latlng, { silent: true }); _drawStrokeMoved = true; return; }
+  const a = map.latLngToContainerPoint(L.latLng(last[0], last[1]));
+  const b = map.latLngToContainerPoint(latlng);
+  if (a.distanceTo(b) >= 14) {
+    addDrawWaypoint(latlng, { silent: true });
+    _drawStrokeMoved = true;
+  }
+}
+
+function endDrawStroke() {
+  if (!_drawStroke) {
+    const el0 = document.getElementById('infraMap');
+    if (el0) el0.classList.remove('draw-freehand');
+    return;
+  }
+  _drawStroke = false;
+  lockMapForDraw(false);
+  const el = document.getElementById('infraMap');
+  if (el) el.classList.remove('draw-freehand');
+}
+
+function bindDrawFreehand(mapObj) {
+  if (!mapObj || mapObj._drawFreehandBound) return;
+  mapObj._drawFreehandBound = true;
+  const el = mapObj.getContainer();
+  el.addEventListener('pointerdown', function (ev) {
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    if (!drawMode || !drawFrom) return;
+    if (isFollowRoadOn() && ev.pointerType !== 'mouse') return;
+    if (ev.cancelable) ev.preventDefault();
+    const ll = mapObj.mouseEventToLatLng(ev);
+    beginDrawStroke(ev, ll);
+  }, { passive: false });
+  el.addEventListener('pointermove', function (ev) {
+    if (!_drawStroke) return;
+    if (ev.cancelable) ev.preventDefault();
+    const ll = mapObj.mouseEventToLatLng(ev);
+    continueDrawStroke(ll);
+  }, { passive: false });
+  const stop = function () { endDrawStroke(); };
+  el.addEventListener('pointerup', stop);
+  el.addEventListener('pointercancel', stop);
+  el.addEventListener('lostpointercapture', stop);
+}
+
+async function handleDrawClick(pt) {
+  if (!drawFrom) {
+    drawFrom = pt; drawWaypoints = [];
+    document.getElementById('drawModeText').innerHTML = isFollowRoadOn()
+      ? `<strong>${pt.name}</strong> dipilih · klik node tujuan agar kabel mengikuti jalan, atau ketuk titik di sepanjang jalan`
+      : `<strong>${pt.name}</strong> dipilih · ketuk peta untuk belok, tarik untuk gambar bebas, lalu klik node tujuan`;
+    showSelectRing(pt.lat, pt.lng);
+    return;
+  }
+  if (drawFrom.id === pt.id) { showToast('Pilih titik yang berbeda', 'warning'); return; }
+
+  let wps = drawWaypoints.slice();
+  if (isFollowRoadOn()) {
+    const last = wps.length ? wps[wps.length - 1] : [drawFrom.lat, drawFrom.lng];
+    if (typeof showToast === 'function') showToast('Mengikuti jalan…', 'info', 1800);
+    const routed = await fetchRoadRoute(last, [pt.lat, pt.lng]);
+    if (routed && routed.coords.length > 2) {
+      wps = wps.concat(routed.coords.slice(1, -1));
+    } else if (!wps.length) {
+      showToast('Rute jalan tidak tersedia. Ketuk di sepanjang jalan atau tarik jalur manual.', 'warning', 3200);
+    }
+  }
+
+  const pts = [[drawFrom.lat, drawFrom.lng], ...wps, [pt.lat, pt.lng]];
+  let totalM = 0;
+  for (let i = 0; i < pts.length - 1; i++) totalM += map.distance(pts[i], pts[i + 1]);
+  openLinkModal(drawFrom, pt, Math.round(totalM), wps);
 }
 
 let selectRingMarker = null;
