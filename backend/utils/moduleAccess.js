@@ -68,11 +68,17 @@ function hasModuleForPath(reqOrUser, pathname) {
   return hasModule(reqOrUser, mod.key);
 }
 
+function canManageRoles(reqOrUser) {
+  const n = roleName(reqOrUser);
+  return n === 'superadmin' || n === 'admin';
+}
+
 function attachLocals(req, res) {
   const keys = grantedModuleKeys(req);
   const set = new Set(keys);
   res.locals.moduleKeys = keys;
   res.locals.canModule = (key) => isSuperadmin(req) || set.has(key);
+  res.locals.canManageRoles = canManageRoles(req);
 }
 
 module.exports = {
@@ -84,5 +90,6 @@ module.exports = {
   grantedModuleKeys,
   findModuleByPath,
   hasModuleForPath,
+  canManageRoles,
   attachLocals
 };

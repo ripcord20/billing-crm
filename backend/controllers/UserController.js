@@ -1,7 +1,7 @@
 const { User, Role, Permission, RolePermission } = require('../models');
 const { Op } = require('sequelize');
 const { paginateResponse } = require('../utils/helpers');
-const { SIDEBAR_MODULES } = require('../config/sidebarModules');
+const { SIDEBAR_MODULES, MOBILE_DRAWER_MODULES } = require('../config/sidebarModules');
 
 class UserController {
   // List users
@@ -208,6 +208,14 @@ class UserController {
           name: m.name,
           display: m.display,
           section: m.section,
+          href: m.href
+        })),
+        mobileModules: MOBILE_DRAWER_MODULES.map(m => ({
+          key: m.key,
+          name: m.name,
+          display: m.display,
+          section: 'APP MOBILE',
+          group: m.group,
           href: m.href
         }))
       });

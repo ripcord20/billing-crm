@@ -153,6 +153,7 @@ function esc(s) {
 // ── HAK AKSES ROLE ───────────────────────────────────────────
 let _permissions = [];
 let _moduleCatalog = [];
+let _mobileCatalog = [];
 let _selectedRoleId = null;
 let _rolesLoadedForPerm = false;
 
@@ -188,6 +189,7 @@ async function loadRolePermissions() {
           section: p.module,
           href: ''
         }));
+    _mobileCatalog = Array.isArray(permRes.mobileModules) ? permRes.mobileModules : [];
   }
   renderRoleList();
   if (_selectedRoleId) selectRole(_selectedRoleId);
@@ -229,7 +231,20 @@ function selectRole(id) {
     if (!bySection[sec]) bySection[sec] = [];
     bySection[sec].push(m);
   });
-  const sections = Object.keys(bySection);
+  if (_mobileCatalog.length) {
+    bySection['APP MOBILE'] = _mobileCatalog.map(m => ({
+      key: m.key,
+      name: m.name || ('module.' + m.key),
+      display: m.display,
+      section: 'APP MOBILE',
+      href: m.href || ''
+    }));
+  }
+  const sections = [];
+  if (bySection['APP MOBILE']) sections.push('APP MOBILE');
+  Object.keys(bySection).forEach(sec => {
+    if (sec !== 'APP MOBILE') sections.push(sec);
+  });
   body.innerHTML = sections.map(sec => {
     const items = bySection[sec].map(m => {
       const perm = _permissions.find(p => p.name === m.name);
@@ -272,9 +287,9 @@ function syncSelectAll() {
 
 async function saveRolePermissions() {
   if (!_selectedRoleId) return;
-  const permissions = [...document.querySelectorAll('.perm-cb:checked')]
+  const permissions = [...new Set([...document.querySelectorAll('.perm-cb:checked')]
     .map(b => parseInt(b.value, 10))
-    .filter(Boolean);
+    .filter(Boolean))];
   const d = await App.api(`/roles/${_selectedRoleId}`, {
     method: 'PUT',
     body: JSON.stringify({ permissions })
@@ -290,5 +305,11 @@ async function saveRolePermissions() {
 }
 
 document.addEventListener('change', (e) => {
-  if (e.target && e.target.classList && e.target.classList.contains('perm-cb')) syncSelectAll();
+  if (e.target && e.target.classList && e.target.classList.contains('perm-cb')) {
+    const val = e.target.value;
+    document.querySelectorAll('.perm-cb').forEach(b => {
+      if (b !== e.target && b.value === val) b.checked = e.target.checked;
+    });
+    syncSelectAll();
+  }
 });

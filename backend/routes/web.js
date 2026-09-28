@@ -16,7 +16,7 @@ const {
 const { allowHrisAdmin } = require('../middleware/hrisAccess');
 const { allowTenantArea } = require('../middleware/tenantAccess');
 const { homePathForRole } = require('../utils/tenantScope');
-const { hasModuleForPath } = require('../utils/moduleAccess');
+const { hasModuleForPath, canManageRoles } = require('../utils/moduleAccess');
 
 // Login page — auto-redirect kalau user sudah punya session valid.
 // Cek cookie 'token' (HttpOnly yang di-set saat login berhasil). Kalau JWT
@@ -290,13 +290,20 @@ router.get('/collect/field', authenticate, blockFinanceArea, blockNocArea, block
 });
 
 // ── Mobile shell (owner, tampilan ringkas ala APK) ───────────────────
-// Full-mobile (layout:false), hanya admin/superadmin. Diakses via /mobile di HP.
-// API-nya reuse endpoint yang sudah ada, hanya UI berbeda.
+// Full-mobile (layout:false). Admin/superadmin boleh masuk; tiap halaman
+// mengikuti hak akses modul yang sama dengan sidebar desktop.
 const _mobileAllowed = ['superadmin', 'admin'];
+const _mobileAlways = new Set(['/mobile', '/mobile/profile']);
 function renderMobile(page, title, active) {
   return (req, res) => {
     const roleName = (req.user?.role?.name || '').toLowerCase();
     if (!_mobileAllowed.includes(roleName)) return res.redirect('/dashboard');
+    const path = (req.path || '').replace(/\/+$/, '') || '/mobile';
+    if (path === '/mobile/roles') {
+      if (!canManageRoles(req)) return res.redirect('/mobile');
+    } else if (!_mobileAlways.has(path) && !hasModuleForPath(req, path)) {
+      return res.redirect('/mobile');
+    }
     res.render('pages/mobile/' + page, {
       title, user: req.user, active, layout: false,
       appName: (res.locals && res.locals.appName) || process.env.APP_NAME || 'FLAYNET'
@@ -326,6 +333,7 @@ router.get('/mobile/packages',       authenticate, renderMobile('packages',     
 router.get('/mobile/assets',         authenticate, renderMobile('assets',         'Aset & Inventaris', 'm-assets'));
 router.get('/mobile/wa',             authenticate, renderMobile('wa',             'WhatsApp Gateway', 'm-wa'));
 router.get('/mobile/profile',        authenticate, renderMobile('profile',        'Akun Saya',     'm-profile'));
+router.get('/mobile/roles',          authenticate, renderMobile('roles',          'Hak Akses Role','m-roles'));
 
 router.get('/payments', authenticate, allowFinanceArea, (req, res) => {
   res.render('pages/payments', { title: 'Pembayaran', user: req.user, active: 'payments' });

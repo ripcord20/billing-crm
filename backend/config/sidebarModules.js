@@ -86,7 +86,74 @@ const SIDEBAR_MODULES = [
   { key: 'settings',           name: 'module.settings',           display: 'Settings',              section: 'SISTEM',      href: '/settings',                   prefixes: ['/settings', '/app-settings', '/system/database', '/users', '/roles', '/permissions'] },
 ];
 
+/** Path app mobile → modul yang sama dengan sidebar desktop (satu permission). */
+const MOBILE_PATHS = {
+  dashboard: ['/mobile'],
+  customers: ['/mobile/customers'],
+  payments: ['/mobile/payments', '/mobile/payment-new'],
+  billing: ['/mobile/invoice'],
+  'wa-reminder': ['/mobile/reminder'],
+  whatsapp: ['/mobile/wa'],
+  tickets: ['/mobile/ticket'],
+  keuangan: ['/mobile/keuangan'],
+  laporan: ['/mobile/finance'],
+  traffic: ['/mobile/monitoring'],
+  'content-monitoring': ['/mobile/content'],
+  queue: ['/mobile/queue'],
+  isolir: ['/mobile/isolir'],
+  hotspot: ['/mobile/hotspot'],
+  'voucher-template': ['/mobile/voucher'],
+  packages: ['/mobile/packages'],
+  assets: ['/mobile/assets'],
+  'hotspot-binding': ['/mobile/hotspot-binding'],
+  ping: ['/mobile/host'],
+  infrastructure: ['/mobile/infrastructure'],
+  noc: ['/mobile/noc'],
+  settings: ['/mobile/roles']
+};
+
+for (const [key, paths] of Object.entries(MOBILE_PATHS)) {
+  const mod = SIDEBAR_MODULES.find(m => m.key === key);
+  if (!mod) continue;
+  mod.prefixes = [...new Set([...(mod.prefixes || []), ...paths])];
+}
+
+/**
+ * Item drawer app mobile. key/name sama dengan SIDEBAR_MODULES
+ * supaya centang di Hak Akses berlaku di desktop dan mobile.
+ */
+const MOBILE_DRAWER_MODULES = [
+  { key: 'dashboard',          name: 'module.dashboard',          display: 'Beranda',            group: 'Menu Utama', href: '/mobile' },
+  { key: 'customers',          name: 'module.customers',          display: 'Pelanggan',          group: 'Menu Utama', href: '/mobile/customers' },
+  { key: 'payments',           name: 'module.payments',           display: 'Pembayaran',         group: 'Menu Utama', href: '/mobile/payments' },
+  { key: 'billing',            name: 'module.billing',            display: 'Invoice',            group: 'Menu Utama', href: '/mobile/invoice' },
+  { key: 'wa-reminder',        name: 'module.wa-reminder',        display: 'Reminder Tagihan',   group: 'Menu Utama', href: '/mobile/reminder' },
+  { key: 'whatsapp',           name: 'module.whatsapp',           display: 'WhatsApp Gateway',   group: 'Menu Utama', href: '/mobile/wa' },
+  { key: 'tickets',            name: 'module.tickets',            display: 'Tiket',              group: 'Menu Utama', href: '/mobile/ticket' },
+  { key: 'keuangan',           name: 'module.keuangan',           display: 'Keuangan',           group: 'Laporan',     href: '/mobile/keuangan' },
+  { key: 'laporan',            name: 'module.laporan',            display: 'Laporan Keuangan',   group: 'Laporan',     href: '/mobile/finance' },
+  { key: 'traffic',            name: 'module.traffic',            display: 'Monitoring',         group: 'Jaringan',    href: '/mobile/monitoring' },
+  { key: 'content-monitoring', name: 'module.content-monitoring', display: 'Content Monitoring', group: 'Jaringan',    href: '/mobile/content' },
+  { key: 'queue',              name: 'module.queue',              display: 'Simple Queue',       group: 'Jaringan',    href: '/mobile/queue' },
+  { key: 'isolir',             name: 'module.isolir',             display: 'Isolir',             group: 'Jaringan',    href: '/mobile/isolir' },
+  { key: 'hotspot',            name: 'module.hotspot',            display: 'Hotspot',            group: 'Jaringan',    href: '/mobile/hotspot' },
+  { key: 'voucher-template',   name: 'module.voucher-template',   display: 'Voucher',            group: 'Jaringan',    href: '/mobile/voucher' },
+  { key: 'packages',           name: 'module.packages',           display: 'Paket Layanan',      group: 'Jaringan',    href: '/mobile/packages' },
+  { key: 'assets',             name: 'module.assets',             display: 'Aset & Inventaris',  group: 'Jaringan',    href: '/mobile/assets' },
+  { key: 'hotspot-binding',    name: 'module.hotspot-binding',    display: 'Hotspot Binding',    group: 'Jaringan',    href: '/mobile/hotspot-binding' },
+  { key: 'ping',               name: 'module.ping',               display: 'Host Terdeteksi',    group: 'Jaringan',    href: '/mobile/host' },
+  { key: 'infrastructure',     name: 'module.infrastructure',     display: 'Infrastruktur',      group: 'Jaringan',    href: '/mobile/infrastructure' },
+  { key: 'noc',                name: 'module.noc',                display: 'NOC / Jaringan',     group: 'Jaringan',    href: '/mobile/noc' },
+  { key: 'settings',           name: 'module.settings',           display: 'Hak Akses Role',     group: 'Pengaturan',  href: '/mobile/roles' }
+];
+
+const MOBILE_HREF_MODULE = Object.fromEntries(
+  MOBILE_DRAWER_MODULES.map(m => [m.href, m.key])
+);
+MOBILE_HREF_MODULE['/mobile/payment-new'] = 'payments';
+
 const SECTION_ORDER = [
+  'APP MOBILE',
   'OVERVIEW',
   'MONITORING',
   'TICKETING',
@@ -132,10 +199,22 @@ function groupedModules() {
   })).filter(g => g.items.length);
 }
 
+function groupedMobileModules() {
+  const order = ['Menu Utama', 'Laporan', 'Jaringan', 'Pengaturan'];
+  return order.map(group => ({
+    group,
+    items: MOBILE_DRAWER_MODULES.filter(m => m.group === group)
+  })).filter(g => g.items.length);
+}
+
 module.exports = {
   SIDEBAR_MODULES,
+  MOBILE_DRAWER_MODULES,
+  MOBILE_HREF_MODULE,
+  MOBILE_PATHS,
   SECTION_ORDER,
   ALL_KEYS,
   DEFAULT_ROLE_MODULES,
-  groupedModules
+  groupedModules,
+  groupedMobileModules
 };
