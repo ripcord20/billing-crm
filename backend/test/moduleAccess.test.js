@@ -7,7 +7,7 @@ const {
   grantedModuleKeys,
   isSuperadmin
 } = require('../utils/moduleAccess');
-const { SIDEBAR_MODULES, ALL_KEYS, MOBILE_DRAWER_MODULES } = require('../config/sidebarModules');
+const { SIDEBAR_MODULES, ALL_KEYS, MOBILE_DRAWER_MODULES, accountModuleForm } = require('../config/sidebarModules');
 
 assert.ok(ALL_KEYS.includes('dashboard'));
 assert.ok(ALL_KEYS.includes('collect'));
@@ -63,5 +63,27 @@ const adminEmpty = {
   userPermissions: []
 };
 assert.strictEqual(hasModule(adminEmpty, 'settings'), true);
+
+const form = accountModuleForm();
+assert.strictEqual(form.length, ALL_KEYS.length);
+assert.ok(form.every(m => m.actions[0].label === 'Lihat' && m.actions[0].perm === m.name));
+const pelanggan = form.find(m => m.key === 'customers');
+assert.strictEqual(pelanggan.actions.length, 4);
+const billing = form.find(m => m.key === 'billing');
+assert.strictEqual(billing.actions.length, 3);
+const perangkat = form.find(m => m.key === 'devices');
+assert.strictEqual(perangkat.actions.length, 4);
+const dash = form.find(m => m.key === 'dashboard');
+assert.strictEqual(dash.actions.length, 1);
+
+const overrideReq = {
+  user: {
+    role: { name: 'finance' },
+    module_access: { modules: ['tickets', 'whatsapp'], actions: [] }
+  },
+  userPermissions: ['module.finance', 'module.customers']
+};
+assert.strictEqual(hasModule(overrideReq, 'tickets'), true);
+assert.strictEqual(hasModule(overrideReq, 'finance'), false);
 
 console.log('moduleAccess.test.js OK');

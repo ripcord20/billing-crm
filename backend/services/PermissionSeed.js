@@ -1,7 +1,7 @@
 'use strict';
 
 const { Permission, Role, RolePermission, AppSetting } = require('../models');
-const { SIDEBAR_MODULES, DEFAULT_ROLE_MODULES } = require('../config/sidebarModules');
+const { SIDEBAR_MODULES, DEFAULT_ROLE_MODULES, ACTION_PERMISSIONS } = require('../config/sidebarModules');
 const logger = require('../utils/logger');
 
 const SEED_FLAG = 'sidebar_module_perms_seeded';
@@ -28,6 +28,20 @@ async function seedSidebarPermissions() {
       });
     }
     permissionByName[mod.name] = row;
+    if (created) newlyCreated.push(row);
+  }
+
+  for (const act of ACTION_PERMISSIONS) {
+    const [row, created] = await Permission.findOrCreate({
+      where: { name: act.name },
+      defaults: {
+        name: act.name,
+        display_name: act.display_name,
+        module: act.module,
+        description: `Aksi ${act.display_name}`
+      }
+    });
+    permissionByName[act.name] = row;
     if (created) newlyCreated.push(row);
   }
 

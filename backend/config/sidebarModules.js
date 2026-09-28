@@ -192,6 +192,66 @@ const DEFAULT_ROLE_MODULES = {
   technician: ['tickets', 'todos', 'work-orders']
 };
 
+/** Aksi tambahan di form Edit Akun (selain Lihat = akses menu). */
+const MODULE_EXTRA_ACTIONS = {
+  customers: [
+    { label: 'Tambah', perm: 'customer_create' },
+    { label: 'Edit', perm: 'customer_update' },
+    { label: 'Hapus', perm: 'customer_delete' }
+  ],
+  billing: [
+    { label: 'Generate Tagihan', perm: 'billing_generate' },
+    { label: 'Catat Pembayaran', perm: 'billing_payment' }
+  ],
+  payments: [
+    { label: 'Catat Pembayaran', perm: 'billing_payment' }
+  ],
+  devices: [
+    { label: 'Tambah', perm: 'device_create' },
+    { label: 'Edit', perm: 'device_update' },
+    { label: 'Hapus', perm: 'device_delete' }
+  ],
+  infrastructure: [
+    { label: 'Tambah', perm: 'infra_create' },
+    { label: 'Edit', perm: 'infra_update' },
+    { label: 'Hapus', perm: 'infra_delete' }
+  ],
+  packages: [
+    { label: 'Tambah', perm: 'package_create' },
+    { label: 'Edit', perm: 'package_update' },
+    { label: 'Hapus', perm: 'package_delete' }
+  ],
+  tickets: [
+    { label: 'Tambah', perm: 'ticket_create' },
+    { label: 'Edit', perm: 'ticket_update' }
+  ]
+};
+
+const ACTION_PERMISSIONS = Object.values(MODULE_EXTRA_ACTIONS)
+  .flat()
+  .reduce((acc, a) => {
+    if (!acc.find(x => x.name === a.perm)) {
+      acc.push({ name: a.perm, display_name: a.label, module: 'ACTIONS' });
+    }
+    return acc;
+  }, []);
+
+function actionsForModule(mod) {
+  const lihat = { label: 'Lihat', perm: mod.name };
+  return [lihat, ...(MODULE_EXTRA_ACTIONS[mod.key] || [])];
+}
+
+function accountModuleForm() {
+  return SIDEBAR_MODULES.map(m => ({
+    key: m.key,
+    name: m.name,
+    display: m.display,
+    section: m.section,
+    href: m.href,
+    actions: actionsForModule(m)
+  }));
+}
+
 function groupedModules() {
   return SECTION_ORDER.map(section => ({
     section,
@@ -215,6 +275,10 @@ module.exports = {
   SECTION_ORDER,
   ALL_KEYS,
   DEFAULT_ROLE_MODULES,
+  MODULE_EXTRA_ACTIONS,
+  ACTION_PERMISSIONS,
+  actionsForModule,
+  accountModuleForm,
   groupedModules,
   groupedMobileModules
 };

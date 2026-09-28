@@ -15,12 +15,35 @@ function permissionList(reqOrUser) {
   return user?.role?.permissions?.map(p => p.name) || [];
 }
 
+function parseModuleAccess(user) {
+  if (!user) return null;
+  let data = user.module_access;
+  if (typeof data === 'string') {
+    try { data = JSON.parse(data); } catch (_) { return null; }
+  }
+  if (!data) return null;
+  if (Array.isArray(data)) return { modules: data, actions: [] };
+  if (typeof data === 'object') {
+    return {
+      modules: Array.isArray(data.modules) ? data.modules : [],
+      actions: Array.isArray(data.actions) ? data.actions : []
+    };
+  }
+  return null;
+}
+
 function isSuperadmin(reqOrUser) {
   return roleName(reqOrUser) === 'superadmin';
 }
 
 function grantedModuleKeys(reqOrUser) {
   if (isSuperadmin(reqOrUser)) return SIDEBAR_MODULES.map(m => m.key);
+  const user = reqOrUser?.user || reqOrUser;
+  const override = parseModuleAccess(user);
+  if (override) {
+    const allowed = new Set(SIDEBAR_MODULES.map(m => m.key));
+    return override.modules.filter(k => allowed.has(k));
+  }
   const names = new Set(permissionList(reqOrUser));
   const keys = SIDEBAR_MODULES.filter(m => names.has(m.name)).map(m => m.key);
   if (keys.length) return keys;
@@ -90,6 +113,7 @@ module.exports = {
   grantedModuleKeys,
   findModuleByPath,
   hasModuleForPath,
+  parseModuleAccess,
   canManageRoles,
   attachLocals
 };

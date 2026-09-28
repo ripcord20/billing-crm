@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { User, Role, Permission, Tenant } = require('../models');
-const { attachLocals } = require('../utils/moduleAccess');
+const { attachLocals, parseModuleAccess } = require('../utils/moduleAccess');
 
 // Bangun URL redirect ke /login sambil menyimpan tujuan awal (?next=...).
 // Hanya path internal yang aman (diawali '/', bukan '//' atau 'http') yang
@@ -118,6 +118,10 @@ const hasPermission = (...permissions) => {
     }
     // Superadmin bypasses all permission checks
     if (req.user.role?.name === 'superadmin') {
+      return next();
+    }
+    const access = parseModuleAccess(req.user);
+    if (access && permissions.some(p => access.actions.includes(p))) {
       return next();
     }
     // ── Role-based grant: izin tambahan yang melekat ke role tertentu tanpa
