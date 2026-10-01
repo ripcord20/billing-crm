@@ -736,9 +736,10 @@
       statusEl.innerHTML = '<span class="status-dot"></span> Online';
       statusEl.className = 'status-badge online';
 
-      const cpuClass = getProgressClass(server.cpuLoadPercent);
+      const cpuVal = server.cpuPercent != null ? server.cpuPercent : server.cpuLoadPercent;
+      const cpuClass = getProgressClass(cpuVal);
       const memClass = getProgressClass(server.memoryUsagePercent);
-      const cpuColor = getProgressColor(server.cpuLoadPercent);
+      const cpuColor = getProgressColor(cpuVal);
       const memColor = getProgressColor(server.memoryUsagePercent);
 
       contentEl.innerHTML = `
@@ -783,7 +784,7 @@
               <div class="info-icon">${icons.activity}</div>
               <span class="info-label">Load Average</span>
             </div>
-            <span class="info-value">${server.loadAvg.join(', ')}</span>
+            <span class="info-value">${(server.loadAvg || []).join(', ')}</span>
           </div>
         </div>
 
@@ -792,14 +793,15 @@
             <div class="progress-header">
               <div class="progress-label-group">
                 <div class="progress-icon-small">${icons.chip}</div>
-                <span class="progress-label">CPU Load</span>
+                <span class="progress-label">CPU</span>
               </div>
               <div class="progress-value-group">
-                <span class="progress-percent ${cpuColor}">${server.cpuLoadPercent}%</span>
+                <span class="progress-percent ${cpuColor}">${server.cpuPercent != null ? server.cpuPercent : server.cpuLoadPercent}%</span>
+                ${server.ioWaitPercent ? `<span class="progress-detail">I/O wait ${server.ioWaitPercent}%</span>` : ''}
               </div>
             </div>
             <div class="progress-bar-container">
-              <div class="progress-bar-fill ${cpuClass}" style="width: ${Math.min(server.cpuLoadPercent, 100)}%"></div>
+              <div class="progress-bar-fill ${cpuClass}" style="width: ${Math.min(server.cpuPercent != null ? server.cpuPercent : server.cpuLoadPercent, 100)}%"></div>
             </div>
           </div>
 
