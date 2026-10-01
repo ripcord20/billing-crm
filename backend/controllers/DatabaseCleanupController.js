@@ -302,16 +302,6 @@ async function runCleanupForTable(tableKey) {
 
   try {
     deleted = await batchDelete(config, cutoff);
-    if (deleted > 0 && (tableKey === 'traffic_data' || tableKey === 'queue_history')) {
-      const tableName = config.model
-        ? (config.model.getTableName?.() || config.model.tableName)
-        : config.rawTable;
-      try {
-        await sequelize.query(`OPTIMIZE TABLE \`${tableName}\``);
-      } catch (optErr) {
-        logger.warn(`[Cleanup] OPTIMIZE ${tableName}: ${optErr.message}`);
-      }
-    }
   } catch (e) {
     error = e.message;
     logger.error(`[Cleanup] ${tableKey} ERROR: ${e.message}\n${e.stack}`);
