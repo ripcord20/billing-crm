@@ -47,7 +47,7 @@ const TABLES = [
     description:'Data traffic per interface MikroTik. Sangat cepat tumbuh.',
     model:      TrafficData,
     timeField:  'recorded_at',
-    defaultDays:30,
+    defaultDays:7,
     priority:   'critical',
   },
   {
@@ -56,7 +56,7 @@ const TABLES = [
     description:'Riwayat rate per Simple Queue MikroTik per menit.',
     model:      QueueHistory,
     timeField:  'recorded_at',
-    defaultDays:30,
+    defaultDays:7,
     priority:   'critical',
   },
   {
