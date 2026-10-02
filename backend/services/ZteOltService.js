@@ -2022,7 +2022,8 @@ class ZteOltService extends BaseCliOltService {
       type:         get('Type'),
       state:        get('State'),
       admin_state:  get('Admin state'),
-      phase_state:  get('Phase state'),
+      phase_state:  onuPhase.normalize(get('Phase state')) || get('Phase state'),
+      last_down_cause: onuPhase.extractDownCause(out) || null,
       config_state: configState,
       auth_mode:    get('Authentication mode'),
       serial_number:get('Serial number'),
@@ -2053,11 +2054,13 @@ class ZteOltService extends BaseCliOltService {
     const onu_tx = num(/up\s*[^\n]*Tx\s*:\s*(-?\d+(?:\.\d+)?)\s*\(?dbm/i);
     const olt_tx = num(/down\s*Tx\s*:\s*(-?\d+(?:\.\d+)?)\s*\(?dbm/i);
 
-    const noSignal = /no\s*signal/i.test(s);
+    const dyingGasp = onuPhase.isDyingGasp(s) || onuPhase.extractDownCause(s) === 'dyinggasp';
+    const noSignal = /no\s*signal/i.test(s) && !dyingGasp;
 
     // Klasifikasi kualitas redaman ONU (Rx ONU)
     let quality = 'unknown';
-    if (noSignal) quality = 'los';
+    if (dyingGasp) quality = 'dyinggasp';
+    else if (noSignal) quality = 'los';
     else if (onu_rx !== null) {
       if (onu_rx >= -25) quality = 'good';
       else if (onu_rx >= -28) quality = 'warning';

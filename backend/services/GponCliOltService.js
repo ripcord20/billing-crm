@@ -534,26 +534,8 @@ class GponCliOltService extends BaseCliOltService {
       break;
     }
 
-    // Bila overlay sudah membedakan dying-gasp, tidak perlu detail per-ONU.
-    // Kalau list hanya bilang LOS/offline, cek last-down-cause (CDATA sering
-    // menulis LOS padahal cause-nya dying-gasp).
-    const alreadyGasp = list.some(o => onuPhase.normalize(o.phase_state) === 'dyinggasp');
-    const needCause = alreadyGasp ? [] : list.filter(o => {
-      if (o.status === 'online') return false;
-      const p = onuPhase.normalize(o.phase_state);
-      return p === 'los' || p === 'offline' || !p;
-    });
-    for (const o of needCause.slice(0, 16)) {
-      const det = await this._safeExec(this._fmt(this.cmd.onuDetail, { id: o.onu_id }))
-        || await this._safeExec(`show ont info ${port} ${o.onu_id}`);
-      const cause = onuPhase.extractDownCause(det);
-      if (!cause) continue;
-      o.last_down_cause = cause;
-      if (cause === 'dyinggasp' || cause === 'los') {
-        o.phase_state = cause;
-        o.status = onuPhase.statusFromPhase(cause, { admin: o.admin_state });
-      }
-    }
+    // Tidak fetch detail per-ONU di sini: 1 perintah overlay sudah cukup
+    // dan menghindari lonjakan RAM/CPU saat discover banyak PON.
   }
 
   // show onu auto-find:

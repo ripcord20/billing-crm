@@ -24,6 +24,7 @@
 
 const BaseCliOltService = require('./BaseCliOltService');
 const logger = require('../utils/logger');
+const onuPhase = require('../utils/onuPhase');
 
 class HsgqEponOltService extends BaseCliOltService {
   constructor(config = {}) {
@@ -101,8 +102,8 @@ class HsgqEponOltService extends BaseCliOltService {
           const d = await this.exec(`show onu-info onu-id ${o.onu_id}`);
           const p = this._parseOptical(d);
           o.onu_rx_dbm = p.onu_rx_dbm;
-          o.quality    = p.quality;
-        } catch (e) { o.onu_rx_dbm = null; o.quality = 'unknown'; }
+          o.quality    = onuPhase.qualityFor(o.phase_state, p.quality, d);
+        } catch (e) { o.onu_rx_dbm = null; o.quality = onuPhase.qualityFor(o.phase_state, 'unknown'); }
       }
     }
     await this._exitEpon();
@@ -138,7 +139,12 @@ class HsgqEponOltService extends BaseCliOltService {
     const out = await this.exec(`show onu-info onu-id ${onuId}`);
     await this._exitEpon();
     const detail = this._parseOnuDetail(out, pon, onuId);
-    detail.power = this._parseOptical(out);
+    const power = this._parseOptical(out);
+    power.quality = onuPhase.qualityFor(detail.phase_state, power.quality, out);
+    detail.power = power;
+    if (!detail.diagnosis && power.quality === 'dyinggasp') {
+      detail.diagnosis = 'Dying Gasp — ONU kehilangan listrik (adapter cabut / PLN mati), bukan putus fiber.';
+    }
     return detail;
   }
 
@@ -219,8 +225,9 @@ class HsgqEponOltService extends BaseCliOltService {
             try {
               const d = await this.exec(`show onu-info onu-id ${o.onu_id}`);
               const p = this._parseOptical(d);
-              o.onu_rx_dbm = p.onu_rx_dbm; o.quality = p.quality;
-            } catch (e) { o.onu_rx_dbm = null; o.quality = 'unknown'; }
+              o.onu_rx_dbm = p.onu_rx_dbm;
+              o.quality = onuPhase.qualityFor(o.phase_state, p.quality, d);
+            } catch (e) { o.onu_rx_dbm = null; o.quality = onuPhase.qualityFor(o.phase_state, 'unknown'); }
           }
         }
         await this._exitEpon();
@@ -387,10 +394,7 @@ class HsgqEponOltService extends BaseCliOltService {
       const m = t.match(/^(\d+)\/(\d+)\s+([0-9a-fA-F:]{17})\s+(\S+)\s+(\S+)\s+(\S+)/);
       if (!m) return;
       const onuId = parseInt(m[2]);
-      const statusRaw = (m[4] || '').toLowerCase();
-      let status = 'offline';
-      if (/online|up|working|normal/.test(statusRaw)) status = 'online';
-      else if (/initial|offline|down/.test(statusRaw)) status = 'offline';
+      const phase = onuPhase.normalize(m[4]) || m[4];
       const configState = /true/i.test(m[6]);
       list.push({
         onu_id:  onuId,
@@ -400,10 +404,12 @@ class HsgqEponOltService extends BaseCliOltService {
         sn:      m[3],                 // alias agar UI yang pakai "sn" tetap jalan
         type:    null,
         name:    null,
-        phase_state: m[4],
+        phase_state: phase,
+        last_down_cause: (phase === 'dyinggasp' || phase === 'los') ? phase : null,
         auth_state:  /true/i.test(m[5]),
         config_state: configState,
-        status,
+        status: onuPhase.statusFromPhase(phase),
+        quality: onuPhase.qualityFor(phase, null),
       });
     });
     return list;
@@ -422,7 +428,8 @@ class HsgqEponOltService extends BaseCliOltService {
       type:          get('ONU type') || get('ONU model'),
       state:         get('Status'),
       admin_state:   get('Authrize mode') || get('Authorize mode'),
-      phase_state:   get('Status'),
+      phase_state:   onuPhase.normalize(get('Status')) || get('Status'),
+      last_down_cause: onuPhase.extractDownCause(out) || null,
       auth_mode:     get('Authrize mode') || get('Authorize mode'),
       serial_number: get('Mac address') || get('LOID'),
       mac:           get('Mac address'),
@@ -445,10 +452,12 @@ class HsgqEponOltService extends BaseCliOltService {
     const onu_tx = num(/(?:ONU\s*)?Tx\s*power[^\-\d]*(-?\d+(?:\.\d+)?)/i)
                ?? num(/Transmit\s*power[^\-\d]*(-?\d+(?:\.\d+)?)/i);
     const olt_rx = num(/OLT\s*Rx[^\-\d]*(-?\d+(?:\.\d+)?)/i);
-    const noSignal = /no\s*signal|los\b/i.test(s) && onu_rx === null;
+    const dyingGasp = onuPhase.isDyingGasp(s) || onuPhase.extractDownCause(s) === 'dyinggasp';
+    const noSignal = /no\s*signal|\blos\b/i.test(s) && onu_rx === null && !dyingGasp;
 
     let quality = 'unknown';
-    if (noSignal) quality = 'los';
+    if (dyingGasp) quality = 'dyinggasp';
+    else if (noSignal) quality = 'los';
     else if (onu_rx !== null) {
       if (onu_rx >= this.rxGood) quality = 'good';
       else if (onu_rx >= this.rxWarning) quality = 'warning';

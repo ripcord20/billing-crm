@@ -766,6 +766,7 @@ const OltMgmt = {
       else if (phase === 'dyinggasp') stTxt = 'Dying Gasp';
       else if (phase === 'los') stTxt = 'LOS';
       else if (phase === 'ranging' || phase === 'syncmib' || phase === 'logging' || phase === 'initial') stTxt = 'Ranging…';
+      else if (phase && phase !== 'offline' && o.phase_state) stTxt = String(o.phase_state);
       else stTxt = 'Offline';
       const stTitle = (o.status !== 'online' && (o.phase_state || o.last_down_cause))
         ? ` title="Phase OLT: ${esc(o.phase_state || phase)}${o.last_down_cause ? ' · cause: ' + esc(o.last_down_cause) : ''}"`

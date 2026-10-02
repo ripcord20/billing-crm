@@ -106,6 +106,12 @@ function assertPhase(raw, expected) {
   assert.strictEqual(fromCdata[0].name, 'Agus pasar');
 
   const zte = new Zte({ host: 'x' });
+  assert.strictEqual(onuPhase.fromSnmpCode(2), 'los');
+  assert.strictEqual(onuPhase.fromSnmpCode(3), 'working');
+  assert.strictEqual(onuPhase.fromSnmpCode(5), 'dyinggasp');
+  assert.strictEqual(onuPhase.statusFromPhase(onuPhase.fromSnmpCode(5)), 'offline');
+  assert.strictEqual(onuPhase.label('dying-gasp'), 'Dying Gasp');
+
   const zteParsed = zte._parseOnuState(
     'OnuIndex Admin OMCC Phase Channel\n' +
     'gpon-onu_1/2/1:5 enable disable dying-gasp 1\n' +

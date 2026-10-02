@@ -85,6 +85,40 @@ function looksLikeSn(token) {
   return /^[0-9A-Za-z\-:]+$/.test(s);
 }
 
+/**
+ * Kode SNMP phase ZTE C320/C300 (zxAnGponOnuPhaseState).
+ * 1=logging 2=LOS 3=sync/working (banyak C320 memakai 3=working)
+ * 4=working 5=dyingGasp 6=authFail 7=offline
+ */
+const ZTE_SNMP_PHASE = {
+  1: 'logging',
+  2: 'los',
+  3: 'working',
+  4: 'working',
+  5: 'dyinggasp',
+  6: 'offline',
+  7: 'offline',
+};
+
+function fromSnmpCode(code) {
+  const n = parseInt(code, 10);
+  if (!Number.isFinite(n)) return normalize(code);
+  if (ZTE_SNMP_PHASE[n]) return ZTE_SNMP_PHASE[n];
+  return n >= 3 && n !== 5 && n !== 6 && n !== 7 ? 'working' : 'offline';
+}
+
+function label(raw) {
+  const p = normalize(raw);
+  if (p === 'dyinggasp') return 'Dying Gasp';
+  if (p === 'los') return 'LOS';
+  if (p === 'working' || p === 'online') return 'Online';
+  if (p === 'disabled') return 'Disabled';
+  if (p === 'syncmib') return 'SyncMib';
+  if (p === 'ranging' || p === 'logging' || p === 'initial') return 'Ranging…';
+  if (p === 'offline') return 'Offline';
+  return raw ? String(raw) : 'Offline';
+}
+
 module.exports = {
   compact,
   normalize,
@@ -94,4 +128,7 @@ module.exports = {
   qualityFor,
   findPhaseToken,
   looksLikeSn,
+  fromSnmpCode,
+  label,
+  ZTE_SNMP_PHASE,
 };
