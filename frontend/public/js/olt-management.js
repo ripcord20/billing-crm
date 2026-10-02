@@ -418,7 +418,10 @@ const OltMgmt = {
           // Tambal nilai redaman ke ONU yang cocok.
           this.onus.forEach(o => {
             const p = res.data[o.onu_if];
-            if (p) { o.onu_rx_dbm = p.onu_rx_dbm; o.quality = p.quality; }
+            if (p) {
+              o.onu_rx_dbm = p.onu_rx_dbm;
+              o.quality = this._normPhase(o) === 'dyinggasp' ? 'dyinggasp' : p.quality;
+            }
           });
           // Render ulang hanya jika tab ONU/Overview aktif (hemat).
           this.renderOnus();
@@ -708,7 +711,7 @@ const OltMgmt = {
     } else if (this.statFilter === 'offline') {
       base = base.filter(o => o.status !== 'online');
     } else if (this.statFilter === 'badrx') {
-      base = base.filter(o => ['warning', 'critical', 'los'].includes(o.quality));
+      base = base.filter(o => ['warning', 'critical', 'los', 'dyinggasp'].includes(o.quality) || this._normPhase(o) === 'dyinggasp');
     }
     const filtered = q ? base.filter(o =>
       (o.sn||'').toLowerCase().includes(q) ||
@@ -747,19 +750,27 @@ const OltMgmt = {
     this._renderPager(filtered.length, startIdx, pageRows.length, totalPages);
 
     body.innerHTML = pageRows.map(o => {
-      const stCls = o.status === 'online' ? 'st-online' : (o.status === 'disabled' ? 'st-disabled' : 'st-offline');
+      const phase = this._normPhase(o);
+      const stCls = o.status === 'online' ? 'st-online'
+        : (o.status === 'disabled' ? 'st-disabled'
+          : (phase === 'dyinggasp' ? 'st-dyinggasp'
+            : (phase === 'los' ? 'st-los' : 'st-offline')));
       // Tampilkan phase asli OLT untuk ONU non-online agar mudah didiagnosa:
-      //   LOS      = tidak ada sinyal optik (ONU mati / fiber putus / redaman tinggi)
-      //   OffLine  = belum ranging / baru di-provisioning (tunggu 1-2 menit)
+      //   Dying Gasp = ONU kehabisan listrik (bukan putus fiber)
+      //   LOS        = tidak ada sinyal optik (fiber putus / redaman tinggi)
+      //   OffLine    = belum ranging / baru di-provisioning
       //   SyncMib/Ranging = sedang proses online
-      const phase = String(o.phase_state || '').toLowerCase().replace(/\(.*\)$/, '');
       let stTxt;
       if (o.status === 'online') stTxt = 'Online';
       else if (o.status === 'disabled') stTxt = 'Disabled';
-      else if (phase === 'los' || phase === 'loss') stTxt = 'LOS';
+      else if (phase === 'dyinggasp') stTxt = 'Dying Gasp';
+      else if (phase === 'los') stTxt = 'LOS';
       else if (phase === 'ranging' || phase === 'syncmib' || phase === 'logging' || phase === 'initial') stTxt = 'Ranging…';
+      else if (phase && phase !== 'offline' && o.phase_state) stTxt = String(o.phase_state);
       else stTxt = 'Offline';
-      const stTitle = (o.status !== 'online' && phase) ? ` title="Phase OLT: ${esc(phase)}"` : '';
+      const stTitle = (o.status !== 'online' && (o.phase_state || o.last_down_cause))
+        ? ` title="Phase OLT: ${esc(o.phase_state || phase)}${o.last_down_cause ? ' · cause: ' + esc(o.last_down_cause) : ''}"`
+        : '';
       const rx = this._rxCell(o);
       const ifEsc = esc(o.onu_if);
       const ponTag = o.pon ? `<span class="onu-pon-tag">PON ${esc(String(o.pon))}</span>` : '';
@@ -868,6 +879,9 @@ const OltMgmt = {
   },
 
   _rxCell(o) {
+    if (this._normPhase(o) === 'dyinggasp' || o.quality === 'dyinggasp') {
+      return '<span class="rx-badge rx-dyinggasp" title="ONU kehilangan listrik, bukan putus fiber">Dying Gasp</span>';
+    }
     // Redaman kini selalu diambil. Bila masih undefined → sedang dimuat (progressive).
     if (o.onu_rx_dbm === undefined) {
       return this._powerLoading
@@ -880,8 +894,28 @@ const OltMgmt = {
       return '<span class="rx-badge rx-unknown">N/A</span>';
     }
     const q = o.quality || 'unknown';
-    const cls = 'rx-' + (['good','warning','critical','los'].includes(q) ? q : 'unknown');
+    const cls = 'rx-' + (['good','warning','critical','los','dyinggasp'].includes(q) ? q : 'unknown');
     return `<span class="rx-badge ${cls}">${o.onu_rx_dbm.toFixed(1)} dBm</span>`;
+  },
+
+  // Samakan token phase antar merek: dying-gasp / DyingGasp / dyinggasp → dyinggasp
+  // Dying gasp diutamakan bila muncul di field mana pun — jangan sampai tertutup label LOS.
+  _normPhase(o) {
+    const compact = (raw) => {
+      const c = String(raw || '').toLowerCase().replace(/[\s_\-()]/g, '');
+      if (/dyinggasp|dyinggas/.test(c)) return 'dyinggasp';
+      if (c === 'los' || c === 'loss' || c === 'losi') return 'los';
+      if (c === 'working' || c === 'online') return c === 'working' ? 'working' : 'online';
+      if (c === 'ranging' || c === 'syncmib' || c === 'logging' || c === 'initial') return c;
+      if (c === 'disabled' || c === 'disable') return 'disabled';
+      return c;
+    };
+    if (o && typeof o === 'object') {
+      const cands = [o.last_down_cause, o.phase_state, o.quality];
+      if (cands.some(v => compact(v) === 'dyinggasp')) return 'dyinggasp';
+      return compact(o.last_down_cause || o.phase_state || o.quality);
+    }
+    return compact(o);
   },
 
   updateStats() {
@@ -1080,14 +1114,15 @@ const OltMgmt = {
       { key: 'warning',  name: 'Warning',      desc: '-25 s/d -28 dBm · waspada',   color: '#f59e0b' },
       { key: 'critical', name: 'Bad',          desc: '< -28 dBm · sinyal lemah',    color: '#dc2626' },
       { key: 'los',      name: 'LOS',          desc: 'tak ada sinyal optik',        color: '#64748b' },
+      { key: 'dyinggasp', name: 'Dying Gasp',  desc: 'ONU mati listrik',            color: '#d97706' },
       { key: 'unmeasured', name: 'Belum diukur', desc: 'redaman belum terbaca',     color: '#cbd5e1' },
     ];
 
     // Hitung dari ONU yang sedang dimuat.
-    const counts = { good: 0, warning: 0, critical: 0, los: 0, unmeasured: 0 };
+    const counts = { good: 0, warning: 0, critical: 0, los: 0, dyinggasp: 0, unmeasured: 0 };
     this.onus.forEach(o => {
-      const q = o.quality;
-      if (q === 'good' || q === 'warning' || q === 'critical' || q === 'los') counts[q]++;
+      const q = (this._normPhase(o) === 'dyinggasp') ? 'dyinggasp' : o.quality;
+      if (q === 'good' || q === 'warning' || q === 'critical' || q === 'los' || q === 'dyinggasp') counts[q]++;
       else counts.unmeasured++;   // unknown / null / belum diambil
     });
 
@@ -1207,7 +1242,9 @@ const OltMgmt = {
 
     // Filter ONU sesuai kategori.
     const match = (o) => {
-      if (key === 'unmeasured') return !['good','warning','critical','los'].includes(o.quality);
+      if (key === 'dyinggasp') return this._normPhase(o) === 'dyinggasp' || o.quality === 'dyinggasp';
+      if (key === 'unmeasured') return !['good','warning','critical','los','dyinggasp'].includes(o.quality) && this._normPhase(o) !== 'dyinggasp';
+      if (key === 'los') return o.quality === 'los' && this._normPhase(o) !== 'dyinggasp';
       return o.quality === key;
     };
     const list = this.onus.filter(match);
@@ -1219,7 +1256,9 @@ const OltMgmt = {
     } else {
       const rows = list.map(o => {
         const name = o.name || o.description || '(tanpa nama)';
-        const rx = (typeof o.onu_rx_dbm === 'number') ? `${o.onu_rx_dbm.toFixed(1)} dBm` : (o.quality === 'los' ? 'LOS' : '—');
+        const rx = (this._normPhase(o) === 'dyinggasp' || o.quality === 'dyinggasp')
+          ? 'Dying Gasp'
+          : ((typeof o.onu_rx_dbm === 'number') ? `${o.onu_rx_dbm.toFixed(1)} dBm` : (o.quality === 'los' ? 'LOS' : '—'));
         const idx = (o.onu_if || '').replace('gpon-onu_', '');
         const ifEsc = this._esc(o.onu_if || '');
         return `<tr class="rxq-clickable" onclick="OltMgmt.showDetail('${ifEsc}')" title="Lihat detail ONU">
@@ -1796,24 +1835,27 @@ const OltMgmt = {
 
   _renderDetail(d) {
     const p = d.power || {};
-    const rxClass = (q) => 'rx-' + (['good','warning','critical','los'].includes(q) ? q : 'unknown');
+    const rxClass = (q) => 'rx-' + (['good','warning','critical','los','dyinggasp'].includes(q) ? q : 'unknown');
     const fmt = (v, suf='') => (v === null || v === undefined) ? '<span class="mut">—</span>' : `${v}${suf}`;
-    const colorFor = (q) => ({ good:'#15803d', warning:'#b45309', critical:'#b91c1c', los:'#b91c1c' }[q] || '#94a3b8');
+    const colorFor = (q) => ({ good:'#15803d', warning:'#b45309', critical:'#b91c1c', los:'#b91c1c', dyinggasp:'#b45309' }[q] || '#94a3b8');
+    const phase = this._normPhase(d);
+    const dying = phase === 'dyinggasp' || p.quality === 'dyinggasp';
 
     let powerHtml = '';
-    if (p && (p.onu_rx_dbm !== undefined)) {
+    if (p && (p.onu_rx_dbm !== undefined || dying)) {
+      const rxLabel = dying ? 'Dying Gasp' : (p.no_signal || p.quality === 'los' ? 'LOS' : fmt(p.onu_rx_dbm, ' dBm'));
       powerHtml = `
         <div class="power-grid">
-          <div class="power-box"><div class="pk">ONU Rx (redaman pelanggan)</div><div class="pv" style="color:${colorFor(p.quality)}">${p.no_signal ? 'LOS' : fmt(p.onu_rx_dbm, ' dBm')}</div></div>
+          <div class="power-box"><div class="pk">ONU Rx (redaman pelanggan)</div><div class="pv" style="color:${colorFor(dying ? 'dyinggasp' : p.quality)}">${rxLabel}</div></div>
           <div class="power-box"><div class="pk">ONU Tx</div><div class="pv">${fmt(p.onu_tx_dbm, ' dBm')}</div></div>
           <div class="power-box"><div class="pk">OLT Rx (upstream)</div><div class="pv">${fmt(p.olt_rx_dbm, ' dBm')}</div></div>
           <div class="power-box"><div class="pk">OLT Tx (downstream)</div><div class="pv">${fmt(p.olt_tx_dbm, ' dBm')}</div></div>
         </div>
-        <div class="info-note" style="margin-bottom:14px">Toleransi Rx ONU normal hingga ~-25 dBm. Di bawah -28 dBm perlu perbaikan optik. "LOS" = tidak ada sinyal (kabel putus/ONU mati).</div>`;
+        <div class="info-note" style="margin-bottom:14px">Toleransi Rx ONU normal hingga ~-25 dBm. Di bawah -28 dBm perlu perbaikan optik. "LOS" = fiber putus/redaman. "Dying Gasp" = ONU mati listrik.</div>`;
     }
 
     const diagHtml = d.diagnosis
-      ? `<div class="info-note" style="margin-bottom:14px;border-left:3px solid ${/los/i.test(d.phase_state||'') ? '#dc2626' : '#d97706'};background:${/los/i.test(d.phase_state||'') ? '#fef2f2' : '#fffbeb'}">⚠ ${esc(d.diagnosis)}</div>`
+      ? `<div class="info-note" style="margin-bottom:14px;border-left:3px solid ${dying ? '#d97706' : (/los/i.test(d.phase_state||'') ? '#dc2626' : '#d97706')};background:${dying ? '#fffbeb' : (/los/i.test(d.phase_state||'') ? '#fef2f2' : '#fffbeb')}">⚠ ${esc(d.diagnosis)}</div>`
       : '';
 
     return `${diagHtml}${powerHtml}
@@ -1824,6 +1866,7 @@ const OltMgmt = {
         <div class="det-cell"><div class="det-k">Type</div><div class="det-v">${esc(d.type||'—')}</div></div>
         <div class="det-cell"><div class="det-k">State</div><div class="det-v">${esc(d.state||'—')}</div></div>
         <div class="det-cell"><div class="det-k">Phase State</div><div class="det-v">${esc(d.phase_state||'—')}</div></div>
+        <div class="det-cell"><div class="det-k">Last Down Cause</div><div class="det-v">${esc(d.last_down_cause||'—')}</div></div>
         <div class="det-cell"><div class="det-k">Config State</div><div class="det-v">${esc(d.config_state||'—')}</div></div>
         <div class="det-cell"><div class="det-k">Admin State</div><div class="det-v">${esc(d.admin_state||'—')}</div></div>
         <div class="det-cell"><div class="det-k">Auth Mode</div><div class="det-v">${esc(d.auth_mode||'—')}</div></div>

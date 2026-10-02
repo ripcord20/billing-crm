@@ -5,7 +5,8 @@ module.exports = {
     instances: 1,
     autorestart: true,
     watch: false,
-    max_memory_restart: '500M',
+    max_memory_restart: '450M',
+    node_args: '--max-old-space-size=384',
     env: {
       NODE_ENV: 'development',
       APP_ENV: 'development'

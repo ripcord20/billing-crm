@@ -34,6 +34,9 @@ const POLL_INTERVAL_MS = 2000; // selaras dengan kebutuhan real-time frontend
 // (keep-warm) supaya snapshot selalu fresh & status online siap seketika
 // ketika halaman dibuka lagi — tanpa membebani router.
 const IDLE_POLL_INTERVAL_MS = 30000; // 30 detik saat idle
+// Setelah idle selama ini (0 subscriber), buang snapshot + hentikan keep-warm
+// supaya array pelanggan tidak menahan heap. Subscriber berikutnya memicu poll baru.
+const SNAPSHOT_IDLE_DROP_MS = parseInt(process.env.TRAFFIC_IDLE_DROP_MS || String(5 * 60 * 1000), 10);
 
 // Cache hasil ping per-IP (TTL pendek). Ping kini AUTHORITATIVE untuk
 // customer ber-IP, jadi TTL dipersingkat supaya perubahan status cepat
@@ -70,6 +73,7 @@ let _running       = false;  // true jika poll() sedang berjalan (re-entrancy lo
 let _subscribers   = 0;      // jumlah admin yang sedang subscribe
 let _lastSnapshot  = null;   // { data, meta } hasil poll terakhir
 let _lastError     = null;
+let _idleSince     = Date.now(); // 0 subscriber sejak kapan (null jika ada subscriber)
 
 /**
  * computeSnapshot(opts) — query MikroTik & susun status semua customer.
@@ -573,6 +577,7 @@ async function poll() {
     const snap = await computeSnapshot(opts);
     _firstPollDone = true;
     _lastSnapshot = snap;
+    if (snap && Array.isArray(snap.data)) pruneCaches({ live: snap.data });
     _lastError = null;
     if (_io) _io.to('traffic_monitoring').emit('traffic:update', snap);
   } catch (e) {
@@ -590,21 +595,74 @@ async function poll() {
   }
 }
 
+function pruneCaches(opts = {}) {
+  const now = Date.now();
+  const live = opts.live;
+  const liveIps = new Set();
+  const liveIds = new Set();
+  if (Array.isArray(live)) {
+    for (const r of live) {
+      if (r && r.ip) liveIps.add(r.ip);
+      if (r && r.id != null) liveIds.add(r.id);
+    }
+  } else if (_lastSnapshot && Array.isArray(_lastSnapshot.data)) {
+    for (const r of _lastSnapshot.data) {
+      if (r && r.ip) liveIps.add(r.ip);
+      if (r && r.id != null) liveIds.add(r.id);
+    }
+  }
+
+  let pingRemoved = 0;
+  let statusRemoved = 0;
+  for (const [ip, c] of _pingCache) {
+    const stale = !c || !c.ts || (now - c.ts) > (PING_TTL_MS * 3);
+    const orphan = liveIps.size > 0 && !liveIps.has(ip);
+    if (opts.force || stale || orphan) { _pingCache.delete(ip); pingRemoved++; }
+  }
+  for (const [id, st] of _statusState) {
+    const stale = !st || !st.ts || (now - st.ts) > (STALE_OFFLINE_MS * 2);
+    const orphan = liveIds.size > 0 && !liveIds.has(id);
+    if (opts.force || stale || orphan) { _statusState.delete(id); statusRemoved++; }
+  }
+  return {
+    pingRemoved, statusRemoved,
+    pingSize: _pingCache.size, statusSize: _statusState.size,
+  };
+}
+
+function _dropIdleSnapshot() {
+  if (_subscribers > 0) return false;
+  _lastSnapshot = null;
+  _firstPollDone = false;
+  if (_idleTimer) { clearInterval(_idleTimer); _idleTimer = null; }
+  const pruned = pruneCaches({ force: true });
+  logger.info('[CustomerTrafficPoller] idle lama — snapshot dibuang (ping=' + pruned.pingRemoved + ')');
+  return true;
+}
+
 function _startTimer() {
   if (_timer) return;
+  _idleSince = null;
   logger.info('[CustomerTrafficPoller] start aktif (subscribers=' + _subscribers + ')');
   poll(); // poll segera saat subscriber pertama datang (initial fill)
   _timer = setInterval(poll, POLL_INTERVAL_MS);
 }
 
 function _stopTimer() {
-  // KEEP-WARM: jangan berhenti total saat idle. Snapshot tetap di-refresh
-  // dengan interval lambat supaya saat admin membuka halaman lagi, data online
-  // sudah siap seketika (tidak perlu nunggu computeSnapshot dari nol 15-30 dtk).
+  // KEEP-WARM singkat: refresh pelan supaya buka halaman lagi tetap instan.
+  // Setelah SNAPSHOT_IDLE_DROP_MS tanpa subscriber, snapshot dibuang supaya
+  // ribuan objek pelanggan tidak menahan heap semalaman.
   if (_timer) { clearInterval(_timer); _timer = null; }
   if (_idleTimer) return;
+  _idleSince = Date.now();
   logger.info('[CustomerTrafficPoller] idle — beralih ke polling lambat (keep-warm)');
-  _idleTimer = setInterval(poll, IDLE_POLL_INTERVAL_MS);
+  _idleTimer = setInterval(() => {
+    if (_subscribers === 0 && _idleSince && (Date.now() - _idleSince) >= SNAPSHOT_IDLE_DROP_MS) {
+      _dropIdleSnapshot();
+      return;
+    }
+    poll();
+  }, IDLE_POLL_INTERVAL_MS);
 }
 
 // Hentikan keep-warm idle timer (dipanggil saat subscriber aktif kembali).
@@ -619,6 +677,7 @@ module.exports = {
   /** Subscriber bertambah (admin buka halaman). Mulai poller cepat. */
   addSubscriber() {
     _subscribers++;
+    _idleSince = null;
     _clearIdleTimer();              // hentikan keep-warm idle
     if (!_timer) _startTimer();     // mulai polling cepat (juga poll seketika)
   },
@@ -654,9 +713,14 @@ module.exports = {
       subscribers: _subscribers,
       running: _running,
       polling: !!_timer,
+      idle: !!_idleTimer,
       hasSnapshot: !!_lastSnapshot,
       lastError: _lastError,
       intervalMs: POLL_INTERVAL_MS,
+      pingCache: _pingCache.size,
+      statusState: _statusState.size,
     };
   },
+
+  pruneCaches,
 };
