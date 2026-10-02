@@ -528,8 +528,6 @@ async function computeSnapshot(opts = {}) {
     // Bersihkan field helper internal sebelum kirim ke client.
     result.forEach(r => { delete r._byARP; delete r._byDHCP; delete r._byQueue; delete r._raw; delete r._rawSrc; delete r._isPppoeOnly; });
 
-    pruneCaches({ live: result });
-
     return ({
       success: true, data: result,
       meta: { total: result.length, online: result.filter(r=>r.online).length,
@@ -579,6 +577,7 @@ async function poll() {
     const snap = await computeSnapshot(opts);
     _firstPollDone = true;
     _lastSnapshot = snap;
+    if (snap && Array.isArray(snap.data)) pruneCaches({ live: snap.data });
     _lastError = null;
     if (_io) _io.to('traffic_monitoring').emit('traffic:update', snap);
   } catch (e) {
