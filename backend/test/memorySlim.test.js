@@ -72,4 +72,29 @@ assert.strictEqual(snap.pruned.testPruner.ok, true);
 assert.ok(typeof snap.after.heapUsedMb === 'number');
 assert.ok(typeof snap.after.rssMb === 'number');
 
-console.log('memorySlim.test.js OK');
+// ── exclusiveRun: tick kedua dilewati saat yang pertama belum selesai ─
+(async () => {
+  const { createExclusiveRunner } = require('../utils/exclusiveRun');
+  const gate = createExclusiveRunner();
+  let started = 0;
+  let finished = 0;
+  let release;
+  const first = gate.run('oltSnmp', () => {
+    started++;
+    return new Promise((resolve) => { release = resolve; });
+  });
+  assert.strictEqual(started, 1);
+  assert.strictEqual(gate.busy('oltSnmp'), true);
+  const skip = await gate.run('oltSnmp', () => { started++; });
+  assert.strictEqual(skip.skipped, true);
+  assert.strictEqual(started, 1);
+  release();
+  const done = await first;
+  assert.strictEqual(done.skipped, false);
+  finished++;
+  const again = await gate.run('oltSnmp', () => { started++; finished++; });
+  assert.strictEqual(again.skipped, false);
+  assert.strictEqual(started, 2);
+  assert.strictEqual(finished, 2);
+  console.log('memorySlim.test.js OK');
+})().catch((e) => { console.error(e); process.exit(1); });
