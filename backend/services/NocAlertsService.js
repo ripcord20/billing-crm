@@ -13,7 +13,7 @@
  *   - Tidak ada bloat tabel kalau alert sering
  *   - Restart pm2 → state reset ke kondisi terbaru (intended behavior)
  *
- * Retention: event lebih dari 24 jam auto-dibuang.
+ * Retention: event lebih dari 12 jam auto-dibuang.
  * Polling: setiap 30 detik untuk semua router aktif.
  *
  * Thresholds:
@@ -33,8 +33,8 @@ const logger = require('../utils/logger');
 
 // ─── Configuration ──────────────────────────────────────────────────────
 const POLL_INTERVAL_MS    = 30 * 1000;   // 30 detik
-const EVENT_RETENTION_MS  = 24 * 3600 * 1000; // 24 jam
-const MAX_EVENTS          = 500;          // safety cap
+const EVENT_RETENTION_MS  = 12 * 3600 * 1000; // 12 jam
+const MAX_EVENTS          = 200;          // safety cap
 
 // Grace 5 menit: SNMP poll default 60s, butuh buffer untuk slow poll/network lag.
 // Sebelumnya 60s — sama dengan poll interval → race condition trigger false offline.
@@ -487,7 +487,15 @@ class NocAlertsService {
 
   _cleanupOldEvents() {
     const cutoff = Date.now() - EVENT_RETENTION_MS;
+    const before = this.events.length;
     this.events = this.events.filter(e => new Date(e.timestamp).getTime() > cutoff);
+    if (this.events.length > MAX_EVENTS) this.events.length = MAX_EVENTS;
+    return { removed: before - this.events.length, size: this.events.length };
+  }
+
+  /** Hook MemoryGuard — sama dengan cleanup internal. */
+  pruneEvents() {
+    return this._cleanupOldEvents();
   }
 
   /**
