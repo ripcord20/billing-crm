@@ -33,6 +33,7 @@
 
 const BaseCliOltService = require('./BaseCliOltService');
 const logger = require('../utils/logger');
+const onuPhase = require('../utils/onuPhase');
 
 class ZteOltService extends BaseCliOltService {
   constructor(config = {}) {
@@ -243,9 +244,17 @@ class ZteOltService extends BaseCliOltService {
 
       if (withPower) {
         for (const o of deduped) {
-          try { const p = await this.getOnuPower(o.onu_if); o.onu_rx_dbm = p.onu_rx_dbm; o.quality = p.quality; }
-          catch (e) { o.onu_rx_dbm = null; o.quality = 'unknown'; }
+          try {
+            const p = await this.getOnuPower(o.onu_if);
+            o.onu_rx_dbm = p.onu_rx_dbm;
+            o.quality = onuPhase.qualityFor(o.phase_state, p.quality, p.raw);
+          } catch (e) {
+            o.onu_rx_dbm = null;
+            o.quality = onuPhase.qualityFor(o.phase_state, 'unknown');
+          }
         }
+      } else {
+        for (const o of deduped) o.quality = onuPhase.qualityFor(o.phase_state, o.quality);
       }
 
       allOnus.push(...deduped);
@@ -354,6 +363,7 @@ class ZteOltService extends BaseCliOltService {
         });
       } catch (e) { /* abaikan; list tetap tampil tanpa nama */ }
     }
+    list.forEach(o => { o.quality = onuPhase.qualityFor(o.phase_state, o.quality); });
     return list;
   }
 
@@ -435,7 +445,7 @@ class ZteOltService extends BaseCliOltService {
       // 1) Cek phase via show gpon onu state pada PON port
       const list = await this.getOnuState(gponOlt, { withNames: false });
       const me = list.find(o => o.onu_id === onuId);
-      lastPhase = me ? String(me.phase_state || '').toLowerCase().replace(/\(.*\)$/, '') : 'notfound';
+      lastPhase = me ? onuPhase.normalize(me.phase_state) || String(me.phase_state || '').toLowerCase() : 'notfound';
 
       if (lastPhase === 'working' || lastPhase === 'online') {
         // sudah online → ambil power sekalian
@@ -448,7 +458,7 @@ class ZteOltService extends BaseCliOltService {
             ? `Sinyal lemah (${rx.onu_rx_dbm} dBm) — periksa redaman optik.` : null,
         };
       }
-      if (lastPhase === 'los' || lastPhase === 'loss') break; // LOS jelas → tak perlu nunggu
+      if (lastPhase === 'los' || lastPhase === 'loss' || lastPhase === 'dyinggasp') break;
       if (i < tries - 1) await sleep(intervalMs);
     }
 
@@ -457,7 +467,10 @@ class ZteOltService extends BaseCliOltService {
     const seenUncfg = await this._snInUncfg(detail?.serial_number || '');
 
     let diagnosis, action;
-    if (lastPhase === 'los' || lastPhase === 'loss') {
+    if (lastPhase === 'dyinggasp') {
+      diagnosis = 'Dying Gasp — ONU kehilangan listrik (adapter cabut / PLN mati), bukan putus fiber.';
+      action = 'Minta pelanggan cek adaptor & listrik rumah. Fiber biasanya masih utuh.';
+    } else if (lastPhase === 'los' || lastPhase === 'loss') {
       diagnosis = 'LOS — OLT tidak menerima sinyal optik dari ONU.';
       action = 'Cek fisik: ONU menyala? fiber tercolok & bersih? redaman tidak terlalu tinggi?';
     } else if (lastPhase === 'notfound') {
@@ -1931,7 +1944,7 @@ class ZteOltService extends BaseCliOltService {
       const phaseTokens = ['working','los','offline','online','dyinggasp','loss','syncmib','ranging','logging','initial'];
       let phase = '', phaseIdx = -1;
       for (let i = cols.length - 1; i >= 0; i--) {
-        const c = String(cols[i]).toLowerCase().replace(/\(.*\)$/, '');
+        const c = String(cols[i]).toLowerCase().replace(/\(.*\)$/, '').replace(/[\s_\-]/g, '');
         if (phaseTokens.includes(c)) { phase = c; phaseIdx = i; break; }
       }
       // OMCC = kolom pertama setelah admin (index 0 dari cols), bila bukan phase itu sendiri.
@@ -1993,7 +2006,9 @@ class ZteOltService extends BaseCliOltService {
     const neverOnline = /^0h\s*0m\s*0s$/i.test(onlineDur.trim());
     let diagnosis = null;
     if (phase && !/working|online/.test(phase)) {
-      if (/los|loss/.test(phase)) {
+      if (/dying[\s_\-]?gasp/.test(phase)) {
+        diagnosis = 'Dying Gasp — ONU kehilangan listrik (adapter cabut / PLN mati), bukan putus fiber.';
+      } else if (/(^|[^a-z])los([^a-z]|$)|loss/.test(phase)) {
         diagnosis = 'LOS — OLT tidak menerima sinyal optik dari ONU. Cek: ONU menyala? fiber tercolok & bersih? redaman tidak terlalu tinggi?';
       } else if (neverOnline && neverRanged) {
         diagnosis = 'ONU belum pernah online (Online Duration 0, Distance N/A). Konfigurasi OK, tapi ONU belum ranging. Penyebab umum: ONU mati/booting, fiber belum sampai ke ONU, atau SN ter-authorize di PON port yang berbeda dari letak fisik fiber-nya.';
