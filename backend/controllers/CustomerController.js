@@ -9,7 +9,7 @@ const { applyTenantWhere, getTenantId, assertCustomerTenant, isTenantOwner } = r
 class CustomerController {
   async index(req, res) {
     try {
-      const { page = 1, limit = 20, search, status, package_id, province, regency, district } = req.query;
+      const { page = 1, limit = 20, search, status, package_id, province, regency, district, wilayah } = req.query;
       const where = applyTenantWhere(req, {});
       
       if (search) {
@@ -25,10 +25,24 @@ class CustomerController {
         where.status = status
       }
       if (package_id) where.package_id = package_id;
-      // ── Filter per-area (berjenjang) ──
-      if (province) where.province = province;
-      if (regency)  where.regency  = regency;
-      if (district) where.district = district;
+      // Satu filter wilayah: cocok di desa / kecamatan / kab / provinsi.
+      const areaName = String(wilayah || '').trim();
+      if (areaName) {
+        const areaMatch = {
+          [Op.or]: [
+            { village: areaName },
+            { district: areaName },
+            { regency: areaName },
+            { province: areaName }
+          ]
+        };
+        if (!where[Op.and]) where[Op.and] = [];
+        where[Op.and].push(areaMatch);
+      } else {
+        if (province) where.province = province;
+        if (regency)  where.regency  = regency;
+        if (district) where.district = district;
+      }
 
       const offset = (page - 1) * limit;
       const { Invoice } = require('../models');
@@ -965,15 +979,59 @@ class CustomerController {
     }
   }
 
-  // ── Daftar area distinct (berjenjang) untuk dropdown filter ──────────────
-  // GET /customers/areas?province=...&regency=...&district=...
-  // Tanpa param → list provinsi. +province → list kab/kota. +regency → list
-  // kecamatan. +district → list kelurahan/desa. Hanya area non-kosong.
+  // ── Daftar area distinct untuk dropdown filter ───────────────────────────
+  // GET /customers/areas?flat=1  → { group, items } Desa/Kec/Kab/Provinsi
+  // GET /customers/areas?province=...&regency=...&district=... (berjenjang)
+  // Tanpa param → list provinsi. Hanya area non-kosong.
   async areas(req, res) {
     try {
-      const { province, regency, district } = req.query;
-      const { Op } = require('sequelize');
-      let column, where = {};
+      const { province, regency, district, flat, all } = req.query;
+      const { Op, fn, col } = require('sequelize');
+
+      const uniqueNames = (rows) => {
+        const seen = new Set();
+        const list = [];
+        for (const r of rows) {
+          const name = String(r.name || '').trim();
+          if (!name) continue;
+          const key = name.toLowerCase();
+          if (seen.has(key)) continue;
+          seen.add(key);
+          list.push(name);
+        }
+        return list;
+      };
+
+      const distinctColumn = async (column, extraWhere = {}) => {
+        const where = applyTenantWhere(req, { ...extraWhere });
+        where[column] = { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] };
+        const rows = await Customer.findAll({
+          attributes: [[fn('DISTINCT', col(column)), 'name']],
+          where,
+          order: [[column, 'ASC']],
+          raw: true,
+        });
+        return uniqueNames(rows);
+      };
+
+      if (flat === '1' || all === '1') {
+        const [villages, districts, regencies, provinces] = await Promise.all([
+          distinctColumn('village'),
+          distinctColumn('district'),
+          distinctColumn('regency'),
+          distinctColumn('province'),
+        ]);
+        const data = [
+          { group: 'Desa', items: villages },
+          { group: 'Kecamatan', items: districts },
+          { group: 'Kab/Kota', items: regencies },
+          { group: 'Provinsi', items: provinces },
+        ].filter(g => g.items.length);
+        return res.json({ success: true, level: 'wilayah', data });
+      }
+
+      let column;
+      const where = applyTenantWhere(req, {});
       if (district) {
         column = 'village';
         where.district = district;
@@ -989,15 +1047,7 @@ class CustomerController {
       } else {
         column = 'province';
       }
-      where[column] = { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] };
-
-      const rows = await Customer.findAll({
-        attributes: [[require('sequelize').fn('DISTINCT', require('sequelize').col(column)), 'name']],
-        where,
-        order: [[column, 'ASC']],
-        raw: true,
-      });
-      const list = rows.map(r => r.name).filter(Boolean);
+      const list = await distinctColumn(column, where);
       res.json({ success: true, level: column, data: list });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
