@@ -98,6 +98,9 @@
     .search-wrap .si { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--d-muted);pointer-events:none; }
     .filter-select { padding:10px 14px;border:1.5px solid var(--d-border);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--d-text);background:#fff;cursor:pointer;outline:none;transition:border-color .15s; }
     .filter-select:focus { border-color:var(--d-blue1); }
+    .filter-select-wilayah { min-width: 200px; max-width: 280px; }
+    .cust-table td.col-wilayah { max-width: 220px; color: #475569; font-size: 12.5px; }
+    .cust-table td.col-wilayah .wilayah-txt { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
     /* ── Table ── */
     .cust-table { width:100%;border-collapse:collapse;min-width:860px;font-family:'Plus Jakarta Sans',sans-serif; }
@@ -464,15 +467,8 @@
             <option value="soon">Due 3 Hari</option>
             <option value="none">Tanpa Due Date</option>
           </select>
-          <!-- ── Filter area berjenjang ── -->
-          <select id="filterProvince" class="filter-select" onchange="onFilterProvinceChange()" title="Filter Provinsi">
-            <option value="">Semua Provinsi</option>
-          </select>
-          <select id="filterRegency" class="filter-select" onchange="onFilterRegencyChange()" title="Filter Kabupaten/Kota" disabled>
-            <option value="">Semua Kab/Kota</option>
-          </select>
-          <select id="filterDistrict" class="filter-select" onchange="loadCustomers()" title="Filter Kecamatan" disabled>
-            <option value="">Semua Kecamatan</option>
+          <select id="filterWilayah" class="filter-select filter-select-wilayah" onchange="onFilterWilayahChange()" title="Filter semua wilayah">
+            <option value="">Semua Wilayah</option>
           </select>
           <button type="button" onclick="backfillAreas()" id="backfillAreaBtn" class="filter-select" title="Isi data area customer lama dari teks alamat"
             style="cursor:pointer;background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;display:inline-flex;align-items:center;gap:6px;white-space:nowrap">
@@ -494,12 +490,13 @@
                 <th class="col-hide-mob">Biaya/Bln</th>
                 <th class="col-hide-mob">Aktivasi</th>
                 <th>Jatuh Tempo</th>
+                <th>Wilayah</th>
                 <th>Status</th>
                 <th style="text-align:right;padding-right:20px">Aksi</th>
               </tr>
             </thead>
             <tbody id="customerTable">
-              <tr><td colspan="9" style="text-align:center;padding:52px;color:var(--d-muted)">
+              <tr><td colspan="10" style="text-align:center;padding:52px;color:var(--d-muted)">
                 <div style="font-size:34px;margin-bottom:10px">📋</div>
                 <div style="font-size:14px;font-weight:600;color:var(--d-text)">Memuat data…</div>
               </td></tr>

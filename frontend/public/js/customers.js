@@ -476,7 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loadCustomers();
   setupSearch();
-  loadFilterProvinces();
+  loadFilterWilayah();
 });
 
 window.applyFilter = function(status) {
@@ -559,23 +559,26 @@ function _setPct(id, text) {
 }
 
 // ── LIST ──────────────────────────────────────────────────────
+function formatWilayah(c) {
+  const parts = [c.village, c.district, c.regency, c.province]
+    .map(x => String(x || '').trim())
+    .filter(Boolean);
+  return parts.length ? parts.join(', ') : '';
+}
+
 async function loadCustomers() {
-  const search = document.getElementById('searchCustomer')?.value || '';
-  const status = document.getElementById('filterStatus')?.value   || '';
-  const prov   = document.getElementById('filterProvince')?.value || '';
-  const reg    = document.getElementById('filterRegency')?.value  || '';
-  const dist   = document.getElementById('filterDistrict')?.value || '';
-  const data   = await App.api('/customers?page=' + _custPage + '&limit=20'
+  const search  = document.getElementById('searchCustomer')?.value || '';
+  const status  = document.getElementById('filterStatus')?.value   || '';
+  const wilayah = document.getElementById('filterWilayah')?.value  || '';
+  const data    = await App.api('/customers?page=' + _custPage + '&limit=20'
     + '&search=' + encodeURIComponent(search)
     + '&status=' + status
-    + '&province=' + encodeURIComponent(prov)
-    + '&regency='  + encodeURIComponent(reg)
-    + '&district=' + encodeURIComponent(dist));
+    + '&wilayah=' + encodeURIComponent(wilayah));
   const tbody  = document.getElementById('customerTable');
   const countEl= document.getElementById('customerCount');
 
   if (!data?.success) {
-    if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><p style="color:var(--danger);">Gagal memuat data</p></td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="10" class="empty-state"><p style="color:var(--danger);">Gagal memuat data</p></td></tr>';
     return;
   }
 
@@ -584,7 +587,7 @@ async function loadCustomers() {
 
   if (!data.data?.length) {
     if (tbody) tbody.innerHTML =
-      '<tr><td colspan="9">' +
+      '<tr><td colspan="10">' +
         '<div class="empty-state" style="padding:48px 16px;text-align:center;color:#94a3b8;">' +
           '<svg width="56" height="56" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="display:block;margin:0 auto 12px;color:#cbd5e1;">' +
             '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/>' +
@@ -653,6 +656,10 @@ async function loadCustomers() {
     var addrShort = c.address ? _esc(c.address.substring(0,30))+(c.address.length>30?'...':'') : '';
     var pkgName   = (c.package && c.package.name) ? _esc(c.package.name) : (c.package_name ? _esc(c.package_name) : '–');
     var actDate   = c.installation_date ? new Date(c.installation_date).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'}) : '–';
+    var wilayahTxt = formatWilayah(c);
+    var wilayahHtml = wilayahTxt
+      ? '<div class="wilayah-txt" title="'+_esc(wilayahTxt)+'">'+_esc(wilayahTxt)+'</div>'
+      : '<span style="color:#94a3b8">—</span>';
 
     return '<tr data-id="'+c.id+'">'
       + '<td><span class="cid-badge">'+_esc(c.customer_id)+'</span></td>'
@@ -674,6 +681,7 @@ async function loadCustomers() {
       + '<td style="font-weight:700;color:#1a6ef5;font-size:13px">'+price+'</td>'
       + '<td style="color:#6b7fa8">'+actDate+'</td>'
       + '<td><div style="line-height:1.5">'+dueDateHtml+'</div></td>'
+      + '<td class="col-wilayah">'+wilayahHtml+'</td>'
       + '<td><span class="sb '+stCls+'"><span class="sb-dot" style="background:'+stDot+'"></span>'+stLabel+'</span></td>'
       + '<td style="text-align:right;padding-right:18px">'
         + '<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">'
@@ -1943,60 +1951,31 @@ window.custComposeAddr  = custComposeAddr;
 window.custLoadProvinces = custLoadProvinces;
 
 // ══════════════════════════════════════════════════════════════
-// Filter per-AREA berjenjang (Provinsi → Kab/Kota → Kecamatan)
-// Sumber opsi: endpoint /customers/areas (distinct dari data customer),
-// jadi hanya area yang benar-benar punya pelanggan yang muncul.
+// Filter satu kolom wilayah (desa / kecamatan / kab / provinsi)
+// Sumber opsi: /customers/areas?flat=1 — hanya area yang punya pelanggan.
 // ══════════════════════════════════════════════════════════════
-async function loadFilterProvinces() {
-  const sel = document.getElementById('filterProvince');
+async function loadFilterWilayah() {
+  const sel = document.getElementById('filterWilayah');
   if (!sel) return;
+  const prev = sel.value;
   try {
-    const d = await App.api('/customers/areas');
-    if (d?.success) {
-      sel.innerHTML = '<option value="">Semua Provinsi</option>'
-        + d.data.map(p => `<option value="${_esc(p)}">${_esc(p)}</option>`).join('');
-    }
+    const d = await App.api('/customers/areas?flat=1');
+    if (!d?.success) return;
+    let html = '<option value="">Semua Wilayah</option>';
+    (d.data || []).forEach(function(g) {
+      if (!g.items || !g.items.length) return;
+      html += '<optgroup label="' + _esc(g.group) + '">';
+      g.items.forEach(function(name) {
+        html += '<option value="' + _esc(name) + '">' + _esc(name) + '</option>';
+      });
+      html += '</optgroup>';
+    });
+    sel.innerHTML = html;
+    if (prev) sel.value = prev;
   } catch (_) {}
 }
 
-async function onFilterProvinceChange() {
-  const prov = document.getElementById('filterProvince')?.value || '';
-  const regSel  = document.getElementById('filterRegency');
-  const distSel = document.getElementById('filterDistrict');
-  // reset level bawah
-  if (regSel)  { regSel.innerHTML  = '<option value="">Semua Kab/Kota</option>';  regSel.disabled = true; }
-  if (distSel) { distSel.innerHTML = '<option value="">Semua Kecamatan</option>'; distSel.disabled = true; }
-
-  if (prov && regSel) {
-    try {
-      const d = await App.api('/customers/areas?province=' + encodeURIComponent(prov));
-      if (d?.success && d.data.length) {
-        regSel.innerHTML = '<option value="">Semua Kab/Kota</option>'
-          + d.data.map(r => `<option value="${_esc(r)}">${_esc(r)}</option>`).join('');
-        regSel.disabled = false;
-      }
-    } catch (_) {}
-  }
-  _custPage = 1;
-  loadCustomers();
-}
-
-async function onFilterRegencyChange() {
-  const prov = document.getElementById('filterProvince')?.value || '';
-  const reg  = document.getElementById('filterRegency')?.value || '';
-  const distSel = document.getElementById('filterDistrict');
-  if (distSel) { distSel.innerHTML = '<option value="">Semua Kecamatan</option>'; distSel.disabled = true; }
-
-  if (reg && distSel) {
-    try {
-      const d = await App.api('/customers/areas?province=' + encodeURIComponent(prov) + '&regency=' + encodeURIComponent(reg));
-      if (d?.success && d.data.length) {
-        distSel.innerHTML = '<option value="">Semua Kecamatan</option>'
-          + d.data.map(x => `<option value="${_esc(x)}">${_esc(x)}</option>`).join('');
-        distSel.disabled = false;
-      }
-    } catch (_) {}
-  }
+function onFilterWilayahChange() {
   _custPage = 1;
   loadCustomers();
 }
@@ -2011,7 +1990,7 @@ async function backfillAreas() {
     const d = await App.api('/customers/backfill-areas', { method: 'POST' });
     if (d?.success) {
       App.showToast(d.message || 'Backfill selesai', 'success');
-      await loadFilterProvinces();
+      await loadFilterWilayah();
       loadCustomers();
     } else {
       App.showToast(d?.message || 'Gagal backfill', 'error');
@@ -2023,10 +2002,9 @@ async function backfillAreas() {
   }
 }
 
-window.onFilterProvinceChange = onFilterProvinceChange;
-window.onFilterRegencyChange  = onFilterRegencyChange;
-window.backfillAreas          = backfillAreas;
-window.loadFilterProvinces    = loadFilterProvinces;
+window.onFilterWilayahChange = onFilterWilayahChange;
+window.backfillAreas         = backfillAreas;
+window.loadFilterWilayah     = loadFilterWilayah;
 
 // ══════════════════════════════════════════════════════════════
 // Pulihkan dropdown wilayah saat EDIT, dari nama area tersimpan.
