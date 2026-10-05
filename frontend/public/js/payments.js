@@ -5,6 +5,7 @@ let _donutChart = null;
 let _payPage    = 1;
 let _payMethod  = 'cash';
 let _selCust    = null;
+let _custSearchResults = [];
 let _searchTimer= null;
 let _payMode    = 'pay';
 let _debtDays   = 7;
@@ -407,15 +408,22 @@ async function searchCustomers(val) {
     if (!d?.success) return;
     const dd = document.getElementById('custDropdown');
     if (!dd) return;
-    if (!d.data.length) {
+    _custSearchResults = d.data || [];
+    if (!_custSearchResults.length) {
       dd.innerHTML = '<div class="cust-item"><div class="ci-sub">Tidak ditemukan</div></div>';
     } else {
-      dd.innerHTML = d.data.map(c =>
-        `<div class="cust-item" onclick="selectCustomer(${c.id},'${esc(c.name)}','${esc(c.customer_id)}','${esc(c.phone||'')}',${c.billing_date||1},${c.package?.price||0},'${esc(c.package?.name||'')}','${esc(c.due_date||'')}')">
-          <div class="ci-name">${esc(c.name)} <span style="font-size:10px;color:#6b7fa8;font-family:monospace;">${esc(c.customer_id)}</span></div>
-          <div class="ci-sub">${esc(c.phone||'–')} · ${esc(c.package?.name||'Tanpa paket')} ${c.package?.price ? '· Rp '+Number(c.package.price).toLocaleString('id-ID') : ''}</div>
-        </div>`
-      ).join('');
+      dd.innerHTML = _custSearchResults.map(c => {
+        const st = c.billing_status;
+        let badge = '<span class="ci-badge ci-paid">Lunas</span>';
+        if (st === 'overdue') badge = '<span class="ci-badge ci-over">Overdue</span>';
+        else if (st === 'unpaid') badge = '<span class="ci-badge ci-unpaid">Belum lunas</span>';
+        const dup = c.duplicate_name ? '<span class="ci-badge ci-dup">Nama kembar</span>' : '';
+        const inv = (c.outstanding && c.outstanding[0]) ? c.outstanding[0].invoice_number : '';
+        return `<div class="cust-item" onclick="selectCustomer(${c.id})">
+          <div class="ci-name">${esc(c.name)} <span class="ci-cid">${esc(c.customer_id)}</span> ${badge}${dup}</div>
+          <div class="ci-sub">${esc(c.phone||'–')} · ${esc(c.package?.name||'Tanpa paket')}${inv ? ' · '+esc(inv) : ''}</div>
+        </div>`;
+      }).join('');
     }
     dd.style.display = 'block';
   }, 250);
@@ -423,47 +431,93 @@ async function searchCustomers(val) {
 window.searchCustomers = searchCustomers;
 
 window.selectCustomer = async function(id, name, cid, phone, billingDay, price, pkgName, dueDate) {
-  _selCust = { id, name, cid, phone, billingDay, price, pkgName, dueDate };
-  document.getElementById('custSearch').value = name + ' (' + cid + ')';
-  document.getElementById('selectedCustId').value = id;
+  let c = _custSearchResults.find(x => x.id === id);
+  if (!c && name) {
+    c = {
+      id, name, customer_id: cid, phone,
+      billing_date: billingDay, due_date: dueDate,
+      package: { price: price || 0, name: pkgName || '' },
+      outstanding: [], duplicate_name: false
+    };
+  }
+  if (!c) return;
+  const pkg = c.package || {};
+  _selCust = {
+    id: c.id, name: c.name, cid: c.customer_id, phone: c.phone,
+    billingDay: c.billing_date || 1, price: pkg.price || 0,
+    pkgName: pkg.name || '', dueDate: c.due_date || '',
+    outstanding: c.outstanding || [], duplicate_name: !!c.duplicate_name
+  };
+  document.getElementById('custSearch').value = c.name + ' (' + c.customer_id + ')';
+  document.getElementById('selectedCustId').value = c.id;
   closeCustDropdown();
 
-  // Auto-fill amount from package price
-  if (price > 0) {
-    document.getElementById('payAmount').value = Number(price).toLocaleString('id-ID');
+  const oldest = (c.outstanding || [])[0];
+  if (oldest && oldest.period_month && oldest.period_year) {
+    const pmEl = document.getElementById('payPeriodMonth');
+    const pyEl = document.getElementById('payPeriodYear');
+    if (pmEl) pmEl.value = oldest.period_month;
+    if (pyEl) pyEl.value = oldest.period_year;
+    if (oldest.total) document.getElementById('payAmount').value = Number(oldest.total).toLocaleString('id-ID');
+  } else if (pkg.price > 0) {
+    document.getElementById('payAmount').value = Number(pkg.price).toLocaleString('id-ID');
   }
 
-  // Auto-calculate due date:
-  // Default = jatuh tempo ASLI customer + 1 bulan (mis. 1 Mei -> 1 Juni).
-  // Kalau customer belum punya due_date tersimpan, fallback ke billing_date.
-  // Field tetap bisa diedit manual oleh admin.
-  setDefaultDueDate(billingDay, dueDate);
+  setDefaultDueDate(c.billing_date || 1, c.due_date);
 
-  // Cek apakah periode ini sudah lunas
   const pm = document.getElementById('payPeriodMonth')?.value;
   const py = document.getElementById('payPeriodYear')?.value;
-  await checkAlreadyPaid(id, pm, py);
+  await checkAlreadyPaid(c.id, pm, py);
 
-  // Show info
   const info = document.getElementById('custInfo');
   if (info) {
-    const dueAsliFmt = dueDate
-      ? new Date(dueDate + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' })
+    const dueAsliFmt = c.due_date
+      ? new Date(c.due_date + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' })
       : '–';
     info.style.display = 'block';
     info.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;">' +
         '<div>' +
-          '<div style="font-weight:700;color:#0d1b3e;">' + esc(name) + '</div>' +
-          '<div style="color:#6b7fa8;">' + esc(cid) + ' · ' + esc(phone||'–') + '</div>' +
+          '<div style="font-weight:700;color:#0d1b3e;">' + esc(c.name) + '</div>' +
+          '<div style="color:#6b7fa8;">' + esc(c.customer_id) + ' · ' + esc(c.phone||'–') + '</div>' +
         '</div>' +
         '<div style="text-align:right;">' +
-          '<div style="font-weight:600;color:#1a6ef5;">' + esc(pkgName||'–') + '</div>' +
+          '<div style="font-weight:600;color:#1a6ef5;">' + esc(pkg.name||'–') + '</div>' +
           '<div style="color:#6b7fa8;">Jatuh tempo: ' + dueAsliFmt + '</div>' +
         '</div>' +
       '</div>';
   }
+  renderSettleHint(c);
 };
+
+function renderSettleHint(c) {
+  const el = document.getElementById('settleHint');
+  if (!el) return;
+  const bits = [];
+  if (c.duplicate_name) {
+    bits.push('<div style="padding:10px 12px;background:#eef2ff;border:1.5px solid #c7d2fe;border-radius:8px;margin-bottom:6px;">' +
+      '<div style="font-size:12.5px;font-weight:700;color:#3730a3;">Nama pelanggan kembar</div>' +
+      '<div style="font-size:11px;color:#4338ca;">Ada lebih dari satu data dengan nama ini. Pastikan CID <b>' + esc(c.customer_id) + '</b> benar sebelum pelunasan.</div></div>');
+  }
+  const list = c.outstanding || [];
+  if (list.length) {
+    const rows = list.map(inv => {
+      const per = (MONTHS[inv.period_month] || inv.period_month) + ' ' + (inv.period_year || '');
+      const st = inv.status === 'overdue' ? 'Overdue' : 'Belum lunas';
+      const amt = inv.total != null ? 'Rp ' + Number(inv.total).toLocaleString('id-ID') : '';
+      return '<div style="font-size:11.5px;color:#9a3412;margin-top:2px;">' + esc(inv.invoice_number || '-') + ' · ' + esc(per) + ' · ' + st + (amt ? ' · ' + amt : '') + '</div>';
+    }).join('');
+    bits.push('<div style="padding:10px 12px;background:#fff7ed;border:1.5px solid #fdba74;border-radius:8px;">' +
+      '<div style="font-size:12.5px;font-weight:700;color:#c2410c;">Tagihan yang dilunasi</div>' +
+      rows +
+      '<div style="font-size:11px;color:#9a3412;margin-top:4px;">Periode form otomatis diisi invoice tertunggak tertua. Ganti bulan hanya jika sengaja bayar periode lain.</div></div>');
+  } else {
+    bits.push('<div style="padding:10px 12px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:8px;">' +
+      '<div style="font-size:12.5px;font-weight:700;color:#15803d;">Tidak ada invoice tertunggak</div>' +
+      '<div style="font-size:11px;color:#16a34a;">Kalau dicatat, sistem membuat/ melunasi invoice periode yang dipilih.</div></div>');
+  }
+  el.innerHTML = bits.join('');
+}
 
 async function checkAlreadyPaid(custId, month, year) {
   if (!custId || !month || !year) return;
@@ -572,19 +626,26 @@ window.submitPayment = async function() {
   btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Catat Pembayaran';
 
   if (d?.success) {
-    // Show success banner
     const banner = document.getElementById('successBanner');
     const msgEl  = document.getElementById('successMsg');
     const invEl  = document.getElementById('successInvNum');
-    if (banner) banner.style.display = 'block';
+    const hasWarn = !!(d.data?.sibling_unpaid?.length || d.data?.remaining_unpaid?.length);
+    if (banner) {
+      banner.style.display = 'block';
+      banner.classList.toggle('warn-remain', hasWarn);
+    }
     if (msgEl)  msgEl.textContent  = d.message;
-    if (invEl)  invEl.textContent  = 'Invoice: ' + (d.data?.invoice_number || '–') + ' · Due date baru: ' + (d.data?.due_date_after || '–');
-    setTimeout(() => { if (banner) banner.style.display = 'none'; }, 8000);
+    const extra = [];
+    extra.push('Invoice: ' + (d.data?.invoice_number || '–') + ' · CID ' + (d.data?.customer_id || '–') + ' · Due date baru: ' + (d.data?.due_date_after || '–'));
+    if (d.data?.sibling_unpaid?.length) {
+      const names = [...new Set(d.data.sibling_unpaid.map(s => (s.customer_name || '') + ' (' + (s.customer_id || '') + ')'))];
+      extra.push('Masih overdue di data lain: ' + names.join(', ') + ' — catat pembayaran terpisah untuk CID itu.');
+    }
+    if (invEl)  invEl.textContent  = extra.join('  |  ');
+    setTimeout(() => { if (banner) banner.style.display = 'none'; }, hasWarn ? 20000 : 8000);
 
-    // Reset form
     resetForm();
 
-    // Reload data
     _payPage = 1;
     loadStats();
     loadChart();
@@ -607,6 +668,8 @@ function resetForm() {
   document.getElementById('custSearch').value = '';
   document.getElementById('selectedCustId').value = '';
   document.getElementById('custInfo').style.display = 'none';
+  const sh = document.getElementById('settleHint');
+  if (sh) sh.innerHTML = '';
   document.getElementById('payAmount').value = '';
   document.getElementById('payRef').value = '';
   document.getElementById('payNotes').value = '';

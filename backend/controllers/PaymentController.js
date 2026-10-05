@@ -1,5 +1,6 @@
 const { Invoice, Payment, PaymentDeferral, Customer, Package, User, sequelize } = require('../models');
 const { resolvePromiseDate, normalizeBulkPayload } = require('../utils/paymentExtras');
+const { computeCustomerDueStatus, serializeOutstanding } = require('../utils/customerDueStatus');
 const { applyTenantSql, assertCustomerTenant, getTenantId } = require('../utils/tenantScope');
 const { Op } = require('sequelize');
 const { generateInvoiceNumber } = require('../utils/helpers');
@@ -808,16 +809,69 @@ class PaymentController {
         }).catch(() => {});
       } catch (_) {}
 
+      let remainingUnpaid = [];
+      let siblingUnpaid = [];
+      try {
+        remainingUnpaid = await Invoice.findAll({
+          where: { customer_id: customer.id, status: { [Op.in]: ['unpaid', 'overdue'] } },
+          attributes: ['id','invoice_number','status','due_date','total','period_month','period_year'],
+          order: [['due_date', 'ASC']]
+        });
+        const phone = (customer.phone || '').trim();
+        const sibWhere = phone
+          ? { [Op.or]: [{ name: customer.name }, { phone }] }
+          : { name: customer.name };
+        const siblings = await Customer.findAll({
+          where: {
+            id: { [Op.ne]: customer.id },
+            status: { [Op.in]: ['active', 'isolated'] },
+            ...sibWhere
+          },
+          attributes: ['id','customer_id','name','phone']
+        });
+        if (siblings.length) {
+          const sibIds = siblings.map(s => s.id);
+          const sibInvs = await Invoice.findAll({
+            where: { customer_id: { [Op.in]: sibIds }, status: { [Op.in]: ['unpaid', 'overdue'] } },
+            attributes: ['id','customer_id','invoice_number','status','due_date','total','period_month','period_year'],
+            order: [['due_date', 'ASC']]
+          });
+          const byId = {};
+          siblings.forEach(s => { byId[s.id] = s; });
+          siblingUnpaid = sibInvs.map(inv => ({
+            ...serializeOutstanding(inv),
+            customer_id: byId[inv.customer_id]?.customer_id || null,
+            customer_name: byId[inv.customer_id]?.name || null
+          }));
+        }
+      } catch (warnErr) {
+        logger.warn('[Payment] gagal cek sisa tagihan/duplikat: ' + warnErr.message);
+      }
+
+      let message = `Pembayaran ${customer.name} (${customer.customer_id}) berhasil dicatat.` + waSentMsg;
+      if (remainingUnpaid.length) {
+        const left = remainingUnpaid.map(i => i.invoice_number || `#${i.id}`).join(', ');
+        message += ` Masih ada tagihan belum lunas: ${left}.`;
+      }
+      if (siblingUnpaid.length) {
+        const names = [...new Set(siblingUnpaid.map(s => `${s.customer_name} (${s.customer_id})`))];
+        message += ` Perhatian: ada pelanggan lain bernama/nomor sama yang masih Overdue: ${names.join(', ')}. Catat pembayaran terpisah untuk CID tersebut.`;
+      }
+
       res.status(201).json({
         success: true,
-        message: `Pembayaran ${customer.name} berhasil dicatat.` + waSentMsg,
+        message,
         data: {
           payment_id: payment.id,
           invoice_number: invoice.invoice_number,
+          customer_id: customer.customer_id,
+          customer_pk: customer.id,
           customer_name: customer.name,
           amount: payment.amount,
           due_date_after: effectiveDueAfter,
-          wa_sent_status: waSentStatus
+          wa_sent_status: waSentStatus,
+          remaining_unpaid: remainingUnpaid.map(serializeOutstanding),
+          sibling_unpaid: siblingUnpaid
         }
       });
     } catch(e) {
@@ -1051,8 +1105,25 @@ class PaymentController {
         },
         attributes: ['id','invoice_number','paid_date','due_date']
       });
+      const outstandingRows = await Invoice.findAll({
+        where: {
+          customer_id: parseInt(customer_id),
+          status: { [Op.in]: ['unpaid', 'overdue'] }
+        },
+        attributes: ['id','invoice_number','status','due_date','total','period_month','period_year'],
+        order: [['due_date', 'ASC']]
+      });
+      const outstanding = outstandingRows.map(serializeOutstanding);
+      const suggested = outstanding[0] || null;
+
       if (invoice) {
-        return res.json({ paid: true, invoice_number: invoice.invoice_number, paid_date: invoice.paid_date });
+        return res.json({
+          paid: true,
+          invoice_number: invoice.invoice_number,
+          paid_date: invoice.paid_date,
+          outstanding,
+          suggested_period: suggested ? { month: suggested.period_month, year: suggested.period_year } : null
+        });
       }
       let deferral = null;
       try {
@@ -1075,7 +1146,12 @@ class PaymentController {
           };
         }
       } catch (_) {}
-      res.json({ paid: false, deferral });
+      res.json({
+        paid: false,
+        deferral,
+        outstanding,
+        suggested_period: suggested ? { month: suggested.period_month, year: suggested.period_year } : null
+      });
     } catch(e) { res.json({ paid: false }); }
   }
 
@@ -1604,10 +1680,47 @@ class PaymentController {
         where,
         include: [{ model: Package, as: 'package', attributes: ['id','name','price'] }],
         attributes: ['id','customer_id','name','phone','status','billing_date','installation_date','due_date'],
-        order: [['name','ASC']],
+        order: [['name','ASC'], ['customer_id','ASC']],
         limit: 30
       });
-      res.json({ success: true, data: rows });
+      const json = rows.map(r => r.toJSON());
+      const ids = json.map(c => c.id);
+      const names = [...new Set(json.map(c => c.name).filter(Boolean))];
+      const invs = ids.length ? await Invoice.findAll({
+        where: { customer_id: { [Op.in]: ids }, status: { [Op.in]: ['unpaid', 'overdue'] } },
+        attributes: ['id','customer_id','invoice_number','status','due_date','total','period_month','period_year'],
+        order: [['due_date', 'ASC']]
+      }) : [];
+      const invByCust = {};
+      invs.forEach(inv => {
+        (invByCust[inv.customer_id] ||= []).push(serializeOutstanding(inv));
+      });
+      const dupNames = new Set();
+      if (names.length) {
+        const dups = await sequelize.query(
+          `SELECT name FROM customers
+           WHERE name IN (:names) AND status IN ('active','isolated')
+           GROUP BY name HAVING COUNT(*) > 1`,
+          { replacements: { names }, type: sequelize.QueryTypes.SELECT }
+        );
+        dups.forEach(d => dupNames.add(d.name));
+      }
+      const today = new Date(); today.setHours(0,0,0,0);
+      const data = json.map(c => {
+        const outstanding = invByCust[c.id] || [];
+        const computed = computeCustomerDueStatus({
+          unpaidInvoices: outstanding,
+          customerDueDate: c.due_date,
+          today
+        });
+        return {
+          ...c,
+          outstanding,
+          billing_status: computed.status,
+          duplicate_name: dupNames.has(c.name)
+        };
+      });
+      res.json({ success: true, data });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
   }
 

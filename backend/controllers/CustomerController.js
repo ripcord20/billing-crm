@@ -5,6 +5,7 @@ const { generateUniqueCustomerId, paginateResponse } = require('../utils/helpers
 const { getCompanyName } = require('../utils/companyInfo');
 const InfraSync = require('../services/CustomerInfraSyncService');
 const { applyTenantWhere, getTenantId, assertCustomerTenant, isTenantOwner } = require('../utils/tenantScope');
+const { computeCustomerDueStatus, isDueSoon } = require('../utils/customerDueStatus');
 
 class CustomerController {
   async index(req, res) {
@@ -38,11 +39,12 @@ class CustomerController {
           { model: Package, as: 'package' },
           {
             model: Invoice, as: 'invoices',
-            attributes: ['id','due_date','status','paid_date','period_month','period_year','amount','total'],
+            attributes: ['id','invoice_number','due_date','status','paid_date','period_month','period_year','amount','total'],
             required: false,
-            order: [['due_date', 'DESC']],
+            where: { status: { [Op.in]: ['unpaid', 'overdue'] } },
+            order: [['due_date', 'ASC']],
             separate: true,
-            limit: 1
+            limit: 8
           }
         ],
         offset,
@@ -50,61 +52,35 @@ class CustomerController {
         order: [['created_at', 'DESC']]
       });
 
-      // Logic PHP: due_date dari kolom customers.due_date
-      // latest_invoice_status dari invoice AKTUAL (unpaid/paid/overdue)
+      // Overdue = ada invoice belum lunas yang due_date-nya sudah lewat.
+      // Kalau semua invoice lunas, badge bukan Overdue (itu cara pelunasan).
       const todayDate = new Date(); todayDate.setHours(0,0,0,0);
       const data = rows.map(c => {
         const json     = c.toJSON();
         const invoices = json.invoices || [];
+        const computed = computeCustomerDueStatus({
+          unpaidInvoices: invoices,
+          customerDueDate: json.due_date || null,
+          today: todayDate
+        });
 
-        // Cari invoice yang relevan
-        const unpaidInv = invoices.find(i => ['unpaid','overdue'].includes(i.status));
-        const latestInv = invoices[0] || null;
-
-        // due_date: dari kolom customers.due_date (diset manual/otomatis)
-        const dueDate = json.due_date || null;
-
-        // latest_invoice_status: cerminkan status invoice aktual
-        // Ini dipakai di frontend untuk menentukan badge overdue/due_soon/paid
-        let dueStatus = null;
-        if (unpaidInv) {
-          // Ada invoice belum lunas → status berdasarkan due_date customer
-          const dd = dueDate ? new Date(dueDate + 'T00:00:00') : null;
-          if (dd && dd < todayDate)  dueStatus = 'overdue';
-          else                        dueStatus = 'unpaid';
-        } else if (latestInv && latestInv.status === 'paid') {
-          dueStatus = 'paid';
-        } else if (!latestInv && dueDate) {
-          // Belum ada invoice — cek due_date langsung
-          const dd = new Date(dueDate + 'T00:00:00');
-          if (dd < todayDate) dueStatus = 'overdue';
-          else                dueStatus = 'active';
-        }
-
-        json.latest_invoice        = unpaidInv || latestInv;
-        json.latest_due_date       = dueDate;
-        json.latest_invoice_status = dueStatus;
+        json.latest_invoice        = computed.invoice || invoices[0] || null;
+        json.latest_due_date       = computed.dueDate || json.due_date || null;
+        json.latest_invoice_status = computed.status;
         return json;
       });
 
-      // Post-process filter overdue / due_soon berdasarkan latest_due_date
       let filtered = data;
-      const todayStr = new Date().toISOString().split('T')[0];
-      const in3days  = new Date(Date.now() + 3*86400000).toISOString().split('T')[0];
 
       if (status === 'overdue') {
-        // Sama dengan stats: due_date < today + status active + ada invoice unpaid/overdue
         filtered = data.filter(c =>
           c.latest_invoice_status === 'overdue' &&
           ['active','isolated'].includes(c.status)
         );
       } else if (status === 'due_soon') {
         filtered = data.filter(c =>
-          c.latest_invoice_status === 'unpaid' &&
           c.status === 'active' &&
-          c.latest_due_date &&
-          c.latest_due_date >= todayStr &&
-          c.latest_due_date <= in3days
+          isDueSoon(c.latest_invoice_status, c.latest_due_date, todayDate, 3)
         );
       }
 
@@ -479,22 +455,14 @@ class CustomerController {
         result.mikrotik = null;
       }
 
-      // Logic PHP: due_date dari kolom customers, status dari invoice aktual
-      const unpaidInv2 = invoices.find(i => ['unpaid','overdue'].includes(i.status));
-      const dueDate    = result.due_date || null;
-      const todayNow   = new Date(); todayNow.setHours(0,0,0,0);
-      let dueStatus2 = null;
-      if (unpaidInv2) {
-        const dd = dueDate ? new Date(dueDate + 'T00:00:00') : null;
-        dueStatus2 = (dd && dd < todayNow) ? 'overdue' : 'unpaid';
-      } else if (invoices.length > 0 && invoices[0].status === 'paid') {
-        dueStatus2 = 'paid';
-      } else if (!invoices.length && dueDate) {
-        const dd = new Date(dueDate + 'T00:00:00');
-        dueStatus2 = dd < todayNow ? 'overdue' : 'active';
-      }
-      result.latest_due_date         = dueDate;
-      result.latest_invoice_status   = dueStatus2;
+      const todayNow = new Date(); todayNow.setHours(0,0,0,0);
+      const computed2 = computeCustomerDueStatus({
+        unpaidInvoices: invoices.filter(i => ['unpaid','overdue'].includes(i.status)),
+        customerDueDate: result.due_date || null,
+        today: todayNow
+      });
+      result.latest_due_date       = computed2.dueDate || result.due_date || null;
+      result.latest_invoice_status = computed2.status;
 
       res.json({ success: true, data: result });
     } catch (error) {
@@ -612,7 +580,6 @@ class CustomerController {
     try {
       const { Invoice } = require('../models');
       const today = new Date().toISOString().slice(0, 10);
-      const in3days = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
 
       const total    = await Customer.count();
       const active   = await Customer.count({ where: { status: 'active' } });
@@ -629,37 +596,24 @@ class CustomerController {
           model: Invoice, as: 'invoices',
           attributes: ['id','status','due_date'],
           required: false,
+          where: { status: { [Op.in]: ['unpaid','overdue'] } },
           separate: true,
-          order: [['created_at','DESC']],
-          limit: 3
+          order: [['due_date','ASC']],
+          limit: 8
         }]
       });
 
       const todayDt = new Date(today + 'T00:00:00');
-      const in3Dt   = new Date(in3days + 'T00:00:00');
       let overdue = 0, due_soon = 0;
 
       for (const cust of allForStats) {
-        const invs      = cust.invoices || [];
-        const dueDate   = cust.due_date;
-        if (!dueDate) continue;
-
-        const dueDt     = new Date(dueDate + 'T00:00:00');
-        const unpaidInv = invs.find(i => ['unpaid','overdue'].includes(i.status));
-
-        // Kalkulasi latest_invoice_status — identik dengan index()
-        let dueStatus = null;
-        if (unpaidInv) {
-          dueStatus = dueDt < todayDt ? 'overdue' : 'unpaid';
-        } else if (invs.length > 0 && invs[0].status === 'paid') {
-          dueStatus = 'paid';
-        } else if (invs.length === 0) {
-          dueStatus = dueDt < todayDt ? 'overdue' : 'active';
-        }
-
-        // Count — sama persis dengan filter di index()
-        if (dueStatus === 'overdue' && ['active','isolated'].includes(cust.status)) overdue++;
-        if (dueStatus === 'unpaid'  && cust.status === 'active' && dueDt >= todayDt && dueDt <= in3Dt) due_soon++;
+        const computed = computeCustomerDueStatus({
+          unpaidInvoices: cust.invoices || [],
+          customerDueDate: cust.due_date,
+          today: todayDt
+        });
+        if (computed.status === 'overdue' && ['active','isolated'].includes(cust.status)) overdue++;
+        if (cust.status === 'active' && isDueSoon(computed.status, computed.dueDate, todayDt, 3)) due_soon++;
       }
 
       // Revenue = ESTIMASI pendapatan bulanan dari customer aktif.

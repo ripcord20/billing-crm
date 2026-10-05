@@ -634,6 +634,7 @@ async function loadCustomers() {
     // Status sinkron dengan invoice: overdue = ada invoice unpaid & due sudah lewat
     var isOv = (c.latest_invoice_status === 'overdue') && c.status === 'active';
     var isDs = (c.latest_invoice_status === 'unpaid')  && c.status === 'active' && diffCk !== null && diffCk >= 0 && diffCk <= 3;
+    var invNo = (c.latest_invoice && c.latest_invoice.invoice_number) ? c.latest_invoice.invoice_number : '';
 
     var stCls = 'sb-inactive', stDot = '#94a3b8', stLabel = c.status||'–';
     if      (isOv)                   { stCls='sb-overdue';  stDot='#dc2626'; stLabel='Overdue'; }
@@ -674,7 +675,9 @@ async function loadCustomers() {
       + '<td style="font-weight:700;color:#1a6ef5;font-size:13px">'+price+'</td>'
       + '<td style="color:#6b7fa8">'+actDate+'</td>'
       + '<td><div style="line-height:1.5">'+dueDateHtml+'</div></td>'
-      + '<td><span class="sb '+stCls+'"><span class="sb-dot" style="background:'+stDot+'"></span>'+stLabel+'</span></td>'
+      + '<td><span class="sb '+stCls+'"><span class="sb-dot" style="background:'+stDot+'"></span>'+stLabel+'</span>'
+      + (isOv && invNo ? '<div style="font-size:10px;color:#dc2626;margin-top:3px;font-family:monospace">'+_esc(invNo)+'</div>' : '')
+      + '</td>'
       + '<td style="text-align:right;padding-right:18px">'
         + '<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">'
           + '<button class="rb rb-wa" onclick="sendWA(\''+_esc(c.phone||'')+'\')" >WA</button>'
