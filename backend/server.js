@@ -1108,6 +1108,14 @@ const startServer = async () => {
       logger.warn('Failed reseller voucher migration: ' + (e.message || e));
     }
 
+    // Unique invoice per pelanggan per periode — cegah tagihan dobel.
+    try {
+      const { ensureInvoicePeriodUnique } = require('./utils/ensureInvoicePeriodUnique');
+      await ensureInvoicePeriodUnique(db.sequelize);
+    } catch (e) {
+      logger.warn('Invoice period unique index skipped: ' + (e.message || e));
+    }
+
     // Start SNMP monitoring
     const snmpService = new SNMPService(io);
     SNMPService.setInstance(snmpService);
