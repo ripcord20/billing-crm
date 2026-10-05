@@ -3,6 +3,8 @@ const { Op } = require('sequelize');
 const { generateInvoiceNumber, paginateResponse, formatCurrency } = require('../utils/helpers');
 const moment = require('moment');
 const { getCompanyName } = require('../utils/companyInfo');
+const { periodDueDateForCustomer, clampPeriodDueDate } = require('../utils/billingDates');
+const { isCustomerPeriodConflict } = require('../utils/billingGuards');
 
 /**
  * Status customer yang berhak menerima invoice generate bulanan.
@@ -209,18 +211,23 @@ class BillingController {
     const { loadTaxSettings, computeTax } = require('../utils/taxHelper');
     const taxCfg = await loadTaxSettings();
 
-    // Diagnostic: hitung customer di DB by status untuk troubleshooting
-    // kalau hasil generate = 0 (mis-konfigurasi paling sering: status tidak eligible
-    // atau customer belum dipasangkan ke package)
-    const allCustomersCount = await Customer.count();
-    const eligibleCount     = await Customer.count({
-      where: { status: { [Op.in]: INVOICE_ELIGIBLE_STATUSES } }
-    });
-    // Breakdown per-status untuk transparansi (mis. user lihat ada berapa yg isolated)
-    const activeCount       = await Customer.count({ where: { status: 'active'    } });
-    const isolatedCount     = await Customer.count({ where: { status: 'isolated'  } });
-    const suspendedCount    = await Customer.count({ where: { status: 'suspended' } });
-    const inactiveCount     = await Customer.count({ where: { status: 'inactive'  } });
+    // Diagnostic: satu GROUP BY, bukan 6 COUNT terpisah
+    const statusRows = await sequelize.query(
+      `SELECT status, COUNT(*) AS c FROM customers GROUP BY status`,
+      { type: sequelize.QueryTypes.SELECT }
+    );
+    const statusCount = {};
+    let allCustomersCount = 0;
+    for (const row of statusRows) {
+      const n = parseInt(row.c, 10) || 0;
+      statusCount[row.status] = n;
+      allCustomersCount += n;
+    }
+    const activeCount    = statusCount.active    || 0;
+    const isolatedCount  = statusCount.isolated  || 0;
+    const suspendedCount = statusCount.suspended || 0;
+    const inactiveCount  = statusCount.inactive  || 0;
+    const eligibleCount  = INVOICE_ELIGIBLE_STATUSES.reduce((s, st) => s + (statusCount[st] || 0), 0);
 
     // Get eligible customers (active + isolated + suspended; inactive tidak digenerate)
     const eligibleWhere = { status: { [Op.in]: INVOICE_ELIGIBLE_STATUSES } };
@@ -272,22 +279,25 @@ class BillingController {
       invPrefix = seed.prefix || 'INV';
     }
 
+    // Prefetch invoice periode ini — 1 query, bukan findOne per pelanggan.
+    const existingRows = await Invoice.findAll({
+      where: { period_month: targetMonth, period_year: targetYear },
+      attributes: ['customer_id', 'invoice_number'],
+      raw: true
+    });
+    const existingByCustomer = new Map(
+      existingRows.map(r => [r.customer_id, r.invoice_number])
+    );
+
     for (const customer of customers) {
-      // Check if invoice exists (idempotent)
-      const existing = await Invoice.findOne({
-        where: {
-          customer_id: customer.id,
-          period_month: targetMonth,
-          period_year:  targetYear
-        }
-      });
-      if (existing) {
+      const existingNumber = existingByCustomer.get(customer.id);
+      if (existingNumber) {
         skipped++; skippedExisting++;
         skippedDetails.push({
           customer_id: customer.customer_id,
           name:        customer.name,
           reason:      'existing',
-          detail:      `Sudah punya invoice ${existing.invoice_number} di periode ini`
+          detail:      `Sudah punya invoice ${existingNumber} di periode ini`
         });
         continue;
       }
@@ -347,16 +357,11 @@ class BillingController {
       const carryOver = parseFloat(customer.carry_over_amount || 0) || 0;
       const total  = parseFloat(breakdown.total) + carryOver;
 
-      // Due date: pakai customer.due_date (sinkron dengan halaman Customer Data),
-      // fallback ke billing_date
-      let dueDate;
-      if (customer.due_date) {
-        const custDue = new Date(customer.due_date + 'T00:00:00');
-        const dueDay  = custDue.getDate();
-        dueDate = moment(`${targetYear}-${String(targetMonth).padStart(2,'0')}-${String(dueDay).padStart(2,'0')}`);
-      } else {
-        dueDate = moment(`${targetYear}-${String(targetMonth).padStart(2,'0')}-${String(customer.billing_date || 10).padStart(2,'0')}`);
-      }
+      // Due date: hari dari customer.due_date / billing_date, diklem ke akhir bulan
+      // (31 Feb → 28/29 Feb, bukan overflow ke Maret).
+      const dueDateStr = periodDueDateForCustomer(customer, targetMonth, targetYear)
+        || moment().format('YYYY-MM-DD');
+      const dueDate = moment(dueDateStr, 'YYYY-MM-DD');
 
       // Retry jika duplicate invoice_number (concurrent runs / nomor dari jalur lain)
       let invoiceCreated = false;
@@ -374,6 +379,7 @@ class BillingController {
             notes: carryOver > 0 ? `Termasuk tunggakan sebelumnya Rp${carryOver.toLocaleString('id-ID')}` : null
           });
           invoiceCreated = true;
+          existingByCustomer.set(customer.id, generateInvoiceNumber(targetYear, targetMonth, seqCounter, invPrefix));
           // Reset carry-over pelanggan setelah berhasil dimasukkan ke invoice baru.
           if (carryOver > 0) {
             try { await customer.update({ carry_over_amount: 0 }); } catch (_) {}
@@ -381,6 +387,17 @@ class BillingController {
           seqCounter++;
           created++;
         } catch (createErr) {
+          if (isCustomerPeriodConflict(createErr)) {
+            skipped++; skippedExisting++;
+            skippedDetails.push({
+              customer_id: customer.customer_id,
+              name:        customer.name,
+              reason:      'existing',
+              detail:      'Invoice periode ini sudah dibuat (proses bersamaan)'
+            });
+            invoiceCreated = true;
+            break;
+          }
           if (createErr.name === 'SequelizeUniqueConstraintError') {
             // Resync nomor dari DB (ambil MAX suffix terkini di periode ini),
             // lalu coba lagi. Lebih aman dari parsing manual yang bisa NaN.
@@ -466,23 +483,52 @@ class BillingController {
         return res.status(400).json({ success: false, message: `Invoice sudah berstatus ${invoice.status}` });
       }
 
-      const payment = await Payment.create({
-        invoice_id,
-        amount: parseFloat(amount),
-        payment_method: payment_method || 'cash',
-        payment_date: payment_date || moment().format('YYYY-MM-DD'),
-        reference_number,
-        recorded_by: req.user.id,
-        notes
-      });
+      const t = await sequelize.transaction();
+      let becamePaid = false;
+      let payment;
+      try {
+        await invoice.reload({ transaction: t, lock: t.LOCK.UPDATE });
+        if (['paid', 'cancelled'].includes(invoice.status)) {
+          await t.rollback();
+          return res.status(400).json({ success: false, message: `Invoice sudah berstatus ${invoice.status}` });
+        }
+        payment = await Payment.create({
+          invoice_id,
+          amount: parseFloat(amount),
+          payment_method: payment_method || 'cash',
+          payment_date: payment_date || moment().format('YYYY-MM-DD'),
+          reference_number,
+          recorded_by: req.user.id,
+          notes
+        }, { transaction: t });
 
-      // Check total payments
-      const totalPaid = await Payment.sum('amount', { where: { invoice_id } });
-      if (totalPaid >= parseFloat(invoice.total)) {
-        await invoice.update({
-          status: 'paid',
-          paid_date: moment().format('YYYY-MM-DD')
-        });
+        const totalPaid = await Payment.sum('amount', { where: { invoice_id }, transaction: t });
+        if (totalPaid >= parseFloat(invoice.total)) {
+          await invoice.update({
+            status: 'paid',
+            paid_date: moment().format('YYYY-MM-DD')
+          }, { transaction: t });
+          becamePaid = true;
+        }
+        await t.commit();
+      } catch (txErr) {
+        try { await t.rollback(); } catch (_) {}
+        throw txErr;
+      }
+
+      if (becamePaid) {
+        try {
+          const { finalizePaidInvoice } = require('../utils/paymentFinalizer');
+          await finalizePaidInvoice({
+            invoiceId: invoice.id,
+            paymentId: payment.id,
+            channel: 'admin_record_payment',
+            referenceNo: reference_number || null,
+            skipWa: true
+          });
+        } catch (finErr) {
+          console.warn('[Billing] finalize recordPayment gagal:', finErr.message);
+        }
       }
 
       // ── Auto-sync ke Keuangan (pemasukan) — tanpa perlu klik Sync ──
@@ -629,13 +675,13 @@ class BillingController {
         // Update semua invoice unpaid milik customer ini:
         // Set due_date ke hari yang sama (dueDay) di bulan invoice masing-masing
         const invoices = await Invoice.findAll({
-          where: { customer_id: cust.id, status: 'unpaid' },
+          where: { customer_id: cust.id, status: { [Op.in]: ['unpaid', 'overdue'] } },
           attributes: ['id', 'due_date', 'period_month', 'period_year']
         });
 
         for (const inv of invoices) {
-          const newDue = `${inv.period_year}-${String(inv.period_month).padStart(2,'0')}-${String(dueDay).padStart(2,'0')}`;
-          if (inv.due_date !== newDue) {
+          const newDue = clampPeriodDueDate(inv.period_year, inv.period_month, dueDay);
+          if (newDue && inv.due_date !== newDue) {
             await inv.update({ due_date: newDue });
             updated++;
           } else {
@@ -647,11 +693,8 @@ class BillingController {
         const today = new Date();
         today.setHours(0,0,0,0);
         if (custDue < today) {
-          const nextDue = new Date(custDue.getFullYear(), custDue.getMonth()+1, dueDay);
-          const y = nextDue.getFullYear();
-          const m = String(nextDue.getMonth()+1).padStart(2,'0');
-          const d = String(dueDay).padStart(2,'0');
-          await cust.update({ due_date: `${y}-${m}-${d}` });
+          const nextDue = moment(cust.due_date, 'YYYY-MM-DD').add(1, 'month').format('YYYY-MM-DD');
+          await cust.update({ due_date: nextDue });
         }
       }
 
@@ -800,13 +843,13 @@ class BillingController {
             COALESCE(SUM(CASE WHEN status='paid'                  THEN total ELSE 0 END),0) AS paid_amount,
             COALESCE(SUM(CASE WHEN status IN ('unpaid','overdue') THEN 1 ELSE 0 END),0) AS unpaid_count,
             COALESCE(SUM(CASE WHEN status IN ('unpaid','overdue') THEN total ELSE 0 END),0) AS unpaid_amount,
-            COALESCE(SUM(CASE WHEN status='overdue'               THEN 1 ELSE 0 END),0) AS overdue_count,
-            COALESCE(SUM(CASE WHEN status='overdue'               THEN total ELSE 0 END),0) AS overdue_amount,
+            COALESCE(SUM(CASE WHEN status IN ('unpaid','overdue') AND due_date < :today THEN 1 ELSE 0 END),0) AS overdue_count,
+            COALESCE(SUM(CASE WHEN status IN ('unpaid','overdue') AND due_date < :today THEN total ELSE 0 END),0) AS overdue_amount,
             COUNT(DISTINCT CASE WHEN status='paid'                  THEN customer_id END) AS paid_customers,
             COUNT(DISTINCT CASE WHEN status IN ('unpaid','overdue') THEN customer_id END) AS unpaid_customers
           FROM invoices
           WHERE period_year=:year` + (isYear ? '' : ' AND period_month=:month'),
-        { replacements: { year, month }, type: sequelize.QueryTypes.SELECT }
+        { replacements: { year, month, today }, type: sequelize.QueryTypes.SELECT }
       );
 
       const r = (Array.isArray(rows) ? rows[0] : rows) || {};
@@ -1465,7 +1508,7 @@ class BillingController {
         where: { email: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] } }
       });
       const [unpaid, overdue, paid] = await Promise.all([
-        Invoice.count({ where: { status: { [Op.in]: ['unpaid','pending'] } } }),
+        Invoice.count({ where: { status: 'unpaid' } }),
         Invoice.count({ where: { status: 'overdue' } }),
         Invoice.count({ where: { status: 'paid' } }),
       ]);
@@ -1689,34 +1732,29 @@ class BillingController {
         notes:            notes || `Pelunasan manual oleh ${req.user?.name || 'admin'}`,
       });
 
-      // Update invoice
       invoice.status    = 'paid';
       invoice.paid_date = payDate;
+      if ((req.body || {}).verification_status === 'verified') {
+        invoice.verification_status = 'verified';
+      }
       await invoice.save();
 
-      // Update due_date pelanggan ke periode berikutnya supaya pesan WA
-      // selanjutnya menampilkan jatuh tempo terbaru.
-      // Kebijakan: jatuh tempo berikutnya = jatuh tempo customer TERKINI + 1 bulan
-      // (konsisten dengan PaymentController.record). Fallback: due_date invoice ini,
-      // lalu billing_date. Caller boleh override via due_date_after eksplisit.
+      // Side-effect terpusat: status active, due_date, Keuangan, restore isolir.
+      // WA tetap di bawah — hormati checkbox send_wa (finalizer gateway selalu kirim).
       try {
-        const cust = invoice.customer;
-        if (cust) {
-          let nextDue = req.body?.due_date_after;
-          if (!nextDue) {
-            const base = cust.due_date
-              ? moment(cust.due_date)
-              : (invoice.due_date
-                  ? moment(invoice.due_date)
-                  : (cust.billing_date ? moment().date(cust.billing_date) : moment()));
-            nextDue = base.add(1, 'month').format('YYYY-MM-DD');
-          }
-          const upd = { due_date: nextDue };
-          const day = moment(nextDue).date();
-          if (day >= 1 && day <= 28) upd.billing_date = day;
-          await cust.update(upd);
-        }
-      } catch (_) { /* non-fatal */ }
+        const { finalizePaidInvoice } = require('../utils/paymentFinalizer');
+        await finalizePaidInvoice({
+          invoiceId: invoice.id,
+          paymentId: payment.id,
+          channel: 'admin_mark_paid',
+          referenceNo: reference_number || null,
+          skipWa: true,
+          dueDateAfter: req.body?.due_date_after || null
+        });
+        if (invoice.customer) await invoice.customer.reload().catch(() => {});
+      } catch (finErr) {
+        console.warn('[Billing] finalize markPaid gagal:', finErr.message);
+      }
 
       // Log activity
       try {
@@ -1822,12 +1860,12 @@ class BillingController {
         await invoice.update({ verification_status: 'verified' });
         return res.json({ success: true, message: 'Invoice sudah lunas.', data: { invoice_id: invoice.id } });
       }
-      // Tandai verified dulu, lalu delegasikan ke markPaid (mencatat payment,
-      // update status & due_date pelanggan, log aktivitas).
-      await invoice.update({ verification_status: 'verified' });
+      // Jangan set verified sebelum pelunasan berhasil — kalau markPaid gagal,
+      // invoice tetap unverified.
       if (!req.body) req.body = {};
       if (!req.body.method) req.body.method = 'transfer';
       if (!req.body.notes)  req.body.notes  = `Verifikasi bukti transfer oleh ${req.user?.name || 'admin'}`;
+      req.body.verification_status = 'verified';
       // Catatan: handler dipanggil tanpa instance `this` (lewat referensi route),
       // jadi panggil markPaid via singleton module.exports.
       return module.exports.markPaid(req, res);
@@ -2185,36 +2223,26 @@ class BillingController {
     }
   }
 
-  // Customers with unpaid invoices
+  // Daftar invoice unpaid/overdue (paginated)
   async unpaidCustomers(req, res) {
     try {
       const { Customer, Package } = require('../models');
-      const { Op } = require('sequelize');
-      const rows = await Invoice.findAll({
-        where: { status: { [Op.in]: ['unpaid','overdue'] } },
-        attributes: ['customer_id'],
-        group: ['customer_id'],
-        include: [{ model: Customer, as: 'customer', attributes: ['id','customer_id','name','phone'], include: [{ model: Package, as: 'package', attributes: ['name','price'] }] }],
-        raw: false
-      });
-      res.json({ success: true, data: rows.map(r => r.customer).filter(Boolean) });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-  }
-
-  // Daftar customer dengan invoice unpaid
-  async unpaidCustomers(req, res) {
-    try {
-      const { Invoice, Customer, Package } = require('../models');
-      const rows = await Invoice.findAll({
+      const page  = Math.max(parseInt(req.query.page, 10) || 1, 1);
+      const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
+      const offset = (page - 1) * limit;
+      const { count, rows } = await Invoice.findAndCountAll({
         where: { status: { [Op.in]: ['unpaid','overdue'] } },
         include: [{
           model: Customer, as: 'customer',
           attributes: ['id','customer_id','name','phone','status'],
           include: [{ model: Package, as: 'package', attributes: ['name','price'] }]
         }],
-        order: [['due_date','ASC']]
+        order: [['due_date','ASC']],
+        limit,
+        offset,
+        distinct: true
       });
-      res.json({ success: true, data: rows });
+      res.json({ success: true, data: rows, total: count, page, limit });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
   }
 
@@ -2604,7 +2632,13 @@ class BillingController {
       let existingInPeriod = 0;
       if (month && year) {
         existingInPeriod = await Invoice.count({
-          where: { period_month: month, period_year: year }
+          where: {
+            period_month: month,
+            period_year: year,
+            status: { [Op.ne]: 'cancelled' }
+          },
+          distinct: true,
+          col: 'customer_id'
         });
       }
 

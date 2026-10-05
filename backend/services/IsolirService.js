@@ -1021,7 +1021,8 @@ async function runAutoIsolir(opts = {}) {
     "SELECT value FROM app_settings WHERE `key`='isolir_grace_days'",
     { type: sequelize.QueryTypes.SELECT }
   ).catch(() => []);
-  const graceDays = parseInt(graceSetting[0]?.value || '0');
+  const { parseGraceDays } = require('../utils/billingGuards');
+  const graceDays = parseGraceDays(graceSetting[0]?.value);
 
   // Cari pelanggan yang harus diisolir. Dua sumber "overdue":
   //   (A) punya invoice unpaid/overdue dgn due_date sudah lewat grace, ATAU
@@ -1029,8 +1030,9 @@ async function runAutoIsolir(opts = {}) {
   //       invoice belum ter-generate / due_date diset manual). Ini menyamakan
   //       perilaku dengan badge "Overdue" di halaman customer yang juga membaca
   //       customers.due_date langsung.
+  // graceDays sudah di-clamp 0–365 (integer) jadi aman diinterpolasi ke INTERVAL.
   const overdueCustomers = await sequelize.query(
-    `SELECT c.id FROM customers c
+    `SELECT c.id, c.mikrotik_id FROM customers c
       WHERE c.status='active' AND c.isolir_status='active'
         AND ( (c.static_ip IS NOT NULL AND c.static_ip!='')
            OR (c.pppoe_username IS NOT NULL AND c.pppoe_username!='')
@@ -1041,30 +1043,54 @@ async function runAutoIsolir(opts = {}) {
             SELECT 1 FROM invoices i
              WHERE i.customer_id = c.id
                AND i.status IN ('unpaid','overdue')
-               AND DATE(i.due_date) <= DATE_SUB(CURDATE(), INTERVAL ${graceDays} DAY)
+               AND i.due_date <= DATE_SUB(CURDATE(), INTERVAL ${graceDays} DAY)
           )
           OR (
             c.due_date IS NOT NULL
-            AND DATE(c.due_date) <= DATE_SUB(CURDATE(), INTERVAL ${graceDays} DAY)
+            AND c.due_date <= DATE_SUB(CURDATE(), INTERVAL ${graceDays} DAY)
             AND NOT EXISTS (
               SELECT 1 FROM invoices i2
                WHERE i2.customer_id = c.id
                  AND i2.status = 'paid'
-                 AND DATE(i2.due_date) >= DATE(c.due_date)
+                 AND i2.due_date >= c.due_date
             )
           )
         )`,
     { type: sequelize.QueryTypes.SELECT }
   );
 
-  let isolated = 0, failed = 0;
+  // Satu antrean per router (hindari flood API ke device yang sama),
+  // sampai 3 router paralel. Skip tidak di-sleep.
+  const byDevice = new Map();
   for (const row of overdueCustomers) {
-    try {
-      const r = await isolirCustomer(row.id, 'cron');
-      if (r.success && !r.skipped) isolated++;
-    } catch(e) { failed++; }
-    await new Promise(r => setTimeout(r, 500));
+    const key = String(row.mikrotik_id || 'none');
+    if (!byDevice.has(key)) byDevice.set(key, []);
+    byDevice.get(key).push(row);
   }
+
+  let isolated = 0, failed = 0;
+  const deviceQueues = [...byDevice.values()];
+  const concurrency = Math.min(3, Math.max(1, deviceQueues.length));
+  let cursor = 0;
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  async function worker() {
+    while (cursor < deviceQueues.length) {
+      const queue = deviceQueues[cursor++];
+      for (const row of queue) {
+        try {
+          const r = await isolirCustomer(row.id, 'cron');
+          if (r.success && !r.skipped) {
+            isolated++;
+            await sleep(150);
+          } else if (!r.success) {
+            failed++;
+          }
+        } catch (e) { failed++; }
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
   return { isolated, failed, total: overdueCustomers.length };
 }
 
@@ -1074,7 +1100,8 @@ async function restoreAfterPayment(customerId) {
     'SELECT isolir_status FROM customers WHERE id=?',
     { replacements: [customerId], type: sequelize.QueryTypes.SELECT }
   );
-  if (rows[0]?.isolir_status === 'isolated') return restoreCustomer(customerId, 'payment');
+  const st = rows[0]?.isolir_status;
+  if (st === 'isolated' || st === 'restoring') return restoreCustomer(customerId, 'payment');
   return { success: true, skipped: true };
 }
 
@@ -1093,7 +1120,8 @@ async function evaluateCustomer(customerId, triggerBy = 'payment_revert') {
     "SELECT value FROM app_settings WHERE `key`='isolir_grace_days'",
     { type: sequelize.QueryTypes.SELECT }
   ).catch(() => []);
-  const graceDays = parseInt(graceSetting[0]?.value || '0');
+  const { parseGraceDays } = require('../utils/billingGuards');
+  const graceDays = parseGraceDays(graceSetting[0]?.value);
 
   // Cek apakah customer ini memenuhi kriteria isolir:
   //   - status active + isolir_status active (belum ter-isolir)
@@ -1114,16 +1142,16 @@ async function evaluateCustomer(customerId, triggerBy = 'payment_revert') {
             SELECT 1 FROM invoices i
              WHERE i.customer_id = c.id
                AND i.status IN ('unpaid','overdue')
-               AND DATE(i.due_date) <= DATE_SUB(CURDATE(), INTERVAL ${graceDays} DAY)
+               AND i.due_date <= DATE_SUB(CURDATE(), INTERVAL ${graceDays} DAY)
           )
           OR (
             c.due_date IS NOT NULL
-            AND DATE(c.due_date) <= DATE_SUB(CURDATE(), INTERVAL ${graceDays} DAY)
+            AND c.due_date <= DATE_SUB(CURDATE(), INTERVAL ${graceDays} DAY)
             AND NOT EXISTS (
               SELECT 1 FROM invoices i2
                WHERE i2.customer_id = c.id
                  AND i2.status = 'paid'
-                 AND DATE(i2.due_date) >= DATE(c.due_date)
+                 AND i2.due_date >= c.due_date
             )
           )
         )
