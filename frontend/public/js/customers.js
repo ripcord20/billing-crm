@@ -647,8 +647,8 @@ async function loadCustomers() {
       : (c.monthly_fee ? 'Rp '+Number(c.monthly_fee).toLocaleString('id-ID') : '–');
 
     var isoBtn = '';
-    if (c.status==='active')   isoBtn = '<button class="rb rb-iso" onclick="toggleIsolate('+c.id+',\'isolate\')">Isolir</button>';
-    if (c.status==='isolated') isoBtn = '<button class="rb rb-act" onclick="toggleIsolate('+c.id+',\'activate\')">Aktifkan</button>';
+    if (c.status==='active')   isoBtn = '<button type="button" class="rb rb-iso" onclick="toggleIsolate('+c.id+',\'isolate\')">Isolir</button>';
+    if (c.status==='isolated') isoBtn = '<button type="button" class="rb rb-act" onclick="toggleIsolate('+c.id+',\'activate\')">Aktifkan</button>';
 
     var addrShort = c.address ? _esc(c.address.substring(0,30))+(c.address.length>30?'...':'') : '';
     var pkgName   = (c.package && c.package.name) ? _esc(c.package.name) : (c.package_name ? _esc(c.package_name) : '–');
@@ -676,9 +676,13 @@ async function loadCustomers() {
       + '<td><div style="line-height:1.5">'+dueDateHtml+'</div></td>'
       + '<td><span class="sb '+stCls+'"><span class="sb-dot" style="background:'+stDot+'"></span>'+stLabel+'</span></td>'
       + '<td style="text-align:right;padding-right:18px">'
-        + '<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">'
-          + '<button class="rb rb-wa" onclick="sendWA(\''+_esc(c.phone||'')+'\')" >WA</button>'
-          + '<button class="rb rb-edit" onclick="editCustomer('+c.id+')">Edit</button>'
+        + '<div style="display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end;align-items:center">'
+          + '<button type="button" class="rb rb-wa" onclick="sendWA(\''+_esc(c.phone||'')+'\')">WA</button>'
+          + '<button type="button" class="rb rb-edit" onclick="editCustomer('+c.id+')" title="Edit pelanggan">'
+            + '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">'
+            + '<path stroke-linecap="round" stroke-linejoin="round" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>'
+            + '<path stroke-linecap="round" stroke-linejoin="round" d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>'
+            + '</svg>Edit</button>'
           + isoBtn
           + '<button class="rb rb-del" onclick="deleteCustomer('+c.id+',\''+_esc(c.name)+'\')" title="Hapus">'
             + '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">'
