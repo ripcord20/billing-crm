@@ -1909,11 +1909,17 @@ class PaymentController {
         searchSql += ' AND (c.name LIKE :q OR c.customer_id LIKE :q OR c.phone LIKE :q OR i.invoice_number LIKE :q)';
         params.q = '%' + q + '%';
       }
+      const wilayah = (req.query.wilayah || req.query.district || '').trim();
+      if (wilayah) {
+        searchSql += ' AND (c.district = :wilayah OR c.village = :wilayah OR c.regency = :wilayah)';
+        params.wilayah = wilayah;
+      }
       const periodSql = month > 0
         ? ' AND i.period_month = :month AND i.period_year = :year'
         : '';
       const rows = await sequelize.query(
         `SELECT c.id, c.customer_id AS cid, c.name, c.phone, c.due_date, c.status,
+                c.province, c.regency, c.district, c.village,
                 pkg.name AS pkg_name, pkg.price AS pkg_price,
                 i.id AS invoice_id, i.invoice_number, i.total AS invoice_total,
                 i.status AS invoice_status, i.due_date AS invoice_due,
@@ -1932,12 +1938,35 @@ class PaymentController {
          LIMIT :limit`,
         { replacements: params, type: sequelize.QueryTypes.SELECT }
       );
+      let areas = [];
+      try {
+        const areaParams = { ...params };
+        delete areaParams.wilayah;
+        const areaFilter = tenant.sql + (q
+          ? ' AND (c.name LIKE :q OR c.customer_id LIKE :q OR c.phone LIKE :q OR i.invoice_number LIKE :q)'
+          : '');
+        areas = await sequelize.query(
+          `SELECT DISTINCT TRIM(COALESCE(NULLIF(c.district,''), NULLIF(c.village,''), NULLIF(c.regency,''))) AS area
+           FROM invoices i
+           JOIN customers c ON c.id = i.customer_id
+           WHERE c.status IN ('active','isolated')
+             AND i.status IN ('unpaid','overdue')
+             AND TRIM(COALESCE(NULLIF(c.district,''), NULLIF(c.village,''), NULLIF(c.regency,''))) <> ''
+             ${periodSql}
+             ${areaFilter}
+           ORDER BY area ASC`,
+          { replacements: areaParams, type: sequelize.QueryTypes.SELECT }
+        );
+        areas = areas.map(a => a.area).filter(Boolean);
+      } catch (_) { areas = []; }
       res.json({
         success: true,
         data: rows.map(r => ({
           ...r,
-          amount: parseFloat(r.invoice_total || r.pkg_price || 0) || 0
+          amount: parseFloat(r.invoice_total || r.pkg_price || 0) || 0,
+          wilayah: (r.district || r.village || r.regency || r.province || '').trim() || null
         })),
+        areas,
         month: month || null,
         year,
         scope: month > 0 ? 'period' : 'outstanding'

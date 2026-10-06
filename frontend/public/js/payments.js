@@ -1320,21 +1320,27 @@ function bulkRowKey(r) {
 async function loadUnpaidCustomers() {
   const tbody = document.getElementById('bulkTable');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty"><p>Memuat tagihan tertunggak...</p></div></td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7"><div class="tbl-empty"><p>Memuat tagihan tertunggak...</p></div></td></tr>';
   const month = document.getElementById('bulkPeriodMonth')?.value || '0';
   const year = document.getElementById('bulkPeriodYear')?.value || new Date().getFullYear();
   const q = document.getElementById('bulkSearch')?.value || '';
-  const d = await App.api('/payments/unpaid-customers?q=' + encodeURIComponent(q) + '&month=' + encodeURIComponent(month) + '&year=' + encodeURIComponent(year));
+  const wilayah = document.getElementById('bulkWilayah')?.value || '';
+  const d = await App.api('/payments/unpaid-customers?q=' + encodeURIComponent(q)
+    + '&month=' + encodeURIComponent(month)
+    + '&year=' + encodeURIComponent(year)
+    + (wilayah ? '&wilayah=' + encodeURIComponent(wilayah) : ''));
   if (!d?.success) {
-    tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty friendly"><p>Gagal memuat daftar</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7"><div class="tbl-empty friendly"><p>Gagal memuat daftar</p></div></td></tr>';
     return;
   }
+  fillBulkWilayahOptions(d.areas || [], wilayah);
   _bulkRows = d.data || [];
   const keep = new Set();
   _bulkSelected.forEach(key => { if (_bulkRows.some(r => bulkRowKey(r) === key)) keep.add(key); });
   _bulkSelected = keep;
   if (!_bulkRows.length) {
-    tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty friendly"><p>Tidak ada tagihan tertunggak</p><span>Semua sudah lunas, atau ganti filter periode / kata kunci</span></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7"><div class="tbl-empty friendly"><p>Tidak ada tagihan tertunggak'
+      + (wilayah ? ' di wilayah ' + esc(wilayah) : '') + '</p><span>Ganti filter wilayah / periode, atau coba kata kunci lain</span></div></td></tr>';
     updateBulkBar();
     return;
   }
@@ -1352,15 +1358,27 @@ async function loadUnpaidCustomers() {
       ? '<span class="ci-badge ci-over">Overdue</span>'
       : '<span class="ci-badge ci-unpaid">Belum lunas</span>';
     const periode = (MONTHS[r.period_month] || r.period_month || '–') + ' ' + (r.period_year || '');
+    const area = r.wilayah || r.district || r.village || r.regency || '–';
     return '<tr class="bulk-row' + (checked ? ' sel' : '') + '" onclick="toggleBulkRow(\'' + key + '\', event)">' +
       '<td><input type="checkbox" class="bulk-check" data-id="' + key + '" ' + checked + ' onclick="event.stopPropagation(); toggleBulkRow(\'' + key + '\')"></td>' +
       '<td><div style="font-weight:700;">' + esc(r.name) + ' ' + stBadge + '</div><div style="font-size:11px;color:#94a3b8;">' + esc(r.cid) + (r.phone ? ' · ' + esc(r.phone) : '') + '</div></td>' +
+      '<td style="font-size:12px;color:#334155;">' + esc(area) + '</td>' +
       '<td style="font-family:monospace;font-size:12px;">' + esc(r.invoice_number || '–') + '</td>' +
       '<td>' + esc(periode) + '</td>' +
       '<td style="font-weight:700;">Rp ' + Number(r.amount || 0).toLocaleString('id-ID') + '</td>' +
       '<td style="color:' + (overdue ? '#dc2626' : '#64748b') + ';">' + due + '</td></tr>';
   }).join('');
   updateBulkBar();
+}
+
+function fillBulkWilayahOptions(areas, selected) {
+  const sel = document.getElementById('bulkWilayah');
+  if (!sel) return;
+  const cur = selected || sel.value || '';
+  const list = Array.isArray(areas) ? areas.slice() : [];
+  if (cur && !list.includes(cur)) list.unshift(cur);
+  sel.innerHTML = '<option value="">Semua wilayah</option>' +
+    list.map(a => '<option value="' + esc(a) + '"' + (a === cur ? ' selected' : '') + '>' + esc(a) + '</option>').join('');
 }
 window.loadUnpaidCustomers = loadUnpaidCustomers;
 
