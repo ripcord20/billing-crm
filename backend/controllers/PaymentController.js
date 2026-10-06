@@ -11,6 +11,31 @@ const METHODS = ['cash','transfer','dana','ovo','gopay','qris'];
 const { LABELS: METHOD_LABEL, COLORS: METHOD_COLOR } = require('../utils/paymentMethodLabel');
 const MONTHS = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
+let _hasModulWilayah = null;
+async function hasModulWilayahTable() {
+  if (_hasModulWilayah != null) return _hasModulWilayah;
+  try {
+    await sequelize.query('SELECT 1 FROM wilayah LIMIT 1', { type: sequelize.QueryTypes.SELECT });
+    _hasModulWilayah = true;
+  } catch (_) {
+    _hasModulWilayah = false;
+  }
+  return _hasModulWilayah;
+}
+
+async function loadModulWilayahNames() {
+  if (!(await hasModulWilayahTable())) return null;
+  try {
+    const rows = await sequelize.query(
+      `SELECT name FROM wilayah WHERE status = 'active' ORDER BY name ASC`,
+      { type: sequelize.QueryTypes.SELECT }
+    );
+    return rows.map(r => r.name).filter(Boolean);
+  } catch (_) {
+    return null;
+  }
+}
+
 /**
  * Hitung tanggal jatuh tempo + 1 bulan (mempertahankan hari, clamp akhir bulan).
  * Dipakai untuk "Layanan aktif hingga" saat invoice sudah LUNAS.
@@ -1910,16 +1935,26 @@ class PaymentController {
         params.q = '%' + q + '%';
       }
       const wilayah = (req.query.wilayah || req.query.district || '').trim();
+      const useModulWilayah = await hasModulWilayahTable();
       if (wilayah) {
-        searchSql += ' AND (c.district = :wilayah OR c.village = :wilayah OR c.regency = :wilayah)';
+        if (useModulWilayah) {
+          searchSql += ' AND (w.name = :wilayah OR w.code = :wilayah)';
+        } else {
+          searchSql += ' AND (c.district = :wilayah OR c.village = :wilayah OR c.regency = :wilayah)';
+        }
         params.wilayah = wilayah;
       }
       const periodSql = month > 0
         ? ' AND i.period_month = :month AND i.period_year = :year'
         : '';
+      const joinWilayah = useModulWilayah ? 'LEFT JOIN wilayah w ON w.id = c.wilayah_id' : '';
+      const selectWilayah = useModulWilayah
+        ? 'w.id AS wilayah_id, w.name AS wilayah_name, w.code AS wilayah_code,'
+        : '';
       const rows = await sequelize.query(
         `SELECT c.id, c.customer_id AS cid, c.name, c.phone, c.due_date, c.status,
                 c.province, c.regency, c.district, c.village,
+                ${selectWilayah}
                 pkg.name AS pkg_name, pkg.price AS pkg_price,
                 i.id AS invoice_id, i.invoice_number, i.total AS invoice_total,
                 i.status AS invoice_status, i.due_date AS invoice_due,
@@ -1927,6 +1962,7 @@ class PaymentController {
                 d.id AS deferral_id, d.promise_date
          FROM invoices i
          JOIN customers c ON c.id = i.customer_id
+         ${joinWilayah}
          LEFT JOIN packages pkg ON pkg.id = c.package_id
          LEFT JOIN payment_deferrals d ON d.customer_id = c.id AND d.status = 'open'
               AND d.period_month = i.period_month AND d.period_year = i.period_year
@@ -1939,32 +1975,37 @@ class PaymentController {
         { replacements: params, type: sequelize.QueryTypes.SELECT }
       );
       let areas = [];
-      try {
-        const areaParams = { ...params };
-        delete areaParams.wilayah;
-        const areaFilter = tenant.sql + (q
-          ? ' AND (c.name LIKE :q OR c.customer_id LIKE :q OR c.phone LIKE :q OR i.invoice_number LIKE :q)'
-          : '');
-        areas = await sequelize.query(
-          `SELECT DISTINCT TRIM(COALESCE(NULLIF(c.district,''), NULLIF(c.village,''), NULLIF(c.regency,''))) AS area
-           FROM invoices i
-           JOIN customers c ON c.id = i.customer_id
-           WHERE c.status IN ('active','isolated')
-             AND i.status IN ('unpaid','overdue')
-             AND TRIM(COALESCE(NULLIF(c.district,''), NULLIF(c.village,''), NULLIF(c.regency,''))) <> ''
-             ${periodSql}
-             ${areaFilter}
-           ORDER BY area ASC`,
-          { replacements: areaParams, type: sequelize.QueryTypes.SELECT }
-        );
-        areas = areas.map(a => a.area).filter(Boolean);
-      } catch (_) { areas = []; }
+      const modulAreas = await loadModulWilayahNames();
+      if (modulAreas) {
+        areas = modulAreas;
+      } else {
+        try {
+          const areaParams = { ...params };
+          delete areaParams.wilayah;
+          const areaFilter = tenant.sql + (q
+            ? ' AND (c.name LIKE :q OR c.customer_id LIKE :q OR c.phone LIKE :q OR i.invoice_number LIKE :q)'
+            : '');
+          areas = await sequelize.query(
+            `SELECT DISTINCT TRIM(COALESCE(NULLIF(c.district,''), NULLIF(c.village,''), NULLIF(c.regency,''))) AS area
+             FROM invoices i
+             JOIN customers c ON c.id = i.customer_id
+             WHERE c.status IN ('active','isolated')
+               AND i.status IN ('unpaid','overdue')
+               AND TRIM(COALESCE(NULLIF(c.district,''), NULLIF(c.village,''), NULLIF(c.regency,''))) <> ''
+               ${periodSql}
+               ${areaFilter}
+             ORDER BY area ASC`,
+            { replacements: areaParams, type: sequelize.QueryTypes.SELECT }
+          );
+          areas = areas.map(a => a.area).filter(Boolean);
+        } catch (_) { areas = []; }
+      }
       res.json({
         success: true,
         data: rows.map(r => ({
           ...r,
           amount: parseFloat(r.invoice_total || r.pkg_price || 0) || 0,
-          wilayah: (r.district || r.village || r.regency || r.province || '').trim() || null
+          wilayah: (r.wilayah_name || r.district || r.village || r.regency || r.province || '').trim() || null
         })),
         areas,
         month: month || null,
