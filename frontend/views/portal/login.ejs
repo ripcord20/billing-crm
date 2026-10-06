@@ -200,7 +200,27 @@
       font-weight:500;
     }
 
-    /* Error msg */
+    /* Login method tabs */
+    .login-tabs{
+      display:flex;gap:4px;
+      background:#f1f5f9;
+      padding:4px;border-radius:12px;
+      margin-bottom:18px;
+    }
+    .login-tab{
+      flex:1;border:none;background:transparent;
+      padding:9px 4px;border-radius:9px;
+      font-family:inherit;font-size:12px;font-weight:700;
+      color:var(--muted);cursor:pointer;
+      transition:all .15s;
+    }
+    .login-tab.active{
+      background:#fff;color:var(--blue2);
+      box-shadow:0 1px 4px rgba(15,23,42,.08);
+    }
+    .login-pane[hidden]{display:none !important;}
+
+    /* Error / info */
     .error-msg{
       display:none;
       background:#fef2f2;border:1px solid #fecaca;
@@ -208,6 +228,35 @@
       padding:11px 14px;border-radius:12px;
       margin-bottom:14px;line-height:1.45;
     }
+    .ok-msg{
+      display:none;
+      background:#ecfdf5;border:1px solid #a7f3d0;
+      color:#065f46;font-size:12.5px;font-weight:600;
+      padding:11px 14px;border-radius:12px;
+      margin-bottom:14px;line-height:1.45;
+    }
+    .otp-input{
+      letter-spacing:.42em;
+      text-align:center;
+      font-size:22px !important;
+      font-weight:800 !important;
+    }
+    .otp-meta{
+      text-align:center;
+      font-size:12.5px;color:var(--muted);
+      margin:4px 0 2px;line-height:1.5;
+    }
+    .otp-meta strong{color:var(--text);}
+    .otp-actions{
+      display:flex;justify-content:center;gap:14px;flex-wrap:wrap;
+      margin-top:14px;
+    }
+    .otp-actions a{
+      color:var(--muted);font-size:13px;font-weight:600;
+      text-decoration:none;
+    }
+    .otp-actions a:hover{color:var(--blue);}
+    .otp-actions a[aria-disabled="true"]{pointer-events:none;opacity:.55;}
 
     /* Form */
     .form-group{margin-bottom:14px;}
@@ -409,43 +458,124 @@
     </div>
 
     <div class="error-msg" id="errMsg"></div>
+    <div class="ok-msg" id="okMsg"></div>
 
-    <div class="form-group">
-      <div class="input-card">
-        <div class="input-label">ID Pelanggan / No. HP</div>
-        <div class="input-row">
-          <input type="text" id="inputCID" placeholder="CID001 atau 08xxxxxxxxxx" autocomplete="username" autofocus>
+    <div class="login-tabs" role="tablist">
+      <button type="button" class="login-tab active" role="tab" aria-selected="true" data-tab="password" onclick="setLoginTab('password')">Password</button>
+      <button type="button" class="login-tab" role="tab" aria-selected="false" data-tab="email" onclick="setLoginTab('email')">Email</button>
+      <button type="button" class="login-tab" role="tab" aria-selected="false" data-tab="whatsapp" onclick="setLoginTab('whatsapp')">WhatsApp</button>
+    </div>
+
+    <div class="login-pane" id="panePassword">
+      <div class="form-group">
+        <div class="input-card">
+          <div class="input-label">ID Pelanggan / No. HP</div>
+          <div class="input-row">
+            <input type="text" id="inputCID" placeholder="CID001 atau 08xxxxxxxxxx" autocomplete="username" autofocus>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="input-card">
+          <div class="input-label">Password</div>
+          <div class="input-row">
+            <input type="password" id="inputPW" placeholder="Password Anda" autocomplete="current-password">
+            <button type="button" class="toggle-pw" onclick="togglePassword()" aria-label="Show password">
+              <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-login" id="btnLogin" onclick="doLogin()">
+        <span id="btnText">Sign in</span>
+        <div class="spinner" id="btnSpinner"></div>
+      </button>
+
+      <div class="forgot">
+        <a href="javascript:void(0)" onclick="forgotPw()">Lupa password?</a>
+      </div>
+
+      <div class="hint">
+        <strong>Pertama kali login?</strong><br>
+        Gunakan ID Pelanggan dan nomor HP yang terdaftar sebagai password.
+      </div>
+    </div>
+
+    <div class="login-pane" id="paneEmail" hidden>
+      <div id="emailStepId">
+        <div class="form-group">
+          <div class="input-card">
+            <div class="input-label">Email terdaftar</div>
+            <div class="input-row">
+              <input type="email" id="inputEmail" placeholder="nama@email.com" autocomplete="email" inputmode="email">
+            </div>
+          </div>
+        </div>
+        <button class="btn-login" id="btnEmailSend" onclick="requestPortalOtp('email')">
+          <span id="btnEmailSendText">Kirim kode OTP</span>
+          <div class="spinner" id="btnEmailSendSpin"></div>
+        </button>
+      </div>
+      <div id="emailStepCode" hidden>
+        <p class="otp-meta">Kode dikirim ke <strong id="emailDest"></strong></p>
+        <div class="form-group">
+          <div class="input-card">
+            <div class="input-label">Kode OTP</div>
+            <div class="input-row">
+              <input type="text" id="inputEmailOtp" class="otp-input" placeholder="••••••" maxlength="6" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*">
+            </div>
+          </div>
+        </div>
+        <button class="btn-login" id="btnEmailVerify" onclick="verifyPortalOtp('email')">
+          <span id="btnEmailVerifyText">Masuk</span>
+          <div class="spinner" id="btnEmailVerifySpin"></div>
+        </button>
+        <div class="otp-actions">
+          <a href="javascript:void(0)" id="emailResend" onclick="requestPortalOtp('email')">Kirim ulang</a>
+          <a href="javascript:void(0)" onclick="resetOtpStep('email')">Ganti email</a>
         </div>
       </div>
     </div>
 
-    <div class="form-group">
-      <div class="input-card">
-        <div class="input-label">Password</div>
-        <div class="input-row">
-          <input type="password" id="inputPW" placeholder="Password Anda" autocomplete="current-password">
-          <button type="button" class="toggle-pw" onclick="togglePassword()" aria-label="Show password">
-            <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-              <circle cx="12" cy="12" r="3"/>
-            </svg>
-          </button>
+    <div class="login-pane" id="paneWhatsapp" hidden>
+      <div id="waStepId">
+        <div class="form-group">
+          <div class="input-card">
+            <div class="input-label">Nomor WhatsApp</div>
+            <div class="input-row">
+              <input type="tel" id="inputWa" placeholder="08xxxxxxxxxx" autocomplete="tel" inputmode="tel">
+            </div>
+          </div>
+        </div>
+        <button class="btn-login" id="btnWaSend" onclick="requestPortalOtp('whatsapp')">
+          <span id="btnWaSendText">Kirim kode OTP</span>
+          <div class="spinner" id="btnWaSendSpin"></div>
+        </button>
+      </div>
+      <div id="waStepCode" hidden>
+        <p class="otp-meta">Kode dikirim ke WhatsApp <strong id="waDest"></strong></p>
+        <div class="form-group">
+          <div class="input-card">
+            <div class="input-label">Kode OTP</div>
+            <div class="input-row">
+              <input type="text" id="inputWaOtp" class="otp-input" placeholder="••••••" maxlength="6" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*">
+            </div>
+          </div>
+        </div>
+        <button class="btn-login" id="btnWaVerify" onclick="verifyPortalOtp('whatsapp')">
+          <span id="btnWaVerifyText">Masuk</span>
+          <div class="spinner" id="btnWaVerifySpin"></div>
+        </button>
+        <div class="otp-actions">
+          <a href="javascript:void(0)" id="waResend" onclick="requestPortalOtp('whatsapp')">Kirim ulang</a>
+          <a href="javascript:void(0)" onclick="resetOtpStep('whatsapp')">Ganti nomor</a>
         </div>
       </div>
-    </div>
-
-    <button class="btn-login" id="btnLogin" onclick="doLogin()">
-      <span id="btnText">Sign in</span>
-      <div class="spinner" id="btnSpinner"></div>
-    </button>
-
-    <div class="forgot">
-      <a href="javascript:void(0)" onclick="forgotPw()">Lupa password?</a>
-    </div>
-
-    <div class="hint">
-      <strong>Pertama kali login?</strong><br>
-      Gunakan ID Pelanggan dan nomor HP yang terdaftar sebagai password.
     </div>
 
     <div class="help-footer">
@@ -567,6 +697,186 @@ function forgotPw(){
   }
 }
 
+function setLoginTab(tab){
+  var tabs = document.querySelectorAll('.login-tab');
+  for (var i = 0; i < tabs.length; i++) {
+    var on = tabs[i].getAttribute('data-tab') === tab;
+    tabs[i].classList.toggle('active', on);
+    tabs[i].setAttribute('aria-selected', on ? 'true' : 'false');
+  }
+  document.getElementById('panePassword').hidden = tab !== 'password';
+  document.getElementById('paneEmail').hidden = tab !== 'email';
+  document.getElementById('paneWhatsapp').hidden = tab !== 'whatsapp';
+  hideLoginMsgs();
+  if (tab === 'email') document.getElementById('inputEmail').focus();
+  else if (tab === 'whatsapp') document.getElementById('inputWa').focus();
+  else document.getElementById('inputCID').focus();
+}
+
+function hideLoginMsgs(){
+  var err = document.getElementById('errMsg');
+  var ok = document.getElementById('okMsg');
+  err.style.display = 'none';
+  ok.style.display = 'none';
+}
+
+function showLoginErr(msg){
+  var err = document.getElementById('errMsg');
+  var ok = document.getElementById('okMsg');
+  ok.style.display = 'none';
+  err.textContent = msg || 'Terjadi kesalahan';
+  err.style.display = 'block';
+}
+
+function showLoginOk(msg){
+  var err = document.getElementById('errMsg');
+  var ok = document.getElementById('okMsg');
+  err.style.display = 'none';
+  ok.textContent = msg || '';
+  ok.style.display = msg ? 'block' : 'none';
+}
+
+function setBtnBusy(btn, txt, spin, busy){
+  if (btn) btn.disabled = !!busy;
+  if (txt) txt.style.display = busy ? 'none' : '';
+  if (spin) spin.style.display = busy ? 'block' : 'none';
+}
+
+function otpEls(channel){
+  if (channel === 'email') {
+    return {
+      identifier: document.getElementById('inputEmail'),
+      code: document.getElementById('inputEmailOtp'),
+      stepId: document.getElementById('emailStepId'),
+      stepCode: document.getElementById('emailStepCode'),
+      dest: document.getElementById('emailDest'),
+      resend: document.getElementById('emailResend'),
+      sendBtn: document.getElementById('btnEmailSend'),
+      sendTxt: document.getElementById('btnEmailSendText'),
+      sendSpin: document.getElementById('btnEmailSendSpin'),
+      verifyBtn: document.getElementById('btnEmailVerify'),
+      verifyTxt: document.getElementById('btnEmailVerifyText'),
+      verifySpin: document.getElementById('btnEmailVerifySpin')
+    };
+  }
+  return {
+    identifier: document.getElementById('inputWa'),
+    code: document.getElementById('inputWaOtp'),
+    stepId: document.getElementById('waStepId'),
+    stepCode: document.getElementById('waStepCode'),
+    dest: document.getElementById('waDest'),
+    resend: document.getElementById('waResend'),
+    sendBtn: document.getElementById('btnWaSend'),
+    sendTxt: document.getElementById('btnWaSendText'),
+    sendSpin: document.getElementById('btnWaSendSpin'),
+    verifyBtn: document.getElementById('btnWaVerify'),
+    verifyTxt: document.getElementById('btnWaVerifyText'),
+    verifySpin: document.getElementById('btnWaVerifySpin')
+  };
+}
+
+var _otpCooldown = { email: null, whatsapp: null };
+
+function startOtpCooldown(channel, seconds){
+  var els = otpEls(channel);
+  var left = Math.max(1, parseInt(seconds, 10) || 60);
+  if (_otpCooldown[channel]) clearInterval(_otpCooldown[channel]);
+  function tick(){
+    if (left <= 0) {
+      clearInterval(_otpCooldown[channel]);
+      _otpCooldown[channel] = null;
+      els.resend.textContent = 'Kirim ulang';
+      els.resend.setAttribute('aria-disabled', 'false');
+      return;
+    }
+    els.resend.textContent = 'Kirim ulang (' + left + 's)';
+    els.resend.setAttribute('aria-disabled', 'true');
+    left -= 1;
+  }
+  tick();
+  _otpCooldown[channel] = setInterval(tick, 1000);
+}
+
+function resetOtpStep(channel){
+  var els = otpEls(channel);
+  els.stepCode.hidden = true;
+  els.stepId.hidden = false;
+  els.code.value = '';
+  hideLoginMsgs();
+  els.identifier.focus();
+}
+
+function savePortalSession(j){
+  localStorage.setItem('portal_token', j.token);
+  localStorage.setItem('portal_customer', JSON.stringify(j.customer));
+  document.cookie = 'portal_token=' + j.token + ';path=/portal;max-age=86400;SameSite=Lax';
+  window.location.href = '/portal/dashboard';
+}
+
+async function requestPortalOtp(channel){
+  var els = otpEls(channel);
+  var identifier = els.identifier.value.trim();
+  if (!identifier) {
+    showLoginErr(channel === 'email' ? 'Email wajib diisi' : 'Nomor WhatsApp wajib diisi');
+    return;
+  }
+  hideLoginMsgs();
+  setBtnBusy(els.sendBtn, els.sendTxt, els.sendSpin, true);
+  setBtnBusy(els.verifyBtn, els.verifyTxt, els.verifySpin, true);
+  try {
+    var r = await fetch('/portal/api/auth/otp/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel: channel, identifier: identifier })
+    });
+    var j = await r.json();
+    if (!j.success) {
+      showLoginErr(j.message || 'Gagal mengirim kode');
+      return;
+    }
+    els.dest.textContent = j.destination || identifier;
+    els.stepId.hidden = true;
+    els.stepCode.hidden = false;
+    showLoginOk(j.message || 'Kode OTP telah dikirim');
+    startOtpCooldown(channel, j.resend_in || 60);
+    els.code.focus();
+  } catch (e) {
+    showLoginErr('Tidak dapat terhubung ke server');
+  } finally {
+    setBtnBusy(els.sendBtn, els.sendTxt, els.sendSpin, false);
+    setBtnBusy(els.verifyBtn, els.verifyTxt, els.verifySpin, false);
+  }
+}
+
+async function verifyPortalOtp(channel){
+  var els = otpEls(channel);
+  var identifier = els.identifier.value.trim();
+  var code = els.code.value.replace(/\D/g, '');
+  if (code.length !== 6) {
+    showLoginErr('Kode OTP harus 6 digit');
+    return;
+  }
+  hideLoginMsgs();
+  setBtnBusy(els.verifyBtn, els.verifyTxt, els.verifySpin, true);
+  try {
+    var r = await fetch('/portal/api/auth/otp/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel: channel, identifier: identifier, code: code })
+    });
+    var j = await r.json();
+    if (!j.success) {
+      showLoginErr(j.message || 'Kode OTP salah');
+      return;
+    }
+    savePortalSession(j);
+  } catch (e) {
+    showLoginErr('Tidak dapat terhubung ke server');
+  } finally {
+    setBtnBusy(els.verifyBtn, els.verifyTxt, els.verifySpin, false);
+  }
+}
+
 // Enter key navigation
 document.getElementById('inputCID').addEventListener('keydown', function(e){
   if(e.key === 'Enter') document.getElementById('inputPW').focus();
@@ -574,22 +884,37 @@ document.getElementById('inputCID').addEventListener('keydown', function(e){
 document.getElementById('inputPW').addEventListener('keydown', function(e){
   if(e.key === 'Enter') doLogin();
 });
+document.getElementById('inputEmail').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') requestPortalOtp('email');
+});
+document.getElementById('inputEmailOtp').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') verifyPortalOtp('email');
+});
+document.getElementById('inputWa').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') requestPortalOtp('whatsapp');
+});
+document.getElementById('inputWaOtp').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') verifyPortalOtp('whatsapp');
+});
+['inputEmailOtp','inputWaOtp'].forEach(function(id){
+  document.getElementById(id).addEventListener('input', function(){
+    this.value = this.value.replace(/\D/g, '').slice(0, 6);
+  });
+});
 
 async function doLogin(){
   var cid = document.getElementById('inputCID').value.trim();
   var pw  = document.getElementById('inputPW').value;
-  var err = document.getElementById('errMsg');
   var btn = document.getElementById('btnLogin');
   var txt = document.getElementById('btnText');
   var sp  = document.getElementById('btnSpinner');
 
   if(!cid || !pw){
-    err.textContent = 'ID Pelanggan dan Password wajib diisi';
-    err.style.display = 'block';
+    showLoginErr('ID Pelanggan dan Password wajib diisi');
     return;
   }
 
-  err.style.display = 'none';
+  hideLoginMsgs();
   btn.disabled = true;
   txt.style.display = 'none';
   sp.style.display = 'block';
@@ -603,17 +928,12 @@ async function doLogin(){
     var j = await r.json();
 
     if(!j.success){
-      err.textContent = j.message || 'Login gagal';
-      err.style.display = 'block';
+      showLoginErr(j.message || 'Login gagal');
     } else {
-      localStorage.setItem('portal_token', j.token);
-      localStorage.setItem('portal_customer', JSON.stringify(j.customer));
-      document.cookie = 'portal_token=' + j.token + ';path=/portal;max-age=86400;SameSite=Lax';
-      window.location.href = '/portal/dashboard';
+      savePortalSession(j);
     }
   } catch (e) {
-    err.textContent = 'Tidak dapat terhubung ke server';
-    err.style.display = 'block';
+    showLoginErr('Tidak dapat terhubung ke server');
   } finally {
     btn.disabled = false;
     txt.style.display = '';

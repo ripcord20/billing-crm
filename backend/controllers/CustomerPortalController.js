@@ -23,6 +23,42 @@ async function getSetting(key, fallback = null) {
   } catch { return fallback; }
 }
 
+function issuePortalSession(req, res, customer) {
+  // Portal tokens sign with JWT_PORTAL_SECRET (falls back to JWT_SECRET for
+  // zero-downtime migration; set JWT_PORTAL_SECRET in .env to activate
+  // domain separation between admin and portal tokens).
+  const portalSecret = process.env.JWT_PORTAL_SECRET || process.env.JWT_SECRET;
+  const token = jwt.sign(
+    { id: customer.id, customer_id: customer.customer_id, type: 'customer' },
+    portalSecret,
+    { expiresIn: '24h' }
+  );
+  // Cookie is set for defense-in-depth (server-side httpOnly), but the
+  // portal frontend also relies on the token in the response body to send
+  // it as an Authorization: Bearer header. The token is the same in both
+  // places; removing it from the body would break existing frontend JS.
+  // sameSite=lax (not strict) so navigation from /portal/login → /portal/dashboard
+  // still carries the cookie.
+  res.cookie('portal_token', token, {
+    httpOnly: true,
+    secure: !!req.secure,
+    sameSite: 'lax',
+    path: '/portal',
+    maxAge: 86400000
+  });
+  return token;
+}
+
+function portalCustomerPayload(customer) {
+  return {
+    id: customer.id,
+    customer_id: customer.customer_id,
+    name: customer.name,
+    status: customer.status,
+    package_name: customer.package?.name || '—'
+  };
+}
+
 // ── LOGIN ─────────────────────────────────────────────────────
 exports.login = async (req, res) => {
   try {
@@ -59,38 +95,65 @@ exports.login = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Akun Anda telah di-suspend. Hubungi ISP.' });
 
     await customer.update({ last_portal_login: new Date() });
-
-    // Portal tokens sign with JWT_PORTAL_SECRET (falls back to JWT_SECRET for
-    // zero-downtime migration; set JWT_PORTAL_SECRET in .env to activate
-    // domain separation between admin and portal tokens).
-    const portalSecret = process.env.JWT_PORTAL_SECRET || process.env.JWT_SECRET;
-    const token = jwt.sign(
-      { id: customer.id, customer_id: customer.customer_id, type: 'customer' },
-      portalSecret,
-      { expiresIn: '24h' }
-    );
-    // Cookie is set for defense-in-depth (server-side httpOnly), but the
-    // portal frontend also relies on the token in the response body to send
-    // it as an Authorization: Bearer header. The token is the same in both
-    // places; removing it from the body would break existing frontend JS.
-    // sameSite=lax (not strict) so navigation from /portal/login → /portal/dashboard
-    // still carries the cookie.
-    res.cookie('portal_token', token, {
-      httpOnly: true,
-      secure: !!req.secure,
-      sameSite: 'lax',
-      path: '/portal',
-      maxAge: 86400000
-    });
+    const token = issuePortalSession(req, res, customer);
 
     res.json({
       success: true,
       token,
-      customer: { id: customer.id, customer_id: customer.customer_id, name: customer.name,
-                  status: customer.status, package_name: customer.package?.name || '—' }
+      customer: portalCustomerPayload(customer)
     });
   } catch (e) {
     logger.error('Portal login error:', e);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ── LOGIN OTP (email / WhatsApp) ──────────────────────────────
+// POST /portal/api/auth/otp/request  { channel, identifier }
+exports.requestOtp = async (req, res) => {
+  try {
+    const PortalOtpService = require('../services/PortalOtpService');
+    const ip = req.ip || req.headers['x-forwarded-for'] || '';
+    const result = await PortalOtpService.requestOtp({
+      channel: req.body && req.body.channel,
+      identifier: req.body && req.body.identifier,
+      ip
+    });
+    return res.status(result.status || (result.ok ? 200 : 400)).json({
+      success: !!result.ok,
+      message: result.message,
+      destination: result.destination || undefined,
+      expires_in: result.expires_in,
+      resend_in: result.resend_in
+    });
+  } catch (e) {
+    logger.error('Portal OTP request error:', e);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// POST /portal/api/auth/otp/verify  { channel, identifier, code }
+exports.verifyOtp = async (req, res) => {
+  try {
+    const PortalOtpService = require('../services/PortalOtpService');
+    const result = await PortalOtpService.verifyOtp({
+      channel: req.body && req.body.channel,
+      identifier: req.body && req.body.identifier,
+      code: req.body && req.body.code
+    });
+    if (!result.ok) {
+      return res.status(result.status || 401).json({ success: false, message: result.message });
+    }
+    const customer = result.customer;
+    await customer.update({ last_portal_login: new Date() });
+    const token = issuePortalSession(req, res, customer);
+    res.json({
+      success: true,
+      token,
+      customer: portalCustomerPayload(customer)
+    });
+  } catch (e) {
+    logger.error('Portal OTP verify error:', e);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

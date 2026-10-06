@@ -38,6 +38,8 @@ router.get('/login', async (req, res) => {
 
 // ── Auth ──────────────────────────────────────────────────────
 router.post('/api/auth/login', PortalCtrl.login);
+router.post('/api/auth/otp/request', PortalCtrl.requestOtp);
+router.post('/api/auth/otp/verify', PortalCtrl.verifyOtp);
 // Restore HttpOnly cookie dari Bearer token — dipakai /portal/login
 // untuk auto-login (lihat AuthController.restoreCookie untuk pattern admin).
 router.post('/api/auth/restore-cookie', PortalCtrl.restoreCookie);
