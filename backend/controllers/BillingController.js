@@ -483,6 +483,17 @@ class BillingController {
           status: 'paid',
           paid_date: moment().format('YYYY-MM-DD')
         });
+        try {
+          const { finalizePaidInvoice } = require('../utils/paymentFinalizer');
+          await finalizePaidInvoice({
+            invoiceId: invoice.id,
+            paymentId: payment.id,
+            channel: 'billing_manual',
+            referenceNo: reference_number || null
+          });
+        } catch (finErr) {
+          console.warn('[Billing] finalizePaidInvoice gagal:', finErr.message);
+        }
       }
 
       // ── Auto-sync ke Keuangan (pemasukan) — tanpa perlu klik Sync ──

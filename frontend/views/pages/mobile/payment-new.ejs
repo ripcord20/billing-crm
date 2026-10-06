@@ -128,7 +128,8 @@
     .sc-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 2px;animation-delay:.78s;}
     .sc-k{font-size:13px;color:#8a97ad;}
     .sc-v{font-size:13.5px;font-weight:700;color:var(--ink);text-align:right;word-break:break-word;}
-    .sc-badge{display:inline-flex;align-items:center;gap:5px;background:#dcf7ec;color:#0f9d63;font-size:11px;font-weight:800;padding:5px 12px;border-radius:100px;margin-top:14px;animation-delay:.84s;}
+    .sc-warn{display:none;margin:12px 0 0;padding:10px 12px;background:#fff7ed;border:1.5px solid #fdba74;border-radius:12px;text-align:left;font-size:12px;color:#9a3412;line-height:1.45;animation-delay:.8s;}
+    .sc-warn b{color:#c2410c;}
     .sc-badge svg{width:12px;height:12px;}
     .sc-done{width:100%;padding:15px;border:none;border-radius:15px;background:linear-gradient(135deg,#3f7bf5,#0ea5e9);color:#fff;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;margin-top:22px;box-shadow:0 12px 24px -8px rgba(47,111,237,.5);animation-delay:.9s;transition:transform .12s;}
     .sc-done:active{transform:scale(.98);}
@@ -233,6 +234,7 @@
       <div class="sc-row sc-fade"><span class="sc-k">No. Invoice</span><span class="sc-v" id="scInv">—</span></div>
       <div class="sc-row sc-fade"><span class="sc-k">Tanggal</span><span class="sc-v" id="scDate">—</span></div>
       <div class="sc-row sc-fade"><span class="sc-k">Metode</span><span class="sc-v" id="scMethod">—</span></div>
+      <div class="sc-warn sc-fade" id="scWarn"></div>
 
       <div style="text-align:center;">
         <span class="sc-badge sc-fade"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>TERVERIFIKASI</span>
@@ -479,6 +481,22 @@
         document.getElementById('scInv').textContent=_selected.invoice_number||('#'+_selected.id);
         document.getElementById('scDate').textContent=payDate?fmtDateLong(payDate):fmtDateLong(new Date().toISOString().slice(0,10));
         document.getElementById('scMethod').textContent=methodLbl;
+        const warn=document.getElementById('scWarn');
+        const sib=(r.data.data&&r.data.data.sibling_unpaid)||[];
+        const remain=(r.data.data&&r.data.data.remaining_unpaid)||[];
+        if(sib.length||remain.length){
+          const parts=[];
+          if(remain.length) parts.push('Masih ada tagihan belum lunas: '+remain.map(x=>x.invoice_number||('#'+x.id)).join(', ')+'.');
+          if(sib.length){
+            const names=[...new Set(sib.map(s=>(s.customer_name||'')+' ('+(s.customer_id||'')+')'))];
+            parts.push('Ada data pelanggan lain bernama/nomor sama yang masih Overdue: '+names.join(', ')+'. Lunasi CID itu terpisah.');
+          }
+          warn.style.display='block';
+          warn.innerHTML=parts.join('<br>');
+        } else {
+          warn.style.display='none';
+          warn.textContent='';
+        }
         const sc=document.getElementById('successOverlay');
         // Retrigger animasi: lepas show, paksa reflow, pasang lagi — supaya
         // stagger & centang berjalan ulang tiap pembayaran, bukan hanya sekali.
