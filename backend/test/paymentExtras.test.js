@@ -45,6 +45,17 @@ const fromItems = normalizeBulkPayload({
 assert.strictEqual(fromItems.items.length, 2);
 assert.strictEqual(fromItems.items[0].amount, 150000);
 
+const withInvoices = normalizeBulkPayload({
+  items: [
+    { customer_id: 10, invoice_id: 101, amount: 100000 },
+    { customer_id: 10, invoice_id: 102, amount: 100000 },
+    { customer_id: 10, invoice_id: 101, amount: 100000 }
+  ]
+});
+assert.strictEqual(withInvoices.items.length, 2);
+assert.strictEqual(withInvoices.items[0].invoice_id, 101);
+assert.strictEqual(withInvoices.items[1].invoice_id, 102);
+
 const tooMany = normalizeBulkPayload({
   customer_ids: Array.from({ length: MAX_BULK_ITEMS + 1 }, (_, i) => i + 1)
 });

@@ -1895,32 +1895,40 @@ class PaymentController {
   async unpaidCustomers(req, res) {
     try {
       const q = (req.query.q || '').trim();
-      const month = parseInt(req.query.month) || moment().month() + 1;
-      const year = parseInt(req.query.year) || moment().year();
-      const limit = Math.min(200, parseInt(req.query.limit) || 200);
+      const monthRaw = req.query.month;
+      const month = monthRaw === undefined || monthRaw === '' || monthRaw === 'all' || parseInt(monthRaw, 10) === 0
+        ? 0
+        : parseInt(monthRaw, 10);
+      const year = parseInt(req.query.year, 10) || moment().year();
+      const limit = Math.min(500, parseInt(req.query.limit) || 300);
       const params = { month, year, limit };
       const tenant = applyTenantSql(req, 'c');
       Object.assign(params, tenant.replacements);
       let searchSql = tenant.sql;
       if (q) {
-        searchSql += ' AND (c.name LIKE :q OR c.customer_id LIKE :q OR c.phone LIKE :q)';
+        searchSql += ' AND (c.name LIKE :q OR c.customer_id LIKE :q OR c.phone LIKE :q OR i.invoice_number LIKE :q)';
         params.q = '%' + q + '%';
       }
+      const periodSql = month > 0
+        ? ' AND i.period_month = :month AND i.period_year = :year'
+        : '';
       const rows = await sequelize.query(
         `SELECT c.id, c.customer_id AS cid, c.name, c.phone, c.due_date, c.status,
                 pkg.name AS pkg_name, pkg.price AS pkg_price,
                 i.id AS invoice_id, i.invoice_number, i.total AS invoice_total,
                 i.status AS invoice_status, i.due_date AS invoice_due,
+                i.period_month, i.period_year,
                 d.id AS deferral_id, d.promise_date
-         FROM customers c
+         FROM invoices i
+         JOIN customers c ON c.id = i.customer_id
          LEFT JOIN packages pkg ON pkg.id = c.package_id
-         LEFT JOIN invoices i ON i.customer_id = c.id AND i.period_month = :month AND i.period_year = :year
          LEFT JOIN payment_deferrals d ON d.customer_id = c.id AND d.status = 'open'
-              AND d.period_month = :month AND d.period_year = :year
+              AND d.period_month = i.period_month AND d.period_year = i.period_year
          WHERE c.status IN ('active','isolated')
-           AND (i.id IS NULL OR i.status IN ('unpaid','overdue'))
+           AND i.status IN ('unpaid','overdue')
+           ${periodSql}
            ${searchSql}
-         ORDER BY c.name ASC
+         ORDER BY i.due_date ASC, c.name ASC
          LIMIT :limit`,
         { replacements: params, type: sequelize.QueryTypes.SELECT }
       );
@@ -1930,8 +1938,9 @@ class PaymentController {
           ...r,
           amount: parseFloat(r.invoice_total || r.pkg_price || 0) || 0
         })),
-        month,
-        year
+        month: month || null,
+        year,
+        scope: month > 0 ? 'period' : 'outstanding'
       });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
@@ -1942,6 +1951,7 @@ class PaymentController {
     const parsed = normalizeBulkPayload(req.body || {});
     if (parsed.error) return res.status(400).json({ success: false, message: parsed.error });
 
+    const { syncPaymentToKeuangan } = require('../utils/keuanganSync');
     const ok = [];
     const fail = [];
     for (const item of parsed.items) {
@@ -1956,59 +1966,59 @@ class PaymentController {
           fail.push({ customer_id: item.customer_id, message: 'Pelanggan tidak ditemukan' });
           continue;
         }
-        const pm = item.period_month || parsed.period_month;
-        const py = item.period_year || parsed.period_year;
-        const existingPaid = await Invoice.findOne({
-          where: { customer_id: customer.id, period_month: pm, period_year: py, status: 'paid' },
-          transaction: t
-        });
-        if (existingPaid) {
+
+        let invoice = null;
+        if (item.invoice_id) {
+          invoice = await Invoice.findByPk(item.invoice_id, { transaction: t });
+          if (!invoice || invoice.customer_id !== customer.id) {
+            await t.rollback();
+            fail.push({ customer_id: customer.id, name: customer.name, message: 'Invoice tidak cocok dengan pelanggan' });
+            continue;
+          }
+        } else if (item.period_month && item.period_year) {
+          invoice = await Invoice.findOne({
+            where: {
+              customer_id: customer.id,
+              period_month: item.period_month,
+              period_year: item.period_year,
+              status: { [Op.in]: ['unpaid', 'overdue'] }
+            },
+            transaction: t
+          });
+        }
+        if (!invoice) {
+          invoice = await Invoice.findOne({
+            where: { customer_id: customer.id, status: { [Op.in]: ['unpaid', 'overdue'] } },
+            order: [['due_date', 'ASC'], ['id', 'ASC']],
+            transaction: t
+          });
+        }
+        if (!invoice) {
           await t.rollback();
           fail.push({
             customer_id: customer.id,
             name: customer.name,
-            message: `Sudah lunas ${MONTHS[pm]} ${py}`
+            cid: customer.customer_id,
+            message: 'Tidak ada tagihan tertunggak'
+          });
+          continue;
+        }
+        if (['paid', 'cancelled'].includes(invoice.status)) {
+          await t.rollback();
+          fail.push({
+            customer_id: customer.id,
+            name: customer.name,
+            cid: customer.customer_id,
+            message: `Invoice ${invoice.invoice_number} sudah ${invoice.status}`
           });
           continue;
         }
 
-        let invoice = await Invoice.findOne({
-          where: { customer_id: customer.id, period_month: pm, period_year: py },
-          transaction: t
-        });
-        const amount = parseFloat(item.amount || invoice?.total || customer.package?.price || 0) || 0;
+        const amount = parseFloat(item.amount || invoice.total || customer.package?.price || 0) || 0;
         if (!amount) {
           await t.rollback();
           fail.push({ customer_id: customer.id, name: customer.name, message: 'Jumlah kosong' });
           continue;
-        }
-
-        if (!invoice) {
-          const { getNextInvoiceNumber, generateInvoiceNumber } = require('../utils/helpers');
-          let invoiceNumber;
-          let attempts = 0;
-          while (attempts < 8) {
-            try {
-              const { invoiceNumber: candidate, prefix: candPrefix } = await getNextInvoiceNumber(sequelize, pm, py, { transaction: t });
-              invoiceNumber = attempts === 0
-                ? candidate
-                : generateInvoiceNumber(py, pm, parseInt(candidate.split('-').pop(), 10) + attempts, candPrefix || 'INV');
-              const exists = await Invoice.findOne({ where: { invoice_number: invoiceNumber }, transaction: t });
-              if (!exists) break;
-              attempts++;
-            } catch (_) { attempts++; }
-          }
-          invoice = await Invoice.create({
-            invoice_number: invoiceNumber,
-            customer_id: customer.id,
-            amount,
-            tax: 0,
-            total: amount,
-            status: 'unpaid',
-            due_date: customer.due_date || parsed.payment_date || moment().format('YYYY-MM-DD'),
-            period_month: pm,
-            period_year: py
-          }, { transaction: t });
         }
 
         const payMethod = METHODS.includes(parsed.method) ? parsed.method : 'cash';
@@ -2019,7 +2029,7 @@ class PaymentController {
           payment_date: parsed.payment_date,
           reference_number: parsed.reference_no || null,
           recorded_by: req.user?.id || null,
-          notes: parsed.notes || 'Setor massal'
+          notes: parsed.notes || 'Pelunasan massal'
         }, { transaction: t });
 
         await invoice.update({
@@ -2034,14 +2044,26 @@ class PaymentController {
         if (newDueDay >= 1 && newDueDay <= 28) custUpdate.billing_date = newDueDay;
         await customer.update(custUpdate, { transaction: t });
 
-        await PaymentDeferral.update({
-          status: 'paid',
-          settled_payment_id: payment.id,
-          settled_at: new Date()
-        }, {
-          where: { customer_id: customer.id, status: 'open' },
-          transaction: t
-        });
+        try {
+          await PaymentDeferral.update({
+            status: 'paid',
+            settled_payment_id: payment.id,
+            settled_at: new Date()
+          }, {
+            where: { customer_id: customer.id, status: 'open' },
+            transaction: t
+          });
+        } catch (_) {}
+
+        try {
+          await syncPaymentToKeuangan(payment, {
+            invoice,
+            customer,
+            recordedBy: req.user?.id || null,
+            channel: 'bulk',
+            transaction: t
+          });
+        } catch (_) {}
 
         await t.commit();
 
@@ -2060,13 +2082,16 @@ class PaymentController {
           name: customer.name,
           cid: customer.customer_id,
           amount,
+          invoice_id: invoice.id,
           invoice_number: invoice.invoice_number,
-          payment_id: payment.id
+          payment_id: payment.id,
+          due_date_after: nextDue
         });
       } catch (e) {
         try { await t.rollback(); } catch (_) {}
         fail.push({
           customer_id: item.customer_id,
+          invoice_id: item.invoice_id || null,
           message: e.original?.message || e.message
         });
       }
@@ -2074,7 +2099,7 @@ class PaymentController {
 
     res.status(ok.length ? 201 : 400).json({
       success: ok.length > 0,
-      message: `${ok.length} pembayaran dicatat` + (fail.length ? `, ${fail.length} gagal` : ''),
+      message: `${ok.length} pelanggan dilunasi` + (fail.length ? `, ${fail.length} gagal` : ''),
       data: { ok, fail, total_ok: ok.length, total_fail: fail.length }
     });
   }

@@ -73,6 +73,7 @@ function normalizeBulkPayload(body) {
   if (Array.isArray(body.items)) {
     items = body.items.map((it) => ({
       customer_id: parseInt(it && (it.customer_id || it.id), 10),
+      invoice_id: it && it.invoice_id ? parseInt(it.invoice_id, 10) : null,
       amount: it && it.amount != null ? parseFloat(String(it.amount).replace(/[^\d.]/g, '')) : null,
       period_month: it && it.period_month ? parseInt(it.period_month, 10) : null,
       period_year: it && it.period_year ? parseInt(it.period_year, 10) : null
@@ -80,6 +81,7 @@ function normalizeBulkPayload(body) {
   } else if (Array.isArray(body.customer_ids)) {
     items = body.customer_ids.map((id) => ({
       customer_id: parseInt(id, 10),
+      invoice_id: null,
       amount: null,
       period_month: null,
       period_year: null
@@ -88,8 +90,9 @@ function normalizeBulkPayload(body) {
   items = items.filter((it) => Number.isFinite(it.customer_id) && it.customer_id > 0);
   const seen = new Set();
   items = items.filter((it) => {
-    if (seen.has(it.customer_id)) return false;
-    seen.add(it.customer_id);
+    const key = it.invoice_id ? 'i' + it.invoice_id : 'c' + it.customer_id;
+    if (seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
   if (!items.length) return { error: 'Pilih minimal 1 pelanggan' };

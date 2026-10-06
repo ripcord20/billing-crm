@@ -59,6 +59,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Set default due date = next month same billing day (day 1 default)
   setDefaultDueDate(1);
   syncDebtDateFromDays();
+  const bulkYear = document.getElementById('bulkPeriodYear');
+  if (bulkYear && !bulkYear.value) bulkYear.value = now.getFullYear();
+  const bulkDate = document.getElementById('bulkPayDate');
+  if (bulkDate && !bulkDate.value) bulkDate.value = today;
 
   // WA toggle visual
   const waChk = document.getElementById('paySendWa');
@@ -1309,45 +1313,56 @@ window.onBulkSearchChange = function() {
   _bulkSearchTimer = setTimeout(() => loadUnpaidCustomers(), 300);
 };
 
+function bulkRowKey(r) {
+  return String(r.invoice_id || ('c' + r.id));
+}
+
 async function loadUnpaidCustomers() {
   const tbody = document.getElementById('bulkTable');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty"><p>Memuat pelanggan...</p></div></td></tr>';
-  const month = document.getElementById('payPeriodMonth')?.value || document.getElementById('filterMonth')?.value;
-  const year = document.getElementById('payPeriodYear')?.value || document.getElementById('filterYear')?.value;
+  tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty"><p>Memuat tagihan tertunggak...</p></div></td></tr>';
+  const month = document.getElementById('bulkPeriodMonth')?.value || '0';
+  const year = document.getElementById('bulkPeriodYear')?.value || new Date().getFullYear();
   const q = document.getElementById('bulkSearch')?.value || '';
-  const d = await App.api('/payments/unpaid-customers?q=' + encodeURIComponent(q) + '&month=' + month + '&year=' + year);
+  const d = await App.api('/payments/unpaid-customers?q=' + encodeURIComponent(q) + '&month=' + encodeURIComponent(month) + '&year=' + encodeURIComponent(year));
   if (!d?.success) {
     tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty friendly"><p>Gagal memuat daftar</p></div></td></tr>';
     return;
   }
   _bulkRows = d.data || [];
   const keep = new Set();
-  _bulkSelected.forEach(id => { if (_bulkRows.some(r => r.id === id)) keep.add(id); });
+  _bulkSelected.forEach(key => { if (_bulkRows.some(r => bulkRowKey(r) === key)) keep.add(key); });
   _bulkSelected = keep;
   if (!_bulkRows.length) {
-    tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty friendly"><p>Tidak ada pelanggan tertunggak</p><span>Semua sudah lunas untuk periode ini, atau coba kata kunci lain</span></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty friendly"><p>Tidak ada tagihan tertunggak</p><span>Semua sudah lunas, atau ganti filter periode / kata kunci</span></div></td></tr>';
     updateBulkBar();
     return;
   }
+  const today = new Date(); today.setHours(0,0,0,0);
   tbody.innerHTML = _bulkRows.map(r => {
-    const checked = _bulkSelected.has(r.id) ? 'checked' : '';
-    const due = (r.invoice_due || r.due_date)
-      ? new Date((r.invoice_due || r.due_date) + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short' })
+    const key = bulkRowKey(r);
+    const checked = _bulkSelected.has(key) ? 'checked' : '';
+    const dueSrc = r.invoice_due || r.due_date;
+    const dueDt = dueSrc ? new Date(dueSrc + 'T00:00:00') : null;
+    const overdue = dueDt && dueDt < today;
+    const due = dueDt
+      ? dueDt.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' })
       : '–';
-    const janji = r.promise_date
-      ? '<span class="debt-badge">' + new Date(r.promise_date + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short' }) + '</span>'
-      : '–';
-    return '<tr class="bulk-row' + (checked ? ' sel' : '') + '" onclick="toggleBulkRow(' + r.id + ', event)">' +
-      '<td><input type="checkbox" class="bulk-check" data-id="' + r.id + '" ' + checked + ' onclick="event.stopPropagation(); toggleBulkRow(' + r.id + ')"></td>' +
-      '<td><div style="font-weight:700;">' + esc(r.name) + '</div><div style="font-size:11px;color:#94a3b8;">' + esc(r.cid) + (r.phone ? ' · ' + esc(r.phone) : '') + '</div></td>' +
-      '<td>' + esc(r.pkg_name || '–') + '</td>' +
+    const stBadge = overdue
+      ? '<span class="ci-badge ci-over">Overdue</span>'
+      : '<span class="ci-badge ci-unpaid">Belum lunas</span>';
+    const periode = (MONTHS[r.period_month] || r.period_month || '–') + ' ' + (r.period_year || '');
+    return '<tr class="bulk-row' + (checked ? ' sel' : '') + '" onclick="toggleBulkRow(\'' + key + '\', event)">' +
+      '<td><input type="checkbox" class="bulk-check" data-id="' + key + '" ' + checked + ' onclick="event.stopPropagation(); toggleBulkRow(\'' + key + '\')"></td>' +
+      '<td><div style="font-weight:700;">' + esc(r.name) + ' ' + stBadge + '</div><div style="font-size:11px;color:#94a3b8;">' + esc(r.cid) + (r.phone ? ' · ' + esc(r.phone) : '') + '</div></td>' +
+      '<td style="font-family:monospace;font-size:12px;">' + esc(r.invoice_number || '–') + '</td>' +
+      '<td>' + esc(periode) + '</td>' +
       '<td style="font-weight:700;">Rp ' + Number(r.amount || 0).toLocaleString('id-ID') + '</td>' +
-      '<td>' + due + '</td>' +
-      '<td>' + janji + '</td></tr>';
+      '<td style="color:' + (overdue ? '#dc2626' : '#64748b') + ';">' + due + '</td></tr>';
   }).join('');
   updateBulkBar();
 }
+window.loadUnpaidCustomers = loadUnpaidCustomers;
 
 window.toggleBulkRow = function(id, ev) {
   if (ev && ev.target && ev.target.classList && ev.target.classList.contains('bulk-check')) return;
@@ -1361,7 +1376,10 @@ window.toggleBulkRow = function(id, ev) {
 };
 
 window.toggleBulkAll = function(on) {
-  _bulkRows.forEach(r => { if (on) _bulkSelected.add(r.id); else _bulkSelected.delete(r.id); });
+  _bulkRows.forEach(r => {
+    const key = bulkRowKey(r);
+    if (on) _bulkSelected.add(key); else _bulkSelected.delete(key);
+  });
   document.querySelectorAll('#bulkTable .bulk-check').forEach(cb => { cb.checked = on; cb.closest('tr')?.classList.toggle('sel', on); });
   updateBulkBar();
 };
@@ -1369,9 +1387,15 @@ window.toggleBulkAll = function(on) {
 function updateBulkBar() {
   const n = _bulkSelected.size;
   let total = 0;
-  _bulkRows.forEach(r => { if (_bulkSelected.has(r.id)) total += Number(r.amount || 0); });
-  setT('bulkSummary', n + ' pelanggan dipilih');
-  setT('bulkSummarySub', n ? ('Total Rp ' + total.toLocaleString('id-ID') + ' · jumlah bebas, tidak dibatasi 10') : 'Centang daftar dulu, baru tekan bayar');
+  const cids = new Set();
+  _bulkRows.forEach(r => {
+    if (_bulkSelected.has(bulkRowKey(r))) {
+      total += Number(r.amount || 0);
+      cids.add(r.cid || r.id);
+    }
+  });
+  setT('bulkSummary', n + ' tagihan dipilih');
+  setT('bulkSummarySub', n ? (cids.size + ' pelanggan · Total Rp ' + total.toLocaleString('id-ID')) : 'Centang beberapa pelanggan, lalu lunasi sekaligus');
   const btn = document.getElementById('bulkPayBtn');
   if (btn) btn.disabled = n === 0;
   const all = document.getElementById('bulkCheckAll');
@@ -1379,28 +1403,41 @@ function updateBulkBar() {
 }
 
 window.submitBulkPay = async function() {
-  if (!_bulkSelected.size) { App.showToast('Centang pelanggan dulu', 'error'); return; }
-  const items = _bulkRows.filter(r => _bulkSelected.has(r.id)).map(r => ({
+  if (!_bulkSelected.size) { App.showToast('Centang tagihan dulu', 'error'); return; }
+  const selected = _bulkRows.filter(r => _bulkSelected.has(bulkRowKey(r)));
+  const names = selected.slice(0, 5).map(r => esc(r.name) + ' (' + esc(r.cid) + ')').join('<br>');
+  const extra = selected.length > 5 ? '<br>+' + (selected.length - 5) + ' tagihan lain' : '';
+  const total = selected.reduce((s, r) => s + Number(r.amount || 0), 0);
+  const ok = await payConfirm({
+    title: 'Lunasi ' + selected.length + ' tagihan?',
+    message: names + extra + '<br><br><b>Total Rp ' + total.toLocaleString('id-ID') + '</b>',
+    okText: 'Ya, lunasi',
+    variant: 'ok'
+  });
+  if (!ok) return;
+  const items = selected.map(r => ({
     customer_id: r.id,
-    amount: r.amount
+    invoice_id: r.invoice_id,
+    amount: r.amount,
+    period_month: r.period_month,
+    period_year: r.period_year
   }));
   const btn = document.getElementById('bulkPayBtn');
   btn.disabled = true;
-  btn.textContent = 'Menyimpan ' + items.length + ' pembayaran...';
+  btn.textContent = 'Melunasi ' + items.length + ' tagihan...';
   const d = await App.api('/payments/record-bulk', {
     method: 'POST',
     body: JSON.stringify({
       items,
       method: document.getElementById('bulkMethod')?.value || 'cash',
-      payment_date: document.getElementById('payDate')?.value,
-      period_month: document.getElementById('payPeriodMonth')?.value,
-      period_year: document.getElementById('payPeriodYear')?.value,
-      notes: 'Setor massal'
+      payment_date: document.getElementById('bulkPayDate')?.value || document.getElementById('payDate')?.value,
+      notes: 'Pelunasan massal'
     })
   });
-  btn.textContent = 'Bayar yang dicentang';
+  btn.textContent = 'Lunasi yang dicentang';
   if (d?.success || (d?.data && d.data.total_ok > 0)) {
-    App.showToast(d.message, d.data.total_fail ? 'warning' : 'success');
+    const failN = d.data && d.data.total_fail ? d.data.total_fail : 0;
+    App.showToast(d.message, failN ? 'warning' : 'success');
     _bulkSelected.clear();
     loadUnpaidCustomers();
     loadStats();
@@ -1408,7 +1445,7 @@ window.submitBulkPay = async function() {
     loadPayments();
     loadDeferrals(1);
   } else {
-    App.showToast(d?.message || 'Gagal setor massal', 'error');
+    App.showToast(d?.message || 'Gagal pelunasan massal', 'error');
     btn.disabled = false;
   }
 };
