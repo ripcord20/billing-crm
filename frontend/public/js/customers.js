@@ -508,16 +508,17 @@ async function loadCustomerStats() {
   const active   = s.active   || 0;
   const overdue  = s.overdue  || 0;
   const dueSoon  = s.due_soon || 0;
-  const inactive = (s.inactive || 0) + (s.suspended || 0);
+  const stopped  = s.inactive || 0;
   const isolated = s.isolated || 0;
+  const listed   = Math.max(0, total - stopped);
 
-  _setText('scTotal',      total);
-  _setText('scTotalSub',   active + ' aktif · ' + (s.inactive || 0) + ' berhenti');
-  _setBar ('scTotalBar',   total > 0 ? 0.99 : 0);
+  _setText('scTotal',      listed);
+  _setText('scTotalSub',   active + ' aktif · arsip berhenti di menu terpisah');
+  _setBar ('scTotalBar',   listed > 0 ? 0.99 : 0);
   _setText('scTotalPct',   active + ' aktif · ' + isolated + ' isolir');
 
   _setText('scOverdue',    overdue);
-  _setBar ('scOverdueBar', overdue / Math.max(total, 1));
+  _setBar ('scOverdueBar', overdue / Math.max(listed, 1));
   _setText('scOverduePct', overdue > 0
     ? Math.round(overdue / Math.max(active, 1) * 100) + '% dari pelanggan aktif'
     : 'Tidak ada overdue');
@@ -542,14 +543,18 @@ async function loadCustomerStats() {
 
   // Hidden stubs
   _setText('scActive',     active);
-  _setText('scInactive',   inactive);
-  _setText('scNoDue',      Math.max(0, total - active));
-  _setText('scIsolated',   isolated + inactive);
-  _setText('scActiveSub',  Math.round(active / Math.max(total,1)*100) + '% dari total ' + total);
-  _setText('scTotal2',     total);
+  _setText('scInactive',   s.suspended || 0);
+  _setText('scNoDue',      Math.max(0, listed - active));
+  _setText('scIsolated',   isolated + (s.suspended || 0));
+  _setText('scActiveSub',  Math.round(active / Math.max(listed,1)*100) + '% dari total ' + listed);
+  _setText('scTotal2',     listed);
 
   const subtitle = document.getElementById('headerSubtitle');
-  if (subtitle) subtitle.textContent = 'Manajemen pelanggan, terdapat ' + total + ' customer terdaftar';
+  if (subtitle) {
+    const stopLink = '<a href="/customers/stopped" style="color:#c2410c;font-weight:700;text-decoration:none">'
+      + (stopped ? (stopped + ' berhenti →') : 'Pelanggan berhenti →') + '</a>';
+    subtitle.innerHTML = 'Manajemen pelanggan, terdapat ' + listed + ' customer terdaftar · ' + stopLink;
+  }
 }
 
 function _setBar(id, ratio) {

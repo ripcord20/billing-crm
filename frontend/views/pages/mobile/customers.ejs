@@ -274,7 +274,7 @@
         <div class="chip" data-status="active">Aktif</div>
         <div class="chip" data-status="isolated">Isolir</div>
         <div class="chip" data-status="suspended">Suspend</div>
-        <div class="chip" data-status="inactive">Berhenti</div>
+        <a class="chip" href="/customers/stopped">Arsip berhenti</a>
         <div class="chip chip-overdue" data-status="overdue">Nunggak</div>
       </div>
       <div class="list" id="custList">
@@ -378,7 +378,7 @@
     }
     function applyFilter(status){ _status=status||''; syncFilterUI(); loadCustomers(true); }
 
-    document.getElementById('filterChips').addEventListener('click',function(e){ const chip=e.target.closest('.chip'); if(!chip)return; _status=chip.dataset.status||''; syncFilterUI(); loadCustomers(true); });
+    document.getElementById('filterChips').addEventListener('click',function(e){ const chip=e.target.closest('.chip'); if(!chip || chip.tagName==='A')return; _status=chip.dataset.status||''; syncFilterUI(); loadCustomers(true); });
     let _t=null; document.getElementById('searchInput').addEventListener('input',function(){ clearTimeout(_t); const v=this.value.trim(); _t=setTimeout(()=>{_search=v;loadCustomers(true);},350); });
 
     // ── Detail pelanggan (popup) ──

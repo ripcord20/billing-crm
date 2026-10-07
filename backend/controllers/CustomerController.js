@@ -7,6 +7,7 @@ const InfraSync = require('../services/CustomerInfraSyncService');
 const { applyTenantWhere, getTenantId, assertCustomerTenant, isTenantOwner } = require('../utils/tenantScope');
 const {
   STOP_REASONS, EXAMPLE_STOPPED, applyStopFields, displayStoppedAt, todayYmd,
+  customerListStatusClause,
 } = require('../utils/customerStop');
 
 class CustomerController {
@@ -23,10 +24,13 @@ class CustomerController {
           { address: { [Op.like]: `%${search}%` } }
         ];
       }
-      // overdue & due_soon adalah filter virtual — tidak set where.status
-      if (status && status !== 'overdue' && status !== 'due_soon') {
-        where.status = status
+      // Arsip berhenti hanya di /customers/stopped — tidak di modul pelanggan.
+      const listStatus = customerListStatusClause(status);
+      if (listStatus.empty) {
+        return res.json({ success: true, ...paginateResponse([], 0, page, limit) });
       }
+      if (listStatus.status) where.status = listStatus.status;
+      else if (listStatus.excludeStopped) where.status = { [Op.ne]: 'inactive' };
       if (package_id) where.package_id = package_id;
       // ── Filter per-area (berjenjang) ──
       if (province) where.province = province;
@@ -826,7 +830,8 @@ class CustomerController {
     try {
       const where = {
         latitude: { [Op.not]: null },
-        longitude: { [Op.not]: null }
+        longitude: { [Op.not]: null },
+        status: { [Op.ne]: 'inactive' },
       };
 
       // OPTIMASI skala besar (>5.000 pelanggan): viewport bounds query.

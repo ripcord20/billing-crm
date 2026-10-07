@@ -80,6 +80,17 @@ function displayStoppedAt(row) {
   return null;
 }
 
+/**
+ * Klausa status untuk modul pelanggan (bukan arsip /customers/stopped).
+ * empty=true → list harus kosong; excludeStopped=true → semua kecuali inactive.
+ */
+function customerListStatusClause(status) {
+  const st = String(status || '');
+  if (st === 'inactive') return { empty: true };
+  if (st && st !== 'overdue' && st !== 'due_soon') return { status: st };
+  return { excludeStopped: true };
+}
+
 module.exports = {
   STOP_REASONS,
   EXAMPLE_STOPPED,
@@ -88,4 +99,5 @@ module.exports = {
   normalizeDate,
   applyStopFields,
   displayStoppedAt,
+  customerListStatusClause,
 };
