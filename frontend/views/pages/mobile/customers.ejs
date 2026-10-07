@@ -274,7 +274,7 @@
         <div class="chip" data-status="active">Aktif</div>
         <div class="chip" data-status="isolated">Isolir</div>
         <div class="chip" data-status="suspended">Suspend</div>
-        <div class="chip" data-status="inactive">Nonaktif</div>
+        <a class="chip" href="/customers/stopped">Arsip berhenti</a>
         <div class="chip chip-overdue" data-status="overdue">Nunggak</div>
       </div>
       <div class="list" id="custList">
@@ -316,7 +316,7 @@
     async function api(url){ const t=getToken(); const headers=Object.assign({'Content-Type':'application/json'}, t?{'Authorization':'Bearer '+t}:{}); try{ const r=await fetch(url,{credentials:'include',headers}); if(r.status===401){location.href='/login';return null;} const x=await r.text(); try{return x?JSON.parse(x):null;}catch(_){return null;} }catch(e){return null;} }
     function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
     let _status='',_search='',_page=1,_loading=false; const PAGE_SIZE=20;
-    function statusBadge(st){ st=(st||'').toLowerCase(); if(st==='active')return '<span class="badge b-active">Aktif</span>'; if(st==='isolated'||st==='isolir')return '<span class="badge b-isolir">Isolir</span>'; if(st==='suspended')return '<span class="badge b-suspend">Suspend</span>'; return '<span class="badge b-inactive">Nonaktif</span>'; }
+    function statusBadge(st){ st=(st||'').toLowerCase(); if(st==='active')return '<span class="badge b-active">Aktif</span>'; if(st==='isolated'||st==='isolir')return '<span class="badge b-isolir">Isolir</span>'; if(st==='suspended')return '<span class="badge b-suspend">Suspend</span>'; return '<span class="badge b-inactive">Berhenti</span>'; }
     function fmtRpShort(n){ n=Number(n)||0; if(n>=1000000)return 'Rp '+(n/1000000).toFixed(n%1000000?1:0).replace('.0','')+'jt'; if(n>=1000)return 'Rp '+Math.round(n/1000)+'rb'; return 'Rp '+n.toLocaleString('id-ID'); }
     function overdueDays(dueStr){
       if(!dueStr)return 0;
@@ -378,7 +378,7 @@
     }
     function applyFilter(status){ _status=status||''; syncFilterUI(); loadCustomers(true); }
 
-    document.getElementById('filterChips').addEventListener('click',function(e){ const chip=e.target.closest('.chip'); if(!chip)return; _status=chip.dataset.status||''; syncFilterUI(); loadCustomers(true); });
+    document.getElementById('filterChips').addEventListener('click',function(e){ const chip=e.target.closest('.chip'); if(!chip || chip.tagName==='A')return; _status=chip.dataset.status||''; syncFilterUI(); loadCustomers(true); });
     let _t=null; document.getElementById('searchInput').addEventListener('input',function(){ clearTimeout(_t); const v=this.value.trim(); _t=setTimeout(()=>{_search=v;loadCustomers(true);},350); });
 
     // ── Detail pelanggan (popup) ──

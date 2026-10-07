@@ -257,6 +257,9 @@ router.get('/regions/villages/:districtId',  RegionController.villages.bind(Regi
 router.get('/customers', authenticate, demoGuard, CustomerController.index);
 router.post('/customers', authenticate, demoGuard, hasPermission('customer_create'), logActivity('create', 'customer'), CustomerController.create);
 router.get('/customers/stats', authenticate, demoGuard, CustomerController.stats);
+router.get('/customers/stopped', authenticate, demoGuard, CustomerController.stopped);
+router.get('/customers/stopped/stats', authenticate, demoGuard, CustomerController.stoppedStats);
+router.get('/customers/stopped/meta', authenticate, demoGuard, CustomerController.stoppedMeta);
 router.get('/customers/map', authenticate, demoGuard, CustomerController.mapData);
 router.get('/customers/next-id', authenticate, demoGuard, CustomerController.nextCustomerId);
 router.get('/customers/check-id', authenticate, demoGuard, CustomerController.checkCustomerId);
@@ -326,6 +329,8 @@ router.use('/hris', hrisRoutes);
 
 router.get('/customers/:id', authenticate, demoGuard, CustomerController.show);
 router.put('/customers/:id', authenticate, demoGuard, hasPermission('customer_update'), logActivity('update', 'customer'), CustomerController.update);
+router.post('/customers/:id/stop', authenticate, demoGuard, hasPermission('customer_update'), logActivity('stop', 'customer'), CustomerController.markStopped);
+router.post('/customers/:id/reactivate', authenticate, demoGuard, hasPermission('customer_update'), logActivity('reactivate', 'customer'), CustomerController.reactivate);
 router.delete('/customers/:id', authenticate, demoGuard, hasPermission('customer_delete'), logActivity('delete', 'customer'), CustomerController.destroy);
 
 // ── Portal Credentials (admin-only) ───────────────────────────────────
