@@ -109,6 +109,15 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: true
     },
+    // Tanggal & alasan berhenti berlangganan (status = inactive).
+    stopped_at: {
+      type: DataTypes.DATEONLY,
+      allowNull: true
+    },
+    stop_reason: {
+      type: DataTypes.STRING(120),
+      allowNull: true
+    },
     documents: {
       type: DataTypes.JSON,
       allowNull: true,

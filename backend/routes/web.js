@@ -291,6 +291,10 @@ router.get('/customers', authenticate, allowFinanceArea, (req, res) => {
   res.render('pages/customers', { title: 'Customers', user: req.user, active: 'customers' });
 });
 
+router.get('/customers/stopped', authenticate, allowFinanceArea, (req, res) => {
+  res.render('pages/customers-stopped', { title: 'Pelanggan Berhenti', user: req.user, active: 'customers-stopped' });
+});
+
 router.get('/customers/profile/:id', authenticate, allowFinanceArea, (req, res) => {
   res.render('pages/customer_profile', { title: 'Profil Pelanggan', user: req.user, active: 'customers', custId: req.params.id });
 });

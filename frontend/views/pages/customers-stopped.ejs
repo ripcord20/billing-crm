@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    :root {
+      --d-bg:#eef2f9; --d-card:#fff; --d-border:#e0e7f3;
+      --d-text:#0d1b3e; --d-muted:#6b7fa8;
+      --d-blue1:#1a6ef5; --d-orange:#c2410c;
+    }
+    .stop-page { font-family:'DM Sans',sans-serif; background:var(--d-bg) !important; }
+    .fin-grid { display:grid; grid-template-columns:repeat(3,1fr); background:#fff; border-radius:16px; border:1px solid #e8eaed; overflow:hidden; margin-bottom:16px; }
+    .fin-card { padding:20px 22px 18px; border-right:1px solid #e8eaed; min-height:110px; }
+    .fin-card:last-child { border-right:none; }
+    .xc-lbl { font-size:12px; font-weight:500; color:#64748b; margin-bottom:10px; }
+    .xc-val { font-size:30px; font-weight:800; color:#0f172a; letter-spacing:-1.2px; line-height:1; }
+    .xc-sub { font-size:11px; color:#94a3b8; margin-top:8px; }
+    .w-card { background:#fff; border:1px solid var(--d-border); border-radius:22px; box-shadow:0 2px 12px rgba(26,110,245,.05); }
+    .btn-fin { padding:9px 18px; border-radius:11px; border:none; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+    .btn-primary-fin { background:var(--d-blue1); color:#fff; box-shadow:0 4px 14px rgba(26,110,245,.3); }
+    .btn-ghost { background:#fff; color:var(--d-text); border:1.5px solid var(--d-border); }
+    .search-wrap { position:relative; flex:1; max-width:300px; }
+    .search-wrap input, .filter-select { padding:10px 14px 10px 40px; box-sizing:border-box; border:1.5px solid var(--d-border); border-radius:12px; font-family:inherit; font-size:13.5px; color:var(--d-text); background:#fff; outline:none; width:100%; }
+    .filter-select { padding-left:14px; width:auto; cursor:pointer; }
+    .search-wrap .si { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--d-muted); }
+    .cust-table { width:100%; border-collapse:collapse; min-width:820px; }
+    .cust-table th { text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:var(--d-muted); border-bottom:1px solid var(--d-border); background:#f8faff; }
+    .cust-table td { padding:13px 16px; font-size:13px; color:var(--d-text); border-bottom:1px solid #f0f4fc; }
+    .cid-badge { font-family:'DM Mono',monospace; font-size:12px; color:var(--d-blue1); background:#eef3ff; padding:3px 8px; border-radius:6px; }
+    .sb { font-size:11.5px; font-weight:600; padding:4px 11px; border-radius:20px; display:inline-flex; align-items:center; gap:5px; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
+    .rb { padding:4px 13px; border-radius:7px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid; background:#fff; text-decoration:none; }
+    .rb-edit { color:var(--d-blue1); border-color:#bfdbfe; }
+    .rb-act { color:#059669; border-color:#a7f3d0; }
+    .ex-card { background:linear-gradient(180deg,#fffdf8,#fff); border:1.5px dashed #f6c77b; border-radius:16px; padding:16px 18px; margin-bottom:16px; }
+    .ex-tag { font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#b45309; background:#fef3c7; padding:3px 8px; border-radius:999px; }
+    .chip { border:1.5px solid var(--d-border); background:#fff; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; color:var(--d-text); }
+    .chip.on { background:#fff7ed; border-color:#fdba74; color:#c2410c; }
+    .modal-ov { display:none; position:fixed; inset:0; background:rgba(13,27,62,.55); z-index:9999; align-items:center; justify-content:center; padding:16px; }
+    .modal-ov.active { display:flex; }
+    .modal-bx { background:#fff; width:100%; max-width:520px; border-radius:20px; overflow:hidden; }
+    .finput { width:100%; box-sizing:border-box; padding:10px 13px; border:1.5px solid var(--d-border); border-radius:10px; font-family:inherit; font-size:13.5px; }
+    @media(max-width:800px){ .fin-grid { grid-template-columns:1fr; } .fin-card { border-right:none; border-bottom:1px solid #e8eaed; } .fin-card:last-child { border-bottom:none; } }
+  </style>
+</head>
+<body>
+<div class="app-layout stop-page">
+  <%- include('../partials/sidebar') %>
+  <div class="main-content">
+    <%- include('../partials/topbar') %>
+    <main class="page-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-size:22px;font-weight:800;color:var(--d-text)">Pelanggan Berhenti</div>
+          <div style="font-size:13px;color:var(--d-muted);margin-top:2px">Arsip pelanggan yang sudah tidak berlangganan — terpisah dari daftar aktif</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <a href="/customers" class="btn-fin btn-ghost">Daftar Pelanggan</a>
+          <button type="button" class="btn-fin btn-primary-fin" onclick="openStopModal()">Catat berhenti</button>
+        </div>
+      </div>
+
+      <div class="fin-grid">
+        <div class="fin-card">
+          <div class="xc-lbl">Total berhenti</div>
+          <div class="xc-val" id="stTotal">0</div>
+          <div class="xc-sub">Semua waktu</div>
+        </div>
+        <div class="fin-card">
+          <div class="xc-lbl">Bulan ini</div>
+          <div class="xc-val" id="stMonth">0</div>
+          <div class="xc-sub" id="stMonthLbl">—</div>
+        </div>
+        <div class="fin-card">
+          <div class="xc-lbl">Alasan tersering</div>
+          <div class="xc-val" id="stReason" style="font-size:20px;letter-spacing:-.4px">—</div>
+          <div class="xc-sub" id="stReasonSub">Dari data nyata, bukan contoh</div>
+        </div>
+      </div>
+
+      <div class="ex-card" id="exampleCard">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span class="ex-tag">Contoh</span>
+          <span style="font-size:13px;font-weight:700;color:#92400e">Format pencatatan — Budi Santoso</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="cust-table" style="min-width:720px">
+            <thead>
+              <tr>
+                <th>CID</th><th>Nama</th><th>Paket</th><th>Area</th><th>Tanggal berhenti</th><th>Alasan</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="cid-badge">FLN-1042</span></td>
+                <td>
+                  <div style="font-weight:700">Budi Santoso</div>
+                  <div style="font-size:11px;color:#6b7fa8">0812-3456-7890</div>
+                </td>
+                <td>20 Mbps Home</td>
+                <td>Sumur, Kabupaten Pandeglang</td>
+                <td>15 Sep 2026</td>
+                <td><span class="sb">Pindah rumah</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="font-size:12px;color:#92400e;margin-top:10px">Contoh ini tidak masuk tagihan. Data asli tampil di tabel bawah setelah Anda mencatat pelanggan berhenti.</div>
+      </div>
+
+      <div class="w-card">
+        <div style="display:flex;align-items:center;gap:10px;padding:18px 20px 0;flex-wrap:wrap">
+          <div class="search-wrap">
+            <svg class="si" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="stopSearch" placeholder="Cari nama, CID, alasan…">
+          </div>
+          <select id="stopReason" class="filter-select">
+            <option value="">Semua alasan</option>
+          </select>
+          <input type="month" id="stopMonth" class="filter-select" title="Filter bulan berhenti">
+          <div style="margin-left:auto;font-size:12.5px;color:var(--d-muted)" id="stopCount">–</div>
+        </div>
+        <div style="overflow-x:auto;margin-top:14px">
+          <table class="cust-table">
+            <thead>
+              <tr>
+                <th>CID</th>
+                <th>Nama</th>
+                <th>Paket</th>
+                <th>Area</th>
+                <th>Tanggal berhenti</th>
+                <th>Alasan</th>
+                <th style="text-align:right;padding-right:20px">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="stopTable">
+              <tr><td colspan="7" style="text-align:center;padding:48px;color:var(--d-muted)">Memuat data…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="stopPager" style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-top:1px solid var(--d-border)"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div id="stopModal" class="modal-ov">
+  <div class="modal-bx">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f0f0f5">
+      <div style="font-size:16px;font-weight:800">Catat pelanggan berhenti</div>
+      <button type="button" onclick="closeStopModal()" style="border:none;background:#eef2f9;width:30px;height:30px;border-radius:50%;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--d-muted);margin-bottom:5px">PELANGGAN AKTIF</label>
+        <input class="finput" id="stopCustSearch" placeholder="Ketik nama atau CID — contoh: Budi / FLN-1042" autocomplete="off">
+        <input type="hidden" id="stopCustId">
+        <div id="stopCustPick" style="margin-top:6px;font-size:12.5px;color:var(--d-muted)">Belum dipilih</div>
+        <div id="stopCustList" style="margin-top:6px"></div>
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--d-muted);margin-bottom:5px">TANGGAL BERHENTI</label>
+        <input class="finput" type="date" id="stopDate">
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--d-muted);margin-bottom:8px">ALASAN — contoh: Pindah rumah</label>
+        <div id="reasonChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        <input class="finput" id="stopReasonOther" placeholder="Keterangan tambahan (opsional)" style="margin-top:8px;display:none">
+      </div>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid #f0f0f5;display:flex;justify-content:flex-end;gap:8px">
+      <button type="button" class="btn-fin btn-ghost" onclick="closeStopModal()">Batal</button>
+      <button type="button" class="btn-fin btn-primary-fin" id="stopSaveBtn" onclick="saveStop()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/customers-stopped.js"></script>
+</body>
+</html>

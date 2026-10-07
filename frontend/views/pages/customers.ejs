@@ -340,7 +340,7 @@
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px" class="a1">
         <div>
           <div style="font-size:22px;font-weight:800;color:var(--d-text)">Customer Data</div>
-          <div style="font-size:13px;color:var(--d-muted);margin-top:2px" id="headerSubtitle">Manajemen pelanggan ISP</div>
+          <div style="font-size:13px;color:var(--d-muted);margin-top:2px" id="headerSubtitle">Manajemen pelanggan ISP · <a href="/customers/stopped" style="color:#c2410c;font-weight:700;text-decoration:none">Pelanggan berhenti →</a></div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button onclick="syncDueDates()" class="btn-fin btn-ghost" id="btnSyncDue">
@@ -453,7 +453,7 @@
           <select id="filterStatus" class="filter-select">
             <option value="">Semua Status</option>
             <option value="active">Aktif</option>
-            <option value="inactive">Nonaktif</option>
+            <option value="inactive">Berhenti</option>
             <option value="suspended">Suspended</option>
             <option value="overdue">Overdue</option>
             <option value="due_soon">Jatuh Tempo 3 Hari</option>
@@ -536,11 +536,27 @@
         </div>
         <div class="form-field">
           <label class="flbl">Status</label>
-          <select class="finput" id="custStatus">
+          <select class="finput" id="custStatus" onchange="onCustStatusChange()">
             <option value="active">Aktif</option>
-            <option value="inactive">Nonaktif</option>
+            <option value="inactive">Berhenti</option>
             <option value="suspended">Suspended</option>
           </select>
+        </div>
+        <div class="form-field span-all" id="custStopWrap" style="display:none">
+          <label class="flbl">Alasan berhenti</label>
+          <select class="finput" id="custStopReason">
+            <option value="Pindah rumah">Pindah rumah (contoh)</option>
+            <option value="Pindah kota">Pindah kota</option>
+            <option value="Ganti ISP">Ganti ISP</option>
+            <option value="Tidak mampu bayar">Tidak mampu bayar</option>
+            <option value="Isolir berkepanjangan">Isolir berkepanjangan</option>
+            <option value="Tutup usaha">Tutup usaha</option>
+            <option value="Kualitas jaringan">Kualitas jaringan</option>
+            <option value="Lainnya">Lainnya</option>
+          </select>
+          <div class="form-hint">Contoh: Budi Santoso / FLN-1042 berhenti 15 Sep 2026 karena pindah rumah. Data masuk menu Pelanggan Berhenti.</div>
+          <label class="flbl" style="margin-top:10px">Tanggal berhenti</label>
+          <input type="date" class="finput" id="custStoppedAt">
         </div>
 
         <div class="form-field span-all">
