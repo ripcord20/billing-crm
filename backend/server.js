@@ -258,6 +258,18 @@ app.use(express.static(path.join(__dirname, '..', 'frontend', 'public'), {
   }
 }));
 
+// Cache-bust app.js di HTML supaya Cloudflare tidak menyimpan bundle sidebar lama.
+app.use((req, res, next) => {
+  const origSend = res.send.bind(res);
+  res.send = function sendWithAppJsBust(body) {
+    if (typeof body === 'string' && body.includes('/js/app.js"')) {
+      body = body.replace(/src="\/js\/app\.js"/g, 'src="/js/app.js?v=fastnav1"');
+    }
+    return origSend(body);
+  };
+  next();
+});
+
 // ── Guard: block direct access to *.json / *.env / dotfiles under /uploads ──
 // The uploads folder is serve-as-static for user-uploaded media (photos, etc.),
 // but legacy code also writes runtime config (mikrotik_config.json, acs_config.json,
