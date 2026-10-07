@@ -78,6 +78,79 @@ function pathColorForTypes(fromType, toType, linkType) {
   return PATH_COLOR.fiber;
 }
 
+/** Default terkunci: ODC/ODP/pelanggan tidak tergeser tidak sengaja. */
+let movePointsMode = false;
+function applyAllPosLocks() {
+  markers.forEach(m => {
+    if (!m || !m._posLock || !m.dragging) return;
+    if (movePointsMode || m._forceMove) m.dragging.enable();
+    else m.dragging.disable();
+  });
+  const mapEl = document.getElementById('infraMap');
+  if (mapEl) mapEl.classList.toggle('move-pts-on', movePointsMode);
+  const btn = document.getElementById('movePtsBtn');
+  if (btn) {
+    btn.classList.toggle('active', movePointsMode);
+    btn.classList.toggle('move-on', movePointsMode);
+    btn.title = movePointsMode
+      ? 'Kunci posisi ODC, ODP, dan pelanggan'
+      : 'Aktifkan untuk menggeser titik yang posisinya salah';
+  }
+  const lab = document.getElementById('movePtsLabel');
+  if (lab) lab.textContent = movePointsMode ? 'Kunci titik' : 'Pindahkan';
+  const bar = document.getElementById('moveModeBar');
+  if (bar) bar.classList.toggle('active', movePointsMode);
+}
+function setMovePointsMode(on) {
+  movePointsMode = !!on;
+  if (!movePointsMode) markers.forEach(m => { if (m) m._forceMove = false; });
+  applyAllPosLocks();
+  if (typeof showToast === 'function') {
+    showToast(movePointsMode
+      ? 'Mode pindah aktif — geser ODC, ODP, atau pelanggan, lalu kunci lagi'
+      : 'Titik terkunci — tidak akan tergeser tidak sengaja',
+      movePointsMode ? 'info' : 'success');
+  }
+}
+function toggleMovePointsMode() { setMovePointsMode(!movePointsMode); }
+function bindPosLock(m) {
+  if (!m) return m;
+  m._posLock = true;
+  const sync = () => {
+    if (!m.dragging) return;
+    if (movePointsMode || m._forceMove) m.dragging.enable();
+    else m.dragging.disable();
+  };
+  sync();
+  m.on('add', sync);
+  m.on('dragend', () => {
+    if (!m._forceMove) return;
+    m._forceMove = false;
+    sync();
+  });
+  return m;
+}
+function startMoveThisMarker(m) {
+  if (!m) {
+    showToast('Titik tidak ditemukan di peta', 'warning');
+    return;
+  }
+  m._forceMove = true;
+  if (m.dragging) m.dragging.enable();
+  try { m.closePopup(); } catch (_) {}
+  showToast('Geser titik ke posisi yang benar, lalu lepas untuk menyimpan', 'info');
+}
+function startMoveInfraPoint(id) {
+  startMoveThisMarker(window.markersById && window.markersById[id]);
+}
+function startMoveCustomer(id) {
+  startMoveThisMarker(window.customerMarkersById && window.customerMarkersById[id]);
+}
+window.toggleMovePointsMode = toggleMovePointsMode;
+window.setMovePointsMode = setMovePointsMode;
+window.startMoveInfraPoint = startMoveInfraPoint;
+window.startMoveCustomer = startMoveCustomer;
+
 function jbKind(pt) {
   let meta = pt && pt.metadata;
   if (typeof meta === 'string') {
@@ -144,7 +217,23 @@ const TILES = {
       flex-shrink:0;
     }
     .map-draw-btn:hover,.map-draw-btn.active { background:#1e3a8a; color:#fff; border-color:#1e3a8a; }
-    .map-draw-btn svg { width:14px; height:14px; }
+    .map-draw-btn.svg { width:14px; height:14px; }
+    .map-draw-btn.move-on,.map-draw-btn.move-on:hover,.map-draw-btn.move-on.active {
+      background:#c2410c; color:#fff; border-color:#c2410c;
+    }
+    #moveModeBar {
+      position:absolute; top:62px; left:50%; transform:translateX(-50%);
+      z-index:811; background:rgba(194,65,12,.96); color:#fff;
+      border-radius:10px; padding:9px 18px; font-size:13px; font-weight:600;
+      display:none; align-items:center; gap:10px;
+      box-shadow:0 4px 20px rgba(194,65,12,.4); white-space:nowrap;
+    }
+    #moveModeBar.active { display:flex; }
+    #moveModeBar .draw-cancel {
+      background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.35);
+      border-radius:8px; color:#fff; padding:3px 10px; font-size:11px; cursor:pointer;
+    }
+    #infraMap.move-pts-on .leaflet-marker-icon { cursor:grab; }
 
     /* Highlight ring on selected marker during draw */
     .draw-selected-ring {
@@ -1313,6 +1402,7 @@ function addInfraMarker(pt) {
     draggable: true,
     autoPan: true
   }).addTo(map);
+  bindPosLock(m);
 
   // ── Drag: simpan posisi baru ke DB ──
   let _dragToast = null;
@@ -1466,7 +1556,12 @@ function addInfraMarker(pt) {
             <div id="pop-devices-list-${pt.id}" style="font-size:12px;color:#94a3b8">Memuat device...</div>
           </div>
         ` : ''}
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px">
+        <button type="button" onclick="startMoveInfraPoint(${pt.id})"
+          style="width:100%;margin-top:12px;padding:9px;background:#fff7ed;color:#c2410c;border:1px solid #fdba74;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>
+          Pindahkan posisi
+        </button>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">
           <button onclick="openNavigation(${pt.latitude},${pt.longitude},'${pt.name.replace(/'/g, "\'")}')"
             style="padding:9px;background:#f0fdf4;color:#15803d;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:4px;transition:opacity .15s" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
             <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="3,11 22,2 13,21 11,13 3,11"/></svg>Navigasi
@@ -3502,6 +3597,11 @@ function addCustomerMarker(cust) {
           </div>
         </div>
       </div>
+      <button type="button" class="cp-btn" onclick="startMoveCustomer(${cust.id})"
+        style="width:calc(100% - 0px);margin:0;border-radius:0;background:#fff7ed;color:#c2410c;border-top:1px solid #fed7aa;font-weight:700">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>
+        Pindahkan posisi
+      </button>
       <div class="cp-actions cp-actions-3">
         <button class="cp-btn cp-nav" onclick="openNavigation(${cust.latitude},${cust.longitude},'${cust.name.replace(/'/g,"\\'")}')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3,11 22,2 13,21 11,13 3,11"/></svg>Navigasi
@@ -3516,15 +3616,15 @@ function addCustomerMarker(cust) {
     </div>`;
   }
 
-  // Create marker with draggable enabled
+  // Create marker; geser hanya jika mode pindah / tombol Pindahkan posisi.
   const m = L.marker([+cust.latitude, +cust.longitude], {
     icon: makePinIcon(null),
     draggable: true
   });
   // Masuk ke cluster pelanggan (ringan utk ribuan marker). Marker tetap
-  // draggable saat cluster pecah / zoom dekat. Fallback ke map bila plugin
-  // markercluster tidak termuat.
+  // bisa digeser saat cluster pecah / zoom dekat jika mode pindah aktif.
   if (customerCluster) m.addTo(customerCluster); else m.addTo(map);
+  bindPosLock(m);
 
   // Drag start — tampilkan hint
   let _dragToast = null;
