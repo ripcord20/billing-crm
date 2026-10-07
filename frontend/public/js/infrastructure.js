@@ -56,6 +56,28 @@ const COLORS = {
   customer: '#f97316', pop: '#ef4444', ont: '#22c55e'
 };
 
+/** Warna jalur: ODC→ODP biru, drop ODP→pelanggan oranye — jangan sama. */
+const PATH_COLOR = {
+  feeder: '#2563eb',
+  drop: '#f97316',
+  trunk: '#38bdf8',
+  wireless: '#a78bfa',
+  copper: '#fb923c',
+  fiber: '#00e5cc'
+};
+function pathColorForTypes(fromType, toType, linkType) {
+  const lt = String(linkType || 'fiber').toLowerCase();
+  if (lt === 'wireless') return PATH_COLOR.wireless;
+  if (lt === 'copper') return PATH_COLOR.copper;
+  if (lt === 'trunk') return PATH_COLOR.trunk;
+  const pair = new Set([String(fromType || '').toLowerCase(), String(toType || '').toLowerCase()]);
+  if (pair.has('customer')) return PATH_COLOR.drop;
+  const feeder = pair.has('odc') || pair.has('pop') || pair.has('otb');
+  const access = pair.has('odp') || pair.has('jb');
+  if (feeder && access) return PATH_COLOR.feeder;
+  return PATH_COLOR.fiber;
+}
+
 function jbKind(pt) {
   let meta = pt && pt.metadata;
   if (typeof meta === 'string') {
@@ -733,7 +755,7 @@ function drawParentConnections(filter) {
     if (linkedPairs.has(pairKey)) return; // sudah ada manual link → skip
     renderFiberLine(
       [+pt.latitude, +pt.longitude], [+parent.latitude, +parent.longitude],
-      '#00e5cc', pt.name, parent.name, null, 'fiber-active', 'fiber', 'active', null,
+      pathColorForTypes(pt.type, parent.type, 'fiber'), pt.name, parent.name, null, 'fiber-active', 'fiber', 'active', null,
       null, null, []
     );
   });
@@ -806,9 +828,8 @@ function drawDBLinksFromData(res, filter) {
     if (filter === 'customer' && !isCustLink) return;
     if (filter && filter !== 'customer' && isCustLink) return;
 
-    const colorMap = { fiber:'#00e5cc', trunk:'#4db8ff', wireless:'#a78bfa', copper:'#fb923c' };
     const cssMap   = { fiber:'fiber-active', trunk:'fiber-trunk', wireless:'fiber-wireless', copper:'fiber-active' };
-    const color    = colorMap[link.link_type] || '#22c55e';
+    const color    = pathColorForTypes(from.type, to.type, link.link_type);
     const css      = link.status === 'active' ? (cssMap[link.link_type] || 'fiber-active') : 'fiber-inactive';
 
     // Parse waypoints from DB

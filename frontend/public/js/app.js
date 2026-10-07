@@ -11,10 +11,13 @@ const App = {
     this.initTheme();
     this.setDate();
     this.initSidebar();
-    this.initNotifications();
     this.initLogout();
-    this.initSocket();
     this.initSearch();
+    const later = window.requestIdleCallback || ((fn) => setTimeout(fn, 450));
+    later(() => {
+      this.initNotifications();
+      this.initSocket();
+    });
   },
 
   initTheme() {
@@ -139,6 +142,76 @@ const App = {
         if (window.innerWidth < 768) closeSidebar();
       });
     });
+    this.initFastNav(sidebar);
+  },
+
+  initFastNav(sidebar) {
+    if (window.__fastNav) return;
+    window.__fastNav = true;
+    let bar = document.getElementById('navProgress');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'navProgress';
+      bar.innerHTML = '<i></i>';
+      document.body.appendChild(bar);
+    }
+    if (!document.getElementById('navProgressStyle')) {
+      const st = document.createElement('style');
+      st.id = 'navProgressStyle';
+      st.textContent = '#navProgress{position:fixed;top:0;left:0;right:0;height:3px;z-index:100000;pointer-events:none;opacity:0;background:transparent}'
+        + '#navProgress.show{opacity:1}'
+        + '#navProgress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#1a6ef5,#38bdf8);box-shadow:0 0 8px rgba(26,110,245,.55)}'
+        + '#navProgress.show i{width:72%;transition:width .45s ease}'
+        + '#navProgress.done i{width:100%;transition:width .12s linear}'
+        + '.nav-item.nav-pending,.nav-sub.nav-pending{opacity:.65}';
+      document.head.appendChild(st);
+    }
+    const show = () => {
+      bar.classList.remove('done');
+      bar.classList.add('show');
+      const i = bar.querySelector('i');
+      if (i) { i.style.width = '0'; requestAnimationFrame(() => { i.style.width = ''; }); }
+      try { sessionStorage.setItem('navProgress', '1'); } catch (_) {}
+    };
+    const hide = () => {
+      bar.classList.add('done');
+      setTimeout(() => {
+        bar.classList.remove('show', 'done');
+        const i = bar.querySelector('i');
+        if (i) i.style.width = '0';
+      }, 180);
+      try { sessionStorage.removeItem('navProgress'); } catch (_) {}
+    };
+    try { if (sessionStorage.getItem('navProgress')) show(); } catch (_) {}
+    window.addEventListener('pageshow', (e) => { if (e.persisted) hide(); else setTimeout(hide, 60); });
+    const seen = window.__navPrefetch = window.__navPrefetch || new Set();
+    const prefetch = (href) => {
+      if (!href || href.charAt(0) === '#' || href.indexOf('javascript:') === 0) return;
+      try {
+        const u = new URL(href, location.origin);
+        if (u.origin !== location.origin) return;
+        if (u.pathname === location.pathname && u.search === location.search) return;
+        href = u.pathname + u.search;
+      } catch (_) { return; }
+      if (seen.has(href)) return;
+      seen.add(href);
+      fetch(href, { credentials: 'same-origin', priority: 'low' }).catch(() => {});
+    };
+    const bind = (el) => {
+      if (!el || el.dataset.fastNav) return;
+      if (el.classList.contains('nav-group-toggle')) return;
+      const href = el.getAttribute('href');
+      if (!href || href === '#' || href.indexOf('javascript:') === 0) return;
+      el.dataset.fastNav = '1';
+      el.addEventListener('pointerenter', () => prefetch(href), { passive: true });
+      el.addEventListener('click', (e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+        if (el.target === '_blank') return;
+        show();
+        el.classList.add('nav-pending');
+      });
+    };
+    sidebar.querySelectorAll('a.nav-item, a.nav-sub').forEach(bind);
   },
 
   initNotifications() {

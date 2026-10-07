@@ -247,8 +247,16 @@ const demoApiLimiter = rateLimit({
 app.use('/api', demoApiLimiter);
 
 
-// Static files
-app.use(express.static(path.join(__dirname, '..', 'frontend', 'public')));
+// Static files — cache singkat supaya pindah modul sidebar tidak unduh ulang JS/CSS.
+app.use(express.static(path.join(__dirname, '..', 'frontend', 'public'), {
+  etag: true,
+  lastModified: true,
+  setHeaders(res, filePath) {
+    if (/\.(?:js|css|woff2?|png|svg|ico|webp|jpg)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=86400');
+    }
+  }
+}));
 
 // ── Guard: block direct access to *.json / *.env / dotfiles under /uploads ──
 // The uploads folder is serve-as-static for user-uploaded media (photos, etc.),
