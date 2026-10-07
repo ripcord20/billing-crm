@@ -247,8 +247,28 @@ const demoApiLimiter = rateLimit({
 app.use('/api', demoApiLimiter);
 
 
-// Static files
-app.use(express.static(path.join(__dirname, '..', 'frontend', 'public')));
+// Static files — cache singkat supaya pindah modul sidebar tidak unduh ulang JS/CSS.
+app.use(express.static(path.join(__dirname, '..', 'frontend', 'public'), {
+  etag: true,
+  lastModified: true,
+  setHeaders(res, filePath) {
+    if (/\.(?:js|css|woff2?|png|svg|ico|webp|jpg)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=86400');
+    }
+  }
+}));
+
+// Cache-bust app.js di HTML supaya Cloudflare tidak menyimpan bundle sidebar lama.
+app.use((req, res, next) => {
+  const origSend = res.send.bind(res);
+  res.send = function sendWithAppJsBust(body) {
+    if (typeof body === 'string' && body.includes('/js/app.js"')) {
+      body = body.replace(/src="\/js\/app\.js"/g, 'src="/js/app.js?v=fastnav1"');
+    }
+    return origSend(body);
+  };
+  next();
+});
 
 // ── Guard: block direct access to *.json / *.env / dotfiles under /uploads ──
 // The uploads folder is serve-as-static for user-uploaded media (photos, etc.),

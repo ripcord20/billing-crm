@@ -451,8 +451,11 @@ async function updateNotifCount() {
 
 // Init + socket listener
 document.addEventListener('DOMContentLoaded', () => {
-  updateNotifCount();
-  setInterval(updateNotifCount, 30000); // refresh tiap 30 detik
+  const later = window.requestIdleCallback || ((fn) => setTimeout(fn, 700));
+  later(() => {
+    updateNotifCount();
+    setInterval(updateNotifCount, 30000);
+  });
   // Socket real-time ditangani oleh App.initSocket() (satu koneksi saja) agar
   // tidak ada toast/notif dobel. App akan memanggil window.updateNotifCount &
   // window.loadNotifPanel saat ada notifikasi baru.
