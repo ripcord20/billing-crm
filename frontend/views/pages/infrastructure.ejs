@@ -877,6 +877,11 @@
               <span class="btn-label">Draw Link</span>
             </button>
 
+            <button class="map-draw-btn" id="movePtsBtn" type="button" onclick="toggleMovePointsMode()" title="Aktifkan untuk menggeser ODC, ODP, atau pelanggan">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>
+              <span class="btn-label" id="movePtsLabel">Pindahkan</span>
+            </button>
+
             <!-- Spacer: dorong filter ke kanan di desktop -->
             <div class="map-topbar-spacer"></div>
 
@@ -932,6 +937,11 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="12" r="2.5"/><line x1="7.5" y1="12" x2="16.5" y2="12" stroke-dasharray="3 2"/></svg>
           <span id="drawModeText">Klik titik PERTAMA — lalu klik peta untuk belokkan kabel</span>
           <button class="draw-cancel" onclick="cancelDrawMode()">Batal</button>
+        </div>
+        <div id="moveModeBar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>
+          <span>Mode pindah aktif — geser ODC / ODP / pelanggan, lalu kunci</span>
+          <button class="draw-cancel" type="button" onclick="setMovePointsMode(false)">Kunci</button>
         </div>
 
         <!-- Stats bar -->
@@ -1771,6 +1781,6 @@ window.customConfirm = function(opts) {
 <script src="/js/app.js?v=fastnav1"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="/js/infrastructure.js?v=pathcolor1"></script>
+<script src="/js/infrastructure.js?v=lockdrag1"></script>
 </body>
 </html>
