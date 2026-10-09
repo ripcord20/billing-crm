@@ -17,6 +17,7 @@
 // Label kanonik. Kunci = nilai tersimpan di DB (payment_method) atau channel.
 const LABELS = {
   cash:            'Tunai',
+  ntf:             'NTF',
   transfer:        'Transfer Bank',
   field_collection:'Cash Collect',
   dana:            'DANA',

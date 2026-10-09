@@ -12,6 +12,8 @@ assert.ok(
 );
 assert.ok(src.includes('toggleBulkCheck'), 'checkbox harus onchange terpisah supaya tidak dobel-toggle');
 assert.ok(src.includes('[..._bulkPicked.values()]'), 'setor harus memakai semua yang dicentang, termasuk yang sedang tidak tampil');
+assert.ok(src.includes('pay_method') && src.includes('pay_notes'), 'setor massal harus kirim metode dan catatan per pelanggan');
+assert.ok(src.includes("['ntf', 'NTF']") || src.includes("['ntf','NTF']") || src.includes("['ntf', 'NTF']"), 'opsi NTF harus ada');
 
 function applySearch(picked, visibleRows) {
   for (const row of visibleRows) {

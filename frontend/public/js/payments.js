@@ -1272,10 +1272,47 @@ function bulkId(id) {
   return Number.isFinite(n) ? n : null;
 }
 
+function bulkHasWilayah() {
+  return !!document.getElementById('bulkWilayah');
+}
+
+function bulkTableCols() {
+  const n = document.querySelectorAll('#tabPanelBulk .pay-table thead th').length;
+  return n || (bulkHasWilayah() ? 9 : 8);
+}
+
+function bulkDefaultMethod() {
+  return document.getElementById('bulkMethod')?.value || 'cash';
+}
+
+function bulkDefaultNotes() {
+  return document.getElementById('bulkNotes')?.value || '';
+}
+
+function bulkMethodOptionsHtml(selected) {
+  const cur = selected || 'cash';
+  const opts = [
+    ['cash', 'Cash'],
+    ['ntf', 'NTF'],
+    ['transfer', 'Transfer'],
+    ['dana', 'DANA'],
+    ['ovo', 'OVO'],
+    ['gopay', 'GoPay'],
+    ['qris', 'QRIS']
+  ];
+  return opts.map(([v, l]) =>
+    '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>' + l + '</option>'
+  ).join('');
+}
+
 function rememberBulkRow(row) {
   const id = bulkId(row && row.id);
   if (id == null) return;
-  _bulkPicked.set(id, Object.assign({}, row, { id }));
+  const prev = _bulkPicked.get(id) || {};
+  const next = Object.assign({}, row, { id });
+  next.pay_method = prev.pay_method || next.pay_method || bulkDefaultMethod();
+  next.pay_notes = prev.pay_notes != null ? prev.pay_notes : (next.pay_notes != null ? next.pay_notes : bulkDefaultNotes());
+  _bulkPicked.set(id, next);
 }
 
 function isBulkPicked(id) {
@@ -1287,8 +1324,14 @@ function setBulkPicked(id, on, row) {
   const nid = bulkId(id);
   if (nid == null) return;
   if (on) {
+    const existed = _bulkPicked.has(nid);
     const src = row || _bulkRows.find(r => bulkId(r.id) === nid) || _bulkPicked.get(nid) || { id: nid };
     rememberBulkRow(src);
+    if (!existed) {
+      const cur = _bulkPicked.get(nid);
+      cur.pay_method = bulkDefaultMethod();
+      cur.pay_notes = bulkDefaultNotes();
+    }
   } else {
     _bulkPicked.delete(nid);
   }
@@ -1332,49 +1375,75 @@ async function loadUnpaidCustomers() {
   const tbody = document.getElementById('bulkTable');
   if (!tbody) return;
   const seq = ++_bulkLoadSeq;
+  const cols = bulkTableCols();
   const hint = document.getElementById('bulkSearchHint');
   if (hint) hint.textContent = 'Memuat...';
   if (!tbody.dataset.ready) {
-    tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty"><p>Memuat pelanggan...</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="' + cols + '"><div class="tbl-empty"><p>Memuat pelanggan...</p></div></td></tr>';
   }
   const month = document.getElementById('payPeriodMonth')?.value || document.getElementById('filterMonth')?.value;
   const year = document.getElementById('payPeriodYear')?.value || document.getElementById('filterYear')?.value;
   const q = document.getElementById('bulkSearch')?.value || '';
-  const d = await App.api('/payments/unpaid-customers?q=' + encodeURIComponent(q) + '&month=' + month + '&year=' + year);
+  const wilayah = document.getElementById('bulkWilayah')?.value || '';
+  const d = await App.api('/payments/unpaid-customers?q=' + encodeURIComponent(q)
+    + '&month=' + encodeURIComponent(month || '')
+    + '&year=' + encodeURIComponent(year || '')
+    + (wilayah ? '&wilayah=' + encodeURIComponent(wilayah) : ''));
   if (seq !== _bulkLoadSeq) return;
   if (hint) hint.textContent = _bulkPicked.size
     ? (_bulkPicked.size + ' tetap dipilih — cari nama lain, centang tidak hilang')
     : 'Centang tidak hilang saat cari nama lain';
   if (!d?.success) {
-    tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty friendly"><p>Gagal memuat daftar</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="' + cols + '"><div class="tbl-empty friendly"><p>Gagal memuat daftar</p></div></td></tr>';
     delete tbody.dataset.ready;
     return;
   }
+  fillBulkWilayahOptions(d.areas || [], wilayah);
   _bulkRows = (d.data || []).map(r => Object.assign({}, r, { id: bulkId(r.id) }));
   _bulkRows.forEach(r => { if (_bulkPicked.has(r.id)) rememberBulkRow(r); });
   tbody.dataset.ready = '1';
   if (!_bulkRows.length) {
-    tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty friendly"><p>Tidak ada pelanggan tertunggak</p><span>Semua sudah lunas untuk periode ini, atau coba kata kunci lain. Pilihan sebelumnya tetap tersimpan di bawah.</span></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="' + cols + '"><div class="tbl-empty friendly"><p>Tidak ada pelanggan tertunggak'
+      + (wilayah ? ' di wilayah ' + esc(wilayah) : '') + '</p><span>Semua sudah lunas untuk periode ini, atau coba kata kunci lain. Pilihan sebelumnya tetap tersimpan di bawah.</span></div></td></tr>';
     updateBulkBar();
     return;
   }
   tbody.innerHTML = _bulkRows.map(r => {
-    const checked = isBulkPicked(r.id) ? 'checked' : '';
+    const picked = _bulkPicked.get(r.id);
+    const checked = picked ? 'checked' : '';
+    const method = (picked && picked.pay_method) || bulkDefaultMethod();
+    const notes = picked && picked.pay_notes != null ? picked.pay_notes : bulkDefaultNotes();
     const due = (r.invoice_due || r.due_date)
       ? new Date((r.invoice_due || r.due_date) + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short' })
       : '–';
     const janji = r.promise_date
       ? '<span class="debt-badge">' + new Date(r.promise_date + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short' }) + '</span>'
       : '–';
+    const areaCell = bulkHasWilayah()
+      ? '<td style="font-size:12px;color:#334155;">' + esc(r.wilayah || r.district || r.village || r.regency || '–') + '</td>'
+      : '';
     return '<tr class="bulk-row' + (checked ? ' sel' : '') + '" onclick="toggleBulkRow(' + r.id + ', event)">' +
       '<td><input type="checkbox" class="bulk-check" data-id="' + r.id + '" ' + checked + ' onclick="event.stopPropagation()" onchange="toggleBulkCheck(' + r.id + ', this.checked)"></td>' +
       '<td><div style="font-weight:700;">' + esc(r.name) + '</div><div style="font-size:11px;color:#94a3b8;">' + esc(r.cid) + (r.phone ? ' · ' + esc(r.phone) : '') + '</div></td>' +
+      areaCell +
       '<td>' + esc(r.pkg_name || '–') + '</td>' +
       '<td style="font-weight:700;">Rp ' + Number(r.amount || 0).toLocaleString('id-ID') + '</td>' +
+      '<td onclick="event.stopPropagation()"><select class="bulk-row-method" data-id="' + r.id + '" onchange="setBulkRowMethod(' + r.id + ', this.value)">' + bulkMethodOptionsHtml(method) + '</select></td>' +
+      '<td onclick="event.stopPropagation()"><input type="text" class="bulk-row-note" data-id="' + r.id + '" value="' + esc(notes) + '" placeholder="Catatan..." oninput="setBulkRowNote(' + r.id + ', this.value)"></td>' +
       '<td>' + due + '</td>' +
       '<td>' + janji + '</td></tr>';
   }).join('');
   updateBulkBar();
+}
+
+function fillBulkWilayahOptions(areas, selected) {
+  const sel = document.getElementById('bulkWilayah');
+  if (!sel) return;
+  const cur = selected || sel.value || '';
+  const list = Array.isArray(areas) ? areas.slice() : [];
+  if (cur && !list.includes(cur)) list.unshift(cur);
+  sel.innerHTML = '<option value="">Semua wilayah</option>' +
+    list.map(a => '<option value="' + esc(a) + '"' + (a === cur ? ' selected' : '') + '>' + esc(a) + '</option>').join('');
 }
 
 window.toggleBulkCheck = function(id, on) {
@@ -1385,10 +1454,46 @@ window.toggleBulkCheck = function(id, on) {
 
 window.toggleBulkRow = function(id, ev) {
   const t = ev && ev.target;
-  if (t && (t.classList?.contains('bulk-check') || (typeof t.closest === 'function' && t.closest('.bulk-check')))) return;
+  if (t && typeof t.closest === 'function' && t.closest('.bulk-check, .bulk-row-method, .bulk-row-note, select, input, textarea, button')) return;
   setBulkPicked(id, !isBulkPicked(id));
   syncBulkRowUi(id);
   updateBulkBar();
+};
+
+window.setBulkRowMethod = function(id, method) {
+  const nid = bulkId(id);
+  if (nid == null) return;
+  if (!_bulkPicked.has(nid)) setBulkPicked(nid, true);
+  const cur = _bulkPicked.get(nid);
+  if (cur) cur.pay_method = method || 'cash';
+  const cb = document.querySelector('#bulkTable .bulk-check[data-id="' + nid + '"]');
+  if (cb) {
+    cb.checked = true;
+    cb.closest('tr')?.classList.add('sel');
+  }
+  updateBulkBar();
+};
+
+window.setBulkRowNote = function(id, notes) {
+  const nid = bulkId(id);
+  if (nid == null) return;
+  if (!_bulkPicked.has(nid)) setBulkPicked(nid, true);
+  const cur = _bulkPicked.get(nid);
+  if (cur) cur.pay_notes = notes || '';
+  const cb = document.querySelector('#bulkTable .bulk-check[data-id="' + nid + '"]');
+  if (cb) {
+    cb.checked = true;
+    cb.closest('tr')?.classList.add('sel');
+  }
+  updateBulkBar();
+};
+
+window.onBulkMethodChange = function() {
+  const m = bulkDefaultMethod();
+  _bulkPicked.forEach(r => { r.pay_method = m; });
+  document.querySelectorAll('#bulkTable .bulk-row-method').forEach(el => {
+    if (_bulkPicked.has(bulkId(el.dataset.id))) el.value = m;
+  });
 };
 
 window.toggleBulkAll = function(on) {
@@ -1432,9 +1537,19 @@ function updateBulkBar() {
 
 window.submitBulkPay = async function() {
   if (!_bulkPicked.size) { App.showToast('Centang pelanggan dulu', 'error'); return; }
+  document.querySelectorAll('#bulkTable .bulk-row-method').forEach(el => {
+    const id = bulkId(el.dataset.id);
+    if (_bulkPicked.has(id)) _bulkPicked.get(id).pay_method = el.value;
+  });
+  document.querySelectorAll('#bulkTable .bulk-row-note').forEach(el => {
+    const id = bulkId(el.dataset.id);
+    if (_bulkPicked.has(id)) _bulkPicked.get(id).pay_notes = el.value;
+  });
   const items = [..._bulkPicked.values()].map(r => ({
     customer_id: r.id,
-    amount: r.amount
+    amount: r.amount,
+    method: r.pay_method || bulkDefaultMethod(),
+    notes: r.pay_notes || ''
   }));
   const btn = document.getElementById('bulkPayBtn');
   btn.disabled = true;
@@ -1443,11 +1558,11 @@ window.submitBulkPay = async function() {
     method: 'POST',
     body: JSON.stringify({
       items,
-      method: document.getElementById('bulkMethod')?.value || 'cash',
+      method: bulkDefaultMethod(),
       payment_date: document.getElementById('payDate')?.value,
       period_month: document.getElementById('payPeriodMonth')?.value,
       period_year: document.getElementById('payPeriodYear')?.value,
-      notes: 'Setor massal'
+      notes: bulkDefaultNotes()
     })
   });
   btn.textContent = 'Bayar yang dicentang';

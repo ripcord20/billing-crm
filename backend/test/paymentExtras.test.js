@@ -4,6 +4,8 @@ const {
   computePromiseDate,
   resolvePromiseDate,
   normalizeBulkPayload,
+  canonBulkMethod,
+  composeBulkNotes,
   MAX_DEFER_DAYS,
   MAX_BULK_ITEMS
 } = require('../utils/paymentExtras');
@@ -49,5 +51,23 @@ const tooMany = normalizeBulkPayload({
   customer_ids: Array.from({ length: MAX_BULK_ITEMS + 1 }, (_, i) => i + 1)
 });
 assert.ok(tooMany.error);
+
+assert.strictEqual(canonBulkMethod('ntf'), 'transfer');
+assert.strictEqual(canonBulkMethod('cash'), 'cash');
+assert.strictEqual(composeBulkNotes('ntf', ''), 'Setor massal · NTF');
+assert.strictEqual(composeBulkNotes('cash', ''), 'Setor massal · Cash');
+assert.strictEqual(composeBulkNotes('ntf', '  via tukang tagih  '), 'via tukang tagih');
+
+const mixed = normalizeBulkPayload({
+  items: [
+    { customer_id: 1, amount: 100000, method: 'ntf', notes: '' },
+    { customer_id: 2, amount: 150000, method: 'cash', notes: 'rumah' }
+  ],
+  method: 'cash'
+});
+assert.strictEqual(mixed.items[0].method, 'transfer');
+assert.strictEqual(mixed.items[0].notes, 'Setor massal · NTF');
+assert.strictEqual(mixed.items[1].method, 'cash');
+assert.strictEqual(mixed.items[1].notes, 'rumah');
 
 console.log('paymentExtras.test.js OK');
