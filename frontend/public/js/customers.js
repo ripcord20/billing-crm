@@ -689,6 +689,9 @@ async function loadCustomers() {
       + '<td><span class="sb '+stCls+'"><span class="sb-dot" style="background:'+stDot+'"></span>'+stLabel+'</span></td>'
       + '<td style="text-align:right;padding-right:18px">'
         + '<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">'
+          + (c.status !== 'inactive'
+            ? '<a class="rb rb-pay'+((isOv || (diffCk !== null && diffCk < 0 && c.latest_invoice_status !== 'paid'))?' rb-pay-hot':'')+'" href="/payments?pay='+c.id+'" style="text-decoration:none">Bayar</a>'
+            : '')
           + '<button class="rb rb-wa" onclick="sendWA(\''+_esc(c.phone||'')+'\')" >WA</button>'
           + '<button class="rb rb-edit" onclick="editCustomer('+c.id+')">Edit</button>'
           + isoBtn
