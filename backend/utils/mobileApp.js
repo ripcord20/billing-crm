@@ -3,6 +3,7 @@
 /**
  * Deteksi APK Capacitor / Android WebView dari User-Agent.
  * Chrome WebView menyertakan "; wv)" — browser Chrome biasa tidak.
+ * APK Fiberix memakai UA "Fiberix/1.0" atau "FiberixBilling/n".
  */
 function isMobileAppUserAgent(ua) {
   const s = String(ua || '');
@@ -10,14 +11,10 @@ function isMobileAppUserAgent(ua) {
 }
 
 /**
- * Home path khusus APK. Admin/superadmin ke shell /mobile.
- * Role lain (collector, finance, …) tetap pakai homePathForRole.
- * Return null kalau bukan APK / bukan role shell.
+ * Home APK = sama dengan browser (dashboard / noc / collect/field, …).
+ * Jangan arahkan ke /mobile — itu shell ringkas, bukan tampilan yang dipakai operator.
  */
-function homePathForMobileApp(roleName, ua) {
-  if (!isMobileAppUserAgent(ua)) return null;
-  const r = String(roleName || '').toLowerCase();
-  if (r === 'superadmin' || r === 'admin') return '/mobile';
+function homePathForMobileApp(_roleName, _ua) {
   return null;
 }
 

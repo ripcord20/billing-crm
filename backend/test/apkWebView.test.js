@@ -14,11 +14,9 @@ assert.strictEqual(isMobileAppUserAgent('Mozilla/5.0 (Linux; Android 13) Capacit
 assert.strictEqual(isMobileAppUserAgent('Fiberix/1.0 Android'), true);
 assert.strictEqual(isMobileAppUserAgent('Mozilla/5.0 FiberixBilling/2.1'), true);
 
-assert.strictEqual(homePathForMobileApp('admin', 'Mozilla/5.0 (Linux; Android 13; wv) Chrome/120'), '/mobile');
-assert.strictEqual(homePathForMobileApp('superadmin', 'Mozilla/5.0 (Linux; Android 13; wv) Chrome/120'), '/mobile');
-assert.strictEqual(homePathForMobileApp('collector', 'Mozilla/5.0 (Linux; Android 13; wv) Chrome/120'), null);
-assert.strictEqual(homePathForMobileApp('admin', 'Mozilla/5.0 (Windows NT 10.0; Chrome/120)'), null);
-assert.strictEqual(resolveAppHomePath('admin', 'Mozilla/5.0 (Linux; Android 13; wv)', '/dashboard'), '/mobile');
+assert.strictEqual(homePathForMobileApp('admin', 'Mozilla/5.0 (Linux; Android 13; wv) Chrome/120'), null);
+assert.strictEqual(homePathForMobileApp('superadmin', 'Mozilla/5.0 (Linux; Android 13; wv) Chrome/120'), null);
+assert.strictEqual(resolveAppHomePath('admin', 'Mozilla/5.0 (Linux; Android 13; wv)', '/dashboard'), '/dashboard');
 assert.strictEqual(resolveAppHomePath('collector', 'Mozilla/5.0 (Linux; Android 13; wv)', '/collect/field'), '/collect/field');
 
 const paySrc = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/mobile/payments.ejs'), 'utf8');
@@ -31,7 +29,8 @@ assert.ok(newSrc.includes('data-m="ntf"'), 'form mobile harus punya opsi NTF');
 assert.ok(newSrc.includes("(_method==='ntf')?'transfer':_method") || newSrc.includes('methodCanon'), 'NTF disimpan sebagai transfer');
 
 const loginSrc = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/login.ejs'), 'utf8');
-assert.ok(loginSrc.includes('flynIsAppShell'), 'login harus deteksi Capacitor/WebView');
+assert.ok(!loginSrc.includes("return '/mobile'"), 'login APK tidak boleh memaksa /mobile');
+assert.ok(loginSrc.includes("removeItem('flyn_prefer_mobile')"), 'hapus preferensi /mobile yang tertinggal di APK');
 assert.ok(loginSrc.includes("credentials: 'include'"), 'login fetch harus kirim cookie di WebView');
 
 const serverSrc = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');

@@ -518,11 +518,6 @@
     // Tujuan setelah login berhasil. Prioritas:
     //   1) nextUrl dari server (?next= yang sudah divalidasi), lalu
     //   2) ?next= di URL saat ini (fallback), harus path internal yang aman.
-    window.flynIsAppShell = function(){
-      try { if (window.Capacitor) return true; } catch(_){}
-      var ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
-      return /;\s*wv\)/i.test(ua) || /Capacitor/i.test(ua) || /Fiberix(?:Billing)?\/\d/i.test(ua);
-    };
     window.FLYN_NEXT = (function(){
       var fromServer = <%- JSON.stringify(typeof nextUrl !== 'undefined' ? nextUrl : '') %>;
       function safe(v){ return (typeof v==='string' && v.charAt(0)==='/' && v.charAt(1)!=='/') ? v : ''; }
@@ -534,28 +529,13 @@
           if (safe(q)) chosen = q;
         } catch(_){}
       }
-      // Ingat kalau tujuan adalah area mobile, supaya relaunch APK (yang mungkin
-      // membuka /login polos tanpa ?next) tetap kembali ke /mobile.
-      try {
-        if (chosen && chosen.indexOf('/mobile') === 0) {
-          localStorage.setItem('flyn_prefer_mobile', chosen);
-        }
-        if (!chosen) {
-          var remembered = localStorage.getItem('flyn_prefer_mobile');
-          if (safe(remembered) && remembered.indexOf('/mobile') === 0) chosen = remembered;
-        }
-      } catch(_){}
+      // Jangan paksa APK ke /mobile. Tampilan biasa = dashboard web (seperti sebelumnya).
+      try { localStorage.removeItem('flyn_prefer_mobile'); } catch(_){}
       return chosen;
     })();
     // Gabungkan tujuan server-role dengan FLYN_NEXT (kalau ada, next menang).
-    // APK WebView: admin landing di /mobile, bukan dashboard desktop yang sering
-    // gagal dimuat (Chrome "Halaman web tidak tersedia").
     window.flynDest = function(serverRedirect){
-      if (window.FLYN_NEXT) return window.FLYN_NEXT;
-      if (window.flynIsAppShell() && (!serverRedirect || serverRedirect === '/dashboard')) {
-        return '/mobile';
-      }
-      return serverRedirect || '/dashboard';
+      return window.FLYN_NEXT || serverRedirect || '/dashboard';
     };
   </script>
   <!-- ════════════════════════════════════════════════════════════════
