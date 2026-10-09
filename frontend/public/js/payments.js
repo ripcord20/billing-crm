@@ -12,7 +12,8 @@ let _debtPage   = 1;
 let _debtLoaded = false;
 let _bulkLoaded = false;
 let _bulkRows   = [];
-let _bulkSelected = new Set();
+let _bulkPicked = new Map(); // id -> row, tetap hidup saat cari pelanggan lain
+let _bulkLoadSeq = 0;
 let _debtSearchTimer = null;
 let _bulkSearchTimer = null;
 let _ostLoaded = false;
@@ -1266,6 +1267,62 @@ window.cancelDeferral = async function(id) {
   else App.showToast(d?.message || 'Gagal membatalkan', 'error');
 };
 
+function bulkId(id) {
+  const n = parseInt(id, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function rememberBulkRow(row) {
+  const id = bulkId(row && row.id);
+  if (id == null) return;
+  _bulkPicked.set(id, Object.assign({}, row, { id }));
+}
+
+function isBulkPicked(id) {
+  const nid = bulkId(id);
+  return nid != null && _bulkPicked.has(nid);
+}
+
+function setBulkPicked(id, on, row) {
+  const nid = bulkId(id);
+  if (nid == null) return;
+  if (on) {
+    const src = row || _bulkRows.find(r => bulkId(r.id) === nid) || _bulkPicked.get(nid) || { id: nid };
+    rememberBulkRow(src);
+  } else {
+    _bulkPicked.delete(nid);
+  }
+}
+
+function syncBulkRowUi(id) {
+  const nid = bulkId(id);
+  const on = nid != null && _bulkPicked.has(nid);
+  const cb = document.querySelector('#bulkTable .bulk-check[data-id="' + nid + '"]');
+  if (cb) {
+    cb.checked = on;
+    cb.closest('tr')?.classList.toggle('sel', on);
+  }
+}
+
+function renderBulkPicked() {
+  const el = document.getElementById('bulkPicked');
+  if (!el) return;
+  const items = [..._bulkPicked.values()];
+  if (!items.length) {
+    el.innerHTML = '';
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = 'flex';
+  const shown = items.slice(0, 12);
+  el.innerHTML = shown.map(r =>
+    '<span class="bulk-chip" title="' + esc(r.cid || '') + '"><span>' + esc(r.name || r.cid || ('#' + r.id)) +
+    '</span><button type="button" onclick="unpickBulk(' + r.id + ')" title="Hapus dari pilihan">×</button></span>'
+  ).join('') +
+    (items.length > 12 ? '<span class="bulk-chip more">+' + (items.length - 12) + ' lagi</span>' : '') +
+    '<button type="button" class="bulk-clear" onclick="clearBulkPicked()">Hapus semua</button>';
+}
+
 window.onBulkSearchChange = function() {
   clearTimeout(_bulkSearchTimer);
   _bulkSearchTimer = setTimeout(() => loadUnpaidCustomers(), 300);
@@ -1274,26 +1331,35 @@ window.onBulkSearchChange = function() {
 async function loadUnpaidCustomers() {
   const tbody = document.getElementById('bulkTable');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty"><p>Memuat pelanggan...</p></div></td></tr>';
+  const seq = ++_bulkLoadSeq;
+  const hint = document.getElementById('bulkSearchHint');
+  if (hint) hint.textContent = 'Memuat...';
+  if (!tbody.dataset.ready) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty"><p>Memuat pelanggan...</p></div></td></tr>';
+  }
   const month = document.getElementById('payPeriodMonth')?.value || document.getElementById('filterMonth')?.value;
   const year = document.getElementById('payPeriodYear')?.value || document.getElementById('filterYear')?.value;
   const q = document.getElementById('bulkSearch')?.value || '';
   const d = await App.api('/payments/unpaid-customers?q=' + encodeURIComponent(q) + '&month=' + month + '&year=' + year);
+  if (seq !== _bulkLoadSeq) return;
+  if (hint) hint.textContent = _bulkPicked.size
+    ? (_bulkPicked.size + ' tetap dipilih — cari nama lain, centang tidak hilang')
+    : 'Centang tidak hilang saat cari nama lain';
   if (!d?.success) {
     tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty friendly"><p>Gagal memuat daftar</p></div></td></tr>';
+    delete tbody.dataset.ready;
     return;
   }
-  _bulkRows = d.data || [];
-  const keep = new Set();
-  _bulkSelected.forEach(id => { if (_bulkRows.some(r => r.id === id)) keep.add(id); });
-  _bulkSelected = keep;
+  _bulkRows = (d.data || []).map(r => Object.assign({}, r, { id: bulkId(r.id) }));
+  _bulkRows.forEach(r => { if (_bulkPicked.has(r.id)) rememberBulkRow(r); });
+  tbody.dataset.ready = '1';
   if (!_bulkRows.length) {
-    tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty friendly"><p>Tidak ada pelanggan tertunggak</p><span>Semua sudah lunas untuk periode ini, atau coba kata kunci lain</span></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty friendly"><p>Tidak ada pelanggan tertunggak</p><span>Semua sudah lunas untuk periode ini, atau coba kata kunci lain. Pilihan sebelumnya tetap tersimpan di bawah.</span></div></td></tr>';
     updateBulkBar();
     return;
   }
   tbody.innerHTML = _bulkRows.map(r => {
-    const checked = _bulkSelected.has(r.id) ? 'checked' : '';
+    const checked = isBulkPicked(r.id) ? 'checked' : '';
     const due = (r.invoice_due || r.due_date)
       ? new Date((r.invoice_due || r.due_date) + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short' })
       : '–';
@@ -1301,7 +1367,7 @@ async function loadUnpaidCustomers() {
       ? '<span class="debt-badge">' + new Date(r.promise_date + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short' }) + '</span>'
       : '–';
     return '<tr class="bulk-row' + (checked ? ' sel' : '') + '" onclick="toggleBulkRow(' + r.id + ', event)">' +
-      '<td><input type="checkbox" class="bulk-check" data-id="' + r.id + '" ' + checked + ' onclick="event.stopPropagation(); toggleBulkRow(' + r.id + ')"></td>' +
+      '<td><input type="checkbox" class="bulk-check" data-id="' + r.id + '" ' + checked + ' onclick="event.stopPropagation()" onchange="toggleBulkCheck(' + r.id + ', this.checked)"></td>' +
       '<td><div style="font-weight:700;">' + esc(r.name) + '</div><div style="font-size:11px;color:#94a3b8;">' + esc(r.cid) + (r.phone ? ' · ' + esc(r.phone) : '') + '</div></td>' +
       '<td>' + esc(r.pkg_name || '–') + '</td>' +
       '<td style="font-weight:700;">Rp ' + Number(r.amount || 0).toLocaleString('id-ID') + '</td>' +
@@ -1311,38 +1377,62 @@ async function loadUnpaidCustomers() {
   updateBulkBar();
 }
 
+window.toggleBulkCheck = function(id, on) {
+  setBulkPicked(id, !!on);
+  syncBulkRowUi(id);
+  updateBulkBar();
+};
+
 window.toggleBulkRow = function(id, ev) {
-  if (ev && ev.target && ev.target.classList && ev.target.classList.contains('bulk-check')) return;
-  if (_bulkSelected.has(id)) _bulkSelected.delete(id);
-  else _bulkSelected.add(id);
-  const cb = document.querySelector('.bulk-check[data-id="' + id + '"]');
-  if (cb) cb.checked = _bulkSelected.has(id);
-  const row = cb && cb.closest('tr');
-  if (row) row.classList.toggle('sel', _bulkSelected.has(id));
+  const t = ev && ev.target;
+  if (t && (t.classList?.contains('bulk-check') || (typeof t.closest === 'function' && t.closest('.bulk-check')))) return;
+  setBulkPicked(id, !isBulkPicked(id));
+  syncBulkRowUi(id);
   updateBulkBar();
 };
 
 window.toggleBulkAll = function(on) {
-  _bulkRows.forEach(r => { if (on) _bulkSelected.add(r.id); else _bulkSelected.delete(r.id); });
-  document.querySelectorAll('#bulkTable .bulk-check').forEach(cb => { cb.checked = on; cb.closest('tr')?.classList.toggle('sel', on); });
+  _bulkRows.forEach(r => setBulkPicked(r.id, on, r));
+  document.querySelectorAll('#bulkTable .bulk-check[data-id]').forEach(cb => {
+    cb.checked = on;
+    cb.closest('tr')?.classList.toggle('sel', on);
+  });
+  updateBulkBar();
+};
+
+window.unpickBulk = function(id) {
+  setBulkPicked(id, false);
+  syncBulkRowUi(id);
+  updateBulkBar();
+};
+
+window.clearBulkPicked = function() {
+  _bulkPicked.clear();
+  document.querySelectorAll('#bulkTable .bulk-check[data-id]').forEach(cb => {
+    cb.checked = false;
+    cb.closest('tr')?.classList.remove('sel');
+  });
   updateBulkBar();
 };
 
 function updateBulkBar() {
-  const n = _bulkSelected.size;
+  const n = _bulkPicked.size;
   let total = 0;
-  _bulkRows.forEach(r => { if (_bulkSelected.has(r.id)) total += Number(r.amount || 0); });
+  _bulkPicked.forEach(r => { total += Number(r.amount || 0); });
   setT('bulkSummary', n + ' pelanggan dipilih');
-  setT('bulkSummarySub', n ? ('Total Rp ' + total.toLocaleString('id-ID') + ' · jumlah bebas, tidak dibatasi 10') : 'Centang daftar dulu, baru tekan bayar');
+  setT('bulkSummarySub', n
+    ? ('Total Rp ' + total.toLocaleString('id-ID') + ' · termasuk yang sedang tidak tampil di pencarian')
+    : 'Centang daftar dulu, baru tekan bayar');
   const btn = document.getElementById('bulkPayBtn');
   if (btn) btn.disabled = n === 0;
   const all = document.getElementById('bulkCheckAll');
-  if (all) all.checked = n > 0 && n === _bulkRows.length;
+  if (all) all.checked = _bulkRows.length > 0 && _bulkRows.every(r => isBulkPicked(r.id));
+  renderBulkPicked();
 }
 
 window.submitBulkPay = async function() {
-  if (!_bulkSelected.size) { App.showToast('Centang pelanggan dulu', 'error'); return; }
-  const items = _bulkRows.filter(r => _bulkSelected.has(r.id)).map(r => ({
+  if (!_bulkPicked.size) { App.showToast('Centang pelanggan dulu', 'error'); return; }
+  const items = [..._bulkPicked.values()].map(r => ({
     customer_id: r.id,
     amount: r.amount
   }));
@@ -1363,7 +1453,9 @@ window.submitBulkPay = async function() {
   btn.textContent = 'Bayar yang dicentang';
   if (d?.success || (d?.data && d.data.total_ok > 0)) {
     App.showToast(d.message, d.data.total_fail ? 'warning' : 'success');
-    _bulkSelected.clear();
+    _bulkPicked.clear();
+    const tbody = document.getElementById('bulkTable');
+    if (tbody) delete tbody.dataset.ready;
     loadUnpaidCustomers();
     loadStats();
     loadChart();
