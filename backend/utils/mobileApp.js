@@ -6,7 +6,7 @@
  */
 function isMobileAppUserAgent(ua) {
   const s = String(ua || '');
-  return /;\s*wv\)/i.test(s) || /Capacitor/i.test(s) || /\bFiberix\b/i.test(s);
+  return /;\s*wv\)/i.test(s) || /Capacitor/i.test(s) || /Fiberix(?:Billing)?\/\d/i.test(s) || /\bFiberix\b/i.test(s);
 }
 
 /**

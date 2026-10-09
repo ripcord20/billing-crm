@@ -12,6 +12,7 @@ assert.strictEqual(isMobileAppUserAgent('Mozilla/5.0 (Linux; Android 13; Pixel 7
 assert.strictEqual(isMobileAppUserAgent('Mozilla/5.0 (Linux; Android 13; Pixel 7; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/120.0.6099.43 Mobile Safari/537.36'), true);
 assert.strictEqual(isMobileAppUserAgent('Mozilla/5.0 (Linux; Android 13) Capacitor/5.0.0'), true);
 assert.strictEqual(isMobileAppUserAgent('Fiberix/1.0 Android'), true);
+assert.strictEqual(isMobileAppUserAgent('Mozilla/5.0 FiberixBilling/2.1'), true);
 
 assert.strictEqual(homePathForMobileApp('admin', 'Mozilla/5.0 (Linux; Android 13; wv) Chrome/120'), '/mobile');
 assert.strictEqual(homePathForMobileApp('superadmin', 'Mozilla/5.0 (Linux; Android 13; wv) Chrome/120'), '/mobile');

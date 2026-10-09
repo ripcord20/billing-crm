@@ -521,7 +521,7 @@
     window.flynIsAppShell = function(){
       try { if (window.Capacitor) return true; } catch(_){}
       var ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
-      return /;\s*wv\)/i.test(ua) || /Capacitor/i.test(ua);
+      return /;\s*wv\)/i.test(ua) || /Capacitor/i.test(ua) || /Fiberix(?:Billing)?\/\d/i.test(ua);
     };
     window.FLYN_NEXT = (function(){
       var fromServer = <%- JSON.stringify(typeof nextUrl !== 'undefined' ? nextUrl : '') %>;
