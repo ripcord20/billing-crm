@@ -351,6 +351,44 @@
       color:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
     }
     .bulk-pay-btn:disabled { opacity:.5; cursor:not-allowed; }
+    .bulk-picked {
+      display:none; flex-wrap:wrap; align-items:center; gap:6px;
+      padding:10px 18px 0;
+    }
+    .bulk-chip {
+      display:inline-flex; align-items:center; gap:6px;
+      background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe;
+      border-radius:999px; padding:4px 8px 4px 10px;
+      font-size:12px; font-weight:700; max-width:220px;
+    }
+    .bulk-chip span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .bulk-chip button {
+      border:none; background:transparent; cursor:pointer;
+      color:#1e40af; font-size:15px; line-height:1; padding:0 2px; font-weight:800;
+    }
+    .bulk-chip.more { background:#f1f5f9; color:#475569; border-color:#e2e8f0; }
+    .bulk-clear {
+      border:none; background:transparent; color:#1a6ef5; cursor:pointer;
+      font-size:12px; font-weight:700; font-family:inherit; padding:4px 6px;
+    }
+    .bulk-search-hint { font-size:11px; color:#94a3b8; min-height:14px; margin-top:4px; }
+    .bulk-notes {
+      min-width:180px; max-width:260px; padding:5px 9px; border:1.5px solid var(--d-border);
+      border-radius:8px; font-size:12px; outline:none; background:#f8faff; color:var(--d-text);
+      font-family:inherit;
+    }
+    .bulk-row-method {
+      padding:4px 6px; border:1.5px solid var(--d-border); border-radius:8px;
+      font-size:12px; background:#fff; color:var(--d-text); cursor:pointer; font-family:inherit;
+      min-width:92px;
+    }
+    .bulk-row-note {
+      width:100%; min-width:140px; padding:5px 8px; border:1.5px solid var(--d-border);
+      border-radius:8px; font-size:12px; background:#fff; color:var(--d-text); font-family:inherit;
+    }
+    [data-theme="dark"] .bulk-notes, [data-theme="dark"] .bulk-row-method, [data-theme="dark"] .bulk-row-note {
+      background:#0f172a; color:var(--d-text); border-color:#243049;
+    }
     .debt-badge { display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:999px; font-size:10.5px; font-weight:700; background:#ffedd5; color:#c2410c; }
     .debt-badge.late { background:#fee2e2; color:#b91c1c; }
     .pay-tab-badge { margin-left:2px; background:#ea580c; color:#fff; font-size:10px; font-weight:800; padding:1px 7px; border-radius:9px; }
@@ -371,6 +409,9 @@
     [data-theme="dark"] .card-val { color:#f8fafc; }
     [data-theme="dark"] .mpill, [data-theme="dark"] .dur-chip, [data-theme="dark"] .pf-input { background:#0f172a; color:var(--d-text); }
     [data-theme="dark"] .bulk-row.sel td { background:#16325c; }
+    [data-theme="dark"] .bulk-chip { background:#16325c; color:#bfdbfe; border-color:#1e3a8a; }
+    [data-theme="dark"] .bulk-chip button { color:#bfdbfe; }
+    [data-theme="dark"] .bulk-chip.more { background:#1e293b; color:#94a3b8; border-color:#334155; }
   </style>
 </head>
 <body>
@@ -832,21 +873,26 @@
               <div class="table-header">
                 <div>
                   <div class="tbl-section-title">Setor Massal Tukang Tagih</div>
-                  <div style="font-size:12px;color:var(--d-muted);margin-top:2px;">Centang pelanggan yang sudah bayar, lalu tekan Bayar. Jumlah fleksibel, tidak dibatasi 10.</div>
+                  <div style="font-size:12px;color:var(--d-muted);margin-top:2px;">Pilih Cash atau NTF per pelanggan, isi catatan, lalu Bayar. Jumlah fleksibel, tidak dibatasi 10.</div>
                 </div>
                 <div class="bulk-toolbar">
-                  <div class="tbl-search">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/></svg>
-                    <input type="text" id="bulkSearch" placeholder="Cari pelanggan belum lunas..." oninput="onBulkSearchChange()">
+                  <div>
+                    <div class="tbl-search">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/></svg>
+                      <input type="text" id="bulkSearch" placeholder="Cari pelanggan belum lunas..." oninput="onBulkSearchChange()">
+                    </div>
+                    <div class="bulk-search-hint" id="bulkSearchHint">Centang tidak hilang saat cari nama lain</div>
                   </div>
-                  <select id="bulkMethod" class="cf-select">
+                  <select id="bulkMethod" class="cf-select" onchange="onBulkMethodChange()" title="Metode default">
                     <option value="cash">Cash</option>
+                    <option value="ntf">NTF</option>
                     <option value="transfer">Transfer</option>
                     <option value="dana">DANA</option>
                     <option value="ovo">OVO</option>
                     <option value="gopay">GoPay</option>
                     <option value="qris">QRIS</option>
                   </select>
+                  <input type="text" id="bulkNotes" class="bulk-notes" placeholder="Catatan default..." title="Catatan untuk yang baru dicentang">
                 </div>
               </div>
               <div style="overflow-x:auto;">
@@ -857,15 +903,18 @@
                       <th>Pelanggan</th>
                       <th>Paket</th>
                       <th>Tagihan</th>
+                      <th style="width:110px;">Metode</th>
+                      <th>Catatan</th>
                       <th>Jatuh tempo</th>
                       <th>Janji</th>
                     </tr>
                   </thead>
                   <tbody id="bulkTable">
-                    <tr><td colspan="6"><div class="tbl-empty"><p>Memuat data...</p></div></td></tr>
+                    <tr><td colspan="8"><div class="tbl-empty"><p>Memuat data...</p></div></td></tr>
                   </tbody>
                 </table>
               </div>
+              <div class="bulk-picked" id="bulkPicked"></div>
               <div class="bulk-bar">
                 <div>
                   <div class="bb-count" id="bulkSummary">0 pelanggan dipilih</div>
@@ -1022,7 +1071,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/payments.js?v=outstanding1"></script>
+<script src="/js/payments.js?v=bulknote1"></script>
 
 <script>
 (function(){

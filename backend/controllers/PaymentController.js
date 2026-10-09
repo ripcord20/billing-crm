@@ -1942,7 +1942,7 @@ class PaymentController {
           }, { transaction: t });
         }
 
-        const payMethod = METHODS.includes(parsed.method) ? parsed.method : 'cash';
+        const payMethod = item.method || (METHODS.includes(parsed.method) ? parsed.method : 'cash');
         const payment = await Payment.create({
           invoice_id: invoice.id,
           amount,
@@ -1950,7 +1950,7 @@ class PaymentController {
           payment_date: parsed.payment_date,
           reference_number: parsed.reference_no || null,
           recorded_by: req.user?.id || null,
-          notes: parsed.notes || 'Setor massal'
+          notes: item.notes || parsed.notes || 'Setor massal'
         }, { transaction: t });
 
         await invoice.update({

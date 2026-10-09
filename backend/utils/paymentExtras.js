@@ -2,6 +2,24 @@
 
 const MAX_DEFER_DAYS = 365;
 const MAX_BULK_ITEMS = 200;
+const BULK_METHOD_ALIASES = { ntf: 'transfer', tf: 'transfer', tunai: 'cash' };
+const BULK_METHODS = ['cash', 'transfer', 'dana', 'ovo', 'gopay', 'qris', 'field_collection', 'other'];
+
+function canonBulkMethod(method) {
+  const key = String(method || '').trim().toLowerCase();
+  if (BULK_METHOD_ALIASES[key]) return BULK_METHOD_ALIASES[key];
+  if (BULK_METHODS.includes(key)) return key;
+  return 'cash';
+}
+
+function composeBulkNotes(methodRaw, notes) {
+  const n = String(notes || '').trim();
+  if (n) return n;
+  const raw = String(methodRaw || '').trim().toLowerCase();
+  if (raw === 'ntf') return 'Setor massal · NTF';
+  if (raw === 'cash' || canonBulkMethod(raw) === 'cash') return 'Setor massal · Cash';
+  return 'Setor massal';
+}
 
 function toDate(input) {
   if (!input) return new Date();
@@ -71,19 +89,32 @@ function normalizeBulkPayload(body) {
   if (!body || typeof body !== 'object') return { error: 'Payload tidak valid' };
   let items = [];
   if (Array.isArray(body.items)) {
-    items = body.items.map((it) => ({
-      customer_id: parseInt(it && (it.customer_id || it.id), 10),
-      amount: it && it.amount != null ? parseFloat(String(it.amount).replace(/[^\d.]/g, '')) : null,
-      period_month: it && it.period_month ? parseInt(it.period_month, 10) : null,
-      period_year: it && it.period_year ? parseInt(it.period_year, 10) : null
-    }));
+    items = body.items.map((it) => {
+      const methodRaw = (it && it.method) || body.method || 'cash';
+      const noteSrc = it && it.notes != null ? it.notes : body.notes;
+      return {
+        customer_id: parseInt(it && (it.customer_id || it.id), 10),
+        amount: it && it.amount != null ? parseFloat(String(it.amount).replace(/[^\d.]/g, '')) : null,
+        period_month: it && it.period_month ? parseInt(it.period_month, 10) : null,
+        period_year: it && it.period_year ? parseInt(it.period_year, 10) : null,
+        method: canonBulkMethod(methodRaw),
+        method_raw: String(methodRaw || '').trim().toLowerCase(),
+        notes: composeBulkNotes(methodRaw, noteSrc)
+      };
+    });
   } else if (Array.isArray(body.customer_ids)) {
-    items = body.customer_ids.map((id) => ({
-      customer_id: parseInt(id, 10),
-      amount: null,
-      period_month: null,
-      period_year: null
-    }));
+    items = body.customer_ids.map((id) => {
+      const methodRaw = body.method || 'cash';
+      return {
+        customer_id: parseInt(id, 10),
+        amount: null,
+        period_month: null,
+        period_year: null,
+        method: canonBulkMethod(methodRaw),
+        method_raw: String(methodRaw || '').trim().toLowerCase(),
+        notes: composeBulkNotes(methodRaw, body.notes)
+      };
+    });
   }
   items = items.filter((it) => Number.isFinite(it.customer_id) && it.customer_id > 0);
   const seen = new Set();
@@ -97,11 +128,11 @@ function normalizeBulkPayload(body) {
   const now = new Date();
   return {
     items,
-    method: body.method || 'cash',
+    method: canonBulkMethod(body.method || 'cash'),
     payment_date: body.payment_date || todayYmd(),
     period_month: parseInt(body.period_month, 10) || (now.getMonth() + 1),
     period_year: parseInt(body.period_year, 10) || now.getFullYear(),
-    notes: body.notes || '',
+    notes: composeBulkNotes(body.method || 'cash', body.notes),
     send_wa: !!body.send_wa,
     bank: body.bank || '',
     reference_no: body.reference_no || ''
@@ -111,6 +142,8 @@ function normalizeBulkPayload(body) {
 module.exports = {
   MAX_DEFER_DAYS,
   MAX_BULK_ITEMS,
+  canonBulkMethod,
+  composeBulkNotes,
   computePromiseDate,
   resolvePromiseDate,
   normalizeBulkPayload
