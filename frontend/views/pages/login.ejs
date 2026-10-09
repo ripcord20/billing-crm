@@ -518,6 +518,11 @@
     // Tujuan setelah login berhasil. Prioritas:
     //   1) nextUrl dari server (?next= yang sudah divalidasi), lalu
     //   2) ?next= di URL saat ini (fallback), harus path internal yang aman.
+    window.flynIsAppShell = function(){
+      try { if (window.Capacitor) return true; } catch(_){}
+      var ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
+      return /;\s*wv\)/i.test(ua) || /Capacitor/i.test(ua);
+    };
     window.FLYN_NEXT = (function(){
       var fromServer = <%- JSON.stringify(typeof nextUrl !== 'undefined' ? nextUrl : '') %>;
       function safe(v){ return (typeof v==='string' && v.charAt(0)==='/' && v.charAt(1)!=='/') ? v : ''; }
@@ -543,8 +548,14 @@
       return chosen;
     })();
     // Gabungkan tujuan server-role dengan FLYN_NEXT (kalau ada, next menang).
+    // APK WebView: admin landing di /mobile, bukan dashboard desktop yang sering
+    // gagal dimuat (Chrome "Halaman web tidak tersedia").
     window.flynDest = function(serverRedirect){
-      return window.FLYN_NEXT || serverRedirect || '/dashboard';
+      if (window.FLYN_NEXT) return window.FLYN_NEXT;
+      if (window.flynIsAppShell() && (!serverRedirect || serverRedirect === '/dashboard')) {
+        return '/mobile';
+      }
+      return serverRedirect || '/dashboard';
     };
   </script>
   <!-- ════════════════════════════════════════════════════════════════
@@ -579,6 +590,7 @@
         }
         const r = await fetch('/api/auth/restore-cookie', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Authorization': 'Bearer ' + t, 'X-Requested-With': 'XMLHttpRequest' }
         });
         if (r.ok) {
@@ -803,6 +815,7 @@
       try {
         const response = await fetch('/api/auth/login', {
           method: 'POST',
+          credentials: 'include',
           headers: { 
             'Content-Type': 'application/json' 
           },

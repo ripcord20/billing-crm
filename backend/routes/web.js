@@ -49,7 +49,10 @@ router.get('/login', async (req, res) => {
     // Defensive: kalau apa pun gagal di check ini, tetap render halaman login
     // (lebih baik render daripada loop atau error 500).
   }
-  res.render('pages/login', { title: 'Login', layout: false });
+  const nextRaw = String((req.query && req.query.next) || '');
+  const nextUrl = (nextRaw.startsWith('/') && !nextRaw.startsWith('//') && !nextRaw.startsWith('/login'))
+    ? nextRaw : '';
+  res.render('pages/login', { title: 'Login', layout: false, nextUrl });
 });
 
 // Root redirect — role-aware
