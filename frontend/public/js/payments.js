@@ -15,6 +15,9 @@ let _bulkRows   = [];
 let _bulkSelected = new Set();
 let _debtSearchTimer = null;
 let _bulkSearchTimer = null;
+let _ostLoaded = false;
+let _ostPage = 1;
+let _ostSearchTimer = null;
 const MONTHS = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 const METHOD_COLORS = { cash:'#059669',transfer:'#2563eb',dana:'#0ea5e9',ovo:'#1d4ed8',gopay:'#16a34a',qris:'#d97706',field_collection:'#0d9488' };
 let _proofRows = [];
@@ -74,6 +77,13 @@ document.addEventListener('DOMContentLoaded', () => {
   loadStats();
   loadChart();
   loadPayments();
+
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('pay')) {
+    payOutstanding(qs.get('pay'));
+  } else if (qs.get('tab') === 'overdue') {
+    switchPayTab('overdue');
+  }
 });
 
 function updateWaToggle(on) {
@@ -167,11 +177,21 @@ async function loadStats() {
   setT('fcTotalInvPct', 'Rp ' + Number(s.total_invoice_amount || 0).toLocaleString('id-ID') + ' total tagihan');
   setW('fcTotalInvBar', 100);
 
-  // Card 4: Tagihan Tertunggak (Overdue)
-  setT('fcOverdue',    fmtAmt(s.overdue_amount || 0));
-  setT('fcOverdueSub', (s.overdue_count || 0) + ' tagihan belum bayar');
-  setT('fcOverduePct', s.total_invoices > 0 ? Math.round((s.overdue_count||0)/(s.total_invoices||1)*100) + '% dari total invoice' : 'Tidak ada tunggakan');
-  setW('fcOverdueBar', s.total_invoices > 0 ? (s.overdue_count||0)/(s.total_invoices||1)*100 : 0);
+  // Card 4: Tertunggak — pakai outstanding (sama dengan modul Customer),
+  // bukan hanya invoice bulan filter.
+  const ostOv = s.outstanding_overdue_count != null ? s.outstanding_overdue_count : (s.overdue_count || 0);
+  const ostAmt = s.outstanding_overdue_amount != null ? s.outstanding_overdue_amount : (s.overdue_amount || 0);
+  const ostSoon = s.outstanding_duesoon_count || 0;
+  setT('fcOverdue',    fmtAmt(ostAmt));
+  setT('fcOverdueSub', ostOv + ' overdue' + (ostSoon ? ' · ' + ostSoon + ' jatuh tempo' : ''));
+  setT('fcOverduePct', ostOv || ostSoon ? 'Klik untuk daftar tertunggak' : 'Tidak ada tunggakan');
+  setW('fcOverdueBar', ostOv || ostSoon ? Math.min(100, ostOv * 8) : 0);
+  const ostBadge = document.getElementById('overdueTabBadge');
+  if (ostBadge) {
+    const n = ostOv + ostSoon;
+    ostBadge.textContent = n;
+    ostBadge.style.display = n > 0 ? 'inline-flex' : 'none';
+  }
 
   // Update header sub
   setT('payHeaderSub', `${s.total_tx} transaksi dicatat · Total ${fmtAmt(s.total_amount)} · ${MONTHS[s.month]} ${s.year}` +
@@ -589,6 +609,7 @@ window.submitPayment = async function() {
     loadStats();
     loadChart();
     loadPayments();
+    if (_ostLoaded) loadOutstanding(_ostPage);
     App.showToast(d.message, 'success');
   } else {
     if (d?.already_paid) {
@@ -637,6 +658,7 @@ window.deletePayment = async function(id, name) {
   if (d?.success) {
     App.showToast(d.message, 'success');
     loadStats(); loadChart(); loadPayments();
+    if (_ostLoaded) loadOutstanding(_ostPage);
     // Bukti transfer terkait ikut terhapus → refresh tab & badge.
     if (typeof loadProofs === 'function') loadProofs(_proofPage || 1);
     if (typeof refreshProofTabBadge === 'function') refreshProofTabBadge();
@@ -692,12 +714,14 @@ let _proofLoaded = false;
 window.switchPayTab = function(tab) {
   const panes = {
     pay: document.getElementById('tabPanelPay'),
+    overdue: document.getElementById('tabPanelOverdue'),
     debt: document.getElementById('tabPanelDebt'),
     bulk: document.getElementById('tabPanelBulk'),
     proof: document.getElementById('tabPanelProof')
   };
   const btns = {
     pay: document.getElementById('tabBtnPay'),
+    overdue: document.getElementById('tabBtnOverdue'),
     debt: document.getElementById('tabBtnDebt'),
     bulk: document.getElementById('tabBtnBulk'),
     proof: document.getElementById('tabBtnProof')
@@ -707,6 +731,7 @@ window.switchPayTab = function(tab) {
   if (tab === 'proof' && !_proofLoaded) { _proofLoaded = true; loadProofs(1); }
   if (tab === 'debt') { _debtLoaded = true; loadDeferrals(1); }
   if (tab === 'bulk') { _bulkLoaded = true; loadUnpaidCustomers(); }
+  if (tab === 'overdue') { _ostLoaded = true; loadOutstanding(1); }
 };
 
 window.onProofSearchChange = function() {
@@ -1344,8 +1369,94 @@ window.submitBulkPay = async function() {
     loadChart();
     loadPayments();
     loadDeferrals(1);
+    if (_ostLoaded) loadOutstanding(1);
   } else {
     App.showToast(d?.message || 'Gagal setor massal', 'error');
     btn.disabled = false;
   }
+};
+
+window.onOstSearchChange = function() {
+  clearTimeout(_ostSearchTimer);
+  _ostSearchTimer = setTimeout(() => loadOutstanding(1), 300);
+};
+
+async function loadOutstanding(page) {
+  _ostPage = page || 1;
+  const tbody = document.getElementById('ostTable');
+  if (!tbody) return;
+  const kind = document.getElementById('ostKindFilter')?.value || 'all';
+  const q = document.getElementById('ostSearch')?.value || '';
+  tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty"><p>Memuat data...</p></div></td></tr>';
+  const d = await App.api('/payments/outstanding?kind=' + encodeURIComponent(kind) +
+    '&q=' + encodeURIComponent(q) + '&page=' + _ostPage + '&limit=30');
+  if (!d?.success) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty"><p>Gagal memuat data</p></div></td></tr>';
+    return;
+  }
+  const total = d.total || 0;
+  setT('ostCount', total + ' pelanggan');
+  setT('ostSubTitle', total ? (total + ' belum lunas — overdue di atas, jatuh tempo menyusul') : 'Tidak ada pelanggan tertunggak');
+  if (!d.data?.length) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="tbl-empty friendly"><p>Tidak ada data tertunggak</p><span>Overdue dan jatuh tempo tampil di sini, sama seperti modul Customer</span></div></td></tr>';
+    const pg = document.getElementById('ostPagination');
+    if (pg) pg.innerHTML = '';
+    return;
+  }
+  tbody.innerHTML = d.data.map(r => {
+    const dueRaw = r.due || r.invoice_due || r.due_date;
+    const days = parseInt(r.days_past, 10);
+    let dueHtml = '–';
+    let st = '<span class="mbadge" style="background:#f1f5f9;color:#64748b;">Belum bayar</span>';
+    if (dueRaw) {
+      const fmt = new Date(dueRaw + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+      if (days > 0) {
+        dueHtml = '<span style="color:#dc2626;font-weight:700;">' + fmt + '</span><div style="font-size:10px;color:#dc2626;">' + days + ' hari lalu</div>';
+        st = '<span class="mbadge" style="background:#fee2e2;color:#dc2626;">Overdue</span>';
+      } else if (days === 0) {
+        dueHtml = '<span style="color:#ea580c;font-weight:700;">' + fmt + '</span><div style="font-size:10px;color:#ea580c;">Hari ini</div>';
+        st = '<span class="mbadge" style="background:#ffedd5;color:#c2410c;">Jatuh tempo</span>';
+      } else {
+        dueHtml = '<span style="font-weight:600;">' + fmt + '</span><div style="font-size:10px;color:#d97706;">' + Math.abs(days) + ' hari lagi</div>';
+        st = '<span class="mbadge" style="background:#fffbeb;color:#d97706;">Jatuh tempo</span>';
+      }
+    }
+    const amt = 'Rp ' + Number(r.amount || 0).toLocaleString('id-ID');
+    const per = (r.period_month && r.period_year) ? (MONTHS[r.period_month] || '') + ' ' + r.period_year : '–';
+    return '<tr>' +
+      '<td><div style="font-weight:700;">' + esc(r.name) + '</div><div style="font-size:11px;color:#94a3b8;">' + esc(r.cid) + (r.phone ? ' · ' + esc(r.phone) : '') + '</div></td>' +
+      '<td>' + esc(r.pkg_name || '–') + '<div style="font-size:10px;color:#94a3b8;">' + per + '</div></td>' +
+      '<td style="font-weight:700;color:#1a6ef5;">' + amt + '</td>' +
+      '<td>' + dueHtml + '</td>' +
+      '<td>' + st + '</td>' +
+      '<td><button class="inv-btn" onclick="payOutstanding(' + r.id + ')">Bayar</button></td>' +
+    '</tr>';
+  }).join('');
+  const totalPages = Math.ceil(total / 30);
+  const pg = document.getElementById('ostPagination');
+  if (pg) {
+    if (totalPages <= 1) pg.innerHTML = '';
+    else {
+      let html = '';
+      if (_ostPage > 1) html += '<button class="pg-btn" onclick="loadOutstanding(' + (_ostPage - 1) + ')">←</button>';
+      html += '<span class="pg-btn active">' + _ostPage + '</span>';
+      if (_ostPage < totalPages) html += '<button class="pg-btn" onclick="loadOutstanding(' + (_ostPage + 1) + ')">→</button>';
+      pg.innerHTML = html;
+    }
+  }
+}
+
+window.loadOutstanding = loadOutstanding;
+
+window.payOutstanding = async function(customerId) {
+  const d = await App.api('/payments/customers?id=' + encodeURIComponent(customerId));
+  const c = d && d.success && Array.isArray(d.data) ? d.data[0] : null;
+  if (!c) { App.showToast('Pelanggan tidak ditemukan', 'error'); return; }
+  if (typeof setPayMode === 'function') setPayMode('pay');
+  await selectCustomer(
+    c.id, c.name, c.customer_id, c.phone || '',
+    c.billing_date || 1, c.package && c.package.price || 0,
+    c.package && c.package.name || '', c.due_date || ''
+  );
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 };

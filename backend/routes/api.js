@@ -2095,6 +2095,7 @@ router.get('/payments/check-paid', authenticate, demoGuard, PaymentController.ch
 router.post('/payments/record',    authenticate, demoGuard, logActivity('create','payment'), PaymentController.record);
 router.post('/payments/record-bulk', authenticate, demoGuard, logActivity('create','payment'), PaymentController.recordBulk);
 router.get('/payments/unpaid-customers', authenticate, demoGuard, PaymentController.unpaidCustomers);
+router.get('/payments/outstanding', authenticate, demoGuard, PaymentController.outstanding);
 router.get('/payments/deferrals',  authenticate, demoGuard, PaymentController.listDeferrals);
 router.post('/payments/defer',     authenticate, demoGuard, logActivity('create','payment_deferral'), PaymentController.defer);
 router.post('/payments/deferrals/:id/cancel', authenticate, demoGuard, logActivity('update','payment_deferral'), PaymentController.cancelDeferral);

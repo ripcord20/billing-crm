@@ -122,6 +122,42 @@ class PaymentController {
         };
       } catch (_) {}
 
+      // Tunggakan aktual (sama logika modul Customer): due_date pelanggan,
+      // tidak dibatasi bulan filter — supaya kartu Tertunggak tidak kosong
+      // padahal di Customer ada overdue / jatuh tempo.
+      let outstanding = { overdue_count: 0, overdue_amount: 0, duesoon_count: 0 };
+      try {
+        const [ost] = await sequelize.query(
+          `SELECT
+             SUM(c.due_date < CURDATE() AND (i.id IS NOT NULL OR NOT EXISTS (
+               SELECT 1 FROM invoices ix WHERE ix.customer_id = c.id
+             ))) AS overdue_count,
+             COALESCE(SUM(CASE WHEN c.due_date < CURDATE() AND (i.id IS NOT NULL OR NOT EXISTS (
+               SELECT 1 FROM invoices ix WHERE ix.customer_id = c.id
+             )) THEN COALESCE(i.total, pkg.price, 0) ELSE 0 END), 0) AS overdue_amount,
+             SUM(c.status = 'active' AND i.id IS NOT NULL
+               AND c.due_date >= CURDATE()
+               AND c.due_date <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)) AS duesoon_count
+           FROM customers c
+           LEFT JOIN packages pkg ON pkg.id = c.package_id
+           LEFT JOIN invoices i ON i.id = (
+             SELECT i2.id FROM invoices i2
+             WHERE i2.customer_id = c.id AND i2.status IN ('unpaid','overdue')
+             ORDER BY i2.due_date IS NULL, i2.due_date ASC, i2.id ASC
+             LIMIT 1
+           )
+           WHERE c.status IN ('active','isolated')
+             AND c.due_date IS NOT NULL
+             ${tenant.sql}`,
+          { replacements: { ...trep }, type: sequelize.QueryTypes.SELECT }
+        );
+        outstanding = {
+          overdue_count: parseInt(ost?.overdue_count || 0),
+          overdue_amount: parseFloat(ost?.overdue_amount || 0),
+          duesoon_count: parseInt(ost?.duesoon_count || 0)
+        };
+      } catch (_) {}
+
       // Method breakdown — kelompokkan per GATEWAY bila ada (Tripay/Midtrans/
       // Xendit/Duitku), selain itu per payment_method. Supaya "Channel Pembayaran"
       // di dashboard finance menampilkan nama gateway, bukan tergabung jadi "Lainnya".
@@ -162,6 +198,9 @@ class PaymentController {
           total_invoice_amount: parseFloat(invoiceTotals?.total_invoice_amount || 0),
           overdue_count: parseInt(overdueData?.overdue_count || 0),
           overdue_amount: parseFloat(overdueData?.overdue_amount || 0),
+          outstanding_overdue_count: parseInt(outstanding?.overdue_count || 0),
+          outstanding_overdue_amount: parseFloat(outstanding?.overdue_amount || 0),
+          outstanding_duesoon_count: parseInt(outstanding?.duesoon_count || 0),
           deferral_open: deferralStats.open_count,
           deferral_overdue: deferralStats.overdue_promise_count,
           method_stats: methodStats.map(m => ({
@@ -1593,19 +1632,24 @@ class PaymentController {
   async searchCustomers(req, res) {
     try {
       const { q } = req.query;
+      const id = parseInt(req.query.id, 10);
       const { applyTenantWhere } = require('../utils/tenantScope');
       const where = applyTenantWhere(req, { status: { [Op.in]: ['active', 'isolated'] } });
-      if (q) where[Op.or] = [
-        { name: { [Op.like]: '%' + q + '%' } },
-        { customer_id: { [Op.like]: '%' + q + '%' } },
-        { phone: { [Op.like]: '%' + q + '%' } }
-      ];
+      if (id) {
+        where.id = id;
+      } else if (q) {
+        where[Op.or] = [
+          { name: { [Op.like]: '%' + q + '%' } },
+          { customer_id: { [Op.like]: '%' + q + '%' } },
+          { phone: { [Op.like]: '%' + q + '%' } }
+        ];
+      }
       const rows = await Customer.findAll({
         where,
         include: [{ model: Package, as: 'package', attributes: ['id','name','price'] }],
         attributes: ['id','customer_id','name','phone','status','billing_date','installation_date','due_date'],
         order: [['name','ASC']],
-        limit: 30
+        limit: id ? 1 : 30
       });
       res.json({ success: true, data: rows });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
@@ -1964,6 +2008,83 @@ class PaymentController {
       message: `${ok.length} pembayaran dicatat` + (fail.length ? `, ${fail.length} gagal` : ''),
       data: { ok, fail, total_ok: ok.length, total_fail: fail.length }
     });
+  }
+
+  // Daftar pelanggan overdue / jatuh tempo (tidak dibatasi bulan filter).
+  async outstanding(req, res) {
+    try {
+      const kind = String(req.query.kind || 'all').toLowerCase();
+      const q = (req.query.q || '').trim();
+      const page = Math.max(1, parseInt(req.query.page) || 1);
+      const limit = Math.min(100, parseInt(req.query.limit) || 30);
+      const offset = (page - 1) * limit;
+      const tenant = applyTenantSql(req, 'c');
+      const params = { ...tenant.replacements, limit, offset };
+      let extra = tenant.sql;
+      if (q) {
+        extra += ' AND (c.name LIKE :q OR c.customer_id LIKE :q OR c.phone LIKE :q)';
+        params.q = '%' + q + '%';
+      }
+      if (kind === 'overdue') {
+        extra += ` AND c.due_date < CURDATE()
+          AND (i.id IS NOT NULL OR NOT EXISTS (SELECT 1 FROM invoices ix WHERE ix.customer_id = c.id))`;
+      } else if (kind === 'duesoon') {
+        extra += ` AND c.status = 'active' AND i.id IS NOT NULL
+          AND c.due_date >= CURDATE() AND c.due_date <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)`;
+      } else if (kind === 'unpaid') {
+        extra += ` AND i.id IS NOT NULL
+          AND c.due_date > DATE_ADD(CURDATE(), INTERVAL 3 DAY)`;
+      } else {
+        extra += ` AND (
+             (c.due_date < CURDATE() AND (i.id IS NOT NULL OR NOT EXISTS (SELECT 1 FROM invoices ix WHERE ix.customer_id = c.id)))
+             OR (c.status = 'active' AND i.id IS NOT NULL AND c.due_date >= CURDATE() AND c.due_date <= DATE_ADD(CURDATE(), INTERVAL 3 DAY))
+             OR (i.id IS NOT NULL)
+           )`;
+      }
+
+      const fromSql = `
+         FROM customers c
+         LEFT JOIN packages pkg ON pkg.id = c.package_id
+         LEFT JOIN invoices i ON i.id = (
+           SELECT i2.id FROM invoices i2
+           WHERE i2.customer_id = c.id AND i2.status IN ('unpaid','overdue')
+           ORDER BY i2.due_date IS NULL, i2.due_date ASC, i2.id ASC
+           LIMIT 1
+         )
+         WHERE c.status IN ('active','isolated')
+           AND c.due_date IS NOT NULL
+           ${extra}`;
+
+      const [countRow] = await sequelize.query(
+        `SELECT COUNT(*) AS n ${fromSql}`,
+        { replacements: params, type: sequelize.QueryTypes.SELECT }
+      );
+      const rows = await sequelize.query(
+        `SELECT c.id, c.customer_id AS cid, c.name, c.phone, c.due_date, c.status,
+                c.billing_date, pkg.name AS pkg_name, pkg.price AS pkg_price,
+                i.id AS invoice_id, i.invoice_number, i.total AS invoice_total,
+                i.status AS invoice_status, i.due_date AS invoice_due,
+                i.period_month, i.period_year,
+                DATEDIFF(CURDATE(), c.due_date) AS days_past
+         ${fromSql}
+         ORDER BY CASE WHEN c.due_date < CURDATE() THEN 0 ELSE 1 END,
+                  c.due_date ASC, c.name ASC
+         LIMIT :limit OFFSET :offset`,
+        { replacements: params, type: sequelize.QueryTypes.SELECT }
+      );
+      res.json({
+        success: true,
+        total: parseInt(countRow?.n || 0),
+        page,
+        data: rows.map(r => ({
+          ...r,
+          amount: parseFloat(r.invoice_total || r.pkg_price || 0) || 0,
+          due: r.due_date || r.invoice_due || null
+        }))
+      });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   }
 }
 
