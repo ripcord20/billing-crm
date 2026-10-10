@@ -77,6 +77,46 @@
     .pay-page.pay-narrow .pay-table th,
     .pay-page.pay-narrow .pay-table td { white-space: normal !important; word-break: break-word; overflow-wrap: anywhere; }
     .pay-page.pay-narrow .pay-table-scroll { overflow-x: hidden !important; }
+
+    /* Khusus Riwayat: kartu per transaksi, bukan 5 kolom yang pecah per huruf */
+    .pay-page.pay-narrow #tabPanelPay .pay-table { table-layout: auto !important; }
+    .pay-page.pay-narrow #tabPanelPay .pay-table thead { display: none !important; }
+    .pay-page.pay-narrow #tabPanelPay .pay-table,
+    .pay-page.pay-narrow #tabPanelPay .pay-table tbody { display: block; width: 100%; }
+    .pay-page.pay-narrow #tabPanelPay .pay-table tr {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) auto;
+      grid-template-areas: "name amt" "meta method" "aksi aksi";
+      gap: 4px 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid #f0f4ff;
+      width: 100%;
+      box-sizing: border-box;
+      align-items: start;
+    }
+    .pay-page.pay-narrow #tabPanelPay .pay-table tr:has(.tbl-empty) { display: block; }
+    .pay-page.pay-narrow #tabPanelPay .pay-table td {
+      display: block !important;
+      padding: 0 !important;
+      border: none !important;
+      white-space: normal !important;
+      word-break: normal !important;
+      overflow-wrap: break-word !important;
+      width: auto !important;
+      background: transparent !important;
+    }
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(1) { grid-area: name; min-width: 0; }
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(2) { grid-area: meta; font-size: 12px; color: #64748b; }
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(3) { grid-area: amt; text-align: right; }
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(4) { grid-area: method; text-align: right; }
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(5),
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(6),
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(7),
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(8) { display: none !important; }
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(9) { grid-area: aksi; }
+    .pay-page.pay-narrow #tabPanelPay .pay-table td[colspan] { grid-column: 1 / -1; }
+    .pay-page.pay-narrow #tabPanelPay .inv-btn,
+    .pay-page.pay-narrow #tabPanelPay .del-btn { white-space: nowrap !important; word-break: keep-all !important; }
     .pay-page .table-card { overflow-x: hidden !important; }
     .pay-page .table-header { flex-wrap: wrap !important; }
     .pay-page .tbl-search,
@@ -842,6 +882,10 @@
 
           <!-- Tab panel: Pembayaran -->
           <div id="tabPanelPay">
+          <style>
+            .pay-page.pay-narrow #tabPanelPay .pay-table thead{display:none!important;}
+            .pay-page.pay-narrow #tabPanelPay .inv-btn,.pay-page.pay-narrow #tabPanelPay .del-btn{white-space:nowrap!important;}
+          </style>
           <!-- Table -->
           <div class="table-card a6">
             <div class="table-header">
