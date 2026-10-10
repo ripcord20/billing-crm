@@ -364,6 +364,9 @@ router.get('/mobile/wa',             authenticate, renderMobile('wa',           
 router.get('/mobile/profile',        authenticate, renderMobile('profile',        'Akun Saya',     'm-profile'));
 
 router.get('/payments', authenticate, allowFinanceArea, (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
   res.render('pages/payments', { title: 'Pembayaran', user: req.user, active: 'payments' });
 });
 

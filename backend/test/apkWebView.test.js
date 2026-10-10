@@ -43,8 +43,8 @@ const portalLogin = fs.readFileSync(path.join(__dirname, '../../frontend/views/p
 assert.ok(portalLogin.includes("credentials: 'include'"), 'portal login APK harus kirim cookie');
 
 const inputPay = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/payments.ejs'), 'utf8');
-assert.ok(inputPay.includes("repeat(2, minmax(0,1fr))") || inputPay.includes('repeat(2, minmax(0, 1fr))'), 'metode Input Payment 2 kolom, tidak geser samping');
-assert.ok(!/method-grid \{[^}]*repeat\(3/.test(inputPay), 'jangan 3 kolom yang potong Transfer di APK');
+assert.ok(inputPay.includes('method-grid-v3'), 'Input Payment harus pakai grid v3 (flex wrap)');
 assert.ok(inputPay.includes("selectMethod(this,'transfer')"), 'tombol Transfer tetap ada');
+assert.ok(inputPay.includes('flex-wrap'), 'metode harus wrap, bukan geser samping');
 
 console.log('apkWebView.test.js OK');

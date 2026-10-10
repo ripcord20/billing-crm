@@ -2,6 +2,9 @@
 <html lang="id" data-theme="light">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
@@ -572,16 +575,20 @@
             </div>
           </div>
 
-          <!-- Method -->
+          <!-- Method — flex wrap 2 kolom, inline (APK WebView sering cache CSS lama) -->
           <div class="pf-field pay-only">
             <label class="pf-label">Metode Payment *</label>
-            <div class="method-grid">
-              <div class="mpill active" onclick="selectMethod(this,'cash')">Cash</div>
-              <div class="mpill" onclick="selectMethod(this,'transfer')">Transfer</div>
-              <div class="mpill" onclick="selectMethod(this,'dana')">DANA</div>
-              <div class="mpill" onclick="selectMethod(this,'ovo')">OVO</div>
-              <div class="mpill" onclick="selectMethod(this,'gopay')">GoPay</div>
-              <div class="mpill" onclick="selectMethod(this,'qris')">QRIS</div>
+            <style>
+              .method-grid-v3{display:flex!important;flex-wrap:wrap!important;gap:6px!important;width:100%!important;max-width:100%!important;overflow:visible!important;}
+              .method-grid-v3 .mpill{flex:1 1 calc(50% - 6px)!important;min-width:0!important;width:auto!important;box-sizing:border-box!important;}
+            </style>
+            <div class="method-grid method-grid-v3" id="methodGridV3" style="display:flex;flex-wrap:wrap;gap:6px;width:100%;max-width:100%;">
+              <div class="mpill active" onclick="selectMethod(this,'cash')" style="flex:1 1 calc(50% - 6px);box-sizing:border-box;">Cash</div>
+              <div class="mpill" onclick="selectMethod(this,'transfer')" style="flex:1 1 calc(50% - 6px);box-sizing:border-box;">Transfer</div>
+              <div class="mpill" onclick="selectMethod(this,'dana')" style="flex:1 1 calc(50% - 6px);box-sizing:border-box;">DANA</div>
+              <div class="mpill" onclick="selectMethod(this,'ovo')" style="flex:1 1 calc(50% - 6px);box-sizing:border-box;">OVO</div>
+              <div class="mpill" onclick="selectMethod(this,'gopay')" style="flex:1 1 calc(50% - 6px);box-sizing:border-box;">GoPay</div>
+              <div class="mpill" onclick="selectMethod(this,'qris')" style="flex:1 1 calc(50% - 6px);box-sizing:border-box;">QRIS</div>
             </div>
             <input type="hidden" id="payMethod" value="cash">
           </div>
