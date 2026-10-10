@@ -51,11 +51,15 @@ assert.ok(inputPay.includes('payListLock'), 'panel setor massal sampai riwayat d
 assert.ok(inputPay.includes('pay-pills-v6'), 'tab Riwayat/Setor/Hutang/Bukti wrap 2 kolom, bukan geser');
 assert.ok(inputPay.includes('pay-narrow'), 'mode sempit memaksa layout HP');
 assert.ok(inputPay.includes('#tabPanelPay .pay-table tr'), 'riwayat HP jadi kartu, bukan kolom pecah');
+assert.ok(inputPay.includes('#tabPanelDebt .pay-table tr'), 'hutang HP jadi kartu');
+assert.ok(inputPay.includes('#tabPanelBulk .pay-table tr'), 'setor massal HP jadi kartu');
+assert.ok(inputPay.includes('#tabPanelProof .pay-table tr'), 'bukti transfer HP jadi kartu');
+assert.ok(inputPay.includes('#tabPanelOverdue .pay-table tr'), 'tertunggak HP jadi kartu');
 assert.ok(inputPay.includes('lockPayPageToViewport'), 'JS visualViewport mengunci lebar form');
 assert.ok(inputPay.includes('min-width: 0 !important'), 'page-content tidak boleh melebar ikut tabel');
 
 const payNav = fs.readFileSync(path.join(__dirname, '../../frontend/views/partials/topbar.ejs'), 'utf8')
   + fs.readFileSync(path.join(__dirname, '../../frontend/views/partials/sidebar.ejs'), 'utf8');
-assert.ok(payNav.includes('/payments?m=7'), 'menu Payments harus cache-bust m=7');
+assert.ok(payNav.includes('/payments?m=8'), 'menu Payments harus cache-bust m=8');
 
 console.log('apkWebView.test.js OK');
