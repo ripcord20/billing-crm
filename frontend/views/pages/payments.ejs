@@ -17,6 +17,35 @@
     }
     .pay-page { font-family:'DM Sans',sans-serif; background:var(--d-bg) !important; }
 
+    /* APK/WebView: tabel nowrap membuat .page-content (flex item, min-width:auto)
+       melebar ~2× layar. Form 100% ikut melebar → Cash|Transfer masing-masing
+       selebar viewport, Transfer hanya kelihatan setelah geser kanan. */
+    .pay-page .main-content,
+    .pay-page .page-content,
+    .pay-page .pay-layout,
+    .pay-page .form-card,
+    .pay-page .right-panel,
+    .pay-page .fin-grid,
+    .pay-page .fin-grid-4,
+    .pay-page .table-card,
+    .pay-page .chart-row,
+    .pay-page .w-card {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    .pay-page .page-content {
+      width: 100% !important;
+      overflow-x: hidden !important;
+      container-type: inline-size;
+      container-name: paypage;
+    }
+    .pay-page .form-card { width: 100% !important; overflow-x: hidden !important; }
+    .pay-table-scroll { overflow-x: auto; max-width: 100%; min-width: 0; }
+    @container paypage (max-width: 900px) {
+      .pay-layout { grid-template-columns: minmax(0,1fr) !important; }
+    }
+
     /* ── Fintech cards ── */
         /* ── STAT CARDS — single strip ── */
     .fin-grid, .fin-grid-4 {
@@ -68,19 +97,19 @@
     }
         /* ── Layout ── */
     /* Main layout: form left + right panel */
-    .pay-layout { display:grid; grid-template-columns:300px minmax(0,1fr); gap:16px; align-items:start; }
-    @media(max-width:1100px){ .pay-layout { grid-template-columns:260px 1fr; } }
-    @media(max-width:900px) { .pay-layout { grid-template-columns:1fr; } }
+    .pay-layout { display:grid; grid-template-columns:300px minmax(0,1fr); gap:16px; align-items:start; min-width:0; width:100%; max-width:100%; }
+    @media(max-width:1100px){ .pay-layout { grid-template-columns:260px minmax(0,1fr); } }
+    @media(max-width:900px) { .pay-layout { grid-template-columns:minmax(0,1fr); } }
 
     /* Responsive breakpoints — mengikuti PHP referensi */
     @media(max-width:1100px) {
       .fin-grid { grid-template-columns:repeat(2,1fr) !important; }
     }
     @media(max-width:960px) {
-      .pay-layout { grid-template-columns:1fr !important; min-width:0; width:100%; max-width:100%; }
+      .pay-layout { grid-template-columns:minmax(0,1fr) !important; min-width:0; width:100%; max-width:100%; }
       .form-card  { position:static !important; max-width:100%; min-width:0; overflow-x:hidden; box-sizing:border-box; }
       .method-grid { grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
-      .pf-split { grid-template-columns:1fr !important; }
+      .pf-split { grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important; }
     }
     @media(max-width:640px) {
       .fin-grid { grid-template-columns:1fr !important; gap:0 !important; }
@@ -90,7 +119,7 @@
       .fin-card .fc-bar { display:none; }
       .pay-btn   { font-size:13px; padding:10px; }
       .method-grid { grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
-      .pf-split { grid-template-columns:1fr !important; }
+      .pf-split { grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important; }
       .form-card { max-width:100%; min-width:0; overflow-x:hidden; box-sizing:border-box; }
       .col-hide-mobile { display:none !important; }
       .pay-table th, .pay-table td { padding:8px 10px !important; font-size:11.5px !important; }
@@ -426,7 +455,7 @@
   <%- include('../partials/sidebar') %>
   <div class="main-content">
     <%- include('../partials/topbar') %>
-    <main class="page-content">
+    <main class="page-content" id="payWidthLockV4">
 
       <!-- Header -->
       <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;" class="a1">
@@ -564,7 +593,7 @@
           </div>
 
           <!-- Amount & Date -->
-          <div class="pf-split" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="pf-split" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;width:100%;max-width:100%;min-width:0;">
             <div class="pf-field">
               <label class="pf-label">Jumlah (Rp) *</label>
               <input type="text" id="payAmount" class="pf-input" placeholder="0" oninput="formatAmount(this)">
@@ -575,20 +604,20 @@
             </div>
           </div>
 
-          <!-- Method — flex wrap 2 kolom, inline (APK WebView sering cache CSS lama) -->
+          <!-- Method — grid 2 kolom di lebar form (bukan 50% dari halaman yang melebar) -->
           <div class="pf-field pay-only">
             <label class="pf-label">Metode Payment *</label>
             <style>
-              .method-grid-v3{display:flex!important;flex-wrap:wrap!important;gap:6px!important;width:100%!important;max-width:100%!important;overflow:visible!important;}
-              .method-grid-v3 .mpill{flex:1 1 calc(50% - 6px)!important;min-width:0!important;width:auto!important;box-sizing:border-box!important;}
+              .method-grid-v4{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:6px!important;width:100%!important;max-width:100%!important;min-width:0!important;}
+              .method-grid-v4 .mpill{min-width:0!important;width:auto!important;max-width:100%!important;box-sizing:border-box!important;flex:none!important;}
             </style>
-            <div class="method-grid method-grid-v3" id="methodGridV3" style="display:flex;flex-wrap:wrap;gap:6px;width:100%;max-width:100%;">
-              <div class="mpill active" onclick="selectMethod(this,'cash')" style="flex:1 1 calc(50% - 6px);box-sizing:border-box;">Cash</div>
-              <div class="mpill" onclick="selectMethod(this,'transfer')" style="flex:1 1 calc(50% - 6px);box-sizing:border-box;">Transfer</div>
-              <div class="mpill" onclick="selectMethod(this,'dana')" style="flex:1 1 calc(50% - 6px);box-sizing:border-box;">DANA</div>
-              <div class="mpill" onclick="selectMethod(this,'ovo')" style="flex:1 1 calc(50% - 6px);box-sizing:border-box;">OVO</div>
-              <div class="mpill" onclick="selectMethod(this,'gopay')" style="flex:1 1 calc(50% - 6px);box-sizing:border-box;">GoPay</div>
-              <div class="mpill" onclick="selectMethod(this,'qris')" style="flex:1 1 calc(50% - 6px);box-sizing:border-box;">QRIS</div>
+            <div class="method-grid method-grid-v4" id="methodGridV4" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;width:100%;max-width:100%;min-width:0;">
+              <div class="mpill active" onclick="selectMethod(this,'cash')" style="min-width:0;box-sizing:border-box;">Cash</div>
+              <div class="mpill" onclick="selectMethod(this,'transfer')" style="min-width:0;box-sizing:border-box;">Transfer</div>
+              <div class="mpill" onclick="selectMethod(this,'dana')" style="min-width:0;box-sizing:border-box;">DANA</div>
+              <div class="mpill" onclick="selectMethod(this,'ovo')" style="min-width:0;box-sizing:border-box;">OVO</div>
+              <div class="mpill" onclick="selectMethod(this,'gopay')" style="min-width:0;box-sizing:border-box;">GoPay</div>
+              <div class="mpill" onclick="selectMethod(this,'qris')" style="min-width:0;box-sizing:border-box;">QRIS</div>
             </div>
             <input type="hidden" id="payMethod" value="cash">
           </div>
@@ -613,7 +642,7 @@
           </div>
 
           <!-- Period -->
-          <div class="pf-split" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="pf-split" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;width:100%;max-width:100%;min-width:0;">
             <div class="pf-field">
               <label class="pf-label">Bulan</label>
               <select id="payPeriodMonth" class="pf-input" style="cursor:pointer;">
@@ -774,7 +803,7 @@
               </div>
               <div class="tbl-count" id="tblCount">–</div>
             </div>
-            <div style="overflow-x:auto;">
+            <div class="pay-table-scroll" style="overflow-x:auto;max-width:100%;min-width:0;">
               <table class="pay-table">
                 <thead>
                   <tr>
@@ -817,7 +846,7 @@
                 </div>
                 <div class="tbl-count" id="ostCount">–</div>
               </div>
-              <div style="overflow-x:auto;">
+              <div class="pay-table-scroll" style="overflow-x:auto;max-width:100%;min-width:0;">
                 <table class="pay-table">
                   <thead>
                     <tr>
@@ -857,7 +886,7 @@
                 </div>
                 <div class="tbl-count" id="debtCount">–</div>
               </div>
-              <div style="overflow-x:auto;">
+              <div class="pay-table-scroll" style="overflow-x:auto;max-width:100%;min-width:0;">
                 <table class="pay-table">
                   <thead>
                     <tr>
@@ -906,7 +935,7 @@
                   <input type="text" id="bulkNotes" class="bulk-notes" placeholder="Catatan default..." title="Catatan untuk yang baru dicentang">
                 </div>
               </div>
-              <div style="overflow-x:auto;">
+              <div class="pay-table-scroll" style="overflow-x:auto;max-width:100%;min-width:0;">
                 <table class="pay-table">
                   <thead>
                     <tr>
@@ -959,7 +988,7 @@
                   </div>
                 </div>
               </div>
-              <div style="overflow-x:auto;">
+              <div class="pay-table-scroll" style="overflow-x:auto;max-width:100%;min-width:0;">
                 <table class="pay-table">
                   <thead>
                     <tr>
@@ -1085,6 +1114,23 @@
 <script src="/js/payments.js?v=bulknote1"></script>
 
 <script>
+(function lockPayPageToViewport(){
+  function apply(){
+    var w = Math.floor((window.visualViewport && window.visualViewport.width) || window.innerWidth || 0);
+    if (!w) return;
+    var pc = document.getElementById('payWidthLockV4') || document.querySelector('.pay-page .page-content');
+    if (!pc) return;
+    pc.style.maxWidth = w + 'px';
+    pc.style.minWidth = '0';
+    pc.style.width = '100%';
+    pc.style.overflowX = 'hidden';
+    pc.style.boxSizing = 'border-box';
+  }
+  apply();
+  document.addEventListener('DOMContentLoaded', apply);
+  window.addEventListener('resize', apply);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', apply);
+})();
 (function(){
   const W=72,H=36,MAX=20,hist={},C={'totalinv':'#c2410c','amt':'#2563eb','tx':'#0891b2','overdue':'#dc2626'},IDS={'totalinv':'fcTotalInv','amt':'fcAmt','tx':'fcTx','overdue':'fcOverdue'};
   Object.keys(C).forEach(k=>hist[k]=[]);
