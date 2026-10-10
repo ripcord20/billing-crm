@@ -41,7 +41,34 @@
       container-name: paypage;
     }
     .pay-page .form-card { width: 100% !important; overflow-x: hidden !important; }
-    .pay-table-scroll { overflow-x: auto; max-width: 100%; min-width: 0; }
+    .pay-page .right-panel,
+    .pay-page #payListLock,
+    .pay-page .pay-pills,
+    .pay-page .table-card,
+    .pay-page .table-header,
+    .pay-page .bulk-toolbar,
+    .pay-page .bulk-bar,
+    .pay-page .pay-table-scroll,
+    .pay-page [id^="tabPanel"] {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      box-sizing: border-box !important;
+    }
+    .pay-page .pay-pills {
+      display: flex !important;
+      overflow-x: auto !important;
+    }
+    .pay-page .table-card { overflow-x: hidden !important; }
+    .pay-page .table-header { flex-wrap: wrap !important; }
+    .pay-page .tbl-search,
+    .pay-page .bulk-notes,
+    .pay-page #bulkWilayah,
+    .pay-page .cf-select {
+      min-width: 0 !important;
+      max-width: 100% !important;
+    }
+    .pay-table-scroll { overflow-x: auto; max-width: 100%; min-width: 0; width: 100%; display: block; -webkit-overflow-scrolling: touch; }
     @container paypage (max-width: 900px) {
       .pay-layout { grid-template-columns: minmax(0,1fr) !important; }
     }
@@ -192,8 +219,9 @@
 
     /* ── Tabs (Sales Dashboard pill style) ── */
     .pay-pills {
-      display:inline-flex; gap:6px; background:#fff; border:1px solid var(--d-border);
+      display:flex; gap:6px; background:#fff; border:1px solid var(--d-border);
       border-radius:13px; padding:5px; margin-bottom:18px; overflow-x:auto; max-width:100%;
+      width:100%; min-width:0; box-sizing:border-box;
     }
     .pay-tab-btn {
       display:inline-flex; align-items:center; gap:7px; padding:9px 16px; border:none;
@@ -208,7 +236,7 @@
     /* ── Table ── */
     .table-card { background:#fff; border:1px solid var(--d-border); border-radius:22px; overflow:hidden; }
     .table-header { padding:16px 20px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; border-bottom:1px solid #f0f4ff; }
-    .tbl-search { position:relative; flex:1; min-width:200px; max-width:280px; }
+    .tbl-search { position:relative; flex:1 1 140px; min-width:0; max-width:100%; }
     .tbl-search svg { position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none; }
     .tbl-search input { width:100%;padding:8px 12px 8px 32px;border:1.5px solid var(--d-border);border-radius:10px;font-size:13px;outline:none;box-sizing:border-box;background:#f8faff;transition:all .15s; }
     .tbl-search input:focus { border-color:var(--d-blue1);background:#fff; }
@@ -409,7 +437,7 @@
     }
     .bulk-search-hint { font-size:11px; color:#94a3b8; min-height:14px; margin-top:4px; }
     .bulk-notes {
-      min-width:180px; max-width:260px; padding:5px 9px; border:1.5px solid var(--d-border);
+      min-width:0; max-width:100%; flex:1 1 140px; padding:5px 9px; border:1.5px solid var(--d-border);
       border-radius:8px; font-size:12px; outline:none; background:#f8faff; color:var(--d-text);
       font-family:inherit;
     }
@@ -724,7 +752,7 @@
         </div>
 
         <!-- Right panel -->
-        <div class="right-panel">
+        <div class="right-panel" id="payListLock">
 
           <!-- Chart row: bar + donut -->
           <div class="chart-row a5">
@@ -1119,12 +1147,20 @@
     var w = Math.floor((window.visualViewport && window.visualViewport.width) || window.innerWidth || 0);
     if (!w) return;
     var pc = document.getElementById('payWidthLockV4') || document.querySelector('.pay-page .page-content');
-    if (!pc) return;
-    pc.style.maxWidth = w + 'px';
-    pc.style.minWidth = '0';
-    pc.style.width = '100%';
-    pc.style.overflowX = 'hidden';
-    pc.style.boxSizing = 'border-box';
+    if (pc) {
+      pc.style.maxWidth = w + 'px';
+      pc.style.minWidth = '0';
+      pc.style.width = '100%';
+      pc.style.overflowX = 'hidden';
+      pc.style.boxSizing = 'border-box';
+    }
+    var nodes = document.querySelectorAll('#payListLock, .pay-page .right-panel, .pay-page .pay-pills, .pay-page .table-card, .pay-page .pay-table-scroll, .pay-page .table-header, .pay-page .bulk-toolbar, .pay-page [id^="tabPanel"]');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].style.maxWidth = '100%';
+      nodes[i].style.width = '100%';
+      nodes[i].style.minWidth = '0';
+      nodes[i].style.boxSizing = 'border-box';
+    }
   }
   apply();
   document.addEventListener('DOMContentLoaded', apply);

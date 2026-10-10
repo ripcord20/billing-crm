@@ -47,11 +47,12 @@ assert.ok(inputPay.includes('method-grid-v4'), 'Input Payment harus pakai grid v
 assert.ok(inputPay.includes("selectMethod(this,'transfer')"), 'tombol Transfer tetap ada');
 assert.ok(inputPay.includes('grid-template-columns:minmax(0,1fr) minmax(0,1fr)'), 'metode 2 kolom yang bisa menyusut');
 assert.ok(inputPay.includes('payWidthLockV4'), 'lebar halaman Payment dikunci ke viewport APK');
+assert.ok(inputPay.includes('payListLock'), 'panel setor massal sampai riwayat dikunci ke lebar HP');
 assert.ok(inputPay.includes('lockPayPageToViewport'), 'JS visualViewport mengunci lebar form');
 assert.ok(inputPay.includes('min-width: 0 !important'), 'page-content tidak boleh melebar ikut tabel');
 
 const payNav = fs.readFileSync(path.join(__dirname, '../../frontend/views/partials/topbar.ejs'), 'utf8')
   + fs.readFileSync(path.join(__dirname, '../../frontend/views/partials/sidebar.ejs'), 'utf8');
-assert.ok(payNav.includes('/payments?m=4'), 'menu Payments harus cache-bust m=4');
+assert.ok(payNav.includes('/payments?m=5'), 'menu Payments harus cache-bust m=5');
 
 console.log('apkWebView.test.js OK');
