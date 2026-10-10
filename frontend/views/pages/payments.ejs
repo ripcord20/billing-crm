@@ -74,8 +74,10 @@
       .fin-grid { grid-template-columns:repeat(2,1fr) !important; }
     }
     @media(max-width:960px) {
-      .pay-layout { grid-template-columns:1fr !important; }
-      .form-card  { position:static !important; }
+      .pay-layout { grid-template-columns:1fr !important; min-width:0; width:100%; max-width:100%; }
+      .form-card  { position:static !important; max-width:100%; min-width:0; overflow-x:hidden; box-sizing:border-box; }
+      .method-grid { grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
+      .pf-split { grid-template-columns:1fr !important; }
     }
     @media(max-width:640px) {
       .fin-grid { grid-template-columns:1fr !important; gap:0 !important; }
@@ -84,7 +86,9 @@
       .fin-card .fc-val { font-size:26px !important; }
       .fin-card .fc-bar { display:none; }
       .pay-btn   { font-size:13px; padding:10px; }
-      .method-grid { grid-template-columns:repeat(2,1fr) !important; }
+      .method-grid { grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
+      .pf-split { grid-template-columns:1fr !important; }
+      .form-card { max-width:100%; min-width:0; overflow-x:hidden; box-sizing:border-box; }
       .col-hide-mobile { display:none !important; }
       .pay-table th, .pay-table td { padding:8px 10px !important; font-size:11.5px !important; }
       .tbl-search { max-width:100% !important; }
@@ -114,9 +118,9 @@
     .cust-item .ci-sub  { font-size:11px; color:var(--d-muted); margin-top:1px; }
     #custInfo { display:none;margin-top:8px;padding:12px 13px;background:#f4f8ff;border:1px solid var(--d-border);border-radius:10px;font-size:12.5px; }
 
-    /* Method pills */
-    .method-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
-    .mpill { text-align:center;padding:8px 4px;border-radius:10px;border:1.5px solid var(--d-border);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;background:#fff;color:var(--d-text);user-select:none; }
+    /* Method pills — 2 kolom selalu muat (jangan overflow-x / geser kanan di APK) */
+    .method-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px; width:100%; max-width:100%; min-width:0; overflow:visible; }
+    .mpill { text-align:center;padding:8px 4px;border-radius:10px;border:1.5px solid var(--d-border);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;background:#fff;color:var(--d-text);user-select:none; min-width:0; box-sizing:border-box; }
     .mpill.active { border-color:var(--d-blue1); background:#eff6ff; color:var(--d-blue1); }
     .mpill:hover:not(.active) { background:#f8faff; }
 
@@ -557,7 +561,7 @@
           </div>
 
           <!-- Amount & Date -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="pf-split" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div class="pf-field">
               <label class="pf-label">Jumlah (Rp) *</label>
               <input type="text" id="payAmount" class="pf-input" placeholder="0" oninput="formatAmount(this)">
@@ -602,7 +606,7 @@
           </div>
 
           <!-- Period -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="pf-split" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div class="pf-field">
               <label class="pf-label">Bulan</label>
               <select id="payPeriodMonth" class="pf-input" style="cursor:pointer;">
