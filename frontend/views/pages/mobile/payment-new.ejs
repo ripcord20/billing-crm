@@ -17,10 +17,9 @@
       padding-bottom:calc(env(safe-area-inset-bottom) + 20px);}
     .money{font-family:'DM Mono',monospace;font-weight:500;}
     .wrap{max-width:520px;margin:0 auto;}
-    /* Halaman ini dimuat di dalam sheet (iframe) — TIDAK ada bottom-nav di sini.
-       Netralkan padding-bawah yang di-set global mobile-shell.css untuk ruang
-       bottom-nav, supaya daftar invoice bisa mengalir penuh sampai bawah dan
-       tidak menyisakan area kosong. */
+    /* Halaman penuh (bukan iframe) — WebView APK menolak nested browsing context.
+       Netralkan padding-bawah global mobile-shell.css supaya daftar invoice
+       mengalir sampai bawah. */
     .wrap{ padding-bottom:calc(16px + env(safe-area-inset-bottom)) !important; }
 
     .topbar{padding:calc(18px + env(safe-area-inset-top)) 18px 14px;display:flex;align-items:center;gap:14px;}
@@ -76,7 +75,7 @@
     .pi-active .pi-lbl{color:#0f9d63;font-weight:700;}
     .pi-active .pi-val{color:#0f9d63;background:#dcf7ec;padding:4px 11px;border-radius:100px;font-size:12.5px;}
 
-    .methods{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+    .methods{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;}
     .method{padding:13px 6px;border:1.5px solid var(--line);background:#fff;border-radius:14px;text-align:center;cursor:pointer;font-size:12px;font-weight:700;color:#5a6885;transition:all .12s;}
     .method.sel{border-color:var(--blue);background:var(--blue-soft);color:var(--blue);}
 
@@ -198,6 +197,7 @@
         <div class="lbl">Metode pembayaran</div>
         <div class="methods" id="methods">
           <div class="method sel" data-m="cash">Tunai</div>
+          <div class="method" data-m="ntf">NTF</div>
           <div class="method" data-m="transfer">Transfer</div>
           <div class="method" data-m="qris">QRIS</div>
         </div>
@@ -247,8 +247,7 @@
 
   <script>
     function getToken(){ const ls=localStorage.getItem('token'); if(ls)return ls; const m=document.cookie.match(/(?:^|;\s*)token=([^;]+)/); return m?decodeURIComponent(m[1]):null; }
-    function inSheet(){ try{ return window.parent && window.parent!==window; }catch(_){ return false; } }
-    function closeOrList(){ if(inSheet()){ try{ window.parent.postMessage({type:'close-payment-sheet'},'*'); return; }catch(_){} } if(history.length>1)history.back(); else location.href='/mobile/payments'; }
+    function closeOrList(){ if(history.length>1)history.back(); else location.href='/mobile/payments'; }
     async function api(url, opts={}){
       const t=getToken();
       const headers=Object.assign({'Content-Type':'application/json'}, t?{'Authorization':'Bearer '+t}:{}, opts.headers||{});
@@ -451,17 +450,19 @@
       // /payments/record (yang juga dipakai desktop) melakukan semuanya dalam
       // satu transaksi: buat payment, invoice 'paid', customer.due_date +1 bulan,
       // status 'active', selaraskan billing_date, dan restore bila terisolir.
+      const notesRaw=(document.getElementById('noteInput').value||'').trim();
+      const methodCanon=(_method==='ntf')?'transfer':_method;
       const body={
         customer_id:   custId,
         amount:        _amount,
         payment_date:  document.getElementById('dateInput').value || undefined,
-        method:        _method,
+        method:        methodCanon,
         bank:          '',
         reference_no:  '',
         due_date_after: dueAfter,
         send_wa:       wantWa ? 1 : 0,
         send_email:    wantEmail ? 1 : 0,
-        notes:         document.getElementById('noteInput').value || '',
+        notes:         notesRaw || (_method==='ntf' ? 'NTF' : ''),
         period_month:  _selected.period_month,
         period_year:   _selected.period_year
       };
@@ -472,7 +473,7 @@
       const ok = r && r.data && r.data.success;
       if(ok){
         const nm=(_selected.customer&&_selected.customer.name)||_selected.customer_name||'Pelanggan';
-        const methodLbl={cash:'Tunai',transfer:'Transfer',qris:'QRIS'}[_method]||_method;
+        const methodLbl={cash:'Tunai',transfer:'Transfer',ntf:'NTF',qris:'QRIS'}[_method]||_method;
         const payDate=document.getElementById('dateInput').value;
         document.getElementById('successAmt').textContent=fmtRp(_amount);
         document.getElementById('scName').textContent=nm;
@@ -486,7 +487,6 @@
         sc.classList.add('show');
         // Notifikasi WA/Email sudah ditangani server (send_wa/send_email), jadi
         // tidak perlu memanggil endpoint kirim terpisah lagi di sini.
-        try{ if(window.parent && window.parent!==window){ window.parent.postMessage({type:'payment-saved'},'*'); } }catch(_){}
       } else {
         toast((r&&r.data&&r.data.message)||'Gagal menyimpan pembayaran','err');
       }

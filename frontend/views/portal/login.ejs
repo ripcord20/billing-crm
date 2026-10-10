@@ -597,6 +597,7 @@ async function doLogin(){
   try {
     var r = await fetch('/portal/api/auth/login', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ customer_id: cid, password: pw })
     });

@@ -49,7 +49,10 @@ router.get('/login', async (req, res) => {
     // Defensive: kalau apa pun gagal di check ini, tetap render halaman login
     // (lebih baik render daripada loop atau error 500).
   }
-  res.render('pages/login', { title: 'Login', layout: false });
+  const nextRaw = String((req.query && req.query.next) || '');
+  const nextUrl = (nextRaw.startsWith('/') && !nextRaw.startsWith('//') && !nextRaw.startsWith('/login'))
+    ? nextRaw : '';
+  res.render('pages/login', { title: 'Login', layout: false, nextUrl });
 });
 
 // Root redirect — role-aware
@@ -361,6 +364,9 @@ router.get('/mobile/wa',             authenticate, renderMobile('wa',           
 router.get('/mobile/profile',        authenticate, renderMobile('profile',        'Akun Saya',     'm-profile'));
 
 router.get('/payments', authenticate, allowFinanceArea, (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
   res.render('pages/payments', { title: 'Pembayaran', user: req.user, active: 'payments' });
 });
 

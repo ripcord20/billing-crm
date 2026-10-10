@@ -2,6 +2,9 @@
 <html lang="id" data-theme="light">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
@@ -13,6 +16,162 @@
       --d-blue1:#1a6ef5; --d-blue2:#0047cc;
     }
     .pay-page { font-family:'DM Sans',sans-serif; background:var(--d-bg) !important; }
+
+    /* APK/WebView: tabel nowrap membuat .page-content (flex item, min-width:auto)
+       melebar ~2× layar. Form 100% ikut melebar → Cash|Transfer masing-masing
+       selebar viewport, Transfer hanya kelihatan setelah geser kanan. */
+    .pay-page .main-content,
+    .pay-page .page-content,
+    .pay-page .pay-layout,
+    .pay-page .form-card,
+    .pay-page .right-panel,
+    .pay-page .fin-grid,
+    .pay-page .fin-grid-4,
+    .pay-page .table-card,
+    .pay-page .chart-row,
+    .pay-page .w-card {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    .pay-page .page-content {
+      width: 100% !important;
+      overflow-x: hidden !important;
+      container-type: inline-size;
+      container-name: paypage;
+    }
+    .pay-page .form-card { width: 100% !important; overflow-x: hidden !important; }
+    .pay-page .right-panel,
+    .pay-page #payListLock,
+    .pay-page .pay-pills,
+    .pay-page .table-card,
+    .pay-page .table-header,
+    .pay-page .bulk-toolbar,
+    .pay-page .bulk-bar,
+    .pay-page .pay-table-scroll,
+    .pay-page [id^="tabPanel"] {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      box-sizing: border-box !important;
+    }
+    .pay-page .pay-pills,
+    .pay-page .pay-pills-v6 {
+      display: grid !important;
+      grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important;
+      overflow: visible !important;
+      gap: 6px !important;
+    }
+    .pay-page .pay-pills .pay-tab-btn,
+    .pay-page .pay-pills-v6 .pay-tab-btn {
+      white-space: normal !important;
+      width: 100% !important;
+      justify-content: center;
+      min-width: 0 !important;
+      box-sizing: border-box !important;
+    }
+    .pay-page.pay-narrow .pay-tab-icn { display: none !important; }
+    .pay-page.pay-narrow .pay-tab-btn { padding: 8px 6px !important; font-size: 11.5px !important; }
+    .pay-page.pay-narrow .col-hide-mobile { display: none !important; }
+    .pay-page.pay-narrow .pay-table-scroll { overflow-x: hidden !important; }
+    .pay-page.pay-narrow .inv-btn,
+    .pay-page.pay-narrow .del-btn { white-space: nowrap !important; word-break: keep-all !important; }
+
+    /* Semua tab: kartu per baris, jangan table-layout:fixed (pecah huruf) */
+    .pay-page.pay-narrow [id^="tabPanel"] .pay-table { table-layout: auto !important; width: 100% !important; }
+    .pay-page.pay-narrow [id^="tabPanel"] .pay-table thead { display: none !important; }
+    .pay-page.pay-narrow [id^="tabPanel"] .pay-table,
+    .pay-page.pay-narrow [id^="tabPanel"] .pay-table tbody { display: block; width: 100%; }
+    .pay-page.pay-narrow [id^="tabPanel"] .pay-table tr {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) auto;
+      gap: 4px 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid #f0f4ff;
+      width: 100%;
+      box-sizing: border-box;
+      align-items: start;
+    }
+    .pay-page.pay-narrow [id^="tabPanel"] .pay-table tr:has(.tbl-empty) { display: block; }
+    .pay-page.pay-narrow [id^="tabPanel"] .pay-table td {
+      display: block !important;
+      padding: 0 !important;
+      border: none !important;
+      white-space: normal !important;
+      word-break: normal !important;
+      overflow-wrap: break-word !important;
+      width: auto !important;
+      max-width: 100%;
+      background: transparent !important;
+    }
+    .pay-page.pay-narrow [id^="tabPanel"] .pay-table td[colspan] { grid-column: 1 / -1; }
+
+    /* Riwayat: nama | jumlah / tgl | metode / aksi */
+    .pay-page.pay-narrow #tabPanelPay .pay-table tr { grid-template-areas: "name amt" "meta method" "aksi aksi"; }
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(1) { grid-area: name; min-width: 0; }
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(2) { grid-area: meta; font-size: 12px; color: #64748b; }
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(3) { grid-area: amt; text-align: right; }
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(4) { grid-area: method; text-align: right; }
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(5),
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(6),
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(7),
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(8) { display: none !important; }
+    .pay-page.pay-narrow #tabPanelPay .pay-table td:nth-child(9) { grid-area: aksi; }
+
+    /* Tertunggak: nama | jumlah / paket | status / jatuh tempo | aksi */
+    .pay-page.pay-narrow #tabPanelOverdue .pay-table tr { grid-template-areas: "name amt" "pkg st" "due aksi"; }
+    .pay-page.pay-narrow #tabPanelOverdue .pay-table td:nth-child(1) { grid-area: name; min-width: 0; }
+    .pay-page.pay-narrow #tabPanelOverdue .pay-table td:nth-child(2) { grid-area: pkg; font-size: 12px; color: #64748b; }
+    .pay-page.pay-narrow #tabPanelOverdue .pay-table td:nth-child(3) { grid-area: amt; text-align: right; }
+    .pay-page.pay-narrow #tabPanelOverdue .pay-table td:nth-child(4) { grid-area: due; font-size: 12px; }
+    .pay-page.pay-narrow #tabPanelOverdue .pay-table td:nth-child(5) { grid-area: st; text-align: right; }
+    .pay-page.pay-narrow #tabPanelOverdue .pay-table td:nth-child(6) { grid-area: aksi; }
+
+    /* Hutang: nama | jumlah / periode | status / janji | catatan / aksi */
+    .pay-page.pay-narrow #tabPanelDebt .pay-table tr { grid-template-areas: "name amt" "per st" "janji note" "aksi aksi"; }
+    .pay-page.pay-narrow #tabPanelDebt .pay-table td:nth-child(1) { grid-area: name; min-width: 0; }
+    .pay-page.pay-narrow #tabPanelDebt .pay-table td:nth-child(2) { grid-area: per; font-size: 12px; color: #64748b; }
+    .pay-page.pay-narrow #tabPanelDebt .pay-table td:nth-child(3) { grid-area: amt; text-align: right; }
+    .pay-page.pay-narrow #tabPanelDebt .pay-table td:nth-child(4) { grid-area: janji; font-size: 12px; }
+    .pay-page.pay-narrow #tabPanelDebt .pay-table td:nth-child(5) { grid-area: st; text-align: right; }
+    .pay-page.pay-narrow #tabPanelDebt .pay-table td:nth-child(6) { grid-area: note; font-size: 12px; color: #64748b; text-align: right; }
+    .pay-page.pay-narrow #tabPanelDebt .pay-table td:nth-child(7) { grid-area: aksi; }
+
+    /* Setor massal: checkbox kiri, field bertumpuk (8 atau 9 kolom + wilayah) */
+    .pay-page.pay-narrow #tabPanelBulk .pay-table tr {
+      grid-template-columns: 28px minmax(0,1fr);
+      gap: 6px 10px;
+    }
+    .pay-page.pay-narrow #tabPanelBulk .pay-table td:nth-child(1) { grid-column: 1; grid-row: 1 / 10; padding-top: 3px !important; }
+    .pay-page.pay-narrow #tabPanelBulk .pay-table td:nth-child(n+2) { grid-column: 2; }
+    .pay-page.pay-narrow #tabPanelBulk .bulk-row-method,
+    .pay-page.pay-narrow #tabPanelBulk .bulk-row-note {
+      width: 100%; max-width: 100%; box-sizing: border-box; min-width: 0 !important;
+    }
+
+    /* Bukti transfer */
+    .pay-page.pay-narrow #tabPanelProof .pay-table tr { grid-template-areas: "name amt" "per st" "inv when" "bukti aksi"; }
+    .pay-page.pay-narrow #tabPanelProof .pay-table td:nth-child(1) { grid-area: name; min-width: 0; }
+    .pay-page.pay-narrow #tabPanelProof .pay-table td:nth-child(2) { grid-area: per; font-size: 12px; color: #64748b; }
+    .pay-page.pay-narrow #tabPanelProof .pay-table td:nth-child(3) { grid-area: inv; font-size: 12px; color: #64748b; }
+    .pay-page.pay-narrow #tabPanelProof .pay-table td:nth-child(4) { grid-area: amt; text-align: right; }
+    .pay-page.pay-narrow #tabPanelProof .pay-table td:nth-child(5) { grid-area: st; text-align: right; }
+    .pay-page.pay-narrow #tabPanelProof .pay-table td:nth-child(6) { grid-area: when; font-size: 12px; color: #64748b; }
+    .pay-page.pay-narrow #tabPanelProof .pay-table td:nth-child(7) { grid-area: bukti; }
+    .pay-page.pay-narrow #tabPanelProof .pay-table td:nth-child(8) { grid-area: aksi; text-align: right; }
+    .pay-page .table-card { overflow-x: hidden !important; }
+    .pay-page .table-header { flex-wrap: wrap !important; }
+    .pay-page .tbl-search,
+    .pay-page .bulk-notes,
+    .pay-page #bulkWilayah,
+    .pay-page .cf-select {
+      min-width: 0 !important;
+      max-width: 100% !important;
+    }
+    .pay-table-scroll { overflow-x: auto; max-width: 100%; min-width: 0; width: 100%; display: block; -webkit-overflow-scrolling: touch; }
+    @container paypage (max-width: 900px) {
+      .pay-layout { grid-template-columns: minmax(0,1fr) !important; }
+    }
 
     /* ── Fintech cards ── */
         /* ── STAT CARDS — single strip ── */
@@ -65,17 +224,19 @@
     }
         /* ── Layout ── */
     /* Main layout: form left + right panel */
-    .pay-layout { display:grid; grid-template-columns:300px minmax(0,1fr); gap:16px; align-items:start; }
-    @media(max-width:1100px){ .pay-layout { grid-template-columns:260px 1fr; } }
-    @media(max-width:900px) { .pay-layout { grid-template-columns:1fr; } }
+    .pay-layout { display:grid; grid-template-columns:300px minmax(0,1fr); gap:16px; align-items:start; min-width:0; width:100%; max-width:100%; }
+    @media(max-width:1100px){ .pay-layout { grid-template-columns:260px minmax(0,1fr); } }
+    @media(max-width:900px) { .pay-layout { grid-template-columns:minmax(0,1fr); } }
 
     /* Responsive breakpoints — mengikuti PHP referensi */
     @media(max-width:1100px) {
       .fin-grid { grid-template-columns:repeat(2,1fr) !important; }
     }
     @media(max-width:960px) {
-      .pay-layout { grid-template-columns:1fr !important; }
-      .form-card  { position:static !important; }
+      .pay-layout { grid-template-columns:minmax(0,1fr) !important; min-width:0; width:100%; max-width:100%; }
+      .form-card  { position:static !important; max-width:100%; min-width:0; overflow-x:hidden; box-sizing:border-box; }
+      .method-grid { grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
+      .pf-split { grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important; }
     }
     @media(max-width:640px) {
       .fin-grid { grid-template-columns:1fr !important; gap:0 !important; }
@@ -84,7 +245,9 @@
       .fin-card .fc-val { font-size:26px !important; }
       .fin-card .fc-bar { display:none; }
       .pay-btn   { font-size:13px; padding:10px; }
-      .method-grid { grid-template-columns:repeat(2,1fr) !important; }
+      .method-grid { grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
+      .pf-split { grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important; }
+      .form-card { max-width:100%; min-width:0; overflow-x:hidden; box-sizing:border-box; }
       .col-hide-mobile { display:none !important; }
       .pay-table th, .pay-table td { padding:8px 10px !important; font-size:11.5px !important; }
       .tbl-search { max-width:100% !important; }
@@ -114,9 +277,9 @@
     .cust-item .ci-sub  { font-size:11px; color:var(--d-muted); margin-top:1px; }
     #custInfo { display:none;margin-top:8px;padding:12px 13px;background:#f4f8ff;border:1px solid var(--d-border);border-radius:10px;font-size:12.5px; }
 
-    /* Method pills */
-    .method-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
-    .mpill { text-align:center;padding:8px 4px;border-radius:10px;border:1.5px solid var(--d-border);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;background:#fff;color:var(--d-text);user-select:none; }
+    /* Method pills — 2 kolom selalu muat (jangan overflow-x / geser kanan di APK) */
+    .method-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px; width:100%; max-width:100%; min-width:0; overflow:visible; }
+    .mpill { text-align:center;padding:8px 4px;border-radius:10px;border:1.5px solid var(--d-border);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;background:#fff;color:var(--d-text);user-select:none; min-width:0; box-sizing:border-box; }
     .mpill.active { border-color:var(--d-blue1); background:#eff6ff; color:var(--d-blue1); }
     .mpill:hover:not(.active) { background:#f8faff; }
 
@@ -156,14 +319,17 @@
 
     /* ── Tabs (Sales Dashboard pill style) ── */
     .pay-pills {
-      display:inline-flex; gap:6px; background:#fff; border:1px solid var(--d-border);
-      border-radius:13px; padding:5px; margin-bottom:18px; overflow-x:auto; max-width:100%;
+      display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:6px;
+      background:#fff; border:1px solid var(--d-border);
+      border-radius:13px; padding:5px; margin-bottom:18px; overflow:visible; max-width:100%;
+      width:100%; min-width:0; box-sizing:border-box;
     }
     .pay-tab-btn {
-      display:inline-flex; align-items:center; gap:7px; padding:9px 16px; border:none;
+      display:inline-flex; align-items:center; gap:7px; padding:9px 10px; border:none;
       background:transparent; border-radius:9px; font-family:inherit; font-size:13px;
-      font-weight:600; color:var(--d-muted); cursor:pointer; white-space:nowrap;
-      transition:background .15s,color .15s;
+      font-weight:600; color:var(--d-muted); cursor:pointer; white-space:normal;
+      transition:background .15s,color .15s; min-width:0; width:100%; justify-content:center;
+      box-sizing:border-box; text-align:center;
     }
     .pay-tab-btn:hover:not(.pay-tab-active) { background:#f4f8ff; color:var(--d-text); }
     .pay-tab-active { background:#2563eb !important; color:#fff !important; }
@@ -172,7 +338,7 @@
     /* ── Table ── */
     .table-card { background:#fff; border:1px solid var(--d-border); border-radius:22px; overflow:hidden; }
     .table-header { padding:16px 20px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; border-bottom:1px solid #f0f4ff; }
-    .tbl-search { position:relative; flex:1; min-width:200px; max-width:280px; }
+    .tbl-search { position:relative; flex:1 1 140px; min-width:0; max-width:100%; }
     .tbl-search svg { position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none; }
     .tbl-search input { width:100%;padding:8px 12px 8px 32px;border:1.5px solid var(--d-border);border-radius:10px;font-size:13px;outline:none;box-sizing:border-box;background:#f8faff;transition:all .15s; }
     .tbl-search input:focus { border-color:var(--d-blue1);background:#fff; }
@@ -373,7 +539,7 @@
     }
     .bulk-search-hint { font-size:11px; color:#94a3b8; min-height:14px; margin-top:4px; }
     .bulk-notes {
-      min-width:180px; max-width:260px; padding:5px 9px; border:1.5px solid var(--d-border);
+      min-width:0; max-width:100%; flex:1 1 140px; padding:5px 9px; border:1.5px solid var(--d-border);
       border-radius:8px; font-size:12px; outline:none; background:#f8faff; color:var(--d-text);
       font-family:inherit;
     }
@@ -419,7 +585,7 @@
   <%- include('../partials/sidebar') %>
   <div class="main-content">
     <%- include('../partials/topbar') %>
-    <main class="page-content">
+    <main class="page-content" id="payWidthLockV4">
 
       <!-- Header -->
       <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;" class="a1">
@@ -557,7 +723,7 @@
           </div>
 
           <!-- Amount & Date -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="pf-split" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;width:100%;max-width:100%;min-width:0;">
             <div class="pf-field">
               <label class="pf-label">Jumlah (Rp) *</label>
               <input type="text" id="payAmount" class="pf-input" placeholder="0" oninput="formatAmount(this)">
@@ -568,16 +734,20 @@
             </div>
           </div>
 
-          <!-- Method -->
+          <!-- Method — grid 2 kolom di lebar form (bukan 50% dari halaman yang melebar) -->
           <div class="pf-field pay-only">
             <label class="pf-label">Metode Payment *</label>
-            <div class="method-grid">
-              <div class="mpill active" onclick="selectMethod(this,'cash')">Cash</div>
-              <div class="mpill" onclick="selectMethod(this,'transfer')">Transfer</div>
-              <div class="mpill" onclick="selectMethod(this,'dana')">DANA</div>
-              <div class="mpill" onclick="selectMethod(this,'ovo')">OVO</div>
-              <div class="mpill" onclick="selectMethod(this,'gopay')">GoPay</div>
-              <div class="mpill" onclick="selectMethod(this,'qris')">QRIS</div>
+            <style>
+              .method-grid-v4{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:6px!important;width:100%!important;max-width:100%!important;min-width:0!important;}
+              .method-grid-v4 .mpill{min-width:0!important;width:auto!important;max-width:100%!important;box-sizing:border-box!important;flex:none!important;}
+            </style>
+            <div class="method-grid method-grid-v4" id="methodGridV4" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;width:100%;max-width:100%;min-width:0;">
+              <div class="mpill active" onclick="selectMethod(this,'cash')" style="min-width:0;box-sizing:border-box;">Cash</div>
+              <div class="mpill" onclick="selectMethod(this,'transfer')" style="min-width:0;box-sizing:border-box;">Transfer</div>
+              <div class="mpill" onclick="selectMethod(this,'dana')" style="min-width:0;box-sizing:border-box;">DANA</div>
+              <div class="mpill" onclick="selectMethod(this,'ovo')" style="min-width:0;box-sizing:border-box;">OVO</div>
+              <div class="mpill" onclick="selectMethod(this,'gopay')" style="min-width:0;box-sizing:border-box;">GoPay</div>
+              <div class="mpill" onclick="selectMethod(this,'qris')" style="min-width:0;box-sizing:border-box;">QRIS</div>
             </div>
             <input type="hidden" id="payMethod" value="cash">
           </div>
@@ -602,7 +772,7 @@
           </div>
 
           <!-- Period -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="pf-split" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;width:100%;max-width:100%;min-width:0;">
             <div class="pf-field">
               <label class="pf-label">Bulan</label>
               <select id="payPeriodMonth" class="pf-input" style="cursor:pointer;">
@@ -684,7 +854,7 @@
         </div>
 
         <!-- Right panel -->
-        <div class="right-panel">
+        <div class="right-panel" id="payListLock">
 
           <!-- Chart row: bar + donut -->
           <div class="chart-row a5">
@@ -721,8 +891,12 @@
 
           </div>
 
-          <!-- Tabs -->
-          <div class="pay-pills">
+          <!-- Tabs — grid 2 kolom, semua tombol kelihatan tanpa geser kanan -->
+          <style>
+            .pay-pills-v6{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:6px!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:visible!important;box-sizing:border-box!important;}
+            .pay-pills-v6 .pay-tab-btn{white-space:normal!important;width:100%!important;min-width:0!important;justify-content:center;box-sizing:border-box!important;}
+          </style>
+          <div class="pay-pills pay-pills-v6" id="payPillsV6" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;width:100%;max-width:100%;min-width:0;overflow:visible;">
             <button id="tabBtnPay" onclick="switchPayTab('pay')" class="pay-tab-btn pay-tab-active">
               <svg class="pay-tab-icn" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
               Riwayat Pembayaran
@@ -750,6 +924,10 @@
 
           <!-- Tab panel: Pembayaran -->
           <div id="tabPanelPay">
+          <style>
+            .pay-page.pay-narrow [id^="tabPanel"] .pay-table thead{display:none!important;}
+            .pay-page.pay-narrow .inv-btn,.pay-page.pay-narrow .del-btn{white-space:nowrap!important;}
+          </style>
           <!-- Table -->
           <div class="table-card a6">
             <div class="table-header">
@@ -763,7 +941,7 @@
               </div>
               <div class="tbl-count" id="tblCount">–</div>
             </div>
-            <div style="overflow-x:auto;">
+            <div class="pay-table-scroll" style="overflow-x:auto;max-width:100%;min-width:0;">
               <table class="pay-table">
                 <thead>
                   <tr>
@@ -771,7 +949,7 @@
                     <th>Tgl Bayar</th>
                     <th>Jumlah</th>
                     <th>Metode</th>
-                    <th>Due Date</th>
+                    <th class="col-hide-mobile">Due Date</th>
                     <th class="col-hide-mobile">Notification</th>
                     <th class="col-hide-mobile">Validation By</th>
                     <th class="col-hide-mobile">Invoice</th>
@@ -806,7 +984,7 @@
                 </div>
                 <div class="tbl-count" id="ostCount">–</div>
               </div>
-              <div style="overflow-x:auto;">
+              <div class="pay-table-scroll" style="overflow-x:auto;max-width:100%;min-width:0;">
                 <table class="pay-table">
                   <thead>
                     <tr>
@@ -846,7 +1024,7 @@
                 </div>
                 <div class="tbl-count" id="debtCount">–</div>
               </div>
-              <div style="overflow-x:auto;">
+              <div class="pay-table-scroll" style="overflow-x:auto;max-width:100%;min-width:0;">
                 <table class="pay-table">
                   <thead>
                     <tr>
@@ -895,7 +1073,7 @@
                   <input type="text" id="bulkNotes" class="bulk-notes" placeholder="Catatan default..." title="Catatan untuk yang baru dicentang">
                 </div>
               </div>
-              <div style="overflow-x:auto;">
+              <div class="pay-table-scroll" style="overflow-x:auto;max-width:100%;min-width:0;">
                 <table class="pay-table">
                   <thead>
                     <tr>
@@ -948,7 +1126,7 @@
                   </div>
                 </div>
               </div>
-              <div style="overflow-x:auto;">
+              <div class="pay-table-scroll" style="overflow-x:auto;max-width:100%;min-width:0;">
                 <table class="pay-table">
                   <thead>
                     <tr>
@@ -1074,6 +1252,45 @@
 <script src="/js/payments.js?v=bulknote1"></script>
 
 <script>
+(function lockPayPageToViewport(){
+  function apply(){
+    var w = Math.floor((window.visualViewport && window.visualViewport.width) || window.innerWidth || 0);
+    if (!w) return;
+    var page = document.querySelector('.pay-page');
+    if (page) page.classList.toggle('pay-narrow', w <= 900);
+    var mc = document.querySelector('.pay-page .main-content');
+    if (mc) {
+      mc.style.maxWidth = w + 'px';
+      mc.style.minWidth = '0';
+      mc.style.overflowX = 'hidden';
+    }
+    var pc = document.getElementById('payWidthLockV4') || document.querySelector('.pay-page .page-content');
+    if (pc) {
+      pc.style.maxWidth = w + 'px';
+      pc.style.minWidth = '0';
+      pc.style.width = '100%';
+      pc.style.overflowX = 'hidden';
+      pc.style.boxSizing = 'border-box';
+    }
+    var nodes = document.querySelectorAll('#payListLock, #payPillsV6, .pay-page .right-panel, .pay-page .pay-pills, .pay-page .table-card, .pay-page .pay-table-scroll, .pay-page .table-header, .pay-page .bulk-toolbar, .pay-page [id^="tabPanel"]');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].style.maxWidth = '100%';
+      nodes[i].style.width = '100%';
+      nodes[i].style.minWidth = '0';
+      nodes[i].style.boxSizing = 'border-box';
+    }
+    var pills = document.getElementById('payPillsV6');
+    if (pills) {
+      pills.style.display = 'grid';
+      pills.style.gridTemplateColumns = 'minmax(0,1fr) minmax(0,1fr)';
+      pills.style.overflow = 'visible';
+    }
+  }
+  apply();
+  document.addEventListener('DOMContentLoaded', apply);
+  window.addEventListener('resize', apply);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', apply);
+})();
 (function(){
   const W=72,H=36,MAX=20,hist={},C={'totalinv':'#c2410c','amt':'#2563eb','tx':'#0891b2','overdue':'#dc2626'},IDS={'totalinv':'fcTotalInv','amt':'fcAmt','tx':'fcTx','overdue':'fcOverdue'};
   Object.keys(C).forEach(k=>hist[k]=[]);
