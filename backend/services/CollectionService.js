@@ -198,6 +198,36 @@ class CollectionService {
   }
 
   /**
+   * Invoice sudah lunas di kanal lain (admin Payments, mark-paid, gateway).
+   * Tutup tugas kolektor yang masih terbuka supaya tidak ditagih ulang,
+   * dan tautkan payment ke assignment untuk audit "Dilunasi oleh".
+   */
+  static async markInvoiceAssignmentsPaid(invoiceId, opts = {}) {
+    if (!invoiceId) return 0;
+    const OPEN = ['pending', 'assigned', 'in_progress', 'not_home', 'promise_to_pay'];
+    const t = opts.transaction || null;
+    const rows = await CollectionAssignment.findAll({
+      where: { invoice_id: invoiceId, status: { [Op.in]: OPEN } },
+      transaction: t
+    });
+    if (!rows.length) return 0;
+    const amount = opts.amount != null ? opts.amount : null;
+    const paidAt = opts.paidAt || new Date();
+    const payment = opts.payment || null;
+    for (const a of rows) {
+      await a.update({
+        status: 'paid',
+        amount_collected: amount != null ? amount : a.amount_due,
+        collected_at: paidAt
+      }, { transaction: t });
+      if (payment && !payment.assignment_id && typeof payment.update === 'function') {
+        await payment.update({ assignment_id: a.id }, { transaction: t });
+      }
+    }
+    return rows.length;
+  }
+
+  /**
    * Tugaskan sejumlah assignment ke seorang kolektor.
    * Mengubah status 'pending' → 'assigned' (status lain dibiarkan apa adanya
    * supaya tidak menimpa progres lapangan yang sudah berjalan).

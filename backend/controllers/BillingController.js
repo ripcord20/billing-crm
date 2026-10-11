@@ -1757,6 +1757,15 @@ class BillingController {
       invoice.paid_date = payDate;
       await invoice.save();
 
+      try {
+        const CollectionService = require('../services/CollectionService');
+        await CollectionService.markInvoiceAssignmentsPaid(invoice.id, {
+          payment,
+          amount: payment.amount,
+          paidAt: payDate
+        });
+      } catch (_) {}
+
       // Update due_date pelanggan ke periode berikutnya supaya pesan WA
       // selanjutnya menampilkan jatuh tempo terbaru.
       // Kebijakan: jatuh tempo berikutnya = jatuh tempo customer TERKINI + 1 bulan

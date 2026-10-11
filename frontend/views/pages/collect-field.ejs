@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title><%= title %> - <%= appName %></title>
-  <!-- collect-pay-v2: transfer bank + e-wallet subtype -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <!-- collect-pay-v3: Dilunasi oleh dari payment invoice -->
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -458,7 +459,8 @@
         <div class="r"><span>Pelanggan</span><b id="pdCust">—</b></div>
         <div class="r"><span>Invoice</span><b id="pdInv">—</b></div>
         <div class="r"><span>Tanggal Bayar</span><b id="pdDate">—</b></div>
-        <div class="r"><span>Dilunasi oleh</span><b id="pdBy">—</b></div>
+        <div class="r"><span>Dilunasi oleh</span><b id="pdBy" style="color:#0a8f80;">—</b></div>
+        <div class="r" id="pdMethodRow" style="display:none;"><span>Metode</span><b id="pdMethod">—</b></div>
       </div>
       <div id="pdProofWrap" style="margin-top:14px;display:none;">
         <label>Foto Bukti Pembayaran</label>
@@ -876,9 +878,11 @@
 
   function renderCard(a){
     var c=a.customer||{},inv=a.invoice||{};
+    var invPaid=!!(a.invoice_paid||inv.status==='paid');
+    var done=(a.status==='paid'||a.status==='partial_paid'||invPaid);
     var st=STATUS[a.status]||['?','b-assigned'];
+    if(invPaid && a.status!=='partial_paid') st=STATUS.paid;
     var addr=esc(c.address||[c.village,c.district,c.regency].filter(Boolean).join(', ')||'—');
-    var done=(a.status==='paid'||a.status==='partial_paid');
     var maps=(c.latitude&&c.longitude)?('https://maps.google.com/?q='+c.latitude+','+c.longitude)
       :('https://maps.google.com/?q='+encodeURIComponent(c.address||c.name||''));
     var wa=c.phone?('https://wa.me/'+String(c.phone).replace(/[^0-9]/g,'').replace(/^0/,'62')):null;
@@ -918,7 +922,7 @@
         '<span class="invno">'+esc(inv.invoice_number||'')+'</span>'+
         distBadge+
       '</div>'+
-      (done && (a.paid_by_name||state.meName) ? '<div style="font-size:11.5px;color:#0f766e;font-weight:600;margin-top:6px;">Dilunasi oleh '+esc(a.paid_by_name||state.meName)+'</div>' : '')+
+      (done ? '<div style="font-size:12px;color:#0a8f80;font-weight:700;margin-top:8px;padding:8px 10px;background:#ecfdf5;border-radius:10px;">Dilunasi oleh '+esc(a.paid_by_name||state.meName||'Sistem')+'</div>' : '')+
       actions+'</div>';
   }
 
@@ -1272,8 +1276,13 @@
     document.getElementById('pdStatus').textContent=partial?'Sebagian (sisa di-carry)':'Lunas';
     document.getElementById('pdCust').textContent=c.name||'-';
     document.getElementById('pdInv').textContent=inv.invoice_number||'-';
-    document.getElementById('pdDate').textContent=a.collected_at?fmtDue(a.collected_at):'—';
-    document.getElementById('pdBy').textContent=a.paid_by_name||state.meName||'—';
+    document.getElementById('pdDate').textContent=a.collected_at?fmtDue(a.collected_at):(a.paid_at?fmtDue(a.paid_at):'—');
+    document.getElementById('pdBy').textContent=a.paid_by_name||state.meName||'Sistem';
+    var methodMap={cash:'Cash',transfer:'Transfer',dana:'DANA',ovo:'OVO',gopay:'GoPay',qris:'QRIS',ewallet:'E-Wallet',field_collection:'Cash',gateway:'Payment Gateway'};
+    var meth=a.paid_method||(a.payments&&a.payments[0]&&a.payments[0].payment_method)||'';
+    var methRow=document.getElementById('pdMethodRow');
+    if(meth){methRow.style.display='flex';document.getElementById('pdMethod').textContent=methodMap[meth]||meth;}
+    else methRow.style.display='none';
     var pw=document.getElementById('pdProofWrap');
     var frame=document.getElementById('pdProofFrame');
     if(frame._objUrl){URL.revokeObjectURL(frame._objUrl);frame._objUrl=null;}

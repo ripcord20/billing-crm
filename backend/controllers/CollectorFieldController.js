@@ -312,13 +312,42 @@ class CollectorFieldController {
       });
 
       const { paidByFromPayment, paidByDisplayName } = require('../utils/paidBy');
-      const data = rows.map((r) => {
-        const j = typeof r.toJSON === 'function' ? r.toJSON() : { ...r };
-        const pay = (j.payments && j.payments[0]) || null;
-        j.paid_by_name = paidByFromPayment(pay)
-          || paidByDisplayName(j.collector && j.collector.name, null, null)
-          || null;
-        return j;
+      const data = rows.map((r) => (typeof r.toJSON === 'function' ? r.toJSON() : { ...r }));
+      const invIds = [...new Set(data.map((j) => j.invoice_id || (j.invoice && j.invoice.id)).filter(Boolean))];
+      const payByInv = {};
+      if (invIds.length) {
+        const payRows = await sequelize.query(
+          `SELECT p.invoice_id, p.payment_date, p.payment_method, p.notes, p.amount,
+                  ur.name AS recorder_name, uc.name AS collector_name
+             FROM payments p
+             LEFT JOIN users ur ON ur.id = p.recorded_by
+             LEFT JOIN users uc ON uc.id = p.collected_by
+            WHERE p.invoice_id IN (:ids)
+              AND p.id IN (
+                SELECT MAX(p2.id) FROM payments p2
+                 WHERE p2.invoice_id IN (:ids)
+                 GROUP BY p2.invoice_id
+              )`,
+          { replacements: { ids: invIds }, type: sequelize.QueryTypes.SELECT }
+        );
+        payRows.forEach((p) => { payByInv[p.invoice_id] = p; });
+      }
+      data.forEach((j) => {
+        const invId = j.invoice_id || (j.invoice && j.invoice.id);
+        const assignPay = (j.payments && j.payments[0]) || null;
+        const invPay = (invId && payByInv[invId]) || null;
+        const fromAssign = paidByFromPayment(assignPay);
+        const fromInv = invPay
+          ? paidByDisplayName(invPay.collector_name, invPay.recorder_name, invPay.notes)
+          : '';
+        const invoicePaid = !!(j.invoice && j.invoice.status === 'paid')
+          || j.status === 'paid' || j.status === 'partial_paid';
+        j.paid_by_name = fromAssign || fromInv || (invoicePaid ? 'Sistem' : null);
+        j.invoice_paid = invoicePaid;
+        if (invPay) {
+          j.paid_method = invPay.payment_method;
+          if (!j.collected_at) j.paid_at = invPay.payment_date;
+        }
       });
 
       res.json({ success: true, data });

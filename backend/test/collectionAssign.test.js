@@ -6,6 +6,7 @@ const svc = fs.readFileSync(path.join(__dirname, '../services/CollectionService.
 assert.ok(svc.includes("attributes: ['id']"), 'generateTasks harus SELECT id saja supaya tidak pecah jika kolom pay_lat belum ada');
 assert.ok(svc.includes('syncUnpaidTasks'), 'generate invoice harus bisa buat tugas kolektor');
 assert.ok(svc.includes('defaultCollectorId'), 'tugas baru di-assign ke kolektor aktif bila hanya satu');
+assert.ok(svc.includes('markInvoiceAssignmentsPaid'), 'pelunasan admin menutup tugas kolektor');
 
 const bill = fs.readFileSync(path.join(__dirname, '../controllers/BillingController.js'), 'utf8');
 assert.ok(bill.includes('already_paid'), 'invoice yang sudah lunas dilaporkan ke UI');
@@ -32,16 +33,19 @@ assert.ok(ctrl.includes("holdsCash"), 'kas di tangan hanya bertambah untuk Cash'
 assert.ok(ctrl.includes("bankName"), 'backend kolektor menyimpan nama bank transfer');
 assert.ok(ctrl.includes("Pilih atau isi nama bank"), 'transfer tanpa bank ditolak');
 assert.ok(ctrl.includes('paid_by_name'), 'tugas lunas membawa nama yang melunasi');
+assert.ok(ctrl.includes('payByInv'), 'nama pelunasi diambil dari payment invoice, bukan hanya assignment');
 
 assert.ok(bill.includes('paid_by_name'), 'daftar invoice membawa nama yang melunasi');
 assert.ok(bill.includes('attachPaidByName'), 'nama pelunasan diisi dari collector/recorder');
 
 const payCtrl = fs.readFileSync(path.join(__dirname, '../controllers/PaymentController.js'), 'utf8');
 assert.ok(payCtrl.includes("paidByDisplayName"), 'invoice data memakai nama kolektor/admin, bukan System');
+assert.ok(payCtrl.includes('markInvoiceAssignmentsPaid'), 'input payment menutup tugas kolektor');
 assert.ok(!payCtrl.includes("recorded_by_name = 'System'"), 'invoice tidak boleh hardcode System');
 
 assert.ok(field.includes('id="pdBy"'), 'detail lunas kolektor menampilkan Dilunasi oleh');
 assert.ok(field.includes('Dilunasi oleh'), 'kartu lunas kolektor menampilkan Dilunasi oleh');
+assert.ok(field.includes('invoice_paid'), 'kartu lunas meski tugas masih assigned');
 
 const invPage = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/invoice.ejs'), 'utf8');
 assert.ok(invPage.includes('id="paidBy"'), 'halaman invoice menampilkan Dilunasi oleh');

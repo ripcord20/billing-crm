@@ -141,6 +141,17 @@ async function finalizePaidInvoice({ invoiceId, paymentId, channel = 'gateway', 
     logger.warn(`[paymentFinalizer] sync Keuangan gagal: ${e.message}`);
   }
 
+  try {
+    const CollectionService = require('../services/CollectionService');
+    await CollectionService.markInvoiceAssignmentsPaid(invoice.id, {
+      payment,
+      amount: payment ? payment.amount : null,
+      paidAt: payment ? payment.payment_date : new Date()
+    });
+  } catch (e) {
+    logger.warn(`[paymentFinalizer] tutup tugas kolektor gagal: ${e.message}`);
+  }
+
   // ── 3. Auto-restore isolir MikroTik ──────────────────────────────
   // (sesuai pattern di PaymentController.record line 304-315)
   // Re-fetch isolir_status karena di webhook bisa jadi belum di-update

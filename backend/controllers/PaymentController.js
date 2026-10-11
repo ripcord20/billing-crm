@@ -415,6 +415,16 @@ class PaymentController {
         });
       } catch (_) {}
 
+      try {
+        const CollectionService = require('../services/CollectionService');
+        await CollectionService.markInvoiceAssignmentsPaid(invoice.id, {
+          payment,
+          amount: payment.amount,
+          paidAt: payment.payment_date || new Date(),
+          transaction: t
+        });
+      } catch (_) {}
+
       // Jika customer terisolir, set flag restoring
       // (implementasi MikroTik restore di-trigger setelah commit di bawah)
 
