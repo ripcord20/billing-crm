@@ -62,6 +62,10 @@
     .pay-page.cust-narrow .cust-table td:nth-child(2) { grid-column: 2; min-width: 0; }
     .pay-page.cust-narrow .cust-table td:nth-child(n+3) { grid-column: 1 / -1; }
     .pay-page.cust-narrow .col-hide-mob { display: none !important; }
+    /* tbody JS tidak selalu kasih class col-hide-mob — samakan dengan header */
+    .pay-page.cust-narrow .cust-table td:nth-child(3),
+    .pay-page.cust-narrow .cust-table td:nth-child(5),
+    .pay-page.cust-narrow .cust-table td:nth-child(6) { display: none !important; }
     .pay-page.cust-narrow .cust-table td[colspan] { grid-column: 1 / -1; }
     .pay-page.cust-narrow .rb { white-space: nowrap !important; word-break: keep-all !important; }
     .pay-page.cust-narrow .cust-table td:nth-child(2) div { max-width: 100% !important; white-space: normal !important; }
