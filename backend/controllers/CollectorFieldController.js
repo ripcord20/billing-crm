@@ -296,12 +296,61 @@ class CollectorFieldController {
                          'regency', 'district', 'village', 'public_link_token'],
             where: customerWhere, required: !!search
           },
-          { model: Invoice, as: 'invoice', attributes: ['id', 'invoice_number', 'total', 'status', 'due_date'] }
+          { model: Invoice, as: 'invoice', attributes: ['id', 'invoice_number', 'total', 'status', 'due_date'] },
+          { model: User, as: 'collector', attributes: ['id', 'name'], required: false },
+          {
+            model: Payment, as: 'payments',
+            attributes: ['id', 'recorded_by', 'collected_by', 'notes', 'payment_method'],
+            required: false, limit: 1, order: [['id', 'DESC']],
+            include: [
+              { model: User, as: 'collector', attributes: ['id', 'name'], required: false },
+              { model: User, as: 'recorder', attributes: ['id', 'name'], required: false }
+            ]
+          }
         ],
         order: [['status', 'ASC'], ['scheduled_date', 'ASC']]
       });
 
-      res.json({ success: true, data: rows });
+      const { paidByFromPayment, paidByDisplayName } = require('../utils/paidBy');
+      const data = rows.map((r) => (typeof r.toJSON === 'function' ? r.toJSON() : { ...r }));
+      const invIds = [...new Set(data.map((j) => j.invoice_id || (j.invoice && j.invoice.id)).filter(Boolean))];
+      const payByInv = {};
+      if (invIds.length) {
+        const payRows = await sequelize.query(
+          `SELECT p.invoice_id, p.payment_date, p.payment_method, p.notes, p.amount,
+                  ur.name AS recorder_name, uc.name AS collector_name
+             FROM payments p
+             LEFT JOIN users ur ON ur.id = p.recorded_by
+             LEFT JOIN users uc ON uc.id = p.collected_by
+            WHERE p.invoice_id IN (:ids)
+              AND p.id IN (
+                SELECT MAX(p2.id) FROM payments p2
+                 WHERE p2.invoice_id IN (:ids)
+                 GROUP BY p2.invoice_id
+              )`,
+          { replacements: { ids: invIds }, type: sequelize.QueryTypes.SELECT }
+        );
+        payRows.forEach((p) => { payByInv[p.invoice_id] = p; });
+      }
+      data.forEach((j) => {
+        const invId = j.invoice_id || (j.invoice && j.invoice.id);
+        const assignPay = (j.payments && j.payments[0]) || null;
+        const invPay = (invId && payByInv[invId]) || null;
+        const fromAssign = paidByFromPayment(assignPay);
+        const fromInv = invPay
+          ? paidByDisplayName(invPay.collector_name, invPay.recorder_name, invPay.notes)
+          : '';
+        const invoicePaid = !!(j.invoice && j.invoice.status === 'paid')
+          || j.status === 'paid' || j.status === 'partial_paid';
+        j.paid_by_name = fromAssign || fromInv || (invoicePaid ? 'Sistem' : null);
+        j.invoice_paid = invoicePaid;
+        if (invPay) {
+          j.paid_method = invPay.payment_method;
+          if (!j.collected_at) j.paid_at = invPay.payment_date;
+        }
+      });
+
+      res.json({ success: true, data });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
     }
@@ -404,7 +453,21 @@ class CollectorFieldController {
     const t = await sequelize.transaction();
     try {
       const uid = req.user.id;
-      const { assignment_id, amount, payment_date, notes, send_wa } = req.body;
+      const { assignment_id, amount, payment_date, notes, send_wa, payment_method, bank } = req.body;
+      const { methodLabel } = require('../utils/paymentMethodLabel');
+      const FIELD_METHODS = ['cash', 'transfer', 'ewallet', 'dana', 'ovo', 'gopay', 'qris'];
+      const rawMethod = String(payment_method || 'cash').trim().toLowerCase();
+      const payMethod = FIELD_METHODS.includes(rawMethod) ? rawMethod : 'cash';
+      const holdsCash = (payMethod === 'cash');
+      const bankName = String(bank || '').trim().slice(0, 80);
+      if (payMethod === 'transfer' && !bankName) {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: 'Pilih atau isi nama bank' });
+      }
+      if (payMethod === 'ewallet') {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: 'Pilih e-wallet (DANA / OVO / GoPay / QRIS)' });
+      }
 
       const a = await this._ownedAssignment(parseInt(assignment_id, 10), uid, t);
       const invoice  = a.invoice;
@@ -443,14 +506,18 @@ class CollectorFieldController {
       const isPartial = payAmount < invoiceTotal;
       const carryOver = isPartial ? Math.max(invoiceTotal - payAmount, 0) : 0;
       const payDate = payment_date || moment().format('YYYY-MM-DD');
+      const payLabel = methodLabel(payMethod, bankName);
+      const refParts = [];
+      if (bankName) refParts.push(bankName);
+      if (isPartial) refParts.push(`PARTIAL (sisa Rp${carryOver.toLocaleString('id-ID')})`);
 
-      // 1) Payment record (field_collection)
+      // 1) Payment record — metode dipilih kolektor (cash/transfer/ewallet)
       const payment = await Payment.create({
         invoice_id: invoice.id,
         amount: payAmount,
-        payment_method: 'field_collection',
+        payment_method: payMethod,
         payment_date: payDate,
-        reference_number: isPartial ? `PARTIAL (sisa Rp${carryOver.toLocaleString('id-ID')})` : null,
+        reference_number: refParts.length ? refParts.join(' — ').slice(0, 100) : null,
         recorded_by: uid,
         collected_by: uid,
         assignment_id: a.id,
@@ -475,10 +542,12 @@ class CollectorFieldController {
       }
       await customer.update(custPatch, { transaction: t });
 
-      // 4) cash_held kolektor += diterima
-      const profile = await CollectorProfile.findOne({ where: { user_id: uid }, transaction: t });
-      if (profile) {
-        await profile.update({ cash_held: parseFloat(profile.cash_held || 0) + payAmount }, { transaction: t });
+      // 4) cash_held kolektor += hanya kalau terima tunai (transfer/e-wallet tidak dipegang)
+      if (holdsCash) {
+        const profile = await CollectorProfile.findOne({ where: { user_id: uid }, transaction: t });
+        if (profile) {
+          await profile.update({ cash_held: parseFloat(profile.cash_held || 0) + payAmount }, { transaction: t });
+        }
       }
 
       // 4b) Sync ke Keuangan (pemasukan) — agar pembayaran Cash Collect masuk
@@ -495,7 +564,7 @@ class CollectorFieldController {
               amount:      payAmount,
               date:        payDate,
               ref_number:  ref,
-              notes:       `Invoice: ${invoice.invoice_number || '-'} | Metode: Cash Collect (field)`
+              notes:       `Invoice: ${invoice.invoice_number || '-'} | Metode: ${payLabel} (kolektor)`
                            + (isPartial ? ` | PARTIAL (sisa Rp${carryOver.toLocaleString('id-ID')})` : ''),
               recorded_by: uid
             }, { transaction: t });
@@ -547,7 +616,8 @@ class CollectorFieldController {
           phone: customer.phone, customerName: customer.name, customerId: customer.customer_id,
           packageName: customer.package?.name, amount: payAmount, payDate,
           dueDate: custPatch.due_date, invoiceNumber: invoice.invoice_number,
-          collectorName: req.user.name, isPartial, carryOver
+          collectorName: req.user.name, isPartial, carryOver,
+          methodLabel: payLabel
         };
         setImmediate(() => this._sendReceiptWA(ctx).catch(() => {}));
       }
@@ -559,6 +629,8 @@ class CollectorFieldController {
           : 'Pembayaran lunas dicatat.',
         data: {
           payment_id: payment.id, partial: isPartial, carry_over: carryOver,
+          payment_method: payMethod,
+          bank: bankName || null,
           assignment_status: isPartial ? 'partial_paid' : 'paid'
         }
       });
@@ -594,6 +666,7 @@ class CollectorFieldController {
       `Tgl Bayar   : ${fmtPay}`,
       ctx.isPartial ? `Sisa Tagihan: Rp ${Number(ctx.carryOver).toLocaleString('id-ID')} (ditagih bln depan)` : null,
       `Jatuh Tempo Berikutnya: ${fmtDue}`,
+      `Metode     : ${ctx.methodLabel || 'Tunai'}`,
       `Ditagih oleh: ${ctx.collectorName}`,
       ``,
       `Terima kasih atas pembayaran Anda.`

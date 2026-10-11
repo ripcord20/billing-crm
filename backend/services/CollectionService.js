@@ -67,6 +67,7 @@ class CollectionService {
     for (const inv of invoices) {
       // Lewati kalau sudah ada assignment aktif untuk invoice ini.
       const existing = await CollectionAssignment.findOne({
+        attributes: ['id'],
         where: {
           invoice_id: inv.id,
           status: { [Op.in]: ACTIVE_ASSIGNMENT_STATUSES }
@@ -91,7 +92,139 @@ class CollectionService {
       created++;
     }
 
-    return { created, skipped, total: invoices.length };
+    const assigned = await this.assignPendingToDefaultCollector(opts.assignedBy || null);
+    return { created, skipped, total: invoices.length, assigned: assigned.assigned || 0 };
+  }
+
+  /**
+   * Kolektor aktif yang user-nya masih ada. Profil yatim (user terhapus) diabaikan.
+   * Kalau hanya satu, tugas baru bisa di-assign otomatis.
+   */
+  static async defaultCollectorId() {
+    const profiles = await CollectorProfile.findAll({
+      where: { is_active: true },
+      include: [{
+        model: User, as: 'user', required: true, attributes: ['id', 'name'],
+        include: [{ model: Role, as: 'role', attributes: ['name'] }]
+      }]
+    });
+    const live = profiles.filter(p => ((p.user?.role?.name || '').toLowerCase() === 'collector'));
+    if (live.length === 1) return live[0].user_id;
+    return null;
+  }
+
+  static async assignPendingToDefaultCollector(assignedBy) {
+    const collectorId = await this.defaultCollectorId();
+    if (!collectorId) return { assigned: 0 };
+    const [count] = await CollectionAssignment.update(
+      { collector_id: collectorId, assigned_by: assignedBy || null, status: 'assigned' },
+      { where: { status: 'pending', collector_id: null } }
+    );
+    return { assigned: count, collector_id: collectorId };
+  }
+
+  /**
+   * Pastikan invoice belum lunas punya tugas kolektor (dan di-assign bila hanya
+   * ada satu kolektor aktif). Dipakai setelah generate invoice supaya tugas
+   * langsung muncul di APK kolektor tanpa menunggu cron / tombol Collect.
+   */
+  static async ensureTaskForInvoice(inv, opts = {}) {
+    if (!inv || !['unpaid', 'overdue'].includes(inv.status)) {
+      return { created: false, assigned: false, skipped: 'not_unpaid' };
+    }
+    const existing = await CollectionAssignment.findOne({
+      attributes: ['id', 'collector_id', 'status'],
+      where: {
+        invoice_id: inv.id,
+        status: { [Op.in]: ACTIVE_ASSIGNMENT_STATUSES }
+      }
+    });
+    const collectorId = opts.collectorId != null ? opts.collectorId : await this.defaultCollectorId();
+    if (existing) {
+      if (!existing.collector_id && collectorId) {
+        const patch = { collector_id: collectorId, assigned_by: opts.assignedBy || null };
+        if (existing.status === 'pending') patch.status = 'assigned';
+        await existing.update(patch);
+        return { created: false, assigned: true, assignment_id: existing.id };
+      }
+      return { created: false, assigned: !!existing.collector_id, assignment_id: existing.id };
+    }
+    const c = inv.customer || {};
+    const today = moment().format('YYYY-MM-DD');
+    const a = await CollectionAssignment.create({
+      invoice_id:    inv.id,
+      customer_id:   inv.customer_id || c.id,
+      collector_id:  collectorId || null,
+      assigned_by:   opts.assignedBy || null,
+      status:        collectorId ? 'assigned' : 'pending',
+      amount_due:    inv.total,
+      period_month:  inv.period_month,
+      period_year:   inv.period_year,
+      area_regency:  c.regency  || null,
+      area_district: c.district || null,
+      area_village:  c.village  || null,
+      scheduled_date: today
+    });
+    return { created: true, assigned: !!collectorId, assignment_id: a.id };
+  }
+
+  static async syncUnpaidTasks(opts = {}) {
+    const month = opts.month || (moment().month() + 1);
+    const year  = opts.year  || moment().year();
+    const where = {
+      status: { [Op.in]: UNPAID_INVOICE_STATUSES },
+      period_month: month,
+      period_year: year
+    };
+    if (Array.isArray(opts.customerIds) && opts.customerIds.length) {
+      where.customer_id = { [Op.in]: opts.customerIds.map(Number).filter(Boolean) };
+    }
+    const invoices = await Invoice.findAll({
+      where,
+      include: [{
+        model: Customer, as: 'customer',
+        attributes: ['id', 'customer_id', 'name', 'regency', 'district', 'village', 'status'],
+        required: true
+      }]
+    });
+    const collectorId = await this.defaultCollectorId();
+    let created = 0, assigned = 0;
+    for (const inv of invoices) {
+      const r = await this.ensureTaskForInvoice(inv, { collectorId, assignedBy: opts.assignedBy });
+      if (r.created) created++;
+      if (r.assigned) assigned++;
+    }
+    return { created, assigned, total: invoices.length, collector_id: collectorId };
+  }
+
+  /**
+   * Invoice sudah lunas di kanal lain (admin Payments, mark-paid, gateway).
+   * Tutup tugas kolektor yang masih terbuka supaya tidak ditagih ulang,
+   * dan tautkan payment ke assignment untuk audit "Dilunasi oleh".
+   */
+  static async markInvoiceAssignmentsPaid(invoiceId, opts = {}) {
+    if (!invoiceId) return 0;
+    const OPEN = ['pending', 'assigned', 'in_progress', 'not_home', 'promise_to_pay'];
+    const t = opts.transaction || null;
+    const rows = await CollectionAssignment.findAll({
+      where: { invoice_id: invoiceId, status: { [Op.in]: OPEN } },
+      transaction: t
+    });
+    if (!rows.length) return 0;
+    const amount = opts.amount != null ? opts.amount : null;
+    const paidAt = opts.paidAt || new Date();
+    const payment = opts.payment || null;
+    for (const a of rows) {
+      await a.update({
+        status: 'paid',
+        amount_collected: amount != null ? amount : a.amount_due,
+        collected_at: paidAt
+      }, { transaction: t });
+      if (payment && !payment.assignment_id && typeof payment.update === 'function') {
+        await payment.update({ assignment_id: a.id }, { transaction: t });
+      }
+    }
+    return rows.length;
   }
 
   /**
@@ -358,7 +491,7 @@ class CollectionService {
   static async recomputeCashHeld(collectorId) {
     const paidRow = await Payment.findOne({
       attributes: [[sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('amount')), 0), 'total']],
-      where: { collected_by: collectorId },
+      where: { collected_by: collectorId, payment_method: { [Op.in]: ['cash', 'field_collection'] } },
       raw: true
     });
     const depRow = await CashDeposit.findOne({

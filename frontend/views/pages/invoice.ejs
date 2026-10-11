@@ -370,6 +370,10 @@
         <span style="color:#166534;">Metode</span>
         <span id="paidVia" style="font-weight:700;color:#14532d;text-align:right;">—</span>
       </div>
+      <div class="pm-info-row" id="paidByRow" style="font-size:12.5px;margin-bottom:8px;">
+        <span style="color:#166534;">Dilunasi oleh</span>
+        <span id="paidBy" style="font-weight:700;color:#14532d;text-align:right;">—</span>
+      </div>
       <div class="pm-info-row" id="paidRefRow" style="font-size:12.5px;margin-bottom:8px;display:none;">
         <span style="color:#166534;">No. Referensi</span>
         <span id="paidRef" style="font-weight:700;color:#14532d;text-align:right;word-break:break-all;">—</span>
@@ -906,21 +910,26 @@ function renderPaidDetail(data) {
   const payments = Array.isArray(data.payments) ? data.payments : [];
   // Ambil pembayaran terbaru (list sudah ORDER BY payment_date DESC dari backend).
   const last = payments.length ? payments[0] : null;
-  if (!last) { detail.style.display = 'none'; return; }
+  const paidOn = last ? last.payment_date : data.payment_date;
+  const isPaid = data.invoice_status === 'paid' || data.is_paid === true || !!paidOn;
+  if (!isPaid && !last) { detail.style.display = 'none'; return; }
 
   const setTxt = function (id, val) { const el = document.getElementById(id); if (el) el.textContent = val; };
-  setTxt('paidOnDate', fmtDateInv(last.payment_date));
-  setTxt('paidVia', last.method_label || '-');
+  setTxt('paidOnDate', paidOn ? fmtDateInv(paidOn) : '—');
+  setTxt('paidVia', (last && last.method_label) || data.method_label || '-');
+  const paidBy = (last && last.recorded_by_name) || data.recorded_by_name || data.paid_by_name || '';
+  setTxt('paidBy', paidBy || 'Sistem');
 
-  if (last.reference_number) {
+  const refNo = (last && last.reference_number) || data.reference_number;
+  if (refNo) {
     document.getElementById('paidRefRow').style.display = 'flex';
-    setTxt('paidRef', last.reference_number);
+    setTxt('paidRef', refNo);
   }
 
   const totalPaid = (typeof data.total_paid === 'number')
     ? data.total_paid
     : payments.reduce(function (s, p) { return s + (p.amount || 0); }, 0);
-  setTxt('paidAmount', fmtRpInv(totalPaid || last.amount));
+  setTxt('paidAmount', fmtRpInv(totalPaid || (last && last.amount) || data.amount || data.invoice_total || 0));
 
   detail.style.display = 'block';
 }

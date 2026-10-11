@@ -1132,6 +1132,34 @@ const startServer = async () => {
       logger.warn('Failed reseller voucher migration: ' + (e.message || e));
     }
 
+    // Kolom GPS/bukti bayar lapangan. Tanpa ini /api/field/tasks dan cron
+    // generate collection gagal: Unknown column 'pay_lat' in 'SELECT'.
+    try {
+      const hasColCollect = async (table, col) => {
+        const [rows] = await db.sequelize.query(
+          `SELECT COUNT(*) AS c FROM information_schema.columns
+            WHERE table_schema = DATABASE() AND table_name = '${table}' AND column_name = '${col}'`
+        );
+        return rows && rows[0] && parseInt(rows[0].c) > 0;
+      };
+      if (await hasColCollect('collection_assignments', 'id')) {
+        if (!(await hasColCollect('collection_assignments', 'pay_lat'))) {
+          await db.sequelize.query(`ALTER TABLE collection_assignments ADD COLUMN pay_lat DECIMAL(10,8) NULL`);
+          logger.info('Migrated: collection_assignments.pay_lat added');
+        }
+        if (!(await hasColCollect('collection_assignments', 'pay_lng'))) {
+          await db.sequelize.query(`ALTER TABLE collection_assignments ADD COLUMN pay_lng DECIMAL(11,8) NULL`);
+          logger.info('Migrated: collection_assignments.pay_lng added');
+        }
+        if (!(await hasColCollect('collection_assignments', 'payment_proof'))) {
+          await db.sequelize.query(`ALTER TABLE collection_assignments ADD COLUMN payment_proof VARCHAR(255) NULL`);
+          logger.info('Migrated: collection_assignments.payment_proof added');
+        }
+      }
+    } catch (e) {
+      logger.warn('Failed collection_assignments GPS columns: ' + (e.message || e));
+    }
+
     // Start SNMP monitoring
     const snmpService = new SNMPService(io);
     SNMPService.setInstance(snmpService);

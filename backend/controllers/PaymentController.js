@@ -237,12 +237,14 @@ class PaymentController {
                 i.invoice_number, i.due_date, i.period_month, i.period_year, i.total AS invoice_total,
                 c.name AS cust_name, c.customer_id AS cid, c.phone AS cust_phone,
                 pkg.name AS pkg_name,
-                u.name AS recorded_by_name
+                ur.name AS recorder_name,
+                uc.name AS collector_name
          FROM payments p
          JOIN invoices i ON p.invoice_id = i.id
          JOIN customers c ON c.id = i.customer_id
          LEFT JOIN packages pkg ON pkg.id = c.package_id
-         LEFT JOIN users u ON u.id = p.recorded_by
+         LEFT JOIN users ur ON ur.id = p.recorded_by
+         LEFT JOIN users uc ON uc.id = p.collected_by
          WHERE i.period_year=:year AND i.period_month=:month ${custWhere}
          ORDER BY p.payment_date DESC, p.created_at DESC
          LIMIT :limit OFFSET :offset`,
@@ -250,8 +252,10 @@ class PaymentController {
       );
 
       const { displayMethodLabel } = require('../utils/paymentMethodLabel');
+      const { paidByDisplayName } = require('../utils/paidBy');
       const rowsOut = rows.map(r => ({
         ...r,
+        recorded_by_name: paidByDisplayName(r.collector_name, r.recorder_name, r.notes),
         // Label metode untuk kolom "Metode": kalau berasal dari gateway online,
         // tampilkan nama gateway (Tripay/Midtrans/Xendit/Duitku) dari notes;
         // selain itu label metode biasa. Data lama ikut benar tanpa migrasi.
@@ -407,6 +411,16 @@ class PaymentController {
           settled_at: new Date()
         }, {
           where: { customer_id, status: 'open' },
+          transaction: t
+        });
+      } catch (_) {}
+
+      try {
+        const CollectionService = require('../services/CollectionService');
+        await CollectionService.markInvoiceAssignmentsPaid(invoice.id, {
+          payment,
+          amount: payment.amount,
+          paidAt: payment.payment_date || new Date(),
           transaction: t
         });
       } catch (_) {}
@@ -1092,11 +1106,16 @@ class PaymentController {
               i.proof_submitted_at AS proof_submitted_at,
               c.name AS cust_name, c.customer_id AS cid, c.phone AS cust_phone,
               c.address AS cust_address, c.email AS cust_email, c.installation_date,
-              pkg.name AS pkg_name, pkg.price AS pkg_price
+              pkg.name AS pkg_name, pkg.price AS pkg_price,
+              p.recorded_by, p.collected_by,
+              ur.name AS recorder_name,
+              uc.name AS collector_name
        FROM invoices i
        LEFT JOIN payments p ON p.invoice_id = i.id
        JOIN customers c ON c.id = i.customer_id
        LEFT JOIN packages pkg ON pkg.id = c.package_id
+       LEFT JOIN users ur ON ur.id = p.recorded_by
+       LEFT JOIN users uc ON uc.id = p.collected_by
        WHERE i.id = :id ORDER BY p.id DESC LIMIT 1`,
       { replacements: { id: invoiceId }, type: sequelize.QueryTypes.SELECT }
     );
@@ -1114,7 +1133,10 @@ class PaymentController {
       .displayMethodLabel(rowWithPay.payment_method, { gateway: rowWithPay.gateway, notes: rowWithPay.notes });
 
     const amount = rowWithPay.payment_amount || rowWithPay.invoice_total || 0;
-    const recorded_by_name = 'System';
+    const { paidByDisplayName } = require('../utils/paidBy');
+    const recorded_by_name = paidByDisplayName(
+      rowWithPay.collector_name, rowWithPay.recorder_name, rowWithPay.notes
+    );
 
     const { loadTaxSettings } = require('../utils/taxHelper');
     const taxCfg = await loadTaxSettings();
@@ -1154,9 +1176,20 @@ class PaymentController {
       tax_applied:      invTax > 0,
       method_label:  methodLabel,
       recorded_by_name,
+      paid_by_name: recorded_by_name,
       bank_accounts,
       active_until,
-      company
+      company,
+      payments: rowWithPay.payment_id ? [{
+        id: rowWithPay.payment_id,
+        amount: parseFloat(rowWithPay.payment_amount || 0),
+        method: rowWithPay.payment_method,
+        method_label: methodLabel,
+        payment_date: rowWithPay.payment_date,
+        reference_number: rowWithPay.reference_number || '',
+        notes: rowWithPay.notes || '',
+        recorded_by_name
+      }] : []
     };
   }
 
@@ -1185,9 +1218,15 @@ class PaymentController {
       // Riwayat pembayaran (list pembayaran) untuk ditampilkan di halaman publik.
       // Bisa lebih dari satu kalau ada cicilan / pembayaran parsial.
       const { displayMethodLabel } = require('../utils/paymentMethodLabel');
+      const { paidByDisplayName } = require('../utils/paidBy');
       const payRows = await sequelize.query(
-        `SELECT id, amount, payment_method, payment_date, reference_number, notes, gateway, created_at
-           FROM payments WHERE invoice_id = :id ORDER BY payment_date DESC, id DESC`,
+        `SELECT p.id, p.amount, p.payment_method, p.payment_date, p.reference_number, p.notes, p.gateway, p.created_at,
+                ur.name AS recorder_name, uc.name AS collector_name
+           FROM payments p
+           LEFT JOIN users ur ON ur.id = p.recorded_by
+           LEFT JOIN users uc ON uc.id = p.collected_by
+          WHERE p.invoice_id = :id
+          ORDER BY p.payment_date DESC, p.id DESC`,
         { replacements: { id: invoiceId }, type: sequelize.QueryTypes.SELECT }
       );
       data.payments = payRows.map(p => ({
@@ -1198,8 +1237,13 @@ class PaymentController {
         method_label: displayMethodLabel(p.payment_method, { gateway: p.gateway, notes: p.notes }),
         payment_date: p.payment_date,
         reference_number: p.reference_number || '',
-        notes: p.notes || ''
+        notes: p.notes || '',
+        recorded_by_name: paidByDisplayName(p.collector_name, p.recorder_name, p.notes)
       }));
+      if (data.payments.length && data.payments[0].recorded_by_name) {
+        data.recorded_by_name = data.payments[0].recorded_by_name;
+        data.paid_by_name = data.payments[0].recorded_by_name;
+      }
 
       // ── Cek "sudah dibayar" yang robust ──────────────────────────
       // Tombol Bayar TIDAK boleh muncul kalau invoice ini sudah lunas.
@@ -1308,12 +1352,14 @@ class PaymentController {
                 c.name AS cust_name, c.customer_id AS cid, c.phone AS cust_phone,
                 c.address AS cust_address, c.email AS cust_email, c.installation_date,
                 pkg.name AS pkg_name, pkg.price AS pkg_price,
-                u.name AS recorded_by_name
+                ur.name AS recorder_name,
+                uc.name AS collector_name
          FROM payments p
          JOIN invoices i ON p.invoice_id = i.id
          JOIN customers c ON c.id = i.customer_id
          LEFT JOIN packages pkg ON pkg.id = c.package_id
-         LEFT JOIN users u ON u.id = p.recorded_by
+         LEFT JOIN users ur ON ur.id = p.recorded_by
+         LEFT JOIN users uc ON uc.id = p.collected_by
          WHERE p.id = :id`,
         { replacements: { id: paymentId }, type: sequelize.QueryTypes.SELECT }
       );
@@ -1365,10 +1411,15 @@ class PaymentController {
         ? (addOneMonthKeepDay(row.due_date) || row.due_date)
         : row.due_date;
 
+      const { paidByDisplayName } = require('../utils/paidBy');
+      const recorded_by_name = paidByDisplayName(row.collector_name, row.recorder_name, row.notes);
+
       res.json({
         success: true,
         data: {
           ...row,
+          recorded_by_name,
+          paid_by_name: recorded_by_name,
           method_label: methodLabel,
           invoice_subtotal: invSubtotal,
           invoice_tax:      invTax,

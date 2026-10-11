@@ -258,10 +258,17 @@ async function loadInvoices() {
     var payDate   = lastPay ? _fmtDate(lastPay.payment_date) : null;
     var payMethod = lastPay ? lastPay.payment_method : null;
 
-    // Status + tanggal bayar (di bawah badge)
+    // Status + tanggal bayar + siapa yang melunasi
     var stCell = stBadge;
     if (isPaid && payDate) {
       stCell += '<div style="font-size:11px;color:#16a34a;margin-top:3px;">✓ ' + payDate + '</div>';
+      var byName = i.paid_by_name
+        || (lastPay && lastPay.collector && lastPay.collector.name)
+        || (lastPay && lastPay.recorder && lastPay.recorder.name)
+        || '';
+      if (byName) {
+        stCell += '<div style="font-size:10px;color:#0f766e;margin-top:2px;font-weight:600;">Dilunasi oleh ' + _esc(byName) + '</div>';
+      }
     } else if (isOverdue) {
       stCell += '<div style="font-size:10px;color:#dc2626;margin-top:2px;">Segera bayar</div>';
     }
@@ -855,6 +862,7 @@ function _showSkippedCustomers(details, created) {
     ineligible_status: { label: 'Status tidak aktif', color: '#94a3b8' },
     no_package:        { label: 'Belum punya paket',  color: '#d97706' },
     existing:          { label: 'Sudah ada invoice',  color: '#1a6ef5' },
+    already_paid:      { label: 'Sudah lunas',        color: '#0a9a5a' },
     not_started:       { label: 'Belum mulai ditagih', color: '#0ea5e9' },
     failed:            { label: 'Gagal dibuat',        color: '#dc2626' }
   };
@@ -880,13 +888,13 @@ function _showSkippedCustomers(details, created) {
   var el = document.createElement('div');
   el.id = '_skippedModal';
   el.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(13,27,62,.45);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;';
-  el.innerHTML = '<div style="background:#fff;border-radius:18px;width:100%;max-width:560px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(13,27,62,.25);">'
+  el.innerHTML = '<div style="background:#fff;border-radius:18px;width:100%;max-width:560px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(13,27,62,.25);word-break:normal;overflow-wrap:normal;">'
     + '<div style="background:#1e3a8a;padding:16px 20px;">'
-      + '<div style="font-size:14px;font-weight:800;color:#fff;">Pelanggan yang tidak ter-generate (' + details.length + ')</div>'
-      + '<div style="font-size:12px;color:#c7d7fe;margin-top:3px;">' + (created || 0) + ' invoice berhasil dibuat · ' + details.length + ' dilewati</div>'
+      + '<div style="font-size:14px;font-weight:800;color:#fff;white-space:normal;">Pelanggan yang tidak ter-generate (' + details.length + ')</div>'
+      + '<div style="font-size:12px;color:#c7d7fe;margin-top:3px;white-space:normal;">' + (created || 0) + ' invoice berhasil dibuat · ' + details.length + ' dilewati</div>'
     + '</div>'
     + '<div style="overflow-y:auto;padding:8px 14px 0;">'
-      + '<table style="width:100%;border-collapse:collapse;">'
+      + '<table style="width:100%;border-collapse:collapse;table-layout:auto;">'
         + '<thead><tr style="border-bottom:2px solid #e2e8f0;">'
           + '<th style="padding:7px 10px;text-align:left;font-size:11px;color:#94a3b8;text-transform:uppercase;">Pelanggan</th>'
           + '<th style="padding:7px 10px;text-align:left;font-size:11px;color:#94a3b8;text-transform:uppercase;">Alasan</th>'

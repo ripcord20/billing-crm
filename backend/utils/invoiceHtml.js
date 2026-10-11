@@ -219,6 +219,10 @@ function renderRecipient(cfg, p) {
           '<dd style="margin:0;font-weight:700;color:' + cfg.text + ';font-size:12px;font-family:\'DM Mono\',monospace;">' + escHtml(p.invoice_number) + '</dd>' +
           '<dt style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;font-weight:700;margin-top:8px;">Tanggal Bayar</dt>' +
           '<dd style="margin:0;font-weight:700;color:' + cfg.text + ';font-size:12px;">' + (p.payment_date ? fmtDate(p.payment_date) : '\u2013') + '</dd>' +
+          (p.status === 'paid' && p.recorded_by_name ?
+            '<dt style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;font-weight:700;margin-top:8px;">Dilunasi oleh</dt>' +
+            '<dd style="margin:0;font-weight:700;color:' + cfg.text + ';font-size:12px;">' + escHtml(p.recorded_by_name) + '</dd>'
+            : '') +
           (cfg.showDueDate && p.due_date ?
             '<dt style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;font-weight:700;margin-top:8px;">Jatuh Tempo</dt>' +
             '<dd style="margin:0;font-weight:700;color:' + cfg.text + ';font-size:12px;">' + fmtDate(p.due_date) + '</dd>'
@@ -292,6 +296,9 @@ function renderPaymentStatus(cfg, p) {
     '<div style="margin-top:30px;padding:14px 18px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;display:flex;gap:30px;font-size:11px;flex-wrap:wrap;">' +
       '<div><span style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;font-weight:700;display:block;margin-bottom:4px;">Metode Pembayaran</span><span style="color:' + cfg.text + ';font-weight:700;">' + escHtml(p.method_label || '\u2013') + '</span></div>' +
       ref +
+      (p.status === 'paid' && p.recorded_by_name ?
+        '<div><span style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;font-weight:700;display:block;margin-bottom:4px;">Dilunasi oleh</span><span style="color:' + cfg.text + ';font-weight:700;">' + escHtml(p.recorded_by_name) + '</span></div>'
+        : '') +
       '<div><span style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;font-weight:700;display:block;margin-bottom:4px;">Status</span><span style="color:' + statusColor + ';font-weight:700;text-transform:uppercase;letter-spacing:.04em;">' + escHtml(p.statusLabel) + '</span></div>' +
     '</div>';
 }
@@ -456,6 +463,7 @@ function buildCleanHtml(cfg, p, fontStack) {
         '<div style="margin-top:20px;font-size:9pt;color:#0a7d33;">\u2713 Telah dibayar' +
           (p.payment_date ? ' pada ' + fmtLong(p.payment_date) : '') +
           (p.method_label ? ' via ' + escHtml(p.method_label) : '') +
+          (p.recorded_by_name ? ' oleh ' + escHtml(p.recorded_by_name) : '') +
           (p.reference_number ? ' \u00b7 Ref: ' + escHtml(p.reference_number) : '') +
         '</div>' : '') +
       (cfg.showBankInfo && p.bank_accounts && p.bank_accounts.length ?
@@ -564,7 +572,7 @@ function buildMerchantHtml(cfg, p, fontStack) {
       '<div style="border-top:1px solid ' + line + ';margin-bottom:12px;"></div>' +
       '<div style="font-size:9pt;color:' + dark + ';line-height:1.5;">' +
         (paid
-          ? 'Pembayaran sebesar <b>' + total + '</b> telah diterima' + (p.payment_date ? ' pada ' + fmtEng(p.payment_date) : '') + (p.method_label ? ' via <b>' + escHtml(p.method_label) + '</b>' : '') + '.' + (p.reference_number ? ' Ref: ' + escHtml(p.reference_number) + '.' : '')
+          ? 'Pembayaran sebesar <b>' + total + '</b> telah diterima' + (p.payment_date ? ' pada ' + fmtEng(p.payment_date) : '') + (p.method_label ? ' via <b>' + escHtml(p.method_label) + '</b>' : '') + (p.recorded_by_name ? ' oleh <b>' + escHtml(p.recorded_by_name) + '</b>' : '') + '.' + (p.reference_number ? ' Ref: ' + escHtml(p.reference_number) + '.' : '')
           : 'Tagihan ini jatuh tempo pada <b>' + fmtEng(p.due_date) + '</b>. Mohon lakukan pembayaran sebesar <b>' + total + '</b> sebelum tanggal tersebut.') +
       '</div>' +
       (cfg.showBankInfo && p.bank_accounts && p.bank_accounts.length ?
