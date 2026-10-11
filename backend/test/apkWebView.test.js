@@ -62,4 +62,13 @@ const payNav = fs.readFileSync(path.join(__dirname, '../../frontend/views/partia
   + fs.readFileSync(path.join(__dirname, '../../frontend/views/partials/sidebar.ejs'), 'utf8');
 assert.ok(payNav.includes('/payments?m=8'), 'menu Payments harus cache-bust m=8');
 
+const custSrc = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/customers.ejs'), 'utf8');
+assert.ok(custSrc.includes('custWidthLockV1'), 'Customer Data dikunci ke viewport APK');
+assert.ok(custSrc.includes('cust-narrow'), 'daftar pelanggan HP jadi kartu');
+assert.ok(custSrc.includes('lockCustPageToViewport'), 'JS visualViewport mengunci lebar Customer');
+assert.ok(custSrc.includes('min-width: 0 !important'), 'cust-table tidak boleh min-width 860px di HP');
+
+const custNav = fs.readFileSync(path.join(__dirname, '../../frontend/views/partials/customers-nav.ejs'), 'utf8');
+assert.ok(custNav.includes('/customers?c=1'), 'menu Customer harus cache-bust c=1');
+
 console.log('apkWebView.test.js OK');

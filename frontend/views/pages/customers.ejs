@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
@@ -16,6 +19,51 @@
       --d-green:#00c896; --d-red:#f5365c; --d-orange:#fb8c00;
     }
     .pay-page { font-family:'DM Sans',sans-serif; background:var(--d-bg) !important; }
+
+    /* APK: tabel min-width 860px+ melebarin halaman — kunci ke lebar HP */
+    .pay-page .main-content,
+    .pay-page .page-content,
+    .pay-page .w-card,
+    .pay-page .fin-grid,
+    .pay-page .cust-table-scroll {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    .pay-page .page-content { width: 100% !important; overflow-x: hidden !important; }
+    .pay-page.cust-narrow .cust-table { min-width: 0 !important; width: 100% !important; table-layout: auto !important; }
+    .pay-page.cust-narrow .cust-table thead { display: none !important; }
+    .pay-page.cust-narrow .cust-table,
+    .pay-page.cust-narrow .cust-table tbody { display: block; width: 100%; }
+    .pay-page.cust-narrow .cust-table tr {
+      display: grid;
+      grid-template-columns: auto minmax(0,1fr);
+      gap: 4px 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid #f0f4fc;
+      width: 100%;
+      box-sizing: border-box;
+      align-items: start;
+    }
+    .pay-page.cust-narrow .cust-table tr:has(.empty-state) { display: block; }
+    .pay-page.cust-narrow .cust-table td {
+      display: block !important;
+      padding: 0 !important;
+      border: none !important;
+      white-space: normal !important;
+      word-break: normal !important;
+      overflow-wrap: break-word !important;
+      width: auto !important;
+      max-width: 100%;
+      background: transparent !important;
+    }
+    .pay-page.cust-narrow .cust-table td:nth-child(1) { grid-column: 1; }
+    .pay-page.cust-narrow .cust-table td:nth-child(2) { grid-column: 2; min-width: 0; }
+    .pay-page.cust-narrow .cust-table td:nth-child(n+3) { grid-column: 1 / -1; }
+    .pay-page.cust-narrow .col-hide-mob { display: none !important; }
+    .pay-page.cust-narrow .cust-table td[colspan] { grid-column: 1 / -1; }
+    .pay-page.cust-narrow .rb { white-space: nowrap !important; word-break: keep-all !important; }
+    .pay-page.cust-narrow .cust-table td:nth-child(2) div { max-width: 100% !important; white-space: normal !important; }
 
     /* ── Fin-card ── */
     /* ── STAT CARDS — single strip ── */
@@ -338,7 +386,7 @@
   <%- include('../partials/sidebar') %>
   <div class="main-content">
     <%- include('../partials/topbar') %>
-    <main class="page-content">
+    <main class="page-content" id="custWidthLockV1">
 
       <!-- Toast -->
       <div id="toastOk"  class="toast-ok  a1" style="display:none"></div>
@@ -490,7 +538,13 @@
         </div>
 
         <!-- Table -->
-        <div style="overflow-x:auto;margin-top:14px">
+        <style>
+          .pay-page.cust-narrow .cust-table{min-width:0!important;width:100%!important;}
+          .pay-page.cust-narrow .cust-table thead{display:none!important;}
+          .pay-page.cust-narrow .col-hide-mob{display:none!important;}
+          .pay-page.cust-narrow .rb{white-space:nowrap!important;}
+        </style>
+        <div class="cust-table-scroll" style="overflow-x:auto;margin-top:14px;max-width:100%;min-width:0;">
           <table class="cust-table">
             <thead>
               <tr>
@@ -931,6 +985,40 @@
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
 <script src="/js/customers.js?v=paybtn1"></script>
+<script>
+(function lockCustPageToViewport(){
+  function apply(){
+    var w = Math.floor((window.visualViewport && window.visualViewport.width) || window.innerWidth || 0);
+    if (!w) return;
+    var page = document.querySelector('.pay-page');
+    if (page) page.classList.toggle('cust-narrow', w <= 900);
+    var mc = document.querySelector('.pay-page .main-content');
+    if (mc) {
+      mc.style.maxWidth = w + 'px';
+      mc.style.minWidth = '0';
+      mc.style.overflowX = 'hidden';
+    }
+    var pc = document.getElementById('custWidthLockV1') || document.querySelector('.pay-page .page-content');
+    if (pc) {
+      pc.style.maxWidth = w + 'px';
+      pc.style.minWidth = '0';
+      pc.style.width = '100%';
+      pc.style.overflowX = 'hidden';
+      pc.style.boxSizing = 'border-box';
+    }
+    var nodes = document.querySelectorAll('.pay-page .w-card, .pay-page .cust-table-scroll, .pay-page .cust-table');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].style.maxWidth = '100%';
+      nodes[i].style.minWidth = '0';
+      nodes[i].style.boxSizing = 'border-box';
+    }
+  }
+  apply();
+  document.addEventListener('DOMContentLoaded', apply);
+  window.addEventListener('resize', apply);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', apply);
+})();
+</script>
 <script>
 /* ── Extra stat update from loadCustomerStats ── */
 const _origStats = window.loadCustomerStats;
