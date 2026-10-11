@@ -352,18 +352,20 @@ async function loadPayments() {
         '<span style="width:6px;height:6px;border-radius:50%;background:#dc2626;flex-shrink:0;"></span>Failed</span>';
     }
 
-    // Validation by (recorded_by)
-    const recBy = p.recorded_by_name
-      ? '<div style="font-size:12px;font-weight:600;color:#0d1b3e;">' + esc(p.recorded_by_name) + '</div>' +
-        '<div style="font-size:10px;color:#94a3b8;">' +
-          new Date(p.created_at).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit'}) + ' ' +
-          new Date(p.created_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}) +
-        '</div>'
-      : '<span style="color:#94a3b8;font-size:12px;">–</span>';
+    // Dilunasi oleh (kolektor / admin yang mencatat)
+    const byName = p.recorded_by_name || p.paid_by_name || 'Sistem';
+    const recBy = '<div style="font-size:12px;font-weight:600;color:#0d1b3e;">' + esc(byName) + '</div>' +
+        (p.created_at
+          ? '<div style="font-size:10px;color:#94a3b8;">' +
+              new Date(p.created_at).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit'}) + ' ' +
+              new Date(p.created_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}) +
+            '</div>'
+          : '');
 
     return '<tr>' +
       '<td><div style="font-weight:700;color:#0d1b3e;">' + esc(p.cust_name) + '</div>' +
-        '<div style="font-size:11px;color:#94a3b8;">' + esc(p.cid) + ' · ' + esc(p.pkg_name||'–') + '</div></td>' +
+        '<div style="font-size:11px;color:#94a3b8;">' + esc(p.cid) + ' · ' + esc(p.pkg_name||'–') + '</div>' +
+        '<div style="font-size:11px;color:#0f766e;margin-top:3px;font-weight:600;">Dilunasi oleh ' + esc(byName) + '</div></td>' +
       '<td style="font-size:12px;color:#374151;">' + payDate +
         '<div style="font-size:10px;color:#94a3b8;">' + (MONTHS[p.period_month]||'') + ' ' + (p.period_year||'') + '</div></td>' +
       '<td style="font-weight:700;color:#1a6ef5;font-size:14px;font-family:monospace;">' + fmtAmt + '</td>' +

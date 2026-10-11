@@ -1,4 +1,45 @@
-const { Invoice, Payment, Customer, Package, FinancialReport, sequelize } = require('../models');
+const { Invoice, Payment, Customer, Package, FinancialReport, User, sequelize } = require('../models');
+const { paidByFromPayment, paidByDisplayName } = require('../utils/paidBy');
+
+const PAYMENT_LIST_INCLUDE = {
+  model: Payment, as: 'payments',
+  attributes: ['id','amount','payment_method','payment_date','reference_number','gateway','notes','recorded_by','collected_by'],
+  required: false,
+  limit: 1,
+  order: [['payment_date','DESC'], ['id','DESC']],
+  include: [
+    { model: User, as: 'recorder', attributes: ['id', 'name'], required: false },
+    { model: User, as: 'collector', attributes: ['id', 'name'], required: false }
+  ]
+};
+
+async function attachPaidByName(rows) {
+  const json = (rows || []).map((r) => (typeof r.toJSON === 'function' ? r.toJSON() : { ...r }));
+  const missing = new Set();
+  json.forEach((j) => {
+    const p = (j.payments && j.payments[0]) || null;
+    if (!p || paidByFromPayment(p)) return;
+    if (p.collected_by) missing.add(p.collected_by);
+    if (p.recorded_by) missing.add(p.recorded_by);
+  });
+  const names = {};
+  if (missing.size) {
+    const users = await User.findAll({ where: { id: [...missing] }, attributes: ['id', 'name'] });
+    users.forEach((u) => { names[u.id] = u.name; });
+  }
+  json.forEach((j) => {
+    const p = (j.payments && j.payments[0]) || null;
+    const fromAssoc = paidByFromPayment(p);
+    if (fromAssoc) {
+      j.paid_by_name = fromAssoc;
+      return;
+    }
+    j.paid_by_name = p
+      ? (paidByDisplayName(names[p.collected_by], names[p.recorded_by], p.notes) || null)
+      : null;
+  });
+  return json;
+}
 const { Op } = require('sequelize');
 const { generateInvoiceNumber, paginateResponse, formatCurrency } = require('../utils/helpers');
 const moment = require('moment');
@@ -64,13 +105,7 @@ class BillingController {
           where: Object.keys(customerWhere).length ? customerWhere : undefined,
           required: !!search || !!tenantId
         },
-        {
-          model: Payment, as: 'payments',
-          attributes: ['id','amount','payment_method','payment_date','reference_number','gateway','notes'],
-          required: false,
-          limit: 1,
-          order: [['payment_date','DESC']]
-        }
+        PAYMENT_LIST_INCLUDE
       ];
 
       if (search && !where[Op.or]) {
@@ -80,13 +115,13 @@ class BillingController {
           where: invWhere,
           include: [
             { model: Customer, as: 'customer', attributes: ['id','customer_id','name','phone','email'], required: false },
-            { model: Payment, as: 'payments', attributes: ['id','amount','payment_method','payment_date','reference_number','gateway','notes'], required: false, limit: 1, order: [['payment_date','DESC']] }
+            PAYMENT_LIST_INCLUDE
           ],
           offset: (page-1)*limit, limit: parseInt(limit), order: [['due_date','ASC'],['created_at','DESC']]
         });
         if (byInv.count > 0) {
           const { applyTaxToInvoiceList } = require('../utils/taxHelper');
-          const adjusted = await applyTaxToInvoiceList(byInv.rows);
+          const adjusted = await attachPaidByName(await applyTaxToInvoiceList(byInv.rows));
           return res.json({ success: true, ...paginateResponse(adjusted, byInv.count, page, limit) });
         }
       }
@@ -104,7 +139,7 @@ class BillingController {
       // & total=amount tanpa mengubah DB. Invoice lama yg dibuat saat PPN aktif
       // akan tampil tanpa pajak begitu setting dimatikan.
       const { applyTaxToInvoiceList } = require('../utils/taxHelper');
-      const adjustedRows = await applyTaxToInvoiceList(rows);
+      const adjustedRows = await attachPaidByName(await applyTaxToInvoiceList(rows));
 
       res.json({ success: true, ...paginateResponse(adjustedRows, count, page, limit) });
     } catch (error) {

@@ -258,10 +258,17 @@ async function loadInvoices() {
     var payDate   = lastPay ? _fmtDate(lastPay.payment_date) : null;
     var payMethod = lastPay ? lastPay.payment_method : null;
 
-    // Status + tanggal bayar (di bawah badge)
+    // Status + tanggal bayar + siapa yang melunasi
     var stCell = stBadge;
     if (isPaid && payDate) {
       stCell += '<div style="font-size:11px;color:#16a34a;margin-top:3px;">✓ ' + payDate + '</div>';
+      var byName = i.paid_by_name
+        || (lastPay && lastPay.collector && lastPay.collector.name)
+        || (lastPay && lastPay.recorder && lastPay.recorder.name)
+        || '';
+      if (byName) {
+        stCell += '<div style="font-size:10px;color:#0f766e;margin-top:2px;font-weight:600;">Dilunasi oleh ' + _esc(byName) + '</div>';
+      }
     } else if (isOverdue) {
       stCell += '<div style="font-size:10px;color:#dc2626;margin-top:2px;">Segera bayar</div>';
     }

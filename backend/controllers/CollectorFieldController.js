@@ -296,12 +296,32 @@ class CollectorFieldController {
                          'regency', 'district', 'village', 'public_link_token'],
             where: customerWhere, required: !!search
           },
-          { model: Invoice, as: 'invoice', attributes: ['id', 'invoice_number', 'total', 'status', 'due_date'] }
+          { model: Invoice, as: 'invoice', attributes: ['id', 'invoice_number', 'total', 'status', 'due_date'] },
+          { model: User, as: 'collector', attributes: ['id', 'name'], required: false },
+          {
+            model: Payment, as: 'payments',
+            attributes: ['id', 'recorded_by', 'collected_by', 'notes', 'payment_method'],
+            required: false, limit: 1, order: [['id', 'DESC']],
+            include: [
+              { model: User, as: 'collector', attributes: ['id', 'name'], required: false },
+              { model: User, as: 'recorder', attributes: ['id', 'name'], required: false }
+            ]
+          }
         ],
         order: [['status', 'ASC'], ['scheduled_date', 'ASC']]
       });
 
-      res.json({ success: true, data: rows });
+      const { paidByFromPayment, paidByDisplayName } = require('../utils/paidBy');
+      const data = rows.map((r) => {
+        const j = typeof r.toJSON === 'function' ? r.toJSON() : { ...r };
+        const pay = (j.payments && j.payments[0]) || null;
+        j.paid_by_name = paidByFromPayment(pay)
+          || paidByDisplayName(j.collector && j.collector.name, null, null)
+          || null;
+        return j;
+      });
+
+      res.json({ success: true, data });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
     }

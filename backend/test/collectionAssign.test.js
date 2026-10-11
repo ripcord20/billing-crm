@@ -31,5 +31,27 @@ assert.ok(ctrl.includes("payMethod"), 'backend kolektor menyimpan metode yang di
 assert.ok(ctrl.includes("holdsCash"), 'kas di tangan hanya bertambah untuk Cash');
 assert.ok(ctrl.includes("bankName"), 'backend kolektor menyimpan nama bank transfer');
 assert.ok(ctrl.includes("Pilih atau isi nama bank"), 'transfer tanpa bank ditolak');
+assert.ok(ctrl.includes('paid_by_name'), 'tugas lunas membawa nama yang melunasi');
+
+assert.ok(bill.includes('paid_by_name'), 'daftar invoice membawa nama yang melunasi');
+assert.ok(bill.includes('attachPaidByName'), 'nama pelunasan diisi dari collector/recorder');
+
+const payCtrl = fs.readFileSync(path.join(__dirname, '../controllers/PaymentController.js'), 'utf8');
+assert.ok(payCtrl.includes("paidByDisplayName"), 'invoice data memakai nama kolektor/admin, bukan System');
+assert.ok(!payCtrl.includes("recorded_by_name = 'System'"), 'invoice tidak boleh hardcode System');
+
+assert.ok(field.includes('id="pdBy"'), 'detail lunas kolektor menampilkan Dilunasi oleh');
+assert.ok(field.includes('Dilunasi oleh'), 'kartu lunas kolektor menampilkan Dilunasi oleh');
+
+const invPage = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/invoice.ejs'), 'utf8');
+assert.ok(invPage.includes('id="paidBy"'), 'halaman invoice menampilkan Dilunasi oleh');
+
+const { paidByDisplayName, paidByFromPayment } = require('../utils/paidBy');
+assert.strictEqual(paidByDisplayName('Andi', 'Budi'), 'Andi');
+assert.strictEqual(paidByDisplayName(null, 'Budi'), 'Budi');
+assert.strictEqual(paidByDisplayName(null, null, 'Migrasi status billingradius'), 'Migrasi BillingRadius');
+assert.strictEqual(paidByDisplayName(null, null, null), 'Sistem');
+assert.strictEqual(paidByFromPayment({ collector: { name: 'Rina' }, recorder: { name: 'Admin' } }), 'Rina');
+assert.strictEqual(paidByFromPayment({ recorded_by: 9, collected_by: 3 }), '');
 
 console.log('collectionAssign.test.js OK');

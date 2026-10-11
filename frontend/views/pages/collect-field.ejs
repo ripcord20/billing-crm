@@ -458,6 +458,7 @@
         <div class="r"><span>Pelanggan</span><b id="pdCust">—</b></div>
         <div class="r"><span>Invoice</span><b id="pdInv">—</b></div>
         <div class="r"><span>Tanggal Bayar</span><b id="pdDate">—</b></div>
+        <div class="r"><span>Dilunasi oleh</span><b id="pdBy">—</b></div>
       </div>
       <div id="pdProofWrap" style="margin-top:14px;display:none;">
         <label>Foto Bukti Pembayaran</label>
@@ -731,7 +732,7 @@
     partial_paid:['Partial','b-partial'],promise_to_pay:['Janji Bayar','b-promise'],not_home:['Tidak di Rumah','b-nothome'],
     refused:['Menolak','b-refused'],request_termination:['Minta Berhenti','b-termination']};
 
-  var state={scope:'open',search:'',tasks:[],current:null,visitResult:null,geo:null};
+  var state={scope:'open',search:'',tasks:[],current:null,visitResult:null,geo:null,meName:''};
 
   /* ─── geolocation (best-effort) ─── */
   function captureGeo(){
@@ -748,6 +749,7 @@
   async function loadMe(){
     const d=await api('/api/field/me'); if(!d||!d.success)return;
     const nm=d.data.name||'Penagihan Lapangan';
+    state.meName=nm;
     document.getElementById('hdrName').textContent=nm;
     document.getElementById('hdrAvatar').textContent=initials(nm);
     const regionTxt='Petugas Penagih';
@@ -915,7 +917,9 @@
         '<span class="badge '+st[1]+'">'+st[0]+'</span>'+
         '<span class="invno">'+esc(inv.invoice_number||'')+'</span>'+
         distBadge+
-      '</div>'+actions+'</div>';
+      '</div>'+
+      (done && (a.paid_by_name||state.meName) ? '<div style="font-size:11.5px;color:#0f766e;font-weight:600;margin-top:6px;">Dilunasi oleh '+esc(a.paid_by_name||state.meName)+'</div>' : '')+
+      actions+'</div>';
   }
 
   /* ─── tabs/search/nav (top tabs + bottom nav synced) ─── */
@@ -1269,6 +1273,7 @@
     document.getElementById('pdCust').textContent=c.name||'-';
     document.getElementById('pdInv').textContent=inv.invoice_number||'-';
     document.getElementById('pdDate').textContent=a.collected_at?fmtDue(a.collected_at):'—';
+    document.getElementById('pdBy').textContent=a.paid_by_name||state.meName||'—';
     var pw=document.getElementById('pdProofWrap');
     var frame=document.getElementById('pdProofFrame');
     if(frame._objUrl){URL.revokeObjectURL(frame._objUrl);frame._objUrl=null;}
