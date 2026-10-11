@@ -129,6 +129,7 @@ class BillingController {
       const result = await BillingController.generateInvoicesForPeriod(targetMonth, targetYear, {
         source: 'manual',
         customerIds: customerIds || undefined,
+        assignedBy: req.user?.id || null,
       });
 
       // Bangun pesan yang lebih informatif — terutama saat hasil = 0,
@@ -144,8 +145,13 @@ class BillingController {
         // Pesan khusus mode selektif — fokus ke alasan per-pelanggan terpilih.
         const d = result.diagnostics || {};
         const det = (d.skipped_details || []);
+        const tasked = result.collection?.created || 0;
         if (d.processed === 0 && det.length === 0) {
           message = `Pelanggan terpilih tidak ditemukan / tidak eligible untuk periode ${periodeLabel}.`;
+        } else if (det.length === 1 && det[0].reason === 'already_paid') {
+          message = `${det[0].name || det[0].customer_id} sudah lunas (${det[0].invoice_number || 'invoice periode ini'}). Tidak masuk tugas kolektor.`;
+        } else if (det.length === 1 && det[0].reason === 'existing' && tasked > 0) {
+          message = `${det[0].name || det[0].customer_id} sudah punya invoice belum lunas — tugas kolektor dibuat.`;
         } else if (det.length) {
           const first = det[0];
           message = `Tidak ada invoice ter-generate untuk pelanggan terpilih. ` +
@@ -283,11 +289,19 @@ class BillingController {
       });
       if (existing) {
         skipped++; skippedExisting++;
+        const paid = existing.status === 'paid' || existing.status === 'cancelled';
+        const paidDate = existing.paid_date
+          ? moment(existing.paid_date).format('DD MMM YYYY')
+          : '';
         skippedDetails.push({
-          customer_id: customer.customer_id,
-          name:        customer.name,
-          reason:      'existing',
-          detail:      `Sudah punya invoice ${existing.invoice_number} di periode ini`
+          customer_id:     customer.customer_id,
+          name:            customer.name,
+          reason:          paid ? 'already_paid' : 'existing',
+          invoice_number:  existing.invoice_number,
+          invoice_status:  existing.status,
+          detail: paid
+            ? `Invoice ${existing.invoice_number} sudah LUNAS${paidDate ? ' (' + paidDate + ')' : ''}. Tidak masuk tugas kolektor.`
+            : `Sudah punya invoice ${existing.invoice_number} (belum lunas)`
         });
         continue;
       }
@@ -420,11 +434,25 @@ class BillingController {
       } catch (_) {}
     }
 
+    let collection = { created: 0, assigned: 0, total: 0 };
+    try {
+      const CollectionService = require('../services/CollectionService');
+      collection = await CollectionService.syncUnpaidTasks({
+        month: targetMonth,
+        year: targetYear,
+        customerIds: customerIdFilter,
+        assignedBy: opts.assignedBy || null
+      });
+    } catch (e) {
+      try { require('../utils/logger').logger.warn('[BillingGen] sync tugas kolektor: ' + e.message); } catch (_) {}
+    }
+
     return {
       created,
       skipped,
       period: `${targetMonth}/${targetYear}`,
       source,
+      collection,
       diagnostics: {
         total_customers:        allCustomersCount,
         eligible_customers:     eligibleCount,

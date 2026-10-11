@@ -4,6 +4,12 @@ const assert = require('assert');
 
 const svc = fs.readFileSync(path.join(__dirname, '../services/CollectionService.js'), 'utf8');
 assert.ok(svc.includes("attributes: ['id']"), 'generateTasks harus SELECT id saja supaya tidak pecah jika kolom pay_lat belum ada');
+assert.ok(svc.includes('syncUnpaidTasks'), 'generate invoice harus bisa buat tugas kolektor');
+assert.ok(svc.includes('defaultCollectorId'), 'tugas baru di-assign ke kolektor aktif bila hanya satu');
+
+const bill = fs.readFileSync(path.join(__dirname, '../controllers/BillingController.js'), 'utf8');
+assert.ok(bill.includes('already_paid'), 'invoice yang sudah lunas dilaporkan ke UI');
+assert.ok(bill.includes('syncUnpaidTasks'), 'setelah generate invoice, tugas kolektor disinkron');
 
 const srv = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
 assert.ok(srv.includes("collection_assignments.pay_lat"), 'startup harus menambah kolom pay_lat kolektor');
