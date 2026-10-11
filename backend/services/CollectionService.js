@@ -67,6 +67,7 @@ class CollectionService {
     for (const inv of invoices) {
       // Lewati kalau sudah ada assignment aktif untuk invoice ini.
       const existing = await CollectionAssignment.findOne({
+        attributes: ['id'],
         where: {
           invoice_id: inv.id,
           status: { [Op.in]: ACTIVE_ASSIGNMENT_STATUSES }
