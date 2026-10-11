@@ -67,6 +67,7 @@ assert.ok(custSrc.includes('custWidthLockV1'), 'Customer Data dikunci ke viewpor
 assert.ok(custSrc.includes('cust-narrow'), 'daftar pelanggan HP jadi kartu');
 assert.ok(custSrc.includes('lockCustPageToViewport'), 'JS visualViewport mengunci lebar Customer');
 assert.ok(custSrc.includes('min-width: 0 !important'), 'cust-table tidak boleh min-width 860px di HP');
+assert.ok(custSrc.includes('td:nth-child(3)'), 'kolom No HP disembunyikan di kartu HP');
 
 const custNav = fs.readFileSync(path.join(__dirname, '../../frontend/views/partials/customers-nav.ejs'), 'utf8');
 assert.ok(custNav.includes('/customers?c=1'), 'menu Customer harus cache-bust c=1');
