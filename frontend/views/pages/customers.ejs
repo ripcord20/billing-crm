@@ -45,7 +45,8 @@
       box-sizing: border-box;
       align-items: start;
     }
-    .pay-page.cust-narrow .cust-table tr:has(.empty-state) { display: block; }
+    .pay-page.cust-narrow .cust-table tr:has(.empty-state),
+    .pay-page.cust-narrow .cust-table tr:has(td[colspan]) { display: block; }
     .pay-page.cust-narrow .cust-table td {
       display: block !important;
       padding: 0 !important;
@@ -64,6 +65,13 @@
     .pay-page.cust-narrow .cust-table td[colspan] { grid-column: 1 / -1; }
     .pay-page.cust-narrow .rb { white-space: nowrap !important; word-break: keep-all !important; }
     .pay-page.cust-narrow .cust-table td:nth-child(2) div { max-width: 100% !important; white-space: normal !important; }
+    .pay-page.cust-narrow .cust-table td:last-child {
+      display: flex !important;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: flex-start;
+      padding-top: 6px !important;
+    }
 
     /* ── Fin-card ── */
     /* ── STAT CARDS — single strip ── */
