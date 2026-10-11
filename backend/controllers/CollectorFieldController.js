@@ -404,12 +404,21 @@ class CollectorFieldController {
     const t = await sequelize.transaction();
     try {
       const uid = req.user.id;
-      const { assignment_id, amount, payment_date, notes, send_wa, payment_method } = req.body;
+      const { assignment_id, amount, payment_date, notes, send_wa, payment_method, bank } = req.body;
       const { methodLabel } = require('../utils/paymentMethodLabel');
       const FIELD_METHODS = ['cash', 'transfer', 'ewallet', 'dana', 'ovo', 'gopay', 'qris'];
       const rawMethod = String(payment_method || 'cash').trim().toLowerCase();
       const payMethod = FIELD_METHODS.includes(rawMethod) ? rawMethod : 'cash';
       const holdsCash = (payMethod === 'cash');
+      const bankName = String(bank || '').trim().slice(0, 80);
+      if (payMethod === 'transfer' && !bankName) {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: 'Pilih atau isi nama bank' });
+      }
+      if (payMethod === 'ewallet') {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: 'Pilih e-wallet (DANA / OVO / GoPay / QRIS)' });
+      }
 
       const a = await this._ownedAssignment(parseInt(assignment_id, 10), uid, t);
       const invoice  = a.invoice;
@@ -448,6 +457,10 @@ class CollectorFieldController {
       const isPartial = payAmount < invoiceTotal;
       const carryOver = isPartial ? Math.max(invoiceTotal - payAmount, 0) : 0;
       const payDate = payment_date || moment().format('YYYY-MM-DD');
+      const payLabel = methodLabel(payMethod, bankName);
+      const refParts = [];
+      if (bankName) refParts.push(bankName);
+      if (isPartial) refParts.push(`PARTIAL (sisa Rp${carryOver.toLocaleString('id-ID')})`);
 
       // 1) Payment record — metode dipilih kolektor (cash/transfer/ewallet)
       const payment = await Payment.create({
@@ -455,7 +468,7 @@ class CollectorFieldController {
         amount: payAmount,
         payment_method: payMethod,
         payment_date: payDate,
-        reference_number: isPartial ? `PARTIAL (sisa Rp${carryOver.toLocaleString('id-ID')})` : null,
+        reference_number: refParts.length ? refParts.join(' — ').slice(0, 100) : null,
         recorded_by: uid,
         collected_by: uid,
         assignment_id: a.id,
@@ -502,7 +515,7 @@ class CollectorFieldController {
               amount:      payAmount,
               date:        payDate,
               ref_number:  ref,
-              notes:       `Invoice: ${invoice.invoice_number || '-'} | Metode: ${methodLabel(payMethod)} (kolektor)`
+              notes:       `Invoice: ${invoice.invoice_number || '-'} | Metode: ${payLabel} (kolektor)`
                            + (isPartial ? ` | PARTIAL (sisa Rp${carryOver.toLocaleString('id-ID')})` : ''),
               recorded_by: uid
             }, { transaction: t });
@@ -555,7 +568,7 @@ class CollectorFieldController {
           packageName: customer.package?.name, amount: payAmount, payDate,
           dueDate: custPatch.due_date, invoiceNumber: invoice.invoice_number,
           collectorName: req.user.name, isPartial, carryOver,
-          methodLabel: methodLabel(payMethod)
+          methodLabel: payLabel
         };
         setImmediate(() => this._sendReceiptWA(ctx).catch(() => {}));
       }
@@ -568,6 +581,7 @@ class CollectorFieldController {
         data: {
           payment_id: payment.id, partial: isPartial, carry_over: carryOver,
           payment_method: payMethod,
+          bank: bankName || null,
           assignment_status: isPartial ? 'partial_paid' : 'paid'
         }
       });
