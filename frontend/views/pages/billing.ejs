@@ -2,12 +2,109 @@
 <html lang="id" data-theme="light">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
   <style>
     :root { --d-bg:#eef2f9; --d-card:#fff; --d-border:#e0e7f3; --d-text:#0d1b3e; --d-muted:#6b7fa8; --d-blue1:#1a6ef5; }
-    .bill-page { font-family:'DM Sans',sans-serif; }
+    .bill-page { font-family:'DM Sans',sans-serif; overflow-x: hidden !important; max-width: 100%; }
+    /* APK/WebView: tabel invoice nowrap melebarin .page-content — kunci ke lebar HP */
+    .bill-page .main-content,
+    .bill-page .page-content,
+    .bill-page .fin-grid,
+    .bill-page .bill-card,
+    .bill-page .bill-card-header,
+    .bill-page .bill-table-scroll,
+    .bill-page #bulkBar {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    .bill-page .page-content {
+      width: 100% !important;
+      overflow-x: hidden !important;
+    }
+    .bill-page .bill-table-scroll {
+      overflow-x: auto;
+      max-width: 100%;
+      width: 100%;
+      min-width: 0;
+      display: block;
+      -webkit-overflow-scrolling: touch;
+    }
+    .bill-page.bill-narrow .bill-table-scroll { overflow-x: hidden !important; }
+    .bill-page.bill-narrow .bill-table { table-layout: auto !important; width: 100% !important; min-width: 0 !important; }
+    .bill-page.bill-narrow .bill-table thead { display: none !important; }
+    .bill-page.bill-narrow .bill-table,
+    .bill-page.bill-narrow .bill-table tbody { display: block; width: 100%; }
+    .bill-page.bill-narrow .bill-table tr {
+      display: grid;
+      grid-template-columns: 22px minmax(0,1fr) auto;
+      grid-template-areas:
+        "chk name amt"
+        "chk inv amt"
+        "due due st"
+        "aksi aksi aksi";
+      gap: 4px 10px;
+      padding: 14px 14px;
+      border-bottom: 1px solid #f0f4ff;
+      width: 100%;
+      box-sizing: border-box;
+      align-items: start;
+    }
+    .bill-page.bill-narrow .bill-table tr:has(.tbl-empty),
+    .bill-page.bill-narrow .bill-table tr:has(td[colspan]) { display: block; }
+    .bill-page.bill-narrow .bill-table td {
+      display: block !important;
+      padding: 0 !important;
+      border: none !important;
+      white-space: normal !important;
+      word-break: normal !important;
+      overflow-wrap: break-word !important;
+      width: auto !important;
+      max-width: 100%;
+      background: transparent !important;
+    }
+    .bill-page.bill-narrow .bill-table td:nth-child(1) { grid-area: chk; padding-top: 3px !important; }
+    .bill-page.bill-narrow .bill-table td:nth-child(2) { grid-area: inv; font-size: 12px; color: #64748b; }
+    .bill-page.bill-narrow .bill-table td:nth-child(2) span {
+      white-space: nowrap !important;
+      word-break: keep-all !important;
+      overflow-wrap: normal !important;
+    }
+    .bill-page.bill-narrow .bill-table td:nth-child(3) { grid-area: name; min-width: 0; }
+    .bill-page.bill-narrow .bill-table td:nth-child(4) { grid-area: amt; text-align: right; }
+    .bill-page.bill-narrow .bill-table td:nth-child(5) { grid-area: due; font-size: 12px; }
+    .bill-page.bill-narrow .bill-table td:nth-child(6),
+    .bill-page.bill-narrow .bill-table td:nth-child(8) { display: none !important; }
+    .bill-page.bill-narrow .col-hide-sm { display: none !important; }
+    .bill-page.bill-narrow .bill-table td:nth-child(7) { grid-area: st; text-align: right; }
+    .bill-page.bill-narrow .bill-table td:nth-child(9) { grid-area: aksi; }
+    .bill-page.bill-narrow .bill-table td:nth-child(9) > div { display: flex; flex-wrap: wrap; gap: 6px; }
+    .bill-page.bill-narrow .act-btn { white-space: nowrap !important; word-break: keep-all !important; }
+    .bill-page.bill-narrow .bill-card-header {
+      display: flex !important;
+      flex-direction: column;
+      align-items: stretch !important;
+      gap: 8px;
+    }
+    .bill-page.bill-narrow .bill-search,
+    .bill-page.bill-narrow .bill-filter,
+    .bill-page.bill-narrow .bill-filter select,
+    .bill-page.bill-narrow .bill-count {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      width: 100% !important;
+      margin-left: 0 !important;
+    }
+    .bill-page.bill-narrow #bulkBar { flex-wrap: wrap !important; }
+    .bill-page.bill-narrow .fin-grid { grid-template-columns: 1fr 1fr !important; }
+    .bill-page.bill-narrow .fin-card { min-height: 0; padding: 14px 14px 12px; }
+    .bill-page.bill-narrow .card-val { font-size: 22px !important; letter-spacing: -.6px; }
+    .bill-page.bill-narrow .card-spark { display: none; }
     /* ── STAT CARDS — single strip ── */
     .fin-grid {
       display: grid; grid-template-columns: repeat(3, 1fr);
@@ -362,7 +459,7 @@
           </button>
           <button class="act-btn" onclick="clearInvoiceSelection()" style="color:#64748b;border-color:#e2e8f0;background:#fff;">Batal</button>
         </div>
-        <div style="overflow-x:auto;">
+        <div class="bill-table-scroll">
           <table class="bill-table">
             <thead>
               <tr>
@@ -579,7 +676,41 @@
 
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/billing.js?v=1783162200"></script>
+<script src="/js/billing.js?v=billnarrow1"></script>
+<script>
+(function lockBillPageToViewport(){
+  function apply(){
+    var w = Math.floor((window.visualViewport && window.visualViewport.width) || window.innerWidth || 0);
+    if (!w) return;
+    var page = document.querySelector('.bill-page');
+    if (page) page.classList.toggle('bill-narrow', w <= 900);
+    var mc = document.querySelector('.bill-page .main-content');
+    if (mc) {
+      mc.style.maxWidth = w + 'px';
+      mc.style.minWidth = '0';
+      mc.style.overflowX = 'hidden';
+    }
+    var pc = document.querySelector('.bill-page .page-content');
+    if (pc) {
+      pc.style.maxWidth = w + 'px';
+      pc.style.minWidth = '0';
+      pc.style.width = '100%';
+      pc.style.overflowX = 'hidden';
+      pc.style.boxSizing = 'border-box';
+    }
+    var nodes = document.querySelectorAll('.bill-page .bill-card, .bill-page .bill-table-scroll, .bill-page .bill-table, .bill-page .fin-grid');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].style.maxWidth = '100%';
+      nodes[i].style.minWidth = '0';
+      nodes[i].style.boxSizing = 'border-box';
+    }
+  }
+  apply();
+  document.addEventListener('DOMContentLoaded', apply);
+  window.addEventListener('resize', apply);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', apply);
+})();
+</script>
 
 <script>
 (function(){

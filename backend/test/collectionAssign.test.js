@@ -46,6 +46,13 @@ assert.ok(field.includes('Dilunasi oleh'), 'kartu lunas kolektor menampilkan Dil
 const invPage = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/invoice.ejs'), 'utf8');
 assert.ok(invPage.includes('id="paidBy"'), 'halaman invoice menampilkan Dilunasi oleh');
 
+const billPage = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/billing.ejs'), 'utf8');
+assert.ok(billPage.includes('bill-narrow'), 'Billing HP memakai class bill-narrow');
+assert.ok(billPage.includes('bill-table-scroll'), 'wrapper tabel billing dikunci lebar layar');
+assert.ok(billPage.includes('visualViewport'), 'Billing memakai visualViewport karena WebView APK >640px');
+assert.ok(billPage.includes("classList.toggle('bill-narrow'"), 'lebar HP menambahkan bill-narrow');
+assert.ok(!billPage.includes('table-layout:fixed'), 'jangan table-layout:fixed — pecah huruf invoice');
+
 const { paidByDisplayName, paidByFromPayment } = require('../utils/paidBy');
 assert.strictEqual(paidByDisplayName('Andi', 'Budi'), 'Andi');
 assert.strictEqual(paidByDisplayName(null, 'Budi'), 'Budi');
