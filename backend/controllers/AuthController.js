@@ -16,6 +16,11 @@ const jwt = require('jsonwebtoken');
 const { User, Role, ActivityLog, Tenant } = require('../models');
 const logger = require('../utils/logger');
 const { homePathForRole } = require('../utils/tenantScope');
+const { resolveAppHomePath } = require('../utils/mobileApp');
+
+function loginHomePath(user, req) {
+  return resolveAppHomePath(user.role?.name, req.get('User-Agent'), homePathForRole(user.role?.name));
+}
 
 const DEMO_JWT_EXPIRY = process.env.DEMO_JWT_EXPIRY || '2h';
 
@@ -133,7 +138,7 @@ class AuthController {
         maxAge: cookieMaxAge
       });
 
-      const redirect = homePathForRole(user.role?.name);
+      const redirect = loginHomePath(user, req);
 
       res.json({
         success: true,
@@ -191,7 +196,7 @@ class AuthController {
         sameSite: 'lax',
         maxAge: cookieMaxAge
       });
-      return res.json({ success: true, redirect: homePathForRole(user.role?.name) });
+      return res.json({ success: true, redirect: loginHomePath(user, req) });
     } catch (e) {
       // TokenExpiredError, JsonWebTokenError, dll — semua di-treat invalid
       return res.status(401).json({ success: false, message: 'Token invalid or expired' });

@@ -77,9 +77,19 @@ app.set('views', path.join(__dirname, '..', 'frontend', 'views'));
 
 // Middleware
 app.use(helmet({
+  // Android WebView / Capacitor: COOP same-origin + Origin-Agent-Cluster
+  // memicu net::ERR_BLOCKED_BY_RESPONSE → Chrome "Halaman web tidak tersedia"
+  // bila halaman dimuat di nested context (iframe sheet / localhost shell).
+  crossOriginOpenerPolicy: false,
+  originAgentCluster: false,
+  crossOriginResourcePolicy: { policy: 'same-site' },
+  // CSP frame-ancestors di bawah yang mengunci clickjacking. X-Frame-Options
+  // SAMEORIGIN tidak bisa mengizinkan Capacitor https://localhost.
+  frameguard: false,
   contentSecurityPolicy: process.env.APP_ENV === 'production' ? {
     directives: {
       defaultSrc: ["'self'"],
+      frameAncestors: ["'self'", 'http://localhost', 'https://localhost', 'capacitor:'],
       scriptSrc: [
         "'self'", "'unsafe-inline'", "'unsafe-eval'",
         "cdn.jsdelivr.net", "cdnjs.cloudflare.com", "unpkg.com",
@@ -216,7 +226,10 @@ const apiLimiter = rateLimit({
     const path = req.path || '';
     return /^\/(notifications\/unread-count|dashboard\/stats|auth\/profile)/.test(path);
   },
-  message: { success: false, message: 'Too many requests' }
+  message: { success: false, message: 'Too many requests' },
+  // trust proxy = true (isolir butuh IP asli). Jangan sampai validator ERL
+  // melempar ERR_ERL_PERMISSIVE_TRUST_PROXY dan memutus request WebView.
+  validate: { trustProxy: false }
 });
 
 // Stricter limiter for authentication endpoints to resist brute-force/credential-stuffing
@@ -224,7 +237,8 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,                       // 10 attempts per 15 min per IP
   skipSuccessfulRequests: true,  // only count failed logins toward the limit
-  message: { success: false, message: 'Terlalu banyak percobaan login. Coba lagi nanti.' }
+  message: { success: false, message: 'Terlalu banyak percobaan login. Coba lagi nanti.' },
+  validate: { trustProxy: false }
 });
 app.use(['/api/auth/login', '/api/auth/register', '/portal/api/auth/login', '/reseller/api/auth/login'], authLimiter);
 app.use('/api', apiLimiter);
@@ -242,7 +256,8 @@ const demoApiLimiter = rateLimit({
       return decoded.role !== 'demo';
     } catch { return true; }
   },
-  message: { success: false, message: 'Demo rate limit reached.' }
+  message: { success: false, message: 'Demo rate limit reached.' },
+  validate: { trustProxy: false }
 });
 app.use('/api', demoApiLimiter);
 

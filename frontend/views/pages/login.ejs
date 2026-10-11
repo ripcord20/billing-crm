@@ -529,17 +529,8 @@
           if (safe(q)) chosen = q;
         } catch(_){}
       }
-      // Ingat kalau tujuan adalah area mobile, supaya relaunch APK (yang mungkin
-      // membuka /login polos tanpa ?next) tetap kembali ke /mobile.
-      try {
-        if (chosen && chosen.indexOf('/mobile') === 0) {
-          localStorage.setItem('flyn_prefer_mobile', chosen);
-        }
-        if (!chosen) {
-          var remembered = localStorage.getItem('flyn_prefer_mobile');
-          if (safe(remembered) && remembered.indexOf('/mobile') === 0) chosen = remembered;
-        }
-      } catch(_){}
+      // Jangan paksa APK ke /mobile. Tampilan biasa = dashboard web (seperti sebelumnya).
+      try { localStorage.removeItem('flyn_prefer_mobile'); } catch(_){}
       return chosen;
     })();
     // Gabungkan tujuan server-role dengan FLYN_NEXT (kalau ada, next menang).
@@ -579,6 +570,7 @@
         }
         const r = await fetch('/api/auth/restore-cookie', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Authorization': 'Bearer ' + t, 'X-Requested-With': 'XMLHttpRequest' }
         });
         if (r.ok) {
@@ -803,6 +795,7 @@
       try {
         const response = await fetch('/api/auth/login', {
           method: 'POST',
+          credentials: 'include',
           headers: { 
             'Content-Type': 'application/json' 
           },
