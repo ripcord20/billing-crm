@@ -359,7 +359,7 @@ class CollectionService {
   static async recomputeCashHeld(collectorId) {
     const paidRow = await Payment.findOne({
       attributes: [[sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('amount')), 0), 'total']],
-      where: { collected_by: collectorId },
+      where: { collected_by: collectorId, payment_method: { [Op.in]: ['cash', 'field_collection'] } },
       raw: true
     });
     const depRow = await CashDeposit.findOne({

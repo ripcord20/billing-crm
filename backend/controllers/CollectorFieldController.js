@@ -404,7 +404,12 @@ class CollectorFieldController {
     const t = await sequelize.transaction();
     try {
       const uid = req.user.id;
-      const { assignment_id, amount, payment_date, notes, send_wa } = req.body;
+      const { assignment_id, amount, payment_date, notes, send_wa, payment_method } = req.body;
+      const { methodLabel } = require('../utils/paymentMethodLabel');
+      const FIELD_METHODS = ['cash', 'transfer', 'ewallet', 'dana', 'ovo', 'gopay', 'qris'];
+      const rawMethod = String(payment_method || 'cash').trim().toLowerCase();
+      const payMethod = FIELD_METHODS.includes(rawMethod) ? rawMethod : 'cash';
+      const holdsCash = (payMethod === 'cash');
 
       const a = await this._ownedAssignment(parseInt(assignment_id, 10), uid, t);
       const invoice  = a.invoice;
@@ -444,11 +449,11 @@ class CollectorFieldController {
       const carryOver = isPartial ? Math.max(invoiceTotal - payAmount, 0) : 0;
       const payDate = payment_date || moment().format('YYYY-MM-DD');
 
-      // 1) Payment record (field_collection)
+      // 1) Payment record — metode dipilih kolektor (cash/transfer/ewallet)
       const payment = await Payment.create({
         invoice_id: invoice.id,
         amount: payAmount,
-        payment_method: 'field_collection',
+        payment_method: payMethod,
         payment_date: payDate,
         reference_number: isPartial ? `PARTIAL (sisa Rp${carryOver.toLocaleString('id-ID')})` : null,
         recorded_by: uid,
@@ -475,10 +480,12 @@ class CollectorFieldController {
       }
       await customer.update(custPatch, { transaction: t });
 
-      // 4) cash_held kolektor += diterima
-      const profile = await CollectorProfile.findOne({ where: { user_id: uid }, transaction: t });
-      if (profile) {
-        await profile.update({ cash_held: parseFloat(profile.cash_held || 0) + payAmount }, { transaction: t });
+      // 4) cash_held kolektor += hanya kalau terima tunai (transfer/e-wallet tidak dipegang)
+      if (holdsCash) {
+        const profile = await CollectorProfile.findOne({ where: { user_id: uid }, transaction: t });
+        if (profile) {
+          await profile.update({ cash_held: parseFloat(profile.cash_held || 0) + payAmount }, { transaction: t });
+        }
       }
 
       // 4b) Sync ke Keuangan (pemasukan) — agar pembayaran Cash Collect masuk
@@ -495,7 +502,7 @@ class CollectorFieldController {
               amount:      payAmount,
               date:        payDate,
               ref_number:  ref,
-              notes:       `Invoice: ${invoice.invoice_number || '-'} | Metode: Cash Collect (field)`
+              notes:       `Invoice: ${invoice.invoice_number || '-'} | Metode: ${methodLabel(payMethod)} (kolektor)`
                            + (isPartial ? ` | PARTIAL (sisa Rp${carryOver.toLocaleString('id-ID')})` : ''),
               recorded_by: uid
             }, { transaction: t });
@@ -547,7 +554,8 @@ class CollectorFieldController {
           phone: customer.phone, customerName: customer.name, customerId: customer.customer_id,
           packageName: customer.package?.name, amount: payAmount, payDate,
           dueDate: custPatch.due_date, invoiceNumber: invoice.invoice_number,
-          collectorName: req.user.name, isPartial, carryOver
+          collectorName: req.user.name, isPartial, carryOver,
+          methodLabel: methodLabel(payMethod)
         };
         setImmediate(() => this._sendReceiptWA(ctx).catch(() => {}));
       }
@@ -559,6 +567,7 @@ class CollectorFieldController {
           : 'Pembayaran lunas dicatat.',
         data: {
           payment_id: payment.id, partial: isPartial, carry_over: carryOver,
+          payment_method: payMethod,
           assignment_status: isPartial ? 'partial_paid' : 'paid'
         }
       });
@@ -594,6 +603,7 @@ class CollectorFieldController {
       `Tgl Bayar   : ${fmtPay}`,
       ctx.isPartial ? `Sisa Tagihan: Rp ${Number(ctx.carryOver).toLocaleString('id-ID')} (ditagih bln depan)` : null,
       `Jatuh Tempo Berikutnya: ${fmtDue}`,
+      `Metode     : ${ctx.methodLabel || 'Tunai'}`,
       `Ditagih oleh: ${ctx.collectorName}`,
       ``,
       `Terima kasih atas pembayaran Anda.`
