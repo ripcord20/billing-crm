@@ -16,8 +16,10 @@ function depositEventPayload(dep, extra = {}) {
       ? String(status) === 'pending'
       : !!extra.pending_deposit
   };
-  if (extra.cash_held != null) payload.cash_held = extra.cash_held;
-  return payload;
+    if (extra.cash_held != null) payload.cash_held = extra.cash_held;
+    if (extra.deposit_limit != null) payload.deposit_limit = extra.deposit_limit;
+    if (extra.deposit_room != null) payload.deposit_room = extra.deposit_room;
+    return payload;
 }
 
 function emitCollectorDeposit(dep, extra = {}) {

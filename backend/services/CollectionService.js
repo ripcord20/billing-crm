@@ -607,12 +607,24 @@ class CollectionService {
       await profile.update({ deposit_limit: decided.next }, { transaction: t });
 
       if (ownTx) await t.commit();
-      return {
+      const cashHeld = parseFloat(profile.cash_held || 0);
+      const out = {
         collector_id: collectorId,
         deposit_limit: decided.next,
-        cash_held: parseFloat(profile.cash_held || 0),
-        deposit_room: cashRoom(decided.next, profile.cash_held)
+        cash_held: cashHeld,
+        deposit_room: cashRoom(decided.next, cashHeld)
       };
+      const stillPending = await this.pendingSetor(collectorId);
+      require('../utils/collectDepositEvents').emitCollectorDeposit(
+        { id: 0, collector_id: collectorId, deposited_amount: amount, status: 'injected' },
+        {
+          pending_deposit: !!stillPending,
+          cash_held: out.cash_held,
+          deposit_limit: out.deposit_limit,
+          deposit_room: out.deposit_room
+        }
+      );
+      return out;
     } catch (e) {
       if (ownTx) try { await t.rollback(); } catch (_) {}
       throw e;

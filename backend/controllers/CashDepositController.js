@@ -28,7 +28,7 @@ const moment = require('moment');
 const fs = require('fs');
 const path = require('path');
 const {
-  sequelize, CashDeposit, CollectorProfile, User
+  sequelize, CashDeposit, CollectorProfile, User, CollectorDepositInjection
 } = require('../models');
 const { paginateResponse } = require('../utils/helpers');
 const CollectionService = require('../services/CollectionService');
@@ -128,6 +128,24 @@ class CashDepositController {
         }));
       } catch (e) { /* breakdown best-effort */ }
 
+      let injections = [];
+      try {
+        if (CollectorDepositInjection) {
+          const inj = await CollectorDepositInjection.findAll({
+            where: { collector_id: uid },
+            order: [['id', 'DESC']],
+            limit: 20,
+            raw: true
+          });
+          injections = inj.map((r) => ({
+            id: r.id,
+            amount: parseFloat(r.amount || 0),
+            note: r.note || null,
+            created_at: r.created_at || r.createdAt || null
+          }));
+        }
+      } catch (_) { /* riwayat injek best-effort */ }
+
       res.json({
         success: true,
         data: {
@@ -135,6 +153,7 @@ class CashDepositController {
           deposit_limit: cash.deposit_limit,
           deposit_room: cash.deposit_room,
           pending_deposit: !!cash.pending,
+          injections,
           breakdown,
           deposits: rows.map(d => ({
             id: d.id, deposit_date: d.deposit_date,
@@ -252,11 +271,13 @@ class CashDepositController {
       await t.commit();
       // Hitung ulang dari payment - setor verified supaya tidak drift.
       const cashHeld = await CollectionService.recomputeCashHeld(dep.collector_id);
-      const stillPending = await CollectionService.pendingSetor(dep.collector_id);
+      const cash = await CollectionService.cashState(dep.collector_id);
       require('../utils/collectDepositEvents').emitCollectorDeposit(dep, {
         status: 'verified',
-        pending_deposit: !!stillPending,
-        cash_held: cashHeld
+        pending_deposit: !!cash.pending,
+        cash_held: cashHeld,
+        deposit_limit: cash.deposit_limit,
+        deposit_room: cash.deposit_room
       });
       const CollectNotifier = require('../services/CollectNotifier');
 

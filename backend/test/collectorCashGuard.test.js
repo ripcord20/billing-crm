@@ -61,6 +61,9 @@ assert.ok(ui.includes('sPlafon'), 'APK menampilkan plafon');
 assert.ok(ui.includes('Plafon deposit masih Rp0'), 'APK menolak tunai tanpa injek');
 assert.ok(ui.includes('collect:deposit'), 'APK mendengar status setoran realtime');
 assert.ok(ui.includes('await loadMe()'), 'catat bayar refresh status setor sebelum kunci');
+assert.ok(ui.includes('Tabel Saldo'), 'APK menampilkan tabel saldo plafon');
+assert.ok(ui.includes('Riwayat Injek Saldo'), 'APK menampilkan riwayat injek');
+assert.ok(svc.includes('emitCollectorDeposit'), 'injek plafon mendorong saldo ke app kolektor');
 
 const admin = require('fs').readFileSync(require('path').join(__dirname, '../../frontend/public/js/collection-admin.js'), 'utf8');
 assert.ok(admin.includes('openInject'), 'admin punya tombol injek');
