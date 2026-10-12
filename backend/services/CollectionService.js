@@ -292,10 +292,10 @@ class CollectionService {
       if (CommissionPayment && collectorIds.length) {
         const cps = await CommissionPayment.findAll({
           where: { period_month: month, period_year: year, collector_id: { [Op.in]: collectorIds } },
-          attributes: ['collector_id', 'amount', 'createdAt'],
+          attributes: ['collector_id', 'amount'],
           raw: true
         });
-        cps.forEach(c => { paidMap[c.collector_id] = { amount: parseFloat(c.amount || 0), at: c.createdAt }; });
+        cps.forEach(c => { paidMap[c.collector_id] = { amount: parseFloat(c.amount || 0) }; });
       }
     } catch (_) {}
 
