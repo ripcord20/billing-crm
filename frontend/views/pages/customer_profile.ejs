@@ -85,16 +85,17 @@
 
     /* Map below hero */
     .cp-maphero{border-radius:16px;overflow:hidden;border:1px solid var(--border);background:var(--white);margin-bottom:16px;box-shadow:0 2px 12px rgba(13,27,62,.05);}
-    .cp-maphd{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:var(--white);border-bottom:1px solid var(--border);}
+    .cp-maphd{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:11px 16px;background:var(--white);border-bottom:1px solid var(--border);}
     .cp-maphd-l{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--text);}
+    .cp-maphd-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto;}
     .cp-mapbody{height:340px;position:relative;}
     .cp-mapbody .leaflet-container{height:100%;width:100%;}
     .cp-nocoord{display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:8px;color:var(--muted);font-size:12px;}
-    /* Map layer toggle */
-    .map-layer-toggle{position:absolute;top:10px;right:10px;z-index:1000;display:flex;gap:4px;}
-    .mlt-btn{padding:4px 9px;font-size:10px;font-weight:700;border-radius:6px;cursor:pointer;border:none;font-family:sans-serif;transition:all .12s;box-shadow:0 1px 4px rgba(0,0,0,.2);}
-    .mlt-btn.active{background:#1d4ed8;color:#fff;}
-    .mlt-btn:not(.active){background:rgba(255,255,255,.9);color:#374151;}
+    /* Toggle Peta/Satelit di header — jangan overlay zoom / bottom-nav */
+    .map-layer-toggle{position:static;z-index:1;display:flex;gap:4px;}
+    .mlt-btn{padding:4px 9px;font-size:10px;font-weight:700;border-radius:6px;cursor:pointer;border:1px solid var(--border);font-family:sans-serif;transition:all .12s;}
+    .mlt-btn.active{background:#1d4ed8;color:#fff;border-color:#1d4ed8;}
+    .mlt-btn:not(.active){background:#fff;color:#374151;}
     /* Anti-grid tile fix — eliminasi border/gap antar tile */
     .leaflet-tile{
       border:0!important;outline:0!important;margin:0!important;padding:0!important;
@@ -225,7 +226,12 @@
 
     /* Responsive */
     @media(max-width:960px){.cp-grid{grid-template-columns:1fr;}.cp-sidebar{display:grid;grid-template-columns:1fr 1fr;gap:14px;}.stat-mg{grid-template-columns:repeat(4,1fr);}}
-    @media(max-width:640px){.cp-page{padding:0 10px 20px;}.cp-hero{border-radius:14px;}.cp-banner{height:88px;}.cp-av{width:56px;height:56px;font-size:20px;}.cp-top{margin-top:-28px;}.cp-name{font-size:16px;}.cp-banner-actions{bottom:8px;right:12px;gap:5px;}.cp-banner-actions .btn-sm{padding:5px 10px;font-size:11px;}.cp-infogrid{grid-template-columns:repeat(2,1fr);}.cp-sidebar{grid-template-columns:1fr;}.stat-mg{grid-template-columns:repeat(4,1fr);gap:5px;}.cp-tab{padding:7px 9px;font-size:11px;}.cp-tab svg{display:none;}.usage-grid{grid-template-columns:1fr;}}
+    @media(max-width:768px){
+      .cp-mapbody{height:220px;}
+      .cp-mapbody .leaflet-control-zoom{display:none!important;}
+      .cp-mapbody .leaflet-control-attribution{display:none;}
+    }
+    @media(max-width:640px){.cp-page{padding:0 10px calc(28px + env(safe-area-inset-bottom));}.cp-hero{border-radius:14px;}.cp-banner{height:88px;}.cp-av{width:56px;height:56px;font-size:20px;}.cp-top{margin-top:-28px;}.cp-name{font-size:16px;}.cp-banner-actions{bottom:8px;right:12px;gap:5px;}.cp-banner-actions .btn-sm{padding:5px 10px;font-size:11px;}.cp-infogrid{grid-template-columns:repeat(2,1fr);}.cp-sidebar{grid-template-columns:1fr;}.stat-mg{grid-template-columns:repeat(4,1fr);gap:5px;}.cp-tab{padding:7px 9px;font-size:11px;}.cp-tab svg{display:none;}.usage-grid{grid-template-columns:1fr;}}
     @media(max-width:380px){.stat-mg{grid-template-columns:repeat(2,1fr);}}
     /* ONT signal bars */
     .sig-bars{display:flex;align-items:flex-end;gap:2px;}
@@ -477,11 +483,13 @@ async function loadProfile() {
       : '<a href="/customers?edit='+c.id+'" style="font-size:11px;color:var(--blue);font-weight:600;text-decoration:none">+ Tambah Koordinat</a>';
     var mapBody = hasCoord
       ? '<div id="custMap" style="height:100%;width:100%"></div>'
-        +'<div class="map-layer-toggle">'
-          +'<button class="mlt-btn active" id="mapBtnStreet">Peta</button>'
-          +'<button class="mlt-btn" id="mapBtnSat">Satelit</button>'
-        +'</div>'
       : '<div class="cp-nocoord"><svg width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="opacity:.3"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg><span>Koordinat belum diatur</span></div>';
+    var layerToggle = hasCoord
+      ? '<div class="map-layer-toggle">'
+          +'<button type="button" class="mlt-btn active" id="mapBtnStreet">Peta</button>'
+          +'<button type="button" class="mlt-btn" id="mapBtnSat">Satelit</button>'
+        +'</div>'
+      : '';
 
     // Tagihan card
     var tagihanHtml='';
@@ -611,7 +619,7 @@ async function loadProfile() {
 
     // MAP
     +'<div class="cp-maphero">'
-      +'<div class="cp-maphd"><div class="cp-maphd-l"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Lokasi Pelanggan</div>'+coordTxt+'</div>'
+      +'<div class="cp-maphd"><div class="cp-maphd-l"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Lokasi Pelanggan</div><div class="cp-maphd-r">'+coordTxt+layerToggle+'</div></div>'
       +'<div class="cp-mapbody" id="custMapWrap">'+mapBody+'</div>'
     +'</div>'
 
@@ -966,7 +974,8 @@ function initMap(lat, lng, name) {
   var mapEl = document.getElementById('custMap');
   if (!mapEl || !window.L) return;
 
-  _leafletMap = L.map('custMap', {zoomControl:true, scrollWheelZoom:true}).setView([lat,lng],17);
+  var isNarrow = window.matchMedia('(max-width: 768px)').matches;
+  _leafletMap = L.map('custMap', {zoomControl:!isNarrow, scrollWheelZoom:!isNarrow}).setView([lat,lng],17);
 
   // Layer definitions — sama dengan infrastructure.js (CartoDB + Google)
   _layerStreet = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
