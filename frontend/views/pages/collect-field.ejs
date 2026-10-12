@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title><%= title %> - <%= appName %></title>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <!-- collect-pay-v3: Dilunasi oleh dari payment invoice -->
+  <!-- collect-pay-v5: tabel saldo plafon + setoran terverifikasi live -->
+  <script src="/socket.io/socket.io.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -268,6 +269,15 @@
     .hero-plafon{margin-top:12px;font-size:12px;color:rgba(255,255,255,.82);font-weight:600;}
     .hero-plafon b{color:#fff;}
     .hero-plafon.is-empty{color:#ffe7c2;}
+    .saldo-card{margin:12px 16px 0;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px 16px 8px;box-shadow:0 4px 16px rgba(20,40,90,.04);}
+    .saldo-h{font-size:12.5px;font-weight:800;letter-spacing:.02em;color:#54607a;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+    .saldo-h .st{font-size:11px;font-weight:700;padding:3px 8px;border-radius:100px;}
+    .saldo-h .st-ok{background:#e7f7ef;color:#0a8f80;}
+    .saldo-h .st-wait{background:#fff4e0;color:#c96a12;}
+    .saldo-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid #f1f4f9;font-size:13px;}
+    .saldo-row:first-of-type{border-top:none;}
+    .saldo-row span{color:#64748b;font-weight:600;}
+    .saldo-row b{font-size:14px;color:var(--ink);}
 
     @media(max-width:380px){
       .hero{padding:18px 18px 16px;border-radius:20px;}
@@ -309,6 +319,13 @@
         <div class="mini out"><div class="l">Belum Ditagih</div><div class="v money" id="sOut">—</div></div>
       </div>
       <div class="hero-plafon" id="sPlafonWrap">Plafon deposit <b id="sPlafon">—</b> · sisa <b id="sRoom">—</b></div>
+    </div>
+
+    <div class="saldo-card" id="saldoCard">
+      <div class="saldo-h">Tabel Saldo <span class="st st-ok" id="saldoStatus">—</span></div>
+      <div class="saldo-row"><span>Saldo plafon (injek)</span><b class="money" id="saldoLimit">—</b></div>
+      <div class="saldo-row"><span>Cash di tangan</span><b class="money" id="saldoCash">—</b></div>
+      <div class="saldo-row"><span>Sisa plafon</span><b class="money" id="saldoRoom">—</b></div>
     </div>
 
     <div class="tabs">
@@ -739,7 +756,7 @@
     partial_paid:['Partial','b-partial'],promise_to_pay:['Janji Bayar','b-promise'],not_home:['Tidak di Rumah','b-nothome'],
     refused:['Menolak','b-refused'],request_termination:['Minta Berhenti','b-termination']};
 
-  var state={scope:'open',search:'',tasks:[],current:null,visitResult:null,geo:null,meName:'',depositLimit:0,depositRoom:0,pendingDeposit:false};
+  var state={scope:'open',search:'',tasks:[],current:null,visitResult:null,geo:null,meName:'',depositLimit:0,depositRoom:0,pendingDeposit:false,cashOnHand:0};
 
   /* ─── geolocation (best-effort) ─── */
   function captureGeo(){
@@ -773,12 +790,27 @@
     state.depositLimit=Number(s.deposit_limit||0);
     state.depositRoom=Number(s.deposit_room||0);
     state.pendingDeposit=!!s.pending_deposit;
+    state.cashOnHand=Number(s.cash_on_hand||0);
     var plafon=document.getElementById('sPlafon');
     var room=document.getElementById('sRoom');
     var wrap=document.getElementById('sPlafonWrap');
     if(plafon) plafon.textContent=rp(state.depositLimit);
     if(room) room.textContent=rp(state.depositRoom);
     if(wrap) wrap.classList.toggle('is-empty', state.depositLimit<=0 || state.depositRoom<=0);
+    renderSaldoTable();
+  }
+  function renderSaldoTable(){
+    var lim=document.getElementById('saldoLimit');
+    var cash=document.getElementById('saldoCash');
+    var room=document.getElementById('saldoRoom');
+    var st=document.getElementById('saldoStatus');
+    if(lim) lim.textContent=rp(state.depositLimit);
+    if(cash) cash.textContent=rp(state.cashOnHand);
+    if(room) room.textContent=rp(state.depositRoom);
+    if(st){
+      if(state.pendingDeposit){ st.textContent='Setoran menunggu'; st.className='st st-wait'; }
+      else { st.textContent='Siap terima tunai'; st.className='st st-ok'; }
+    }
   }
   function skeletonCards(n){
     var one='<div class="sk-card"><div class="sk-row"><div class="sk sk-ic"></div>'+
@@ -1107,6 +1139,7 @@
     if(method==='ewallet' && !payState.wallet){toast('Pilih e-wallet (DANA / OVO / GoPay / QRIS)');return;}
     if(payState.wallet) method=payState.wallet;
     if(method==='cash'){
+      await loadMe();
       if(state.pendingDeposit){toast('Masih ada setoran menunggu verifikasi. Selesaikan setor dulu.');return;}
       if(!(state.depositLimit>0)){toast('Plafon deposit masih Rp0. Minta owner injek saldo dulu.');return;}
       if(amt>(state.depositRoom||0)){toast('Sisa plafon hanya '+rp(state.depositRoom)+'. Setor kas dulu atau minta injek saldo.');return;}
@@ -1182,6 +1215,12 @@
     depState.depositLimit=d.data.deposit_limit||0;
     depState.depositRoom=d.data.deposit_room||0;
     depState.pendingDeposit=!!d.data.pending_deposit;
+    depState.injections=d.data.injections||[];
+    state.depositLimit=depState.depositLimit;
+    state.depositRoom=depState.depositRoom;
+    state.pendingDeposit=depState.pendingDeposit;
+    state.cashOnHand=depState.cashOnHand;
+    renderSaldoTable();
     var header='<div class="card" style="background:linear-gradient(135deg,#e0822e,#f4b73d);border:none;color:#fff;box-shadow:0 12px 30px rgba(224,130,46,.32);">'+
       '<div style="font-size:12.5px;opacity:.92;font-weight:600;">Cash di Tangan (belum disetor)</div>'+
       '<div class="money" style="font-size:30px;font-weight:800;letter-spacing:-1px;margin:6px 0 8px;">'+rp(depState.cashOnHand)+'</div>'+
@@ -1189,6 +1228,16 @@
       '<button class="btn" style="width:100%;background:#fff;color:#c96a12;padding:13px;border-radius:13px;font-size:14px;font-weight:700;" onclick="openDeposit()">'+
         '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg> Setor Kas Sekarang</button>'+
     '</div>';
+    var inj=depState.injections||[];
+    var injRows=inj.length?('<div class="dep-sec-title">Riwayat Injek Saldo</div>'+inj.map(function(x){
+      var amt=Number(x.amount)||0;
+      var sign=amt<0?'-':'+';
+      return '<div class="dep-item" style="cursor:default;">'+
+        '<div class="dep-item-ic" style="background:#eaf1ff;color:#2f6bff;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>'+
+        '<div style="flex:1;min-width:0;"><div class="dep-item-amt money">'+sign+' '+rp(Math.abs(amt))+'</div>'+
+        '<div class="dep-item-sub">'+(x.created_at?fmtDue(x.created_at):'—')+(x.note?' · '+esc(x.note):' · Injek plafon')+'</div></div>'+
+      '</div>';
+    }).join('')):'';
     var deposits=d.data.deposits||[];
     depState.list=deposits;
     var DEPDOT={pending:'#e08a00',verified:'#0a9a5a',rejected:'#d63a3f'};
@@ -1207,7 +1256,7 @@
         '<svg class="dep-item-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c2cbdc" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>'+
       '</div>';
     }).join('')):'<div class="empty">Belum ada setoran.</div>';
-    list.innerHTML=header+rows;
+    list.innerHTML=header+injRows+rows;
   }
   function renderDepBreakdown(){
     var box=document.getElementById('depBreakdown');if(!box)return;
@@ -1524,8 +1573,36 @@
     },{passive:true});
   })();
 
+  function applyDepositEvent(p){
+    if(!p) return;
+    if(typeof p.pending_deposit==='boolean') state.pendingDeposit=p.pending_deposit;
+    else if(p.status==='verified'||p.status==='rejected') state.pendingDeposit=false;
+    if(p.deposit_limit!=null) state.depositLimit=Number(p.deposit_limit);
+    if(p.deposit_room!=null) state.depositRoom=Number(p.deposit_room);
+    if(p.cash_held!=null) state.cashOnHand=Number(p.cash_held);
+    renderSaldoTable();
+    loadMe();
+    if(state.scope==='deposit') loadDeposits();
+    if(p.status==='verified') toast('Setoran diverifikasi. Status sudah diperbarui.');
+    else if(p.status==='rejected') toast('Setoran ditolak owner.');
+    else if(p.status==='injected') toast('Saldo plafon diperbarui owner.');
+  }
+  function initDepositSocket(){
+    if(typeof io==='undefined') return;
+    try{
+      var t=getToken();
+      if(!t) return;
+      var s=io({auth:{token:t},transports:['websocket','polling']});
+      s.on('collect:deposit', applyDepositEvent);
+    }catch(e){}
+  }
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState==='visible') refreshAll();
+  });
+  window.addEventListener('pageshow', function(){ refreshAll(); });
+
   /* init */
-  loadMe();loadTasks();loadPayBanks();
+  loadMe();loadTasks();loadPayBanks();initDepositSocket();
   </script>
 </body>
 </html>

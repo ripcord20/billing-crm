@@ -347,6 +347,20 @@ class CollectionService {
       raw: true
     });
 
+    let pendingDepositCount = 0, pendingDepositAmount = 0;
+    try {
+      const pendingDep = await CashDeposit.findOne({
+        attributes: [
+          [sequelize.fn('COUNT', sequelize.col('id')), 'cnt'],
+          [sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('deposited_amount')), 0), 'sum']
+        ],
+        where: { status: 'pending' },
+        raw: true
+      });
+      pendingDepositCount = parseInt(pendingDep?.cnt, 10) || 0;
+      pendingDepositAmount = parseFloat(pendingDep?.sum) || 0;
+    } catch (_) {}
+
     return {
       period: { month, year },
       totals: {
@@ -357,7 +371,9 @@ class CollectionService {
         paid_count: paidCount,
         promise_count: promiseCount,
         pending_count: pendingCount,
-        cash_on_hand: parseFloat(cashHeldRow?.total) || 0
+        cash_on_hand: parseFloat(cashHeldRow?.total) || 0,
+        pending_deposit_count: pendingDepositCount,
+        pending_deposit_amount: pendingDepositAmount
       },
       by_status: byStatus
     };
@@ -422,6 +438,22 @@ class CollectionService {
     const userMap = {};    users.forEach(u => { userMap[u.id] = u.name; });
     const profMap = {};    profiles.forEach(p => { profMap[p.user_id] = p; });
 
+    const pendingMap = {};
+    try {
+      const pdeps = await CashDeposit.findAll({
+        where: { status: 'pending' },
+        attributes: ['id', 'collector_id', 'deposited_amount', 'expected_amount'],
+        raw: true
+      });
+      (pdeps || []).forEach((d) => {
+        pendingMap[d.collector_id] = {
+          id: d.id,
+          amount: parseFloat(d.deposited_amount || 0),
+          expected: parseFloat(d.expected_amount || 0)
+        };
+      });
+    } catch (_) {}
+
     // Status pembayaran komisi periode ini (per kolektor).
     const paidMap = {};
     try {
@@ -461,6 +493,9 @@ class CollectionService {
         commission_value: cval,
         commission: commission,
         cash_held: parseFloat(prof.cash_held || 0),
+        pending_deposit: !!pendingMap[cid],
+        pending_deposit_id: pendingMap[cid] ? pendingMap[cid].id : null,
+        pending_amount: pendingMap[cid] ? pendingMap[cid].amount : 0,
         commission_paid: !!paidMap[cid],
         commission_paid_amount: paidMap[cid] ? paidMap[cid].amount : 0
       });
@@ -607,12 +642,24 @@ class CollectionService {
       await profile.update({ deposit_limit: decided.next }, { transaction: t });
 
       if (ownTx) await t.commit();
-      return {
+      const cashHeld = parseFloat(profile.cash_held || 0);
+      const out = {
         collector_id: collectorId,
         deposit_limit: decided.next,
-        cash_held: parseFloat(profile.cash_held || 0),
-        deposit_room: cashRoom(decided.next, profile.cash_held)
+        cash_held: cashHeld,
+        deposit_room: cashRoom(decided.next, cashHeld)
       };
+      const stillPending = await this.pendingSetor(collectorId);
+      require('../utils/collectDepositEvents').emitCollectorDeposit(
+        { id: 0, collector_id: collectorId, deposited_amount: amount, status: 'injected' },
+        {
+          pending_deposit: !!stillPending,
+          cash_held: out.cash_held,
+          deposit_limit: out.deposit_limit,
+          deposit_room: out.deposit_room
+        }
+      );
+      return out;
     } catch (e) {
       if (ownTx) try { await t.rollback(); } catch (_) {}
       throw e;
