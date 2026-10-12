@@ -19,8 +19,12 @@ const moment = require('moment');
 
 const {
   sequelize, Invoice, Customer, Package, User, Role,
-  CollectionAssignment, CollectorProfile, CashDeposit, Payment
+  CollectionAssignment, CollectorProfile, CashDeposit, Payment,
+  CollectorDepositInjection
 } = require('../models');
+const {
+  cashRoom, assertCanCollectCash, assertCanCreateSetor, nextDepositLimit
+} = require('../utils/collectorCashGuard');
 
 // Status invoice yang dianggap "belum lunas" → layak dibuatkan task tagih.
 const UNPAID_INVOICE_STATUSES = ['unpaid', 'overdue'];
@@ -503,6 +507,116 @@ class CollectionService {
     const profile = await CollectorProfile.findOne({ where: { user_id: collectorId } });
     if (profile) await profile.update({ cash_held: cashHeld });
     return cashHeld;
+  }
+
+  static async pendingSetor(collectorId, transaction) {
+    return CashDeposit.findOne({
+      attributes: ['id', 'expected_amount', 'deposited_amount', 'status'],
+      where: { collector_id: collectorId, status: 'pending' },
+      transaction
+    });
+  }
+
+  /**
+   * Snapshot plafon + kas + setor pending untuk guard tunai.
+   */
+  static async cashState(collectorId, transaction) {
+    const lock = transaction ? transaction.LOCK.UPDATE : undefined;
+    const profile = await CollectorProfile.findOne({
+      where: { user_id: collectorId },
+      transaction,
+      lock
+    });
+    const pending = await this.pendingSetor(collectorId, transaction);
+    const depositLimit = parseFloat(profile?.deposit_limit || 0);
+    const cashHeld = parseFloat(profile?.cash_held || 0);
+    return {
+      profile,
+      pending,
+      deposit_limit: depositLimit,
+      cash_held: cashHeld,
+      deposit_room: cashRoom(depositLimit, cashHeld)
+    };
+  }
+
+  static async assertCashCollect(collectorId, amount, transaction) {
+    const state = await this.cashState(collectorId, transaction);
+    return {
+      ...assertCanCollectCash({
+        depositLimit: state.deposit_limit,
+        cashHeld: state.cash_held,
+        pendingDeposit: !!state.pending,
+        amount
+      }),
+      state
+    };
+  }
+
+  static async assertSetorCreate(collectorId, hasProof, transaction) {
+    const state = await this.cashState(collectorId, transaction);
+    return {
+      ...assertCanCreateSetor({
+        cashHeld: state.cash_held,
+        pendingDeposit: !!state.pending,
+        hasProof
+      }),
+      state
+    };
+  }
+
+  /**
+   * Owner injek / koreksi plafon deposit kolektor.
+   */
+  static async injectDeposit(collectorId, amount, opts = {}) {
+    const t = opts.transaction || await sequelize.transaction();
+    const ownTx = !opts.transaction;
+    try {
+      const collector = await User.findByPk(collectorId, {
+        include: [{ model: Role, as: 'role' }],
+        transaction: t
+      });
+      if (!collector) throw new Error('Kolektor tidak ditemukan');
+      if ((collector.role?.name || '').toLowerCase() !== 'collector') {
+        throw new Error('User yang dipilih bukan kolektor');
+      }
+
+      let profile = await CollectorProfile.findOne({
+        where: { user_id: collectorId },
+        transaction: t,
+        lock: t.LOCK.UPDATE
+      });
+      if (!profile) {
+        profile = await CollectorProfile.create({
+          user_id: collectorId,
+          commission_type: 'flat',
+          commission_value: 5000,
+          deposit_limit: 0,
+          cash_held: 0
+        }, { transaction: t });
+      }
+
+      const decided = nextDepositLimit(profile.deposit_limit, profile.cash_held, amount);
+      if (!decided.ok) throw new Error(decided.message);
+
+      await CollectorDepositInjection.create({
+        collector_id: collectorId,
+        amount,
+        note: opts.note || null,
+        injected_by: opts.injectedBy || null
+      }, { transaction: t });
+      await profile.update({ deposit_limit: decided.next }, { transaction: t });
+
+      if (ownTx) await t.commit();
+      return {
+        collector_id: collectorId,
+        deposit_limit: decided.next,
+        cash_held: parseFloat(profile.cash_held || 0),
+        deposit_room: cashRoom(decided.next, profile.cash_held)
+      };
+    } catch (e) {
+      if (ownTx) try { await t.rollback(); } catch (_) {}
+      throw e;
+    }
   }
 }
 

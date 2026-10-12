@@ -46,6 +46,8 @@ assert.ok(!payCtrl.includes("recorded_by_name = 'System'"), 'invoice tidak boleh
 assert.ok(field.includes('id="pdBy"'), 'detail lunas kolektor menampilkan Dilunasi oleh');
 assert.ok(field.includes('Dilunasi oleh'), 'kartu lunas kolektor menampilkan Dilunasi oleh');
 assert.ok(field.includes('invoice_paid'), 'kartu lunas meski tugas masih assigned');
+assert.ok(field.includes('sPlafon'), 'hero kolektor menampilkan plafon deposit');
+assert.ok(field.includes('Foto bukti setor wajib'), 'setor lapangan wajib bukti');
 
 const invPage = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/invoice.ejs'), 'utf8');
 assert.ok(invPage.includes('id="paidBy"'), 'halaman invoice menampilkan Dilunasi oleh');

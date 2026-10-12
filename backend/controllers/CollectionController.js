@@ -18,7 +18,7 @@ const moment = require('moment');
 const fs = require('fs');
 const path = require('path');
 const {
-  CollectionAssignment, CollectorProfile, Customer, Invoice, User, Role, Payment, CollectionAssignmentLog, CommissionPayment, Keuangan, sequelize
+  CollectionAssignment, CollectorProfile, Customer, Invoice, User, Role, Payment, CollectionAssignmentLog, CommissionPayment, Keuangan, CashDeposit, sequelize
 } = require('../models');
 const { paginateResponse } = require('../utils/helpers');
 const CollectionService = require('../services/CollectionService');
@@ -568,6 +568,14 @@ class CollectionController {
         order: [['name', 'ASC']]
       });
 
+      const ids = users.map(u => u.id);
+      const pending = ids.length ? await CashDeposit.findAll({
+        attributes: ['collector_id'],
+        where: { collector_id: { [Op.in]: ids }, status: 'pending' },
+        raw: true
+      }) : [];
+      const pendingSet = new Set(pending.map(p => p.collector_id));
+
       const data = users.map(u => ({
         id: u.id,
         name: u.name,
@@ -577,6 +585,12 @@ class CollectionController {
         commission_type: u.collector_profile?.commission_type || 'flat',
         commission_value: parseFloat(u.collector_profile?.commission_value || 0),
         cash_held: parseFloat(u.collector_profile?.cash_held || 0),
+        deposit_limit: parseFloat(u.collector_profile?.deposit_limit || 0),
+        deposit_room: Math.max(
+          0,
+          parseFloat(u.collector_profile?.deposit_limit || 0) - parseFloat(u.collector_profile?.cash_held || 0)
+        ),
+        pending_deposit: pendingSet.has(u.id),
         has_profile: !!u.collector_profile
       }));
 
@@ -623,6 +637,29 @@ class CollectionController {
       res.json({ success: true, message: created ? 'Profil kolektor dibuat.' : 'Profil kolektor diperbarui.', data: profile });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
+    }
+  }
+
+  // ── Owner injek / koreksi plafon deposit kolektor ─────────────────
+  async injectDeposit(req, res) {
+    try {
+      const collectorId = parseInt(req.params.id, 10);
+      const amount = parseFloat(String(req.body?.amount ?? '').replace(/[.,]/g, '')) || parseFloat(req.body?.amount);
+      const note = (req.body?.note || '').toString().trim().slice(0, 255) || null;
+      if (!collectorId) return res.status(400).json({ success: false, message: 'Kolektor tidak valid' });
+      const data = await CollectionService.injectDeposit(collectorId, amount, {
+        note,
+        injectedBy: req.user?.id || null
+      });
+      res.json({
+        success: true,
+        message: amount > 0
+          ? `Plafon deposit ditambah Rp${Number(amount).toLocaleString('id-ID')}.`
+          : `Plafon deposit dikurangi Rp${Math.abs(Number(amount)).toLocaleString('id-ID')}.`,
+        data
+      });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
     }
   }
 }

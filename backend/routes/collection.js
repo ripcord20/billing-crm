@@ -43,5 +43,6 @@ router.post('/generate',    authorize('superadmin', 'admin'), logActivity('gener
 router.post('/assign',      authorize('superadmin', 'admin'), logActivity('assign',   'collection_task'), (r, s) => CollectionController.assign(r, s));
 router.post('/auto-assign', authorize('superadmin', 'admin'), logActivity('assign',   'collection_task'), (r, s) => CollectionController.autoAssign(r, s));
 router.post('/collectors',  authorize('superadmin', 'admin'), logActivity('update',   'collector_profile'), (r, s) => CollectionController.upsertCollectorProfile(r, s));
+router.post('/collectors/:id/inject', authorize('superadmin', 'admin'), logActivity('inject', 'collector_deposit'), (r, s) => CollectionController.injectDeposit(r, s));
 
 module.exports = router;

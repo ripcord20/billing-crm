@@ -1091,6 +1091,7 @@ const startServer = async () => {
       await safeSync(db.MonitorState,            'monitor_states');
       await safeSync(db.NotifLog,                'notif_logs');
       await safeSync(db.BotCommand,              'bot_commands');
+      await safeSync(db.CollectorDepositInjection, 'collector_deposit_injections');
       // Seed perintah bot bawaan (idempotent — hanya menambah yang belum ada).
       try { await require('./services/BotCommandSeed').seedDefaults(); }
       catch (e) { logger.warn('Seed bot_commands skipped: ' + e.message); }
@@ -1154,6 +1155,12 @@ const startServer = async () => {
         if (!(await hasColCollect('collection_assignments', 'payment_proof'))) {
           await db.sequelize.query(`ALTER TABLE collection_assignments ADD COLUMN payment_proof VARCHAR(255) NULL`);
           logger.info('Migrated: collection_assignments.payment_proof added');
+        }
+        if (await hasColCollect('collector_profiles', 'id')) {
+          if (!(await hasColCollect('collector_profiles', 'deposit_limit'))) {
+            await db.sequelize.query(`ALTER TABLE collector_profiles ADD COLUMN deposit_limit DECIMAL(14,2) NOT NULL DEFAULT 0`);
+            logger.info('Migrated: collector_profiles.deposit_limit added');
+          }
         }
       }
     } catch (e) {

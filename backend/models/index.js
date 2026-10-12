@@ -128,6 +128,7 @@ const CollectionAssignment  = require('./CollectionAssignment')(sequelize);
 const CollectionAssignmentLog = require('./CollectionAssignmentLog')(sequelize);
 const CommissionPayment       = require('./CommissionPayment')(sequelize);
 const CashDeposit           = require('./CashDeposit')(sequelize);
+const CollectorDepositInjection = require('./CollectorDepositInjection')(sequelize);
 
 // Reseller Voucher Hotspot — akun reseller, paket, ledger saldo
 const Reseller                = require('./Reseller')(sequelize);
@@ -332,6 +333,7 @@ const db = {
   CollectionAssignmentLog,
   CommissionPayment,
   CashDeposit,
+  CollectorDepositInjection,
   Reseller,
   ResellerVoucherPackage,
   ResellerTransaction,
@@ -444,6 +446,10 @@ CommissionPayment.belongsTo(User, { foreignKey: 'paid_by', as: 'payer' });
 CashDeposit.belongsTo(User, { foreignKey: 'collector_id', as: 'collector' });
 CashDeposit.belongsTo(User, { foreignKey: 'verified_by',  as: 'verifier'  });
 User.hasMany(CashDeposit,   { foreignKey: 'collector_id', as: 'cash_deposits' });
+
+CollectorDepositInjection.belongsTo(User, { foreignKey: 'collector_id', as: 'collector' });
+CollectorDepositInjection.belongsTo(User, { foreignKey: 'injected_by', as: 'injector' });
+User.hasMany(CollectorDepositInjection, { foreignKey: 'collector_id', as: 'deposit_injections' });
 
 // Payment <-> collector / assignment
 Payment.belongsTo(User,                 { foreignKey: 'collected_by',  as: 'collector'  });

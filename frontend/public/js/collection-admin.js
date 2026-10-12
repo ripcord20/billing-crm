@@ -265,9 +265,14 @@
         '<div style="min-width:0;"><div style="font-weight:700;">' + esc(c.name) + '</div>' +
         '<div style="font-size:11.5px;color:#94a3b8;margin-top:2px;">' +
           (c.region ? esc(c.region) : '<span style="color:#cbd5e1;">area belum diset</span>') + ' · ' + comm + '</div>' +
-        '<div style="font-size:11.5px;color:#0d9488;margin-top:2px;">Cash di tangan: Rp' + (c.cash_held || 0).toLocaleString('id-ID') + '</div></div>' +
-        '<button class="btn-c btn-ghost" style="flex-shrink:0;padding:7px 12px;" onclick="CollAdmin.editCollector(' + c.id + ')">Atur</button>' +
-        '</div>';
+        '<div style="font-size:11.5px;color:#0d9488;margin-top:2px;">Cash di tangan: Rp' + (c.cash_held || 0).toLocaleString('id-ID') +
+          ' · plafon Rp' + (c.deposit_limit || 0).toLocaleString('id-ID') +
+          ' · sisa Rp' + (c.deposit_room || 0).toLocaleString('id-ID') +
+          (c.pending_deposit ? ' · setor pending' : '') + '</div></div>' +
+        '<div style="display:flex;gap:6px;flex-shrink:0;">' +
+        '<button class="btn-c btn-ghost" style="padding:7px 12px;" onclick="CollAdmin.openInject(' + c.id + ')">Injek</button>' +
+        '<button class="btn-c btn-ghost" style="padding:7px 12px;" onclick="CollAdmin.editCollector(' + c.id + ')">Atur</button>' +
+        '</div></div>';
     }).join('');
   }
 
@@ -293,6 +298,36 @@
     else if (t === 'none') { lbl.textContent = 'Nilai Komisi (nonaktif)'; inp.placeholder = '0'; }
     else { lbl.textContent = 'Nilai Komisi (Rp)'; inp.placeholder = '5000'; }
     inp.disabled = (t === 'none');
+  }
+
+  function openInject(userId) {
+    var c = state.collectors.find(function (x) { return x.id === userId; });
+    if (!c) return;
+    document.getElementById('injectCollectorName').textContent = 'Injek: ' + c.name;
+    document.getElementById('injUserId').value = c.id;
+    setText('injLimit', rp(c.deposit_limit || 0));
+    setText('injHeld', rp(c.cash_held || 0));
+    setText('injRoom', rp(c.deposit_room || 0));
+    document.getElementById('injAmount').value = '';
+    document.getElementById('injNote').value = '';
+    closeModal('collectorsModal');
+    show('injectDepositModal');
+  }
+
+  async function submitInjectDeposit() {
+    var uid = val('injUserId');
+    var amt = Number(document.getElementById('injAmount').value) || 0;
+    if (!uid || amt <= 0) { App.showToast('Isi nominal injek.', 'warning'); return; }
+    var d = await App.api('/collection/collectors/' + uid + '/inject', {
+      method: 'POST',
+      body: JSON.stringify({ amount: amt, note: val('injNote') })
+    });
+    if (d && d.success) {
+      App.showToast(d.message || 'Plafon diinjek.', 'success');
+      closeModal('injectDepositModal');
+      await loadCollectors();
+      openCollectors();
+    } else App.showToast((d && d.message) || 'Gagal injek plafon.', 'error');
   }
 
   async function submitCollector() {
@@ -969,13 +1004,21 @@
     if (frame && frame._objUrl) { URL.revokeObjectURL(frame._objUrl); frame._objUrl = null; }
   }
   async function verifyDeposit(id, fromDetail) {
+    var x = depState.list[id] || {};
+    var variance = parseFloat(x.variance) || 0;
     var ok = await collConfirm({
       title: 'Verifikasi Setoran',
-      message: 'Verifikasi setoran ini? Cash di tangan kolektor akan berkurang otomatis.',
-      okText: 'Verifikasi'
+      message: variance !== 0
+        ? ('Ada selisih Rp' + Math.abs(variance).toLocaleString('id-ID') + '. Yakin verifikasi? Cash di tangan akan dihitung ulang dari kas aktual.')
+        : ('Setoran harus sama dengan kas di tangan ' + rp(x.expected_amount) + '. Verifikasi sekarang?'),
+      okText: 'Verifikasi',
+      variant: variance !== 0 ? 'warn' : 'ok'
     });
     if (!ok) return;
-    var d = await App.api('/collection/deposits/' + id + '/verify', { method: 'POST', body: '{}' });
+    var d = await App.api('/collection/deposits/' + id + '/verify', {
+      method: 'POST',
+      body: JSON.stringify({ confirm_variance: variance !== 0 })
+    });
     if (d && d.success) {
       App.showToast(d.message || 'Terverifikasi.', 'success');
       if (fromDetail) closeDepositDetail();
@@ -1014,7 +1057,7 @@
   function closeModal(id) { var e = document.getElementById(id); if (e) e.classList.remove('show'); }
 
   // expose for inline handlers
-  window.CollAdmin = { toggleRow: toggleRow, editCollector: editCollector, verifyDeposit: verifyDeposit, rejectDeposit: rejectDeposit, openProof: openProof, openReassign: openReassign, raPick: raPick, openDepositDetail: openDepositDetail, payCommission: payCommission };
+  window.CollAdmin = { toggleRow: toggleRow, editCollector: editCollector, openInject: openInject, verifyDeposit: verifyDeposit, rejectDeposit: rejectDeposit, openProof: openProof, openReassign: openReassign, raPick: raPick, openDepositDetail: openDepositDetail, payCommission: payCommission };
   window.toggleAll = toggleAll;
   window.openAssign = openAssign;
   window.submitAssign = submitAssign;
@@ -1028,6 +1071,7 @@
   window.openCollectors = openCollectors;
   window.onCommTypeChange = onCommTypeChange;
   window.submitCollector = submitCollector;
+  window.submitInjectDeposit = submitInjectDeposit;
   window.loadDeposits = loadDeposits;
   window.loadReport = loadReport;
   window.printReport = printReport;
