@@ -1132,6 +1132,22 @@ const startServer = async () => {
       logger.warn('Failed reseller voucher migration: ' + (e.message || e));
     }
 
+    // Komisi kolektor: tabel commission_payments sering sudah ada tanpa
+    // created_at/updated_at (sync production dimatikan). Tandai Dibayar
+    // SELECT created_at → "Unknown column 'created_at' in 'SELECT'".
+    try {
+      if (db.CommissionPayment) {
+        await db.CommissionPayment.sync();
+      }
+      const { ensureUnderscoredTimestamps } = require('./utils/ensureTableTimestamps');
+      const ts = await ensureUnderscoredTimestamps(db.sequelize, 'commission_payments');
+      if (ts.added && ts.added.length) {
+        logger.info('Migrated: commission_payments timestamps ' + JSON.stringify(ts.added));
+      }
+    } catch (e) {
+      logger.warn('Failed commission_payments timestamp migrate: ' + (e.message || e));
+    }
+
     // Start SNMP monitoring
     const snmpService = new SNMPService(io);
     SNMPService.setInstance(snmpService);
