@@ -1069,13 +1069,26 @@ async function runAutoIsolir(opts = {}) {
 }
 
 // ── Restore setelah bayar ──────────────────────────────────────
+// Jaringan (MikroTik) dicoba dulu. CRM isolir_status selalu dibersihkan
+// jika pelanggan sudah tidak punya invoice unpaid/overdue — supaya
+// Needs Attention tidak menahan status terisolir setelah lunas.
 async function restoreAfterPayment(customerId) {
+  const { activateCrmIfPaidUp } = require('../utils/isolirCrm');
   const rows = await sequelize.query(
     'SELECT isolir_status FROM customers WHERE id=?',
     { replacements: [customerId], type: sequelize.QueryTypes.SELECT }
   );
-  if (rows[0]?.isolir_status === 'isolated') return restoreCustomer(customerId, 'payment');
-  return { success: true, skipped: true };
+  const isolirStatus = rows[0]?.isolir_status;
+  let network = { success: true, skipped: true };
+  if (isolirStatus === 'isolated' || isolirStatus === 'restoring') {
+    try {
+      network = await restoreCustomer(customerId, 'payment');
+    } catch (e) {
+      network = { success: false, message: e.message };
+    }
+  }
+  const crm = await activateCrmIfPaidUp(sequelize, customerId);
+  return { ...network, crmCleared: !!crm.cleared };
 }
 
 // ── Re-evaluate satu customer: kalau memenuhi kriteria isolir, isolir-kan ──

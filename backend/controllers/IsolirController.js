@@ -17,7 +17,11 @@ class IsolirController {
 
   async stats(req, res) {
     try {
-      const [[isolated]]   = await sequelize.query("SELECT COUNT(*) AS cnt FROM customers WHERE isolir_status='isolated'");
+      const { outstandingInvoiceSql } = require('../utils/isolirCrm');
+      const [[isolated]]   = await sequelize.query(
+        `SELECT COUNT(*) AS cnt FROM customers c
+          WHERE c.isolir_status='isolated' AND ${outstandingInvoiceSql('c')}`
+      );
       // "Eligible" = pelanggan yang bisa diisolir = punya static_ip ATAU pppoe_username + mikrotik_id
       const [[withIP]]     = await sequelize.query(
         `SELECT COUNT(*) AS cnt FROM customers
@@ -303,6 +307,8 @@ class IsolirController {
 
   async listIsolated(req, res) {
     try {
+      const { reconcilePaidIsolated, outstandingInvoiceSql } = require('../utils/isolirCrm');
+      await reconcilePaidIsolated(sequelize);
       const rows = await sequelize.query(
         `SELECT c.id, c.customer_id, c.name, c.static_ip, c.pppoe_username,
                 c.connection_type, c.mac_address,
@@ -317,6 +323,7 @@ class IsolirController {
          LEFT JOIN devices d           ON d.id = md.device_id
          LEFT JOIN packages pkg        ON pkg.id=c.package_id
          WHERE c.isolir_status IN ('isolated','restoring')
+           AND ${outstandingInvoiceSql('c')}
          ORDER BY c.isolir_at DESC`,
         { type: sequelize.QueryTypes.SELECT }
       );

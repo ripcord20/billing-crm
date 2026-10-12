@@ -1079,8 +1079,19 @@ class DashboardController {
 
       // 3) Pelanggan terisolir
       try {
+        try {
+          const { reconcilePaidIsolated } = require('../utils/isolirCrm');
+          await reconcilePaidIsolated(sequelize);
+        } catch (_) {}
         const isolated = await Customer.findAll({
-          where: { [Op.or]: [{ status: 'isolated' }, { isolir_status: 'isolated' }] },
+          where: {
+            [Op.or]: [{ status: 'isolated' }, { isolir_status: 'isolated' }],
+            id: {
+              [Op.in]: sequelize.literal(
+                `(SELECT customer_id FROM invoices WHERE status IN ('unpaid','overdue'))`
+              )
+            }
+          },
           attributes: ['id', 'customer_id', 'name', 'updatedAt'],
           order: [['updatedAt', 'DESC']],
           limit: 20,

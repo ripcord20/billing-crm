@@ -1711,10 +1711,20 @@ class BillingController {
                   : (cust.billing_date ? moment().date(cust.billing_date) : moment()));
             nextDue = base.add(1, 'month').format('YYYY-MM-DD');
           }
-          const upd = { due_date: nextDue };
+          const upd = { status: 'active', due_date: nextDue };
           const day = moment(nextDue).date();
           if (day >= 1 && day <= 28) upd.billing_date = day;
           await cust.update(upd);
+        }
+      } catch (_) { /* non-fatal */ }
+
+      try {
+        const IsolirSvc = require('../services/IsolirService');
+        const cid = invoice.customer_id || invoice.customer?.id;
+        if (cid) {
+          setImmediate(() => {
+            IsolirSvc.restoreAfterPayment(cid).catch(() => {});
+          });
         }
       } catch (_) { /* non-fatal */ }
 
