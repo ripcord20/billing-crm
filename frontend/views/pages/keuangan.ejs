@@ -21,9 +21,10 @@
     /* ── Fintech cards ── */
         /* ── STAT CARDS — single strip ── */
     .fin-grid, .fin-grid-4 {
-      display: grid; grid-template-columns: repeat(5, 1fr);
+      display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
       background: #fff; border-radius: 16px;
       border: 1px solid #e8eaed; overflow: hidden; margin-bottom: 20px;
+      min-width: 0; max-width: 100%;
     }
     .fin-card {
       padding: 20px 22px 18px; border-right: 1px solid #e8eaed;
@@ -80,7 +81,10 @@
     .wc-ttl { font-size:15px;font-weight:700;color:var(--d-text);margin-top:2px; }
 
     /* ── Layout ── */
-    .main-layout { display:grid; grid-template-columns:340px minmax(0,1fr); gap:16px; align-items:start; }
+    .keu-page .page-content,
+    .keu-page .w-card,
+    .keu-page .form-card { min-width:0; max-width:100%; }
+    .main-layout { display:grid; grid-template-columns:340px minmax(0,1fr); gap:16px; align-items:start; min-width:0; }
 
     /* ── Form card ── */
     .form-card { background:#fff;border:1px solid var(--d-border);border-radius:20px;padding:20px;position:sticky;top:76px; }
@@ -88,8 +92,8 @@
     .form-title .ft-icon { width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#1a6ef5,#0047cc);display:flex;align-items:center;justify-content:center; }
 
     /* ── Type tabs ── */
-    .type-tabs { display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:16px; }
-    .type-tab { padding:7px 4px;border-radius:10px;border:1.5px solid var(--d-border);background:#fff;font-size:10.5px;font-weight:600;color:var(--d-muted);cursor:pointer;text-align:center;transition:all .15s; }
+    .type-tabs { display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-bottom:16px; }
+    .type-tab { padding:7px 4px;border-radius:10px;border:1.5px solid var(--d-border);background:#fff;font-size:10.5px;font-weight:600;color:var(--d-muted);cursor:pointer;text-align:center;transition:all .15s; min-width:0; overflow:hidden; }
     .type-tab:hover { border-color:#1a6ef5;color:#1a6ef5; }
     .type-tab.active { color:#fff;border-color:transparent; }
     .type-tab[data-type="pemasukan"].active  { background:linear-gradient(135deg,#00d4a4,#007a5e); }
@@ -99,21 +103,22 @@
     .type-tab[data-type="modal"].active      { background:linear-gradient(135deg,#1a6ef5,#003399); }
 
     /* ── Form fields ── */
-    .form-group { margin-bottom:13px; }
+    .form-group { margin-bottom:13px; min-width:0; }
     .form-label { font-size:11.5px;font-weight:600;color:var(--d-text);margin-bottom:5px;display:block; }
     .form-label span { color:var(--d-red);margin-left:2px; }
     .form-control {
       width:100%;padding:9px 12px;border:1.5px solid var(--d-border);border-radius:10px;
       font-size:13px;font-family:'DM Sans',sans-serif;color:var(--d-text);background:#fff;
-      transition:border-color .15s;outline:none;
+      transition:border-color .15s;outline:none;box-sizing:border-box;min-width:0;max-width:100%;
     }
     .form-control:focus { border-color:var(--d-blue1); }
     .form-control::placeholder { color:#b0bcd0; }
     textarea.form-control { resize:vertical;min-height:70px; }
-    .form-row { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+    input[type="date"].form-control { min-width:0; max-width:100%; }
+    .form-row { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px; }
 
     /* ── Amount input ── */
-    .amount-wrap { position:relative; }
+    .amount-wrap { position:relative; min-width:0; width:100%; }
     .amount-prefix { position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:12.5px;font-weight:700;color:var(--d-muted);pointer-events:none; }
     .amount-wrap .form-control { padding-left:38px;font-family:'DM Mono',monospace;font-weight:700;font-size:14px; }
 
@@ -139,11 +144,12 @@
     .filter-tab:hover:not(.active) { border-color:#1a6ef5;color:#1a6ef5; }
     .filter-select { padding:7px 11px;border-radius:9px;border:1.5px solid var(--d-border);font-size:12.5px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--d-text);cursor:pointer;outline:none; }
     .filter-select:focus { border-color:var(--d-blue1); }
-    .search-input { flex:1;min-width:160px;padding:7px 12px;border:1.5px solid var(--d-border);border-radius:9px;font-size:12.5px;font-family:'DM Sans',sans-serif;outline:none;background:#fff; }
+    .search-input { flex:1;min-width:0;max-width:100%;padding:7px 12px;border:1.5px solid var(--d-border);border-radius:9px;font-size:12.5px;font-family:'DM Sans',sans-serif;outline:none;background:#fff;box-sizing:border-box; }
     .search-input:focus { border-color:var(--d-blue1); }
 
     /* ── Table ── */
-    .keu-table { width:100%;border-collapse:collapse;font-size:12.5px; }
+    .keu-table-wrap { width:100%; max-width:100%; min-width:0; overflow-x:hidden; }
+    .keu-table { width:100%;border-collapse:collapse;font-size:12.5px; table-layout:auto; }
     .keu-table th { padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--d-muted);background:#f4f8ff;text-align:left; }
     .keu-table th:first-child { border-radius:8px 0 0 8px; }
     .keu-table th:last-child  { border-radius:0 8px 8px 0; }
@@ -199,18 +205,56 @@
 
     /* ── Responsive ── */
     @media(max-width:1100px){
-      .fin-grid { grid-template-columns:repeat(3,1fr) !important; }
+      .fin-grid { grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
     }
     @media(max-width:900px){
-      .main-layout { grid-template-columns:1fr !important; }
+      .keu-page .page-content { overflow-x:hidden; max-width:100%; }
+      .main-layout { grid-template-columns:minmax(0,1fr) !important; }
       .form-card { position:static !important; }
-      .charts-row { grid-template-columns:1fr !important; }
+      .charts-row { grid-template-columns:minmax(0,1fr) !important; }
+      .fin-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+      .type-tabs { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+      .form-row { grid-template-columns:minmax(0,1fr) !important; }
+      .pnbp-grid { grid-template-columns:minmax(0,1fr) !important; }
+      .card-spark { display:none; }
+      .search-input { width:100% !important; min-width:0 !important; }
+      .filter-bar { flex-wrap:wrap; width:100%; }
+      .card-val { font-size:22px; letter-spacing:-.6px; overflow:hidden; text-overflow:ellipsis; }
+
+      /* keu-hp-lock: tabel → kartu, tanpa geser kanan */
+      .keu-table-wrap { overflow-x:hidden !important; }
+      .keu-table thead { display:none; }
+      .keu-table, .keu-table tbody, .keu-table tr, .keu-table td {
+        display:block; width:100%; box-sizing:border-box;
+      }
+      .keu-table tbody tr {
+        border:1px solid var(--d-border); border-radius:14px;
+        margin-bottom:10px; padding:6px 4px; background:#fff;
+      }
+      .keu-table tbody tr:hover td { background:transparent; }
+      .keu-table td {
+        border:none; padding:7px 14px;
+        display:flex; align-items:center; justify-content:space-between; gap:12px;
+        text-align:right; min-width:0;
+      }
+      .keu-table td::before {
+        content:attr(data-label); font-size:10.5px; font-weight:700;
+        color:var(--d-muted); text-transform:uppercase; letter-spacing:.04em;
+        text-align:left; flex-shrink:0;
+      }
+      .keu-table td > * { min-width:0; }
+      .keu-table td[data-label="Aksi"] { justify-content:flex-end; }
+      .keu-table td[data-label=""] { justify-content:center; text-align:center; }
+      .keu-table td[data-label=""]::before,
+      .keu-table td[colspan]::before { display:none; }
+      .keu-table td[colspan] { display:block; text-align:center; }
+      .keu-table tbody tr:has(td[colspan]) { border:none; margin:0; padding:0; background:transparent; }
     }
     @media(max-width:640px){
-      .fin-grid { grid-template-columns:1fr !important;gap:0 !important; }
+      .fin-grid { grid-template-columns:minmax(0,1fr) !important;gap:0 !important; }
       .fin-card { padding:18px 20px !important; min-height:auto !important; border-right:none !important; border-bottom:1px solid #e8eaed; }
       .fin-card:last-child { border-bottom:none; }
-      .type-tabs { grid-template-columns:repeat(3,1fr) !important; }
+      .type-tabs { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
       .filter-bar { flex-wrap:wrap; }
       .col-hide { display:none !important; }
     }
@@ -276,7 +320,7 @@
 
       <!-- KPI Cards -->
       
-      <div class="fin-grid" style="grid-template-columns:repeat(5,1fr)">
+      <div class="fin-grid">
         <div class="fin-card fc-active" id="fc-masuk" onclick="keuCardClick(this)">
           <div class="card-lbl">Pemasukan</div>
           <div class="card-body">
@@ -577,7 +621,7 @@
                 <span id="tbl-count" style="font-size:11px;background:#eef2f9;padding:2px 8px;border-radius:20px;color:var(--d-muted);font-weight:600"></span>
               </div>
               <div class="filter-bar" style="margin:0">
-                <input type="text" class="search-input" placeholder="Cari..." id="tbl-search" oninput="debounceSearch()" style="width:160px">
+                <input type="text" class="search-input" placeholder="Cari..." id="tbl-search" oninput="debounceSearch()">
               </div>
             </div>
 
@@ -591,7 +635,7 @@
               <button class="filter-tab" data-filter="modal"       onclick="setFilter('modal',this)"><span style="width:7px;height:7px;border-radius:50%;background:#1a6ef5;display:inline-block;margin-right:5px;vertical-align:middle"></span>Modal</button>
             </div>
 
-            <div style="overflow-x:auto">
+            <div class="keu-table-wrap">
               <table class="keu-table">
                 <thead>
                   <tr>
@@ -605,7 +649,7 @@
                   </tr>
                 </thead>
                 <tbody id="keu-tbody">
-                  <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--d-muted)">Memuat...</td></tr>
+                  <tr><td colspan="7" data-label="" style="text-align:center;padding:32px;color:var(--d-muted)">Memuat...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -1061,7 +1105,7 @@ function renderTable(rows, total){
   el('tbl-count').textContent = total + ' data';
   const tbody = el('keu-tbody');
   if(!rows.length){
-    tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:36px;color:var(--d-muted)">
+    tbody.innerHTML=`<tr><td colspan="7" data-label="" style="text-align:center;padding:36px;color:var(--d-muted)">
       <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 10px;display:block;opacity:.3"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
       <p style="font-size:13px;font-weight:600">Belum ada transaksi</p>
     </td></tr>`;
@@ -1078,21 +1122,21 @@ function renderTable(rows, total){
     const amtColor = r.type==='pemasukan'||r.type==='modal'?'#007a5e':r.type==='pengeluaran'?'#c0183a':r.type==='piutang'?'#0077b6':'#b45309';
     const amtSign  = r.type==='pemasukan'||r.type==='modal'?'+':r.type==='pengeluaran'?'-':'';
     return`<tr>
-      <td style="white-space:nowrap;font-size:11.5px;color:var(--d-muted)">${fmtDate(r.date)}</td>
-      <td><span class="type-badge tb-${r.type}">${TYPE_LABEL[r.type]||r.type}</span></td>
-      <td>
-        <div style="font-weight:600;font-size:12.5px">${r.description||'—'}</div>
+      <td data-label="Tgl" style="white-space:nowrap;font-size:11.5px;color:var(--d-muted)">${fmtDate(r.date)}</td>
+      <td data-label="Tipe"><span class="type-badge tb-${r.type}">${TYPE_LABEL[r.type]||r.type}</span></td>
+      <td data-label="Kategori / Deskripsi">
+        <div style="font-weight:600;font-size:12.5px;overflow-wrap:anywhere">${r.description||'—'}</div>
         <div style="font-size:11px;color:var(--d-muted)">${r.category||''}</div>
       </td>
-      <td class="col-hide">
+      <td class="col-hide" data-label="Pihak / Ref">
         <div style="font-size:12px">${r.party_name||r.ref_number||'—'}</div>
         ${r.due_date?`<div style="font-size:10.5px;color:var(--d-muted)">Due: ${fmtDate(r.due_date)}</div>`:''}
       </td>
-      <td>${statusHtml}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:700;font-size:13px;color:${amtColor}">
+      <td data-label="Status">${statusHtml}</td>
+      <td data-label="Jumlah" style="text-align:right;font-family:'DM Mono',monospace;font-weight:700;font-size:13px;color:${amtColor}">
         ${amtSign}${fmtRp(+r.amount)}
       </td>
-      <td style="text-align:center">
+      <td data-label="Aksi" style="text-align:center">
         <div style="display:flex;gap:4px;justify-content:center;align-items:center">
           ${lunasBtn}
           <button class="btn-icon btn-edit" onclick="editRecord(${r.id})" title="Edit">
