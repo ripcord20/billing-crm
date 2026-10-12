@@ -57,6 +57,16 @@ module.exports = (sequelize) => {
       comment: 'Saldo tunai yang sedang dipegang kolektor (cash on hand)'
     },
 
+    // Plafon deposit yang diinjek owner. Default 0 = belum boleh terima tunai.
+    // Sisa plafon = deposit_limit - cash_held. Setor terverifikasi menurunkan
+    // cash_held sehingga plafon bisa dipakai lagi.
+    deposit_limit: {
+      type: DataTypes.DECIMAL(14, 2),
+      allowNull: false,
+      defaultValue: 0,
+      comment: 'Plafon deposit kolektor (diinjek owner)'
+    },
+
     is_active: { type: DataTypes.BOOLEAN, defaultValue: true }
   }, {
     tableName: 'collector_profiles',

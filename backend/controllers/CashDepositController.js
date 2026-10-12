@@ -31,6 +31,7 @@ const {
   sequelize, CashDeposit, CollectorProfile, User
 } = require('../models');
 const { paginateResponse } = require('../utils/helpers');
+const CollectionService = require('../services/CollectionService');
 
 class CashDepositController {
   // ── KOLEKTOR: buat setoran ────────────────────────────────────────
@@ -38,20 +39,19 @@ class CashDepositController {
     const t = await sequelize.transaction();
     try {
       const uid = req.user.id;
-      const { amount, deposit_date, note } = req.body;
-
-      const profile = await CollectorProfile.findOne({ where: { user_id: uid }, transaction: t });
-      const expected = parseFloat(profile?.cash_held || 0);
-
-      const deposited = parseFloat(String(amount).replace(/[.,]/g, '')) || parseFloat(amount);
-      if (!deposited || deposited <= 0) {
+      const { deposit_date, note } = req.body;
+      const hasProof = !!(req.file && req.file.filename);
+      const guard = await CollectionService.assertSetorCreate(uid, hasProof, t);
+      if (!guard.ok) {
         await t.rollback();
-        return res.status(400).json({ success: false, message: 'Nominal setoran tidak valid' });
+        return res.status(400).json({ success: false, message: guard.message, code: guard.code });
       }
 
-      const variance = deposited - expected;
-      let proofPath = null;
-      if (req.file) proofPath = 'uploads/payment_proofs/' + req.file.filename;
+      const expected = guard.expected;
+      // Jumlah setor dikunci ke kas di tangan — kolektor tidak bisa setor kurang.
+      const deposited = expected;
+      const variance = 0;
+      const proofPath = 'uploads/payment_proofs/' + req.file.filename;
 
       const dep = await CashDeposit.create({
         collector_id: uid,
@@ -94,7 +94,7 @@ class CashDepositController {
         order: [['created_at', 'DESC']],
         limit: 50
       });
-      const profile = await CollectorProfile.findOne({ where: { user_id: uid } });
+      const cash = await CollectionService.cashState(uid);
 
       // Rincian kas di tangan: pembayaran field_collection oleh kolektor ini
       // SEJAK setoran terverifikasi terakhir (yang membentuk cash_on_hand).
@@ -106,7 +106,7 @@ class CashDepositController {
           order: [['created_at', 'DESC']]
         });
         const since = lastVerified ? lastVerified.created_at : null;
-        const wherePay = { collected_by: uid, payment_method: 'field_collection' };
+        const wherePay = { collected_by: uid, payment_method: { [Op.in]: ['cash', 'field_collection'] } };
         if (since) wherePay.created_at = { [require('sequelize').Op.gt]: since };
         const pays = await Payment.findAll({
           where: wherePay,
@@ -131,7 +131,10 @@ class CashDepositController {
       res.json({
         success: true,
         data: {
-          cash_on_hand: parseFloat(profile?.cash_held || 0),
+          cash_on_hand: cash.cash_held,
+          deposit_limit: cash.deposit_limit,
+          deposit_room: cash.deposit_room,
+          pending_deposit: !!cash.pending,
           breakdown,
           deposits: rows.map(d => ({
             id: d.id, deposit_date: d.deposit_date,
@@ -234,16 +237,21 @@ class CashDepositController {
       if (!dep) { await t.rollback(); return res.status(404).json({ success: false, message: 'Setoran tidak ditemukan' }); }
       if (dep.status === 'verified') { await t.rollback(); return res.status(409).json({ success: false, message: 'Setoran sudah diverifikasi.' }); }
 
-      await dep.update({ status: 'verified', verified_at: new Date(), verified_by: req.user?.id || null }, { transaction: t });
-
-      // Kurangi cash_held kolektor sebesar yang DISETOR.
-      const profile = await CollectorProfile.findOne({ where: { user_id: dep.collector_id }, transaction: t });
-      if (profile) {
-        const newHeld = parseFloat(profile.cash_held || 0) - parseFloat(dep.deposited_amount);
-        await profile.update({ cash_held: newHeld }, { transaction: t });
+      const variance = parseFloat(dep.variance) || 0;
+      if (variance !== 0 && !req.body?.confirm_variance) {
+        await t.rollback();
+        return res.status(409).json({
+          success: false,
+          code: 'variance_confirm',
+          message: `Ada selisih Rp${Math.abs(variance).toLocaleString('id-ID')} (${variance < 0 ? 'kurang' : 'lebih'} setor). Konfirmasi ulang untuk tetap verifikasi.`
+        });
       }
 
+      await dep.update({ status: 'verified', verified_at: new Date(), verified_by: req.user?.id || null }, { transaction: t });
+
       await t.commit();
+      // Hitung ulang dari payment - setor verified supaya tidak drift.
+      await CollectionService.recomputeCashHeld(dep.collector_id);
 
       // Notifikasi kolektor (WA) — best-effort.
       setImmediate(async () => {

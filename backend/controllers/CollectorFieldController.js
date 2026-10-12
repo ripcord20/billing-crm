@@ -32,6 +32,7 @@ const {
   sequelize, CollectionAssignment, CollectorProfile, Customer, Invoice,
   Payment, Package, User, Keuangan
 } = require('../models');
+const CollectionService = require('../services/CollectionService');
 
 function addOneMonthKeepDay(dateInput) {
   if (!dateInput) return null;
@@ -83,6 +84,9 @@ class CollectorFieldController {
         if (OPEN_STATUSES.includes(r.status)) openCount += cnt;
       }
 
+      const cash = await CollectionService.cashState(uid);
+      const depositLimit = cash.deposit_limit;
+      const cashHeld = cash.cash_held;
       res.json({
         success: true,
         data: {
@@ -91,7 +95,9 @@ class CollectorFieldController {
             region: profile.region,
             commission_type: profile.commission_type,
             commission_value: parseFloat(profile.commission_value),
-            cash_held: parseFloat(profile.cash_held)
+            cash_held: cashHeld,
+            deposit_limit: depositLimit,
+            deposit_room: cash.deposit_room
           },
           summary: {
             total_task: totalTask,
@@ -101,7 +107,10 @@ class CollectorFieldController {
             paid_count: paidCount,
             promise_count: promiseCount,
             open_count: openCount,
-            cash_on_hand: parseFloat(profile.cash_held)
+            cash_on_hand: cashHeld,
+            deposit_limit: depositLimit,
+            deposit_room: cash.deposit_room,
+            pending_deposit: !!cash.pending
           }
         }
       });
@@ -501,6 +510,13 @@ class CollectorFieldController {
       if (!payAmount || payAmount <= 0) {
         await t.rollback();
         return res.status(400).json({ success: false, message: 'Nominal pembayaran tidak valid' });
+      }
+      if (holdsCash) {
+        const guard = await CollectionService.assertCashCollect(uid, payAmount, t);
+        if (!guard.ok) {
+          await t.rollback();
+          return res.status(409).json({ success: false, message: guard.message, code: guard.code });
+        }
       }
       const invoiceTotal = parseFloat(invoice.total);
       const isPartial = payAmount < invoiceTotal;

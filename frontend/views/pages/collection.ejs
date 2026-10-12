@@ -364,7 +364,7 @@
             <option value="rejected">Ditolak</option>
             <option value="">Semua</option>
           </select>
-          <span style="font-size:12.5px;color:#94a3b8;">Verifikasi setoran tunai dari kolektor. Setelah diverifikasi, cash di tangan kolektor berkurang otomatis.</span>
+          <span style="font-size:12.5px;color:#94a3b8;">Setoran dikunci ke kas di tangan + wajib bukti. Setelah verifikasi, cash berkurang dan sisa plafon terbuka lagi.</span>
         </div>
         <div id="depositsList"></div>
       </div><!-- /tabPanelDeposits -->
@@ -433,7 +433,7 @@
 <div class="modal-overlay" id="collectorsModal">
   <div class="modal-box" style="max-width:560px;">
     <h3>Kelola Kolektor</h3>
-    <p class="hint">Atur area kerja & skema komisi tiap kolektor. Kolektor = user ber-role <b>collector</b> (buat di Manajemen User).</p>
+    <p class="hint">Atur area, komisi, dan plafon deposit. Kolektor tidak bisa terima tunai sebelum Anda injek saldo.</p>
     <div id="collectorsList" style="max-height:340px;overflow-y:auto;margin:6px 0;"></div>
     <div class="modal-actions">
       <button class="btn-c btn-ghost" onclick="closeModal('collectorsModal')" style="flex:1;justify-content:center;">Tutup</button>
@@ -462,6 +462,28 @@
     <div class="modal-actions">
       <button class="btn-c btn-ghost" onclick="closeModal('editCollectorModal')">Batal</button>
       <button class="btn-c btn-primary" onclick="submitCollector()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Injek plafon deposit kolektor -->
+<div class="modal-overlay" id="injectDepositModal">
+  <div class="modal-box">
+    <h3 id="injectCollectorName">Injek Plafon Deposit</h3>
+    <p class="hint">Tambah plafon supaya kolektor boleh terima tunai. Setor yang terverifikasi mengembalikan sisa plafon.</p>
+    <input type="hidden" id="injUserId">
+    <div class="coll-pop" style="margin-bottom:12px;padding:0;border:none;box-shadow:none;">
+      <div class="r"><span>Plafon sekarang</span><b class="money" id="injLimit">—</b></div>
+      <div class="r"><span>Cash di tangan</span><b class="money" id="injHeld">—</b></div>
+      <div class="r"><span>Sisa plafon</span><b class="money" id="injRoom">—</b></div>
+    </div>
+    <label>Nominal Injek (Rp)</label>
+    <input type="number" id="injAmount" inputmode="numeric" placeholder="2000000" min="1">
+    <label>Catatan (opsional)</label>
+    <input type="text" id="injNote" placeholder="mis. modal Oktober">
+    <div class="modal-actions">
+      <button class="btn-c btn-ghost" onclick="closeModal('injectDepositModal')">Batal</button>
+      <button class="btn-c btn-primary" onclick="submitInjectDeposit()">Injek Saldo</button>
     </div>
   </div>
 </div>

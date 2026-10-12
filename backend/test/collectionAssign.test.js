@@ -46,9 +46,25 @@ assert.ok(!payCtrl.includes("recorded_by_name = 'System'"), 'invoice tidak boleh
 assert.ok(field.includes('id="pdBy"'), 'detail lunas kolektor menampilkan Dilunasi oleh');
 assert.ok(field.includes('Dilunasi oleh'), 'kartu lunas kolektor menampilkan Dilunasi oleh');
 assert.ok(field.includes('invoice_paid'), 'kartu lunas meski tugas masih assigned');
+assert.ok(field.includes('sPlafon'), 'hero kolektor menampilkan plafon deposit');
+assert.ok(field.includes('Foto bukti setor wajib'), 'setor lapangan wajib bukti');
 
 const invPage = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/invoice.ejs'), 'utf8');
 assert.ok(invPage.includes('id="paidBy"'), 'halaman invoice menampilkan Dilunasi oleh');
+
+const sidebar = fs.readFileSync(path.join(__dirname, '../../frontend/views/partials/sidebar.ejs'), 'utf8');
+assert.ok(sidebar.includes('href="/collect"'), 'sidebar punya tautan Collect Billing');
+assert.ok((sidebar.match(/href="\/collect"/g) || []).length >= 3, 'Collect Billing ada di NOC, MANAGEMENT, dan dropdown Billing');
+assert.ok(sidebar.includes("'billing','invoice-template','collect'"), 'dropdown Billing terbuka saat halaman collect');
+
+const drawer = fs.readFileSync(path.join(__dirname, '../../frontend/views/partials/mobile-drawer.ejs'), 'utf8');
+assert.ok(drawer.includes('href="/collect"'), 'drawer HP punya tautan Collect Billing');
+
+const topbar = fs.readFileSync(path.join(__dirname, '../../frontend/views/partials/topbar.ejs'), 'utf8');
+assert.ok(topbar.includes('href="/collect"'), 'menu cepat HP punya tautan Collect Billing');
+
+const billPageNav = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/billing.ejs'), 'utf8');
+assert.ok(billPageNav.includes('href="/collect"'), 'halaman Billing punya tombol Collect Billing');
 
 const billPage = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/billing.ejs'), 'utf8');
 assert.ok(billPage.includes('bill-narrow'), 'Billing HP memakai class bill-narrow');
