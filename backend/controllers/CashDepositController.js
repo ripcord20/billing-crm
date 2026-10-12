@@ -251,7 +251,14 @@ class CashDepositController {
 
       await t.commit();
       // Hitung ulang dari payment - setor verified supaya tidak drift.
-      await CollectionService.recomputeCashHeld(dep.collector_id);
+      const cashHeld = await CollectionService.recomputeCashHeld(dep.collector_id);
+      const stillPending = await CollectionService.pendingSetor(dep.collector_id);
+      require('../utils/collectDepositEvents').emitCollectorDeposit(dep, {
+        status: 'verified',
+        pending_deposit: !!stillPending,
+        cash_held: cashHeld
+      });
+      const CollectNotifier = require('../services/CollectNotifier');
 
       // Notifikasi kolektor (WA) — best-effort.
       setImmediate(async () => {
@@ -263,7 +270,7 @@ class CashDepositController {
             const prof = await CollectorProfile.findOne({ where: { user_id: dep.collector_id }, attributes: ['phone'] });
             phone = prof && prof.phone ? prof.phone : null;
           }
-          await require('../services/CollectNotifier').notifyDepositVerified(dep, phone);
+          await CollectNotifier.notifyDepositVerified(dep, phone);
         } catch (_) {}
       });
 
@@ -289,6 +296,12 @@ class CashDepositController {
       const reason = (req.body && typeof req.body.reason === 'string') ? req.body.reason.slice(0, 255) : null;
       await dep.update({ status: 'rejected', reject_reason: reason });
       // cash_held TIDAK diubah saat reject — uang dianggap masih di tangan kolektor.
+      const stillPending = await CollectionService.pendingSetor(dep.collector_id);
+      require('../utils/collectDepositEvents').emitCollectorDeposit(dep, {
+        status: 'rejected',
+        pending_deposit: !!stillPending
+      });
+      const CollectNotifier = require('../services/CollectNotifier');
 
       // Notifikasi kolektor (WA) — best-effort.
       setImmediate(async () => {
@@ -300,7 +313,7 @@ class CashDepositController {
             const prof = await CollectorProfile.findOne({ where: { user_id: dep.collector_id }, attributes: ['phone'] });
             phone = prof && prof.phone ? prof.phone : null;
           }
-          await require('../services/CollectNotifier').notifyDepositRejected(dep, phone);
+          await CollectNotifier.notifyDepositRejected(dep, phone);
         } catch (_) {}
       });
 

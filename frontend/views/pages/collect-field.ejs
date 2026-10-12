@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title><%= title %> - <%= appName %></title>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <!-- collect-pay-v3: Dilunasi oleh dari payment invoice -->
+  <!-- collect-pay-v4: setoran terverifikasi langsung update di app kolektor -->
+  <script src="/socket.io/socket.io.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -1107,6 +1108,7 @@
     if(method==='ewallet' && !payState.wallet){toast('Pilih e-wallet (DANA / OVO / GoPay / QRIS)');return;}
     if(payState.wallet) method=payState.wallet;
     if(method==='cash'){
+      await loadMe();
       if(state.pendingDeposit){toast('Masih ada setoran menunggu verifikasi. Selesaikan setor dulu.');return;}
       if(!(state.depositLimit>0)){toast('Plafon deposit masih Rp0. Minta owner injek saldo dulu.');return;}
       if(amt>(state.depositRoom||0)){toast('Sisa plafon hanya '+rp(state.depositRoom)+'. Setor kas dulu atau minta injek saldo.');return;}
@@ -1524,8 +1526,31 @@
     },{passive:true});
   })();
 
+  function applyDepositEvent(p){
+    if(!p) return;
+    if(typeof p.pending_deposit==='boolean') state.pendingDeposit=p.pending_deposit;
+    else if(p.status==='verified'||p.status==='rejected') state.pendingDeposit=false;
+    loadMe();
+    if(state.scope==='deposit') loadDeposits();
+    if(p.status==='verified') toast('Setoran diverifikasi. Status sudah diperbarui.');
+    else if(p.status==='rejected') toast('Setoran ditolak owner.');
+  }
+  function initDepositSocket(){
+    if(typeof io==='undefined') return;
+    try{
+      var t=getToken();
+      if(!t) return;
+      var s=io({auth:{token:t},transports:['websocket','polling']});
+      s.on('collect:deposit', applyDepositEvent);
+    }catch(e){}
+  }
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState==='visible') refreshAll();
+  });
+  window.addEventListener('pageshow', function(){ refreshAll(); });
+
   /* init */
-  loadMe();loadTasks();loadPayBanks();
+  loadMe();loadTasks();loadPayBanks();initDepositSocket();
   </script>
 </body>
 </html>

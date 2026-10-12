@@ -53,11 +53,14 @@ const dep = require('fs').readFileSync(require('path').join(__dirname, '../contr
 assert.ok(dep.includes('assertSetorCreate'), 'setor dicek bukti + pending');
 assert.ok(dep.includes('confirm_variance'), 'verifikasi selisih wajib konfirmasi');
 assert.ok(dep.includes('deposited = expected'), 'setor dikunci ke kas di tangan');
+assert.ok(dep.includes('emitCollectorDeposit'), 'verifikasi mendorong status ke app kolektor');
 
 const ui = require('fs').readFileSync(require('path').join(__dirname, '../../frontend/views/pages/collect-field.ejs'), 'utf8');
 assert.ok(ui.includes('Foto bukti setor wajib'), 'APK setor menolak tanpa foto');
 assert.ok(ui.includes('sPlafon'), 'APK menampilkan plafon');
 assert.ok(ui.includes('Plafon deposit masih Rp0'), 'APK menolak tunai tanpa injek');
+assert.ok(ui.includes('collect:deposit'), 'APK mendengar status setoran realtime');
+assert.ok(ui.includes('await loadMe()'), 'catat bayar refresh status setor sebelum kunci');
 
 const admin = require('fs').readFileSync(require('path').join(__dirname, '../../frontend/public/js/collection-admin.js'), 'utf8');
 assert.ok(admin.includes('openInject'), 'admin punya tombol injek');
@@ -65,5 +68,25 @@ assert.ok(admin.includes('/collectors/\' + uid + \'/inject'), 'admin memanggil e
 
 const routes = require('fs').readFileSync(require('path').join(__dirname, '../routes/collection.js'), 'utf8');
 assert.ok(routes.includes('/collectors/:id/inject'), 'route injek plafon');
+
+const { depositEventPayload, emitCollectorDeposit } = require('../utils/collectDepositEvents');
+assert.strictEqual(depositEventPayload({ id: 1, collector_id: 56, deposited_amount: 100, status: 'pending' }).pending_deposit, true);
+assert.strictEqual(depositEventPayload({ id: 1, collector_id: 56, deposited_amount: 100, status: 'pending' }, { status: 'verified', pending_deposit: false }).pending_deposit, false);
+let emitted = null;
+global.__io = {
+  to(room) {
+    return { emit(ev, payload) { emitted = { room, ev, payload }; } };
+  }
+};
+const pushed = emitCollectorDeposit(
+  { id: 1, collector_id: 56, deposited_amount: 1186000, status: 'pending' },
+  { status: 'verified', pending_deposit: false, cash_held: 0 }
+);
+assert.strictEqual(pushed.pending_deposit, false);
+assert.strictEqual(pushed.status, 'verified');
+assert.strictEqual(emitted.room, 'user_56');
+assert.strictEqual(emitted.ev, 'collect:deposit');
+assert.strictEqual(emitted.payload.cash_held, 0);
+delete global.__io;
 
 console.log('collectorCashGuard.test.js OK');
