@@ -54,6 +54,8 @@ assert.ok(dep.includes('assertSetorCreate'), 'setor dicek bukti + pending');
 assert.ok(dep.includes('confirm_variance'), 'verifikasi selisih wajib konfirmasi');
 assert.ok(dep.includes('deposited = expected'), 'setor dikunci ke kas di tangan');
 assert.ok(dep.includes('emitCollectorDeposit'), 'verifikasi mendorong status ke app kolektor');
+assert.ok(dep.includes("status: 'pending'"), 'buat setoran mendorong status pending ke app');
+assert.ok(dep.includes('serializeDeposit') || dep.includes('collector:'), 'admin list setoran JSON polos');
 
 const ui = require('fs').readFileSync(require('path').join(__dirname, '../../frontend/views/pages/collect-field.ejs'), 'utf8');
 assert.ok(ui.includes('Foto bukti setor wajib'), 'APK setor menolak tanpa foto');
@@ -68,6 +70,14 @@ assert.ok(svc.includes('emitCollectorDeposit'), 'injek plafon mendorong saldo ke
 const admin = require('fs').readFileSync(require('path').join(__dirname, '../../frontend/public/js/collection-admin.js'), 'utf8');
 assert.ok(admin.includes('openInject'), 'admin punya tombol injek');
 assert.ok(admin.includes('/collectors/\' + uid + \'/inject'), 'admin memanggil endpoint injek');
+assert.ok(admin.includes('loadPendingBanner'), 'admin banner setoran pending');
+assert.ok(admin.includes('collect:deposit:admin'), 'admin mendengar setoran realtime');
+assert.ok(admin.includes('pending_deposit'), 'laporan menampilkan status setoran');
+assert.ok(admin.includes('depositRows'), 'admin list setoran tahan bentuk JSON bersarang');
+
+const collPage = require('fs').readFileSync(require('path').join(__dirname, '../../frontend/views/pages/collection.ejs'), 'utf8');
+assert.ok(collPage.includes('depPendingBanner'), 'Collect punya banner setoran pending');
+assert.ok(collPage.indexOf('tabBtnDeposits') < collPage.indexOf('tabBtnReport'), 'tab Setoran Kas sebelum Laporan');
 
 const routes = require('fs').readFileSync(require('path').join(__dirname, '../routes/collection.js'), 'utf8');
 assert.ok(routes.includes('/collectors/:id/inject'), 'route injek plafon');
@@ -76,20 +86,33 @@ const { depositEventPayload, emitCollectorDeposit } = require('../utils/collectD
 assert.strictEqual(depositEventPayload({ id: 1, collector_id: 56, deposited_amount: 100, status: 'pending' }).pending_deposit, true);
 assert.strictEqual(depositEventPayload({ id: 1, collector_id: 56, deposited_amount: 100, status: 'pending' }, { status: 'verified', pending_deposit: false }).pending_deposit, false);
 let emitted = null;
+let adminEmitted = null;
 global.__io = {
   to(room) {
     return { emit(ev, payload) { emitted = { room, ev, payload }; } };
-  }
+  },
+  emit(ev, payload) { adminEmitted = { ev, payload }; }
 };
 const pushed = emitCollectorDeposit(
   { id: 1, collector_id: 56, deposited_amount: 1186000, status: 'pending' },
-  { status: 'verified', pending_deposit: false, cash_held: 0 }
+  { status: 'verified', pending_deposit: false, cash_held: 0, collector_name: 'Haris' }
 );
 assert.strictEqual(pushed.pending_deposit, false);
 assert.strictEqual(pushed.status, 'verified');
+assert.strictEqual(pushed.collector_name, 'Haris');
 assert.strictEqual(emitted.room, 'user_56');
 assert.strictEqual(emitted.ev, 'collect:deposit');
 assert.strictEqual(emitted.payload.cash_held, 0);
+assert.strictEqual(adminEmitted.ev, 'collect:deposit:admin');
+assert.strictEqual(adminEmitted.payload.id, 1);
+
+const created = emitCollectorDeposit(
+  { id: 2, collector_id: 56, deposited_amount: 100000, status: 'pending' },
+  { status: 'pending', pending_deposit: true, collector_name: 'Haris' }
+);
+assert.strictEqual(created.pending_deposit, true);
+assert.strictEqual(adminEmitted.payload.deposited_amount, 100000);
+assert.ok(svc.includes('pending_amount'), 'laporan kolektor membawa nominal setor pending');
 delete global.__io;
 
 console.log('collectorCashGuard.test.js OK');

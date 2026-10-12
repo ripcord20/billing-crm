@@ -33,6 +33,28 @@ const {
 const { paginateResponse } = require('../utils/helpers');
 const CollectionService = require('../services/CollectionService');
 
+function serializeDeposit(r) {
+  const j = r && typeof r.toJSON === 'function' ? r.toJSON() : (r || {});
+  const collector = j.collector || null;
+  const verifier = j.verifier || null;
+  return {
+    id: j.id,
+    collector_id: j.collector_id,
+    deposit_date: j.deposit_date,
+    expected_amount: parseFloat(j.expected_amount || 0),
+    deposited_amount: parseFloat(j.deposited_amount || 0),
+    variance: parseFloat(j.variance || 0),
+    status: j.status,
+    proof_path: j.proof_path || null,
+    note: j.note || null,
+    reject_reason: j.reject_reason || null,
+    verified_at: j.verified_at || null,
+    created_at: j.created_at || j.createdAt || null,
+    collector: collector ? { id: collector.id, name: collector.name } : null,
+    verifier: verifier ? { id: verifier.id, name: verifier.name } : null
+  };
+}
+
 class CashDepositController {
   // ── KOLEKTOR: buat setoran ────────────────────────────────────────
   async create(req, res) {
@@ -66,11 +88,36 @@ class CashDepositController {
 
       await t.commit();
 
-      // Notifikasi admin (WA + Telegram) — best-effort, non-blocking.
+      let collectorName = null;
+      try {
+        const u = await User.findByPk(uid, { attributes: ['name'] });
+        collectorName = u ? u.name : null;
+      } catch (_) {}
+      let cash = {};
+      try { cash = await CollectionService.cashState(uid); } catch (_) {}
+      require('../utils/collectDepositEvents').emitCollectorDeposit(dep, {
+        status: 'pending',
+        pending_deposit: true,
+        cash_held: cash.cash_held,
+        deposit_limit: cash.deposit_limit,
+        deposit_room: cash.deposit_room,
+        collector_name: collectorName
+      });
+
+      // Notifikasi admin (WA + Telegram + lonceng) — best-effort, non-blocking.
       setImmediate(async () => {
         try {
-          const u = await require('../models').User.findByPk(uid, { attributes: ['name'] });
-          await require('../services/CollectNotifier').notifyDepositCreated(dep, u ? u.name : null);
+          await require('../services/CollectNotifier').notifyDepositCreated(dep, collectorName);
+        } catch (_) {}
+        try {
+          const amt = parseFloat(dep.deposited_amount || 0);
+          await require('../services/NotificationService').pushByRoles(['admin', 'superadmin'], {
+            type: 'collect_deposit',
+            title: 'Setoran Kas Baru',
+            message: (collectorName || 'Kolektor') + ' menyetor Rp' + amt.toLocaleString('id-ID') + ' — menunggu verifikasi',
+            severity: 'warning',
+            action_url: '/collect#deposits'
+          });
         } catch (_) {}
       });
 
@@ -188,7 +235,11 @@ class CashDepositController {
         ],
         offset: (page - 1) * limit,
         limit: parseInt(limit, 10),
-        order: [['status', 'ASC'], ['created_at', 'DESC']]
+        subQuery: false,
+        order: [
+          [sequelize.literal('`CashDeposit`.`status`'), 'ASC'],
+          [sequelize.literal('`CashDeposit`.`id`'), 'DESC']
+        ]
       });
 
       // Ringkasan cepat
@@ -200,13 +251,14 @@ class CashDepositController {
         where: { status: 'pending' }, raw: true
       });
 
+      const rows = (result.rows || []).map(serializeDeposit);
       res.json({
         success: true,
         summary: {
           pending_count: parseInt(pendingRow?.cnt, 10) || 0,
           pending_amount: parseFloat(pendingRow?.sum) || 0
         },
-        ...paginateResponse(result.rows, result.count, page, limit)
+        ...paginateResponse(rows, result.count, page, limit)
       });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });

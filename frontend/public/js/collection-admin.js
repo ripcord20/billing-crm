@@ -80,6 +80,11 @@
     setText('stOutstanding', rp(t.outstanding));
     setText('stOutstandingSub', (t.promise_count || 0) + ' janji bayar');
     setText('stCashHand', rp(t.cash_on_hand));
+    if (t.pending_deposit_count > 0) {
+      setText('stCashHandSub', t.pending_deposit_count + ' setoran menunggu verifikasi');
+    } else {
+      setText('stCashHandSub', 'total seluruh kolektor · lihat setoran');
+    }
   }
 
   // ── Collectors (dropdowns) ────────────────────────────────────────
@@ -555,13 +560,13 @@
   // ── Laporan Kolektor & Komisi ─────────────────────────────────────
   async function loadReport() {
     var body = document.getElementById('reportBody');
-    body.innerHTML = '<tr><td colspan="7" class="no-label"><div class="empty">Memuat…</div></td></tr>';
+    body.innerHTML = '<tr><td colspan="8" class="no-label"><div class="empty">Memuat…</div></td></tr>';
     var m = val('repMonth'), y = val('repYear');
     var cid = val('repCollector');
     var qs = new URLSearchParams();
     if (m) qs.set('month', m); if (y) qs.set('year', y);
     var d = await App.api('/collection/report?' + qs.toString());
-    if (!d || !d.success) { body.innerHTML = '<tr><td colspan="7" class="no-label"><div class="empty">Gagal memuat laporan.</div></td></tr>'; return; }
+    if (!d || !d.success) { body.innerHTML = '<tr><td colspan="8" class="no-label"><div class="empty">Gagal memuat laporan.</div></td></tr>'; return; }
 
     var allRows = d.data.rows || [];
     // Filter per kolektor (client-side).
@@ -591,7 +596,7 @@
     };
 
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="7" class="no-label"><div class="empty">Belum ada tagihan tertagih pada periode ini.</div></td></tr>';
+      body.innerHTML = '<tr><td colspan="8" class="no-label"><div class="empty">Belum ada tagihan tertagih pada periode ini.</div></td></tr>';
       return;
     }
     var per = state.report.period || {};
@@ -607,6 +612,9 @@
       } else {
         commAct = '<span style="color:#cbd5e1;font-size:11.5px;">—</span>';
       }
+      var setorCell = r.pending_deposit
+        ? '<button class="link-proof" style="color:#c2410c;border-color:#fdba74;" onclick="event.stopPropagation();switchTab(\'deposits\')">Menunggu ' + rp(r.pending_amount) + '</button>'
+        : '<span style="color:#cbd5e1;font-size:11.5px;">—</span>';
       return '<tr>' +
         '<td data-label="Kolektor"><div style="font-weight:700;">' + esc(r.name) + '</div></td>' +
         '<td data-label="Tertagih" style="text-align:center;">' + (r.paid_count || 0) + '</td>' +
@@ -614,6 +622,7 @@
         '<td data-label="Skema">' + esc(COMM_LABEL[r.commission_type] || r.commission_type) + ' · ' + scheme + '</td>' +
         '<td data-label="Komisi" style="text-align:right;font-weight:800;color:#1a6ef5;" class="money">' + rp(r.commission) + '</td>' +
         '<td data-label="Cash Pegang" style="text-align:right;color:#0d9488;" class="money">' + rp(r.cash_held) + '</td>' +
+        '<td data-label="Setoran" style="text-align:center;">' + setorCell + '</td>' +
         '<td data-label="Status Komisi" style="text-align:center;">' + commAct + '</td>' +
       '</tr>';
     }).join('');
@@ -907,13 +916,41 @@
   }
 
   // ── Setoran Kas (admin) ───────────────────────────────────────────
-  async function refreshDepBadge() {
-    var d = await App.api('/collection/deposits?status=pending&limit=1');
-    if (d && d.success && d.summary) {
-      var n = d.summary.pending_count || 0;
-      var b = document.getElementById('depBadge');
-      if (b) { b.textContent = n; b.style.display = n > 0 ? 'inline-block' : 'none'; }
+  function depositRows(d) {
+    if (!d) return [];
+    if (Array.isArray(d.data)) return d.data;
+    if (d.data && Array.isArray(d.data.data)) return d.data.data;
+    return [];
+  }
+  function collectorNameOf(x) {
+    if (!x) return '-';
+    if (x.collector && x.collector.name) return x.collector.name;
+    if (x.collector_name) return x.collector_name;
+    return '-';
+  }
+  async function refreshDepBadge() { return loadPendingBanner(); }
+  async function loadPendingBanner() {
+    var d = await App.api('/collection/deposits?status=pending&limit=5');
+    var el = document.getElementById('depPendingBanner');
+    var b = document.getElementById('depBadge');
+    if (!d || !d.success) {
+      if (el) el.style.display = 'none';
+      return;
     }
+    var rows = depositRows(d);
+    var n = (d.summary && d.summary.pending_count) || rows.length || 0;
+    var amt = (d.summary && d.summary.pending_amount) || 0;
+    if (b) { b.textContent = n; b.style.display = n > 0 ? 'inline-block' : 'none'; }
+    if (!el) return;
+    if (!n) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    var names = [];
+    rows.forEach(function (x) {
+      var nm = collectorNameOf(x);
+      if (nm && nm !== '-' && names.indexOf(nm) < 0) names.push(nm);
+    });
+    var who = names.length ? names.slice(0, 2).join(', ') + (names.length > 2 ? ' +' + (names.length - 2) : '') : 'Kolektor';
+    el.innerHTML = '<span>Setoran menunggu verifikasi: <b>' + esc(who) + '</b> · ' + rp(amt) + '</span><span class="dep-pending-go">Buka Setoran Kas →</span>';
+    el.style.display = 'flex';
   }
   async function loadDeposits() {
     var box = document.getElementById('depositsList');
@@ -921,7 +958,7 @@
     var st = val('depFilterStatus');
     var d = await App.api('/collection/deposits?limit=50' + (st ? '&status=' + st : ''));
     if (!d || !d.success) { box.innerHTML = '<div style="padding:24px;text-align:center;color:#94a3b8;">Gagal memuat.</div>'; return; }
-    var rows = d.data || [];
+    var rows = depositRows(d);
     depState.list = {};
     if (!rows.length) {
       box.innerHTML = '<div class="dep-empty"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><div>Tidak ada setoran pada filter ini.</div></div>';
@@ -939,7 +976,7 @@
         '<div class="dep-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>' +
         '<div class="dep-main">' +
           '<div class="dep-amt money">' + rp(x.deposited_amount) + '</div>' +
-          '<div class="dep-meta">' + esc(x.collector ? x.collector.name : '-') + ' · ' + dateTxt + '</div>' +
+          '<div class="dep-meta">' + esc(collectorNameOf(x)) + ' · ' + dateTxt + '</div>' +
           '<div class="dep-meta2">Ekspektasi ' + rp(x.expected_amount) + ' · Selisih ' + varTxt + (x.proof_path ? ' · <span style="color:#1d4ed8;">ada bukti</span>' : '') + '</div>' +
         '</div>' +
         '<div class="dep-right"><span class="dep-st ' + st[1] + '">' + st[0] + '</span>' +
@@ -955,7 +992,7 @@
     var STLBL = { pending: 'Menunggu Verifikasi', verified: 'Terverifikasi', rejected: 'Ditolak' };
     var variance = parseFloat(x.variance) || 0;
     setText('ddTitle', 'Detail Setoran');
-    setText('ddSub', (x.collector ? x.collector.name : '-'));
+    setText('ddSub', collectorNameOf(x));
     setText('ddAmount', rp(x.deposited_amount));
     var stWrap = document.getElementById('ddStatusWrap');
     if (stWrap) stWrap.innerHTML = '<span class="pm-st">' + (STLBL[x.status] || x.status) + '</span>';
@@ -966,7 +1003,7 @@
       else { vEl.textContent = (variance < 0 ? '-' : '+') + 'Rp' + Math.abs(variance).toLocaleString('id-ID'); vEl.style.color = variance < 0 ? '#dc2626' : '#16a34a'; }
     }
     setText('ddDate', new Date(x.deposit_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }));
-    setText('ddCollector', x.collector ? x.collector.name : '-');
+    setText('ddCollector', collectorNameOf(x));
     setText('ddVerifier', x.verifier ? x.verifier.name : '—');
     var noteRow = document.getElementById('ddNoteRow');
     if (x.note) { noteRow.style.display = ''; setText('ddNote', x.note); } else noteRow.style.display = 'none';
@@ -1022,7 +1059,7 @@
     if (d && d.success) {
       App.showToast(d.message || 'Terverifikasi.', 'success');
       if (fromDetail) closeDepositDetail();
-      loadDeposits(); refreshDepBadge(); loadStats();
+      loadDeposits(); loadPendingBanner(); loadStats();
     } else App.showToast((d && d.message) || 'Gagal verifikasi.', 'error');
   }
   async function rejectDeposit(id, fromDetail) {
@@ -1041,7 +1078,7 @@
     if (d && d.success) {
       App.showToast(d.message || 'Ditolak.', 'success');
       if (fromDetail) closeDepositDetail();
-      loadDeposits(); refreshDepBadge();
+      loadDeposits(); loadPendingBanner();
     } else App.showToast((d && d.message) || 'Gagal menolak.', 'error');
   }
 
@@ -1086,12 +1123,33 @@
   window.submitReassign = submitReassign;
   window.closeDepositDetail = closeDepositDetail;
 
+  function onAdminDepositEvent(p) {
+    if (!p) return;
+    loadPendingBanner();
+    loadStats();
+    var depPan = document.getElementById('tabPanelDeposits');
+    if (depPan && depPan.style.display !== 'none') loadDeposits();
+    var reportPan = document.getElementById('tabPanelReport');
+    if (reportPan && reportPan.style.display !== 'none') loadReport();
+    if (p.status === 'pending') {
+      App.showToast((p.collector_name || 'Kolektor') + ' menyetor ' + rp(p.deposited_amount) + ' — menunggu verifikasi', 'warning');
+    }
+  }
+  function bindDepositSocket() {
+    var s = App.socket;
+    if (!s || s._collDepBound) return;
+    s._collDepBound = true;
+    s.on('collect:deposit:admin', onAdminDepositEvent);
+  }
+
   // init
   document.addEventListener('DOMContentLoaded', function () {
     loadStats();
     loadCollectors();
     loadAssignments(1);
-    refreshDepBadge();
+    loadPendingBanner();
+    bindDepositSocket();
+    if (location.hash === '#deposits') switchTab('deposits');
     var se = document.getElementById('fSearch');
     if (se) se.addEventListener('keydown', function (e) { if (e.key === 'Enter') loadAssignments(1); });
   });

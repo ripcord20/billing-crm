@@ -145,6 +145,9 @@
     .coll-tab-active .tab-badge { background:rgba(255,255,255,.25) !important; color:#fff !important; }
     .coll-tab-icn { width:16px; height:16px; flex-shrink:0; }
     .tab-badge { display:none; margin-left:2px; background:#dc2626; color:#fff; font-size:10px; font-weight:800; padding:1px 7px; border-radius:9px; }
+    .dep-pending-banner { display:none; align-items:center; gap:12px; background:#fff7ed; border:1.5px solid #fdba74; color:#9a3412; border-radius:14px; padding:12px 16px; margin-bottom:16px; cursor:pointer; font-size:13.5px; font-weight:650; }
+    .dep-pending-banner b { font-weight:800; }
+    .dep-pending-go { margin-left:auto; color:#c2410c; font-weight:800; font-size:12.5px; white-space:nowrap; }
     .link-proof { padding:5px 11px; border:1px solid #e2e8f0; border-radius:8px; background:#fff; color:#1a6ef5; font-size:11.5px; font-weight:700; cursor:pointer; }
     .link-proof:hover { background:#eff6ff; border-color:#bfdbfe; }
 
@@ -226,11 +229,17 @@
         </div>
       </div>
 
+      <div id="depPendingBanner" class="dep-pending-banner" onclick="switchTab('deposits')"></div>
+
       <!-- Tabs -->
       <div class="coll-pills">
         <button id="tabBtnTasks" class="coll-tab-btn coll-tab-active" onclick="switchTab('tasks')">
           <svg class="coll-tab-icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
           Penagihan
+        </button>
+        <button id="tabBtnDeposits" class="coll-tab-btn" onclick="switchTab('deposits')">
+          <svg class="coll-tab-icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          Setoran Kas <span id="depBadge" class="tab-badge">0</span>
         </button>
         <button id="tabBtnReport" class="coll-tab-btn" onclick="switchTab('report')">
           <svg class="coll-tab-icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg>
@@ -239,10 +248,6 @@
         <button id="tabBtnMap" class="coll-tab-btn" onclick="switchTab('map')">
           <svg class="coll-tab-icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m0 0L9 7"/></svg>
           Peta Sebaran
-        </button>
-        <button id="tabBtnDeposits" class="coll-tab-btn" onclick="switchTab('deposits')">
-          <svg class="coll-tab-icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-          Setoran Kas <span id="depBadge" class="tab-badge">0</span>
         </button>
       </div>
 
@@ -253,7 +258,7 @@
         <div class="coll-card blue" onclick="statFilter('')"><span class="arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 18l6-6-6-6"/></svg></span><div class="lbl"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>Total Task</div><div class="val" id="stTask">—</div><div class="sub" id="stTaskSub">periode berjalan</div></div>
         <div class="coll-card teal" onclick="statFilter('paid')"><span class="arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 18l6-6-6-6"/></svg></span><div class="lbl"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></span>Berhasil Ditagih</div><div class="val money" id="stCollected">—</div><div class="sub" id="stCollectedSub">&nbsp;</div></div>
         <div class="coll-card amber" onclick="statFilter('open')"><span class="arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 18l6-6-6-6"/></svg></span><div class="lbl"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>Belum Ditagih</div><div class="val money" id="stOutstanding">—</div><div class="sub" id="stOutstandingSub">&nbsp;</div></div>
-        <div class="coll-card red" onclick="switchTab('deposits')"><span class="arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 18l6-6-6-6"/></svg></span><div class="lbl"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>Cash Belum Disetor</div><div class="val money" id="stCashHand">—</div><div class="sub">total seluruh kolektor · lihat setoran</div></div>
+        <div class="coll-card red" onclick="switchTab('deposits')"><span class="arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 18l6-6-6-6"/></svg></span><div class="lbl"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>Cash Belum Disetor</div><div class="val money" id="stCashHand">—</div><div class="sub" id="stCashHandSub">total seluruh kolektor · lihat setoran</div></div>
       </div>
 
       <!-- Toolbar -->
@@ -345,11 +350,12 @@
                 <th>Skema Komisi</th>
                 <th style="text-align:right;">Komisi</th>
                 <th style="text-align:right;">Cash Pegang</th>
+                <th style="text-align:center;">Setoran</th>
                 <th style="text-align:center;">Status Komisi</th>
               </tr>
             </thead>
             <tbody id="reportBody">
-              <tr><td colspan="6" class="no-label"><div class="empty">Memuat…</div></td></tr>
+              <tr><td colspan="8" class="no-label"><div class="empty">Memuat…</div></td></tr>
             </tbody>
           </table>
         </div>
@@ -647,6 +653,6 @@
 </div>
 
 <script src="/js/app.js"></script>
-<script src="/js/collection-admin.js"></script>
+<script src="/js/collection-admin.js?v=setor-live2"></script>
 </body>
 </html>

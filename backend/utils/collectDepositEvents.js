@@ -19,6 +19,7 @@ function depositEventPayload(dep, extra = {}) {
     if (extra.cash_held != null) payload.cash_held = extra.cash_held;
     if (extra.deposit_limit != null) payload.deposit_limit = extra.deposit_limit;
     if (extra.deposit_room != null) payload.deposit_room = extra.deposit_room;
+    if (extra.collector_name) payload.collector_name = extra.collector_name;
     return payload;
 }
 
@@ -29,6 +30,8 @@ function emitCollectorDeposit(dep, extra = {}) {
     const payload = depositEventPayload(dep, extra);
     if (!payload) return null;
     io.to('user_' + dep.collector_id).emit('collect:deposit', payload);
+    // Admin Collect (Laporan / Setoran Kas) harus langsung melihat setoran baru.
+    if (typeof io.emit === 'function') io.emit('collect:deposit:admin', payload);
     return payload;
   } catch (_) {
     return null;
