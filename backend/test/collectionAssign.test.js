@@ -54,7 +54,17 @@ assert.ok(invPage.includes('id="paidBy"'), 'halaman invoice menampilkan Dilunasi
 
 const sidebar = fs.readFileSync(path.join(__dirname, '../../frontend/views/partials/sidebar.ejs'), 'utf8');
 assert.ok(sidebar.includes('href="/collect"'), 'sidebar punya tautan Collect Billing');
-assert.ok((sidebar.match(/href="\/collect"/g) || []).length >= 2, 'Collect Billing muncul di sidebar admin, bukan hanya NOC');
+assert.ok((sidebar.match(/href="\/collect"/g) || []).length >= 3, 'Collect Billing ada di NOC, MANAGEMENT, dan dropdown Billing');
+assert.ok(sidebar.includes("'billing','invoice-template','collect'"), 'dropdown Billing terbuka saat halaman collect');
+
+const drawer = fs.readFileSync(path.join(__dirname, '../../frontend/views/partials/mobile-drawer.ejs'), 'utf8');
+assert.ok(drawer.includes('href="/collect"'), 'drawer HP punya tautan Collect Billing');
+
+const topbar = fs.readFileSync(path.join(__dirname, '../../frontend/views/partials/topbar.ejs'), 'utf8');
+assert.ok(topbar.includes('href="/collect"'), 'menu cepat HP punya tautan Collect Billing');
+
+const billPageNav = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/billing.ejs'), 'utf8');
+assert.ok(billPageNav.includes('href="/collect"'), 'halaman Billing punya tombol Collect Billing');
 
 const billPage = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/billing.ejs'), 'utf8');
 assert.ok(billPage.includes('bill-narrow'), 'Billing HP memakai class bill-narrow');
