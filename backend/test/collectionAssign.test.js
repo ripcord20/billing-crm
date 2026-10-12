@@ -52,6 +52,10 @@ assert.ok(field.includes('Foto bukti setor wajib'), 'setor lapangan wajib bukti'
 const invPage = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/invoice.ejs'), 'utf8');
 assert.ok(invPage.includes('id="paidBy"'), 'halaman invoice menampilkan Dilunasi oleh');
 
+const sidebar = fs.readFileSync(path.join(__dirname, '../../frontend/views/partials/sidebar.ejs'), 'utf8');
+assert.ok(sidebar.includes('href="/collect"'), 'sidebar punya tautan Collect Billing');
+assert.ok((sidebar.match(/href="\/collect"/g) || []).length >= 2, 'Collect Billing muncul di sidebar admin, bukan hanya NOC');
+
 const billPage = fs.readFileSync(path.join(__dirname, '../../frontend/views/pages/billing.ejs'), 'utf8');
 assert.ok(billPage.includes('bill-narrow'), 'Billing HP memakai class bill-narrow');
 assert.ok(billPage.includes('bill-table-scroll'), 'wrapper tabel billing dikunci lebar layar');
