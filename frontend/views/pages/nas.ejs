@@ -200,10 +200,10 @@
         <h2>MikroTik di luar jaringan lokal (beda kota / CGNAT)</h2>
         <ol>
           <li>Klik <b>Cabang remote</b> → isi nama + secret RADIUS → <b>Buat &amp; salin script</b>.</li>
-          <li>Fiberix mengalokasi IP <code>10.202.0.x</code> dan memasang peer di CORE 1 <code>wg-core2</code> (tidak perlu salin public-key ke CORE 1).</li>
+          <li>Fiberix menyiapkan hub VPN di CORE 1 (<code>wg-core2</code> / <code>10.202.0.1</code>) bila belum ada, lalu mengalokasi IP cabang <code>10.202.0.x</code> dan memasang peer (tidak perlu salin public-key ke CORE 1).</li>
           <li>Salin script, tempel di <b>New Terminal</b> MikroTik cabang. Handshake ke <code>103.195.65.216:51823</code>.</li>
         </ol>
-        <p class="nas-easy-note">Jangan tombol VPN Fiberix (<code>10.10.0.x</code>). Mode NAS = LAN / langsung, IP = tunnel <code>10.202.0.x</code>. Manual (jika API CORE 1 down): public key hub <code>wpS/pSEUnACQEkEeS7lzNh4IDxSsoOW+ZdWP2ehi1DA=</code>.</p>
+        <p class="nas-easy-note">Ini VPN yang disediakan platform — seperti BillingRadius. Jangan tombol VPN Fiberix (<code>10.10.0.x</code> di Ubuntu billing). Mode NAS = LAN / langsung, IP = tunnel <code>10.202.0.x</code>. Manual (jika API CORE 1 down): public key hub <code>m/Q01lRhcOem9yn2eLZK6tt6D8/qSufKIeV7o6mtDBU=</code>.</p>
       </div>
       <div class="card nas-table-card"><div class="card-body">
         <div class="table-scroll" id="nasTableScroll">

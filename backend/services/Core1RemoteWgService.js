@@ -19,6 +19,7 @@ const {
   asList,
   ifaceByName,
   ifacePublicKey,
+  planHubEnsure,
   findExistingPeer,
   rosSafeName,
   isCore1TunnelHost,
@@ -63,6 +64,97 @@ async function readHubInterface(mt, hub = getHubConfig()) {
     throw new Error(`Interface ${hub.iface} tidak ada di CORE 1. Buat dulu WireGuard hub di CORE 1.`);
   }
   return iface;
+}
+
+async function listIpAddresses(mt) {
+  return asList(await mt.get('/ip/address'));
+}
+
+async function listInputFilters(mt) {
+  try {
+    return asList(await mt.get('/ip/firewall/filter'));
+  } catch (_) {
+    return [];
+  }
+}
+
+/**
+ * BillingRadius-style: platform menyiapkan hub VPN sendiri.
+ * Jika wg-core2 hilang (sisa IP 10.202.0.1 di interface mati), buat ulang.
+ */
+async function ensureHubInterface(mt, hub = getHubConfig()) {
+  const ifaces = await listHubIfaces(mt);
+  const addrs = await listIpAddresses(mt);
+  const filters = await listInputFilters(mt);
+  const plan = planHubEnsure({ ifaces, addrs, filters, hub });
+  const out = {
+    created: false,
+    addressCreated: false,
+    addressMoved: false,
+    firewallAdded: false,
+    iface: ifaceByName(ifaces, hub.iface)
+  };
+
+  if (plan.createIface) {
+    await mt.put('/interface/wireguard', {
+      name: hub.iface,
+      'listen-port': String(hub.listenPort),
+      comment: 'FIBERIX cabang remote'
+    });
+    out.created = true;
+    logger.info(`[core1-wg] buat hub ${hub.iface} listen-port=${hub.listenPort}`);
+    out.iface = ifaceByName(await listHubIfaces(mt), hub.iface);
+    if (!out.iface) {
+      throw new Error(`Gagal membuat interface ${hub.iface} di CORE 1`);
+    }
+  }
+
+  if (plan.createAddress) {
+    await mt.put('/ip/address', {
+      address: `${hub.serverTunnelIp}/24`,
+      interface: hub.iface,
+      comment: 'FIBERIX'
+    });
+    out.addressCreated = true;
+    logger.info(`[core1-wg] alamat ${hub.serverTunnelIp}/24 -> ${hub.iface}`);
+  } else if (plan.moveAddress) {
+    const id = plan.addressId;
+    if (!id) {
+      throw new Error(`IP tunnel ${hub.serverTunnelIp} ada tapi id REST kosong`);
+    }
+    try {
+      await mt.patch(`/ip/address/${encodeURIComponent(id)}`, { interface: hub.iface });
+      out.addressMoved = true;
+    } catch (e) {
+      logger.warn(`[core1-wg] pindah ${hub.serverTunnelIp} gagal (${e.message}), buat ulang`);
+      try { await mt.delete(`/ip/address/${encodeURIComponent(id)}`); } catch (_) {}
+      await mt.put('/ip/address', {
+        address: `${hub.serverTunnelIp}/24`,
+        interface: hub.iface,
+        comment: 'FIBERIX'
+      });
+      out.addressCreated = true;
+    }
+    logger.info(`[core1-wg] pindah ${hub.serverTunnelIp} ke ${hub.iface}`);
+  }
+
+  if (plan.addFirewall) {
+    try {
+      await mt.put('/ip/firewall/filter', {
+        chain: 'input',
+        action: 'accept',
+        protocol: 'udp',
+        'dst-port': String(hub.listenPort),
+        comment: 'FIBERIX-WG-HUB'
+      });
+      out.firewallAdded = true;
+      logger.info(`[core1-wg] firewall input UDP ${hub.listenPort}`);
+    } catch (e) {
+      logger.warn(`[core1-wg] tidak bisa tambah firewall UDP ${hub.listenPort}: ${e.message}`);
+    }
+  }
+
+  return out;
 }
 
 function peerRestId(peer) {
@@ -200,6 +292,7 @@ async function provision(input = {}) {
   const pppLocal = String(input.pppLocal || DEFAULT_PPP_LOCAL).trim();
 
   const { device: hubDevice, mt } = await core1Mikrotik(hub);
+  await ensureHubInterface(mt, hub);
   const hubIface = await readHubInterface(mt, hub);
   const serverPublicKey = ifacePublicKey(hubIface) || hub.fallbackPublicKey;
   if (!serverPublicKey) {
@@ -365,6 +458,7 @@ module.exports = {
   findCore1Device,
   addPeerOnHub,
   removePeerByPublicKey,
+  ensureHubInterface,
   provision,
   scriptForNas,
   listHubPeers,

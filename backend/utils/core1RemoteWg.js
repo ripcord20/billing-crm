@@ -15,7 +15,7 @@ const CORE1_HUB = {
   endpointHost: '103.195.65.216',
   serverTunnelIp: '10.202.0.1',
   subnet: '10.202.0.0/24',
-  fallbackPublicKey: 'wpS/pSEUnACQEkEeS7lzNh4IDxSsoOW+ZdWP2ehi1DA=',
+  fallbackPublicKey: 'm/Q01lRhcOem9yn2eLZK6tt6D8/qSufKIeV7o6mtDBU=',
   clientIface: 'wg-core1',
   clientAllowedAddress: '10.202.0.1/32,192.168.22.99/32,192.168.22.9/32,192.168.91.1/32',
   keepalive: '25s',
@@ -95,6 +95,52 @@ function ifaceByName(ifaces, name) {
 
 function ifacePublicKey(iface) {
   return String((iface && (iface['public-key'] || iface.publicKey)) || '');
+}
+
+function restId(row) {
+  return (row && (row['.id'] || row.id || row['.ret'])) || null;
+}
+
+function findTunnelAddress(addrs, hubIp) {
+  const ip = stripCidr(hubIp);
+  if (!ip) return null;
+  return asList(addrs).find((a) => a && stripCidr(a.address) === ip) || null;
+}
+
+function addressOnHub(addr, hubIface) {
+  if (!addr) return false;
+  return String(addr.interface || '') === String(hubIface);
+}
+
+function isFilterEnabled(row) {
+  const d = row && row.disabled;
+  return d !== true && d !== 'true' && d !== 'yes';
+}
+
+function hasUdpInputAccept(filters, port) {
+  const want = String(port);
+  return asList(filters).some((r) => {
+    if (!r || r.chain !== 'input') return false;
+    if (r.action !== 'accept') return false;
+    if (!isFilterEnabled(r)) return false;
+    const proto = String(r.protocol || '').toLowerCase();
+    if (proto && proto !== 'udp') return false;
+    const dst = String(r['dst-port'] || r.dstPort || '');
+    return dst.split(',').map((p) => p.trim()).includes(want);
+  });
+}
+
+function planHubEnsure({ ifaces, addrs, filters, hub }) {
+  const ifaceName = hub.iface;
+  const iface = ifaceByName(ifaces, ifaceName);
+  const addr = findTunnelAddress(addrs, hub.serverTunnelIp);
+  return {
+    createIface: !iface,
+    createAddress: !addr,
+    moveAddress: !!(addr && !addressOnHub(addr, ifaceName)),
+    addressId: addr ? restId(addr) : null,
+    addFirewall: !hasUdpInputAccept(filters, hub.listenPort)
+  };
 }
 
 function findExistingPeer(peers, { publicKey, allowedHost, comment } = {}) {
@@ -209,6 +255,11 @@ module.exports = {
   peerComment,
   ifaceByName,
   ifacePublicKey,
+  restId,
+  findTunnelAddress,
+  addressOnHub,
+  hasUdpInputAccept,
+  planHubEnsure,
   findExistingPeer,
   rosSafeName,
   isCore1TunnelHost,
