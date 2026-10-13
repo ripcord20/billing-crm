@@ -46,6 +46,9 @@ const QosMetric = require('./QosMetric')(sequelize);
 const QosAlert = require('./QosAlert')(sequelize);
 const AuthFailEvent = require('./AuthFailEvent')(sequelize);
 const Device = require('./Device')(sequelize);
+const RadiusServer = require('./RadiusServer')(sequelize);
+const RadiusAccount = require('./RadiusAccount')(sequelize);
+const NasDevice = require('./NasDevice')(sequelize);
 const DeviceLog = require('./DeviceLog')(sequelize);
 const InfrastructurePoint = require('./InfrastructurePoint')(sequelize);
 const InfrastructureLink  = require('./InfrastructureLink')(sequelize);
@@ -207,6 +210,20 @@ Customer.belongsTo(Package, { foreignKey: 'package_id', as: 'package' });
 // query yang include router pakai semantic "Customer.mikrotik".
 Customer.belongsTo(Device, { foreignKey: 'mikrotik_id', as: 'mikrotik' });
 
+Tenant.hasMany(RadiusServer, { foreignKey: 'tenant_id', as: 'radius_servers' });
+RadiusServer.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+Tenant.hasMany(NasDevice, { foreignKey: 'tenant_id', as: 'nas_devices' });
+NasDevice.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+RadiusServer.hasMany(NasDevice, { foreignKey: 'radius_server_id', as: 'nas_devices' });
+NasDevice.belongsTo(RadiusServer, { foreignKey: 'radius_server_id', as: 'radius_server' });
+NasDevice.belongsTo(Device, { foreignKey: 'device_id', as: 'device' });
+RadiusServer.hasMany(RadiusAccount, { foreignKey: 'radius_server_id', as: 'accounts' });
+RadiusAccount.belongsTo(RadiusServer, { foreignKey: 'radius_server_id', as: 'radius_server' });
+RadiusAccount.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
+RadiusAccount.belongsTo(NasDevice, { foreignKey: 'nas_id', as: 'nas' });
+RadiusAccount.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+Customer.hasMany(RadiusAccount, { foreignKey: 'customer_id', as: 'radius_accounts' });
+
 // Customer <-> Invoice
 Customer.hasMany(Invoice, { foreignKey: 'customer_id', as: 'invoices' });
 Invoice.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
@@ -269,6 +286,9 @@ const db = {
   QosAlert,
   AuthFailEvent,
   Device,
+  RadiusServer,
+  RadiusAccount,
+  NasDevice,
   DeviceLog,
   InfrastructurePoint,
   InfrastructureLink,

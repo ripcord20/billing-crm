@@ -481,6 +481,13 @@ const startServer = async () => {
     }
 
     try {
+      const RadiusTenantMigration = require('./services/RadiusTenantMigration');
+      await RadiusTenantMigration.run(db);
+    } catch (e) {
+      logger.warn('Radius/NAS migration: ' + (e.message || e));
+    }
+
+    try {
       if (db.QosMetric) await db.QosMetric.sync();
       if (db.QosAlert) await db.QosAlert.sync();
       if (db.AuthFailEvent) await db.AuthFailEvent.sync();

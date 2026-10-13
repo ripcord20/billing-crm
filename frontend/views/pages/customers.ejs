@@ -727,11 +727,11 @@
         <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin:0;">
           <input type="checkbox" id="custCreatePppoe" style="width:18px;height:18px;accent-color:#2563eb;cursor:pointer;flex-shrink:0;margin-top:2px;">
           <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:700;color:#1e40af;display:flex;align-items:center;gap:6px;">
+            <div id="pppoeCreateTitle" style="font-size:13px;font-weight:700;color:#1e40af;display:flex;align-items:center;gap:6px;">
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
               Buat Akun PPPoE di MikroTik
             </div>
-            <div style="font-size:11px;color:#1d4ed8;margin-top:2px;line-height:1.4;">
+            <div id="pppoeCreateSub" style="font-size:11px;color:#1d4ed8;margin-top:2px;line-height:1.4;">
               Otomatis tambahkan secret PPPoE ke router yang dipilih saat customer disimpan.
             </div>
           </div>
@@ -740,9 +740,9 @@
         <!-- Form PPPoE — muncul saat checkbox aktif -->
         <div id="pppoeFormBox" style="display:none;margin-top:14px;padding-top:14px;border-top:1px dashed #93c5fd;">
           <div class="form-grid-2">
-            <div class="form-field span-all">
+            <div class="form-field span-all" id="pppoeRouterField">
               <label class="flbl" style="display:flex;align-items:center;gap:6px;">
-                Router MikroTik untuk PPPoE *
+                <span id="pppoeRouterLabel">Router MikroTik untuk PPPoE *</span>
                 <span id="pppoeRouterSpinner" style="display:none;font-size:10px;color:#64748b;font-weight:400;text-transform:none">⏳ memuat...</span>
               </label>
               <select class="finput" id="custPppoeRouter">
@@ -775,7 +775,7 @@
                 <button type="button" onclick="generatePppoePassword()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:#2563eb;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;">Generate</button>
               </div>
             </div>
-            <div class="form-field">
+            <div class="form-field pppoe-mikrotik-only">
               <label class="flbl">Service</label>
               <select class="finput" id="custPppoeService">
                 <option value="pppoe" selected>pppoe</option>
@@ -786,11 +786,11 @@
                 <option value="ovpn">ovpn</option>
               </select>
             </div>
-            <div class="form-field span-all">
+            <div class="form-field span-all pppoe-mikrotik-only">
               <label class="flbl">Local Address <span class="form-meta">(opsional)</span></label>
               <input type="text" class="finput" id="custPppoeLocalAddr" placeholder="Misal: 10.10.10.1" style="font-family:'DM Mono',monospace;font-size:12px">
             </div>
-            <div class="form-field span-all">
+            <div class="form-field span-all pppoe-mikrotik-only">
               <label class="flbl">Remote Address <span class="form-meta">(opsional, kosongkan = pakai pool dari profile)</span></label>
               <input type="text" class="finput" id="custPppoeRemoteAddr" placeholder="Misal: 10.10.10.100" style="font-family:'DM Mono',monospace;font-size:12px">
             </div>

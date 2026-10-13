@@ -13,6 +13,52 @@ let _pppoeManuallyEdited = false;
 // Direset ke '' setiap kali openAddCustomer() (tidak relevan di tambah baru).
 let _originalPppoeUsername = '';
 const AVATAR_BG = ['#2563eb','#0891b2','#059669','#d97706','#dc2626','#0284c7','#16a34a','#ea580c','#0369a1','#0d9488'];
+let _radiusStatusCache = null;
+
+async function getRadiusStatus() {
+  if (_radiusStatusCache) return _radiusStatusCache;
+  try {
+    const d = await App.api('/radius/status');
+    _radiusStatusCache = d?.data || { enabled: false };
+  } catch (_) {
+    _radiusStatusCache = { enabled: false };
+  }
+  return _radiusStatusCache;
+}
+
+function applyPppoeRadiusUi(enabled) {
+  const title = document.getElementById('pppoeCreateTitle');
+  const sub = document.getElementById('pppoeCreateSub');
+  const routerLabel = document.getElementById('pppoeRouterLabel');
+  const hint = document.querySelector('#pppoeRouterField .form-hint');
+  document.querySelectorAll('.pppoe-mikrotik-only').forEach((el) => {
+    el.style.display = enabled ? 'none' : '';
+  });
+  if (title) {
+    title.lastChild && title.lastChild.nodeType === 3
+      ? (title.lastChild.textContent = enabled ? ' Buat Akun PPPoE di RADIUS' : ' Buat Akun PPPoE di MikroTik')
+      : null;
+    const txt = title.querySelector('svg') ? null : title;
+    if (title.childNodes.length) {
+      for (const n of title.childNodes) {
+        if (n.nodeType === 3) n.textContent = enabled ? ' Buat Akun PPPoE di RADIUS' : ' Buat Akun PPPoE di MikroTik';
+      }
+    }
+  }
+  if (sub) {
+    sub.textContent = enabled
+      ? 'Otomatis provision radcheck di FreeRADIUS saat customer disimpan. Tidak menulis /ppp/secret.'
+      : 'Otomatis tambahkan secret PPPoE ke router yang dipilih saat customer disimpan.';
+  }
+  if (routerLabel) routerLabel.textContent = enabled
+    ? 'Router MikroTik (opsional, untuk kick sesi)'
+    : 'Router MikroTik untuk PPPoE *';
+  if (hint) {
+    hint.innerHTML = enabled
+      ? 'Tidak wajib. Diisi hanya jika ingin Isolir juga me-kick sesi PPPoE aktif via API.'
+      : 'Daftar router diambil dari halaman <strong>/devices</strong> (tipe Router, status aktif)';
+  }
+}
 
 // Toggle field MAC Address — hanya relevan untuk tipe koneksi Hotspot (IP Binding).
 window.onConnTypeChange = function() {
@@ -888,10 +934,12 @@ async function _saveCustomerInner() {
     const pppoeLocal  = document.getElementById('custPppoeLocalAddr')?.value?.trim() || '';
     const pppoeRemote = document.getElementById('custPppoeRemoteAddr')?.value?.trim() || '';
 
-    if (!mkId)      { App.showToast('Pilih Router MikroTik untuk PPPoE', 'error'); return; }
+    const radStatus = await getRadiusStatus();
+    const radiusOn = !!radStatus.enabled;
+    if (!radiusOn && !mkId) { App.showToast('Pilih Router MikroTik untuk PPPoE', 'error'); return; }
     if (!pppoeUser) { App.showToast('PPPoE Username wajib diisi', 'error'); return; }
     if (!pppoePass) { App.showToast('Password PPPoE wajib diisi', 'error'); return; }
-    if (!pppoeProf) { App.showToast('Pilih Profile PPPoE', 'error'); return; }
+    if (!radiusOn && !pppoeProf) { App.showToast('Pilih Profile PPPoE', 'error'); return; }
 
     pppoeData = {
       device_id:     mkId,
@@ -901,16 +949,16 @@ async function _saveCustomerInner() {
       service:       pppoeSvc,
       localAddress:  pppoeLocal,
       remoteAddress: pppoeRemote,
-      comment:       (custId ? custId + ' — ' : '') + name
+      comment:       (custId ? custId + ' — ' : '') + name,
+      radius:        radiusOn
     };
   }
 
   btn.disabled = true; btn.textContent = 'Menyimpan...';
 
-  // ═══ STEP 1: Buat akun PPPoE di MikroTik dulu (kalau diminta) ═══
-  // Alasan: kalau gagal, jangan lanjutkan create customer (rollback gampang).
+  // ═══ STEP 1: Buat akun PPPoE. RADIUS on → skip /ppp/secret (hindari dual-write). ═══
   let pppoeStatus = 'skipped';
-  if (pppoeData) {
+  if (pppoeData && !pppoeData.radius) {
     btn.textContent = 'Membuat akun PPPoE...';
     try {
       const url = '/mikrotik/pppoe/secrets?device_id=' + encodeURIComponent(pppoeData.device_id);
@@ -938,6 +986,8 @@ async function _saveCustomerInner() {
       btn.disabled = false; btn.textContent = 'Simpan Customer';
       return;
     }
+  } else if (pppoeData && pppoeData.radius) {
+    pppoeStatus = 'radius';
   }
 
   // ═══ STEP 2: Simpan customer ═══
@@ -1065,6 +1115,12 @@ async function _saveCustomerInner() {
   if (_custEditId || createPppoe) {
     body.pppoe_username = document.getElementById('custPPPoE')?.value || '';
   }
+  if (createPppoe && pppoeData) {
+    body.radius_password = pppoeData.password;
+    if (pppoeData.profile) body.pppoe_profile = pppoeData.profile;
+    if (pppoeData.device_id) body.mikrotik_id = pppoeData.device_id;
+    body.connection_type = body.connection_type || 'pppoe';
+  }
   if (sendWA) body.send_wa_welcome = true;
   if (sendEmail) body.send_email_welcome = true;
   // Kalau PPPoE rename sudah di-handle oleh endpoint khusus di atas,
@@ -1110,6 +1166,8 @@ async function _saveCustomerInner() {
     // Info status pembuatan PPPoE
     if (pppoeStatus === 'created') {
       msg += ' • Akun PPPoE dibuat ✓';
+    } else if (pppoeStatus === 'radius') {
+      msg += data.radius_sync?.success ? ' • Akun RADIUS dibuat ✓' : (data.radius_sync?.message ? ' • RADIUS: ' + data.radius_sync.message : ' • Akun RADIUS diprovision');
     }
 
     // Info status auto-sync ke peta infrastruktur
@@ -1374,6 +1432,30 @@ async function loadPppoeRouters() {
   }
 }
 
+async function loadRadiusGroups() {
+  const sel = document.getElementById('custPppoeProfile');
+  const spinner = document.getElementById('pppoeProfileSpinner');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Memuat group RADIUS...</option>';
+  sel.disabled = true;
+  if (spinner) spinner.style.display = 'inline';
+  try {
+    const d = await App.api('/radius/groups');
+    const groups = Array.isArray(d?.data) ? d.data : [];
+    if (groups.length) {
+      sel.innerHTML = '<option value="">— Pilih group RADIUS (opsional) —</option>' +
+        groups.map((g) => `<option value="${_esc(g)}">${_esc(g)}</option>`).join('');
+    } else {
+      sel.innerHTML = '<option value="">— Pakai group dari paket —</option>';
+    }
+  } catch (e) {
+    sel.innerHTML = '<option value="">— Pakai group dari paket —</option>';
+  } finally {
+    sel.disabled = false;
+    if (spinner) spinner.style.display = 'none';
+  }
+}
+
 // Load profiles dari router yang dipilih
 async function loadPppoeProfiles(deviceId) {
   console.log('[PPPoE] loadPppoeProfiles called with deviceId =', deviceId);
@@ -1463,6 +1545,10 @@ window.generatePppoePassword = function() {
       if (formBox) formBox.style.display = t.checked ? '' : 'none';
 
       if (t.checked) {
+        getRadiusStatus().then((st) => {
+          applyPppoeRadiusUi(!!st.enabled);
+          if (st.enabled) loadRadiusGroups();
+        });
         // Load daftar router dari /api/devices/mikrotik-list
         loadPppoeRouters();
         // Reset profile dropdown
