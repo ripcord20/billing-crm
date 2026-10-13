@@ -758,6 +758,43 @@ async function setupFirewall(deviceId) {
   return { success: true, details: results };
 }
 
+async function radiusEnabled(tenantId) {
+  try {
+    return await require('./RadiusProvisionService').isEnabled(tenantId);
+  } catch (_) {
+    return false;
+  }
+}
+
+async function kickPppoeIfPossible(cust, pppoeUser) {
+  if (!cust.mikrotik_id || !pppoeUser) return 0;
+  try {
+    const device = await loadDeviceWithMaster(cust.mikrotik_id, true);
+    if (!device) return 0;
+    Object.assign(cust, {
+      host: device.host, username: device.username, password: device.password,
+      port: device.port, use_ssl: device.use_ssl, api_mode: device.api_mode,
+      use_rest: device.use_rest, rest_port: device.rest_port
+    });
+    const api = await connectDevice(cust);
+    try {
+      const active = await api.run(['/ppp/active/print', '?name=' + pppoeUser]);
+      let n = 0;
+      for (const sess of active) {
+        if (sess['.id']) {
+          await api.run(['/ppp/active/remove', '=.id=' + sess['.id']]);
+          n += 1;
+        }
+      }
+      return n;
+    } finally {
+      try { api.close(); } catch (_) {}
+    }
+  } catch (_) {
+    return 0;
+  }
+}
+
 // ── Isolir satu pelanggan ──────────────────────────────────────
 async function isolirCustomer(customerId, triggerBy = 'admin', adminUserId = null) {
   // Step 1: ambil customer + extension ID
@@ -766,21 +803,30 @@ async function isolirCustomer(customerId, triggerBy = 'admin', adminUserId = nul
     { replacements: [customerId], type: sequelize.QueryTypes.SELECT }
   );
   const cust = custRows[0];
-  if (!cust)             throw new Error('Pelanggan tidak ditemukan');
-  if (!cust.mikrotik_id) throw new Error('MikroTik device belum dipilih');
+  if (!cust) throw new Error('Pelanggan tidak ditemukan');
 
-  // Step 2: load device gabungan (ext + master)
-  const device = await loadDeviceWithMaster(cust.mikrotik_id, true);
-  if (!device) throw new Error('Device MikroTik tidak ditemukan atau tidak aktif');
+  const connTypeEarly = (cust.connection_type || '').toLowerCase();
+  const hasPPPoEEarly = !!cust.pppoe_username;
+  const radiusOn = await radiusEnabled(cust.tenant_id);
+  if (!cust.mikrotik_id && !(radiusOn && (connTypeEarly === 'pppoe' || hasPPPoEEarly))) {
+    throw new Error('MikroTik device belum dipilih');
+  }
 
-  // Gabung properties device ke cust supaya connectDevice(cust) tetap jalan
-  // (createClient hanya butuh host/username/password/port/use_ssl/api_mode/use_rest/rest_port)
-  Object.assign(cust, {
-    host: device.host, username: device.username, password: device.password,
-    port: device.port, use_ssl: device.use_ssl, api_mode: device.api_mode,
-    use_rest: device.use_rest, rest_port: device.rest_port,
-    device_name: device.name
-  });
+  // Step 2: load device gabungan (ext + master). RADIUS-only PPPoE tidak wajib MikroTik.
+  let device = null;
+  if (cust.mikrotik_id) {
+    device = await loadDeviceWithMaster(cust.mikrotik_id, true);
+    if (!device) throw new Error('Device MikroTik tidak ditemukan atau tidak aktif');
+
+    // Gabung properties device ke cust supaya connectDevice(cust) tetap jalan
+    // (createClient hanya butuh host/username/password/port/use_ssl/api_mode/use_rest/rest_port)
+    Object.assign(cust, {
+      host: device.host, username: device.username, password: device.password,
+      port: device.port, use_ssl: device.use_ssl, api_mode: device.api_mode,
+      use_rest: device.use_rest, rest_port: device.rest_port,
+      device_name: device.name
+    });
+  }
 
   // ── Auto-detect method: hotspot binding / static IP / PPPoE ──
   // Penentu utama: customers.connection_type (eksplisit, kalau diisi).
@@ -808,6 +854,49 @@ async function isolirCustomer(customerId, triggerBy = 'admin', adminUserId = nul
   const ip = cust.static_ip || null;
   const pppoeUser = cust.pppoe_username || null;
   let success = false, errorMsg = null, addrlistId = null, methodDetail = null;
+
+  if (method === 'pppoe' && radiusOn) {
+    try {
+      const rad = await require('./RadiusProvisionService').isolir(cust);
+      if (rad && rad.success) {
+        const kicked = await kickPppoeIfPossible(cust, pppoeUser);
+        methodDetail = 'RADIUS Auth-Type Reject' + (kicked ? `, ${kicked} sesi di-kick` : '');
+        success = true;
+        await sequelize.query(
+          "UPDATE customers SET isolir_status='isolated', isolir_at=NOW(), status='isolated' WHERE id=?",
+          { replacements: [customerId] });
+        try {
+          const N = require('./NotificationService');
+          await N.pushAll({ type:'isolir', title:`Isolir: ${cust.name} (${cust.customer_id})`,
+            message:`PPPoE "${pppoeUser}" diblokir via RADIUS`, severity:'warning', action_url:'/isolir' });
+        } catch (e) {}
+        await sendIsolirWA(cust, 'isolir');
+        try { await require('./PushService').sendIsolirNotif(customerId, cust.name, cust.customer_id); }
+        catch (e) { console.warn('[Isolir] push isolir gagal: ' + e.message); }
+        await logIsolir({
+          customer_id: customerId, device_id: cust.mikrotik_id,
+          static_ip: ip, pppoe_username: pppoeUser, isolir_method: 'radius',
+          action: 'isolir', trigger_by: triggerBy, triggered_by_user: adminUserId,
+          addrlist_id: null, success: true, error_msg: null
+        });
+        return { success: true, message: `${cust.name} (PPPoE: ${pppoeUser}) berhasil diisolir — ${methodDetail}` };
+      }
+      if (rad && !rad.skipped) errorMsg = rad.message;
+    } catch (e) {
+      errorMsg = e.message;
+    }
+    if (!cust.mikrotik_id) {
+      await logIsolir({
+        customer_id: customerId, device_id: null,
+        static_ip: ip, pppoe_username: pppoeUser, isolir_method: 'radius',
+        action: 'isolir', trigger_by: triggerBy, triggered_by_user: adminUserId,
+        addrlist_id: null, success: false, error_msg: errorMsg
+      });
+      return { success: false, message: errorMsg || 'Isolir RADIUS gagal' };
+    }
+  }
+
+  if (!device) throw new Error('MikroTik device belum dipilih');
 
   try {
     const api = await connectDevice(cust);
@@ -890,18 +979,25 @@ async function restoreCustomer(customerId, triggerBy = 'admin', adminUserId = nu
     { replacements: [customerId], type: sequelize.QueryTypes.SELECT }
   );
   const cust = custRows[0];
-  if (!cust)             throw new Error('Pelanggan tidak ditemukan');
-  if (!cust.mikrotik_id) throw new Error('MikroTik device belum dipilih');
+  if (!cust) throw new Error('Pelanggan tidak ditemukan');
 
-  const device = await loadDeviceWithMaster(cust.mikrotik_id, true);
-  if (!device) throw new Error('Device MikroTik tidak ditemukan atau tidak aktif');
+  const radiusOnRestore = await radiusEnabled(cust.tenant_id);
+  if (!cust.mikrotik_id && !(radiusOnRestore && cust.pppoe_username)) {
+    throw new Error('MikroTik device belum dipilih');
+  }
 
-  Object.assign(cust, {
-    host: device.host, username: device.username, password: device.password,
-    port: device.port, use_ssl: device.use_ssl, api_mode: device.api_mode,
-    use_rest: device.use_rest, rest_port: device.rest_port,
-    device_name: device.name
-  });
+  let device = null;
+  if (cust.mikrotik_id) {
+    device = await loadDeviceWithMaster(cust.mikrotik_id, true);
+    if (!device) throw new Error('Device MikroTik tidak ditemukan atau tidak aktif');
+
+    Object.assign(cust, {
+      host: device.host, username: device.username, password: device.password,
+      port: device.port, use_ssl: device.use_ssl, api_mode: device.api_mode,
+      use_rest: device.use_rest, rest_port: device.rest_port,
+      device_name: device.name
+    });
+  }
 
   // ── Auto-detect method (sama seperti isolir) ──
   const connType = (cust.connection_type || '').toLowerCase();
@@ -924,6 +1020,48 @@ async function restoreCustomer(customerId, triggerBy = 'admin', adminUserId = nu
   const ip = cust.static_ip || null;
   const pppoeUser = cust.pppoe_username || null;
   let success = false, errorMsg = null, methodDetail = null;
+
+  if (method === 'pppoe' && radiusOnRestore) {
+    try {
+      const rad = await require('./RadiusProvisionService').restore(cust);
+      if (rad && rad.success) {
+        methodDetail = 'RADIUS restore (hapus Auth-Type Reject)';
+        success = true;
+        await sequelize.query(
+          "UPDATE customers SET isolir_status='active', isolir_at=NULL, status='active' WHERE id=?",
+          { replacements: [customerId] });
+        try {
+          const N = require('./NotificationService');
+          await N.pushAll({ type:'restore', title:`Restore: ${cust.name} (${cust.customer_id})`,
+            message:`Akses PPPoE "${pppoeUser}" dipulihkan via RADIUS`, severity:'info', action_url:'/isolir' });
+        } catch (e) {}
+        await sendIsolirWA(cust, 'restore');
+        try { await require('./PushService').sendRestoreNotif(customerId, cust.name, cust.customer_id); }
+        catch (e) { console.warn('[Restore] push restore gagal: ' + e.message); }
+        await logIsolir({
+          customer_id: customerId, device_id: cust.mikrotik_id,
+          static_ip: ip, pppoe_username: pppoeUser, isolir_method: 'radius',
+          action: 'restore', trigger_by: triggerBy, triggered_by_user: adminUserId,
+          addrlist_id: null, success: true, error_msg: null
+        });
+        return { success: true, message: `${cust.name} (PPPoE: ${pppoeUser}) berhasil di-restore — ${methodDetail}` };
+      }
+      if (rad && !rad.skipped) errorMsg = rad.message;
+    } catch (e) {
+      errorMsg = e.message;
+    }
+    if (!cust.mikrotik_id) {
+      await logIsolir({
+        customer_id: customerId, device_id: null,
+        static_ip: ip, pppoe_username: pppoeUser, isolir_method: 'radius',
+        action: 'restore', trigger_by: triggerBy, triggered_by_user: adminUserId,
+        addrlist_id: null, success: false, error_msg: errorMsg
+      });
+      return { success: false, message: errorMsg || 'Restore RADIUS gagal' };
+    }
+  }
+
+  if (!device) throw new Error('Device MikroTik tidak ditemukan atau tidak aktif');
 
   try {
     const api = await connectDevice(cust);
@@ -1035,7 +1173,10 @@ async function runAutoIsolir(opts = {}) {
         AND ( (c.static_ip IS NOT NULL AND c.static_ip!='')
            OR (c.pppoe_username IS NOT NULL AND c.pppoe_username!='')
            OR (c.connection_type='hotspot' AND c.mac_address IS NOT NULL AND c.mac_address!='') )
-        AND c.mikrotik_id IS NOT NULL
+        AND (
+          c.mikrotik_id IS NOT NULL
+          OR (c.pppoe_username IS NOT NULL AND c.pppoe_username != '')
+        )
         AND (
           EXISTS (
             SELECT 1 FROM invoices i
@@ -1108,7 +1249,10 @@ async function evaluateCustomer(customerId, triggerBy = 'payment_revert') {
         AND ( (c.static_ip IS NOT NULL AND c.static_ip != '')
            OR (c.pppoe_username IS NOT NULL AND c.pppoe_username != '')
            OR (c.connection_type='hotspot' AND c.mac_address IS NOT NULL AND c.mac_address != '') )
-        AND c.mikrotik_id IS NOT NULL
+        AND (
+          c.mikrotik_id IS NOT NULL
+          OR (c.pppoe_username IS NOT NULL AND c.pppoe_username != '')
+        )
         AND (
           EXISTS (
             SELECT 1 FROM invoices i

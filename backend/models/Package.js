@@ -59,6 +59,15 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(64),
       allowNull: true,
       comment: 'Nama PPP profile di MikroTik untuk paket ini'
+    },
+    radius_group: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      comment: 'Nama group FreeRADIUS / daloRADIUS'
+    },
+    tenant_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
     }
   }, {
     tableName: 'packages',

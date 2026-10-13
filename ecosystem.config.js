@@ -12,7 +12,10 @@ module.exports = {
     },
     env_production: {
       NODE_ENV: 'production',
-      APP_ENV: 'production'
+      APP_ENV: 'production',
+      FIBERIX_FULL_RADIUS: '1',
+      RADIUS_HOST: '192.168.22.9',
+      RADIUS_MYSQL_HOST: '192.168.22.9'
     },
     log_file: 'logs/pm2-combined.log',
     error_file: 'logs/pm2-error.log',

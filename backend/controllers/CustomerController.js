@@ -10,6 +10,36 @@ const {
   customerListStatusClause,
 } = require('../utils/customerStop');
 
+function takeRadiusPassword(data) {
+  if (!data) return undefined;
+  const password = data.radius_password || data.pppoe_password || undefined;
+  delete data.radius_password;
+  delete data.pppoe_password;
+  return password;
+}
+
+async function syncRadiusIfEnabled(customer, opts = {}) {
+  try {
+    const RadiusProv = require('../services/RadiusProvisionService');
+    if (!(await RadiusProv.isEnabled(customer.tenant_id))) return null;
+    return await RadiusProv.syncCustomer(customer, opts);
+  } catch (e) {
+    console.warn('[Customer] RADIUS sync: ' + e.message);
+    return { success: false, message: e.message };
+  }
+}
+
+async function radiusRenameIfEnabled(customer, oldUsername, newUsername) {
+  try {
+    const RadiusProv = require('../services/RadiusProvisionService');
+    if (!(await RadiusProv.isEnabled(customer.tenant_id))) return null;
+    return await RadiusProv.rename(customer, oldUsername, newUsername);
+  } catch (e) {
+    console.warn('[Customer] RADIUS rename: ' + e.message);
+    return { success: false, message: e.message };
+  }
+}
+
 class CustomerController {
   async index(req, res) {
     try {
@@ -160,6 +190,10 @@ class CustomerController {
 
       // Jangan izinkan field internal di-set dari input bebas.
       delete data.public_link_token;
+      const radiusPassword = takeRadiusPassword(data);
+      const radiusGroup = data.pppoe_profile || data.radius_group || undefined;
+      delete data.pppoe_profile;
+      delete data.radius_group;
 
       if ((data.status || 'active') === 'inactive') {
         Object.assign(data, applyStopFields(null, 'inactive', data));
@@ -175,6 +209,25 @@ class CustomerController {
         }
       } catch (e) { /* non-fatal: link bisa dibuat manual nanti */ }
 
+      if (data.pppoe_username && radiusPassword) {
+        try {
+          const RadiusProv = require('../services/RadiusProvisionService');
+          if (await RadiusProv.isEnabled(data.tenant_id)) {
+            const pre = await RadiusProv.provisionStandalone({
+              username: data.pppoe_username,
+              password: radiusPassword,
+              groupname: radiusGroup,
+              failIfExists: true
+            });
+            if (pre && !pre.success && !pre.skipped) {
+              return res.status(400).json({ success: false, message: pre.message || 'Gagal provision RADIUS' });
+            }
+          }
+        } catch (e) {
+          return res.status(400).json({ success: false, message: 'Gagal provision RADIUS: ' + e.message });
+        }
+      }
+
       const customer = await Customer.create(data);
       const full = await Customer.findByPk(customer.id, {
         include: [{ model: Package, as: 'package' }]
@@ -183,6 +236,15 @@ class CustomerController {
       // Auto-sync ke InfrastructurePoint type='customer' kalau ada lat/lng.
       // Best-effort — gagal sync di sini tidak membatalkan create customer.
       const infraResult = await InfraSync.syncCustomerToInfra(full);
+
+      let radiusSync = null;
+      if (full.pppoe_username) {
+        radiusSync = await syncRadiusIfEnabled(full, {
+          password: radiusPassword,
+          groupname: radiusGroup,
+          requirePassword: !!radiusPassword
+        });
+      }
 
       // Kirim WA welcome (best-effort, tidak block response)
       let waStatus = 'skipped';
@@ -249,7 +311,7 @@ class CustomerController {
         }).catch(() => {});
       } catch (_) {}
 
-      res.status(201).json({ success: true, data: full, wa_status: waStatus, email_status: emailStatus, infra_sync: infraResult });
+      res.status(201).json({ success: true, data: full, wa_status: waStatus, email_status: emailStatus, infra_sync: infraResult, radius_sync: radiusSync });
     } catch (error) {
       const msg = error.name === 'SequelizeValidationError'
         ? error.errors.map(e => e.message).join(', ')
@@ -282,6 +344,10 @@ class CustomerController {
       delete sanitized.customer_id;           // hanya boleh diubah via updatePortalCredentials (validasi unique)
       delete sanitized.last_portal_login;     // diset otomatis oleh sistem saat login
       delete sanitized.public_link_token;     // hanya via endpoint payment-link (generate/revoke)
+      const radiusPassword = takeRadiusPassword(sanitized);
+      const radiusGroup = sanitized.pppoe_profile || sanitized.radius_group || undefined;
+      delete sanitized.pppoe_profile;
+      delete sanitized.radius_group;
 
       const nextStatus = sanitized.status || customer.status;
       Object.assign(sanitized, applyStopFields(customer.status, nextStatus, sanitized));
@@ -297,7 +363,15 @@ class CustomerController {
       // Best-effort: gagal sync tidak membatalkan update customer.
       const infraResult = await InfraSync.syncCustomerToInfra(full);
 
-      res.json({ success: true, data: full, infra_sync: infraResult });
+      let radiusSync = null;
+      if (full.pppoe_username) {
+        radiusSync = await syncRadiusIfEnabled(full, {
+          password: radiusPassword,
+          groupname: radiusGroup
+        });
+      }
+
+      res.json({ success: true, data: full, infra_sync: infraResult, radius_sync: radiusSync });
     } catch (error) {
       const msg = error.name === 'SequelizeValidationError'
         ? error.errors.map(e => e.message).join(', ')
@@ -666,10 +740,18 @@ class CustomerController {
       if (deleteRouterSecret) {
         const oldUsername = (customer.pppoe_username || '').trim();
         const routerId    = customer.mikrotik_id;
-
-        if (!oldUsername) {
+        const radiusResult = await radiusRenameIfEnabled(customer, oldUsername, '');
+        if (radiusResult && radiusResult.success) {
+          routerStatus = 'deleted';
+          routerMessage = `Akun RADIUS "${oldUsername}" dihapus`;
+        } else if (!oldUsername) {
           routerStatus = 'skipped';
           routerMessage = 'Customer tidak punya pppoe_username — tidak ada secret untuk dihapus';
+        } else if (radiusResult) {
+          return res.status(502).json({
+            success: false,
+            message: `Gagal hapus akun RADIUS: ${radiusResult.message || 'error'}. Customer TIDAK dihapus untuk konsistensi.`
+          });
         } else if (!routerId) {
           routerStatus = 'skipped';
           routerMessage = 'Customer tidak punya mikrotik_id — tidak tahu router mana yang harus dicek';
@@ -960,6 +1042,43 @@ class CustomerController {
       let routerWarning = null;
 
       if (sync_to_router) {
+        const radiusResult = await radiusRenameIfEnabled(customer, oldUsername, isClearing ? '' : trimmedNew);
+        if (radiusResult && radiusResult.success) {
+          const dbValue = isClearing ? null : trimmedNew;
+          await customer.update({ pppoe_username: dbValue });
+          return res.json({
+            success: true,
+            message: isClearing
+              ? `PPPoE username dihapus di FLAYNET & RADIUS (sebelumnya: ${oldUsername})`
+              : `PPPoE username diubah di FLAYNET & RADIUS (${oldUsername} → ${trimmedNew})`,
+            old_username: oldUsername,
+            new_username: dbValue,
+            updated_db: true,
+            synced_router: true,
+            backend: 'radius'
+          });
+        }
+        if (radiusResult && !radiusResult.skipped) {
+          return res.status(502).json({
+            success: false,
+            message: `Gagal sync RADIUS: ${radiusResult.message}. Database tidak di-update untuk konsistensi.`
+          });
+        }
+        if (radiusResult) {
+          const dbValue = isClearing ? null : trimmedNew;
+          await customer.update({ pppoe_username: dbValue });
+          return res.json({
+            success: true,
+            message: isClearing
+              ? `PPPoE username dikosongkan di FLAYNET (RADIUS dilewati: ${radiusResult.message || radiusResult.reason || 'skip'})`
+              : `PPPoE username diubah di FLAYNET (${oldUsername} → ${trimmedNew}). RADIUS dilewati.`,
+            old_username: oldUsername,
+            new_username: dbValue,
+            updated_db: true,
+            synced_router: false,
+            backend: 'radius'
+          });
+        }
         // Butuh: oldUsername (untuk lookup) dan customer.mikrotik_id (router yang punya secret)
         if (!oldUsername) {
           // Tidak ada secret lama untuk disentuh. Kalau clearing, anggap sukses

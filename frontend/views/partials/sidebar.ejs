@@ -394,6 +394,10 @@
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
         <span>Paket</span>
       </a>
+      <a href="/nas" class="nav-item <%= active === 'nas' ? 'active' : '' %>">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <span>NAS</span>
+      </a>
     </div>
 
   <% } else { %>
@@ -417,10 +421,6 @@
       <a href="/sales" class="nav-item <%= active === 'sales-dashboard' ? 'active' : '' %>">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
         <span>Sales Dashboard</span>
-      </a>
-      <a href="/tenants" class="nav-item <%= active === 'tenants' ? 'active' : '' %>">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-8h6v8"/></svg>
-        <span>Multi Tenant</span>
       </a>
       <% } %>
     </div>
@@ -612,6 +612,10 @@
     <!-- MANAGEMENT -->
     <div class="nav-section">
       <span class="nav-section-title">MANAGEMENT</span>
+      <a href="/nas" <%- demoHide(isDemoUser) %> class="nav-item <%= active === 'nas' ? 'active' : '' %>">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <span>NAS</span>
+      </a>
       <a href="/isolir" <%- demoHide(isDemoUser) %> class="nav-item <%= active === 'isolir' ? 'active' : '' %>">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
         <span>Isolir</span>

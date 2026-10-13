@@ -35,6 +35,18 @@ module.exports = (sequelize) => {
     notes: {
       type: DataTypes.TEXT,
       allowNull: true
+    },
+    company_name: {
+      type: DataTypes.STRING(150),
+      allowNull: true
+    },
+    owner_user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    radius_server_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
     }
   }, {
     tableName: 'tenants',
