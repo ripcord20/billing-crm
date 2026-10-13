@@ -117,9 +117,9 @@ router.use((req, res, next) => {
 
 const _tenantAllowedPaths = new Set([
   '/tenant', '/customers', '/billing', '/payments', '/packages',
-  '/nas', '/radius', '/login', '/logout'
+  '/nas', '/login', '/logout'
 ]);
-const _tenantAllowedPrefixes = ['/customers/', '/billing/', '/payments/', '/packages/', '/nas/', '/radius/'];
+const _tenantAllowedPrefixes = ['/customers/', '/billing/', '/payments/', '/packages/', '/nas/'];
 router.use((req, res, next) => {
   if (req.method !== 'GET') return next();
   const token = req.cookies && req.cookies.token;
@@ -608,21 +608,31 @@ router.get('/laporan', authenticate, allowFinanceArea, (req, res) => {
   res.render('pages/laporan', { title: 'Laporan Keuangan', user: req.user, active: 'laporan' });
 });
 
-function allowNasRadiusPage(req, res, next) {
-  const r = (req.user?.role?.name || '').toLowerCase();
-  if (['superadmin', 'admin', 'finance', 'tenant_owner', 'noc'].includes(r)) return next();
+function allowNasPage(req, res, next) {
+  const { canSeeNasModule } = require('../utils/radiusAccess');
+  if (canSeeNasModule(req.user?.role?.name)) return next();
   return res.status(403).render('pages/403', {
     title: 'Akses Ditolak',
     layout: false,
-    message: 'Anda tidak punya akses ke modul NAS / RADIUS.'
+    message: 'Anda tidak punya akses ke modul NAS.'
   });
 }
 
-router.get('/nas', authenticate, allowNasRadiusPage, (req, res) => {
+function allowRadiusPage(req, res, next) {
+  const { canSeeRadiusModule } = require('../utils/radiusAccess');
+  if (canSeeRadiusModule(req.user?.role?.name)) return next();
+  return res.status(403).render('pages/403', {
+    title: 'Akses Ditolak',
+    layout: false,
+    message: 'Modul RADIUS hanya untuk pemilik platform, bukan penyewa.'
+  });
+}
+
+router.get('/nas', authenticate, allowNasPage, (req, res) => {
   res.render('pages/nas', { title: 'Modul NAS', user: req.user, active: 'nas' });
 });
 router.get('/panduan/mikrotik', authenticate, (req, res) => res.redirect(302, '/nas'));
-router.get('/radius', authenticate, allowNasRadiusPage, (req, res) => {
+router.get('/radius', authenticate, allowRadiusPage, (req, res) => {
   res.render('pages/radius', { title: 'Modul RADIUS', user: req.user, active: 'radius' });
 });
 
