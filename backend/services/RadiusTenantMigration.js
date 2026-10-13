@@ -164,6 +164,14 @@ async function run(db) {
     logger.warn('[RadiusTenant] local bootstrap: ' + e.message);
   }
 
+  try {
+    await sequelize.query(
+      "ALTER TABLE isolir_logs MODIFY COLUMN isolir_method ENUM('static','pppoe','hotspot_binding','radius') DEFAULT 'static'"
+    );
+  } catch (e) {
+    logger.warn('[RadiusTenant] isolir_method enum: ' + e.message);
+  }
+
   logger.info('Radius/NAS/tenant migration OK (additive, no destructive ALTER)');
 }
 
