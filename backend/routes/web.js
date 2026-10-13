@@ -117,9 +117,9 @@ router.use((req, res, next) => {
 
 const _tenantAllowedPaths = new Set([
   '/tenant', '/customers', '/billing', '/payments', '/packages',
-  '/login', '/logout'
+  '/nas', '/radius', '/login', '/logout'
 ]);
-const _tenantAllowedPrefixes = ['/customers/', '/billing/', '/payments/', '/packages/'];
+const _tenantAllowedPrefixes = ['/customers/', '/billing/', '/payments/', '/packages/', '/nas/', '/radius/'];
 router.use((req, res, next) => {
   if (req.method !== 'GET') return next();
   const token = req.cookies && req.cookies.token;
@@ -606,6 +606,24 @@ router.get('/laporan/print', authenticate, allowFinanceArea, (req, res) => {
 
 router.get('/laporan', authenticate, allowFinanceArea, (req, res) => {
   res.render('pages/laporan', { title: 'Laporan Keuangan', user: req.user, active: 'laporan' });
+});
+
+function allowNasRadiusPage(req, res, next) {
+  const r = (req.user?.role?.name || '').toLowerCase();
+  if (['superadmin', 'admin', 'finance', 'tenant_owner', 'noc'].includes(r)) return next();
+  return res.status(403).render('pages/403', {
+    title: 'Akses Ditolak',
+    layout: false,
+    message: 'Anda tidak punya akses ke modul NAS / RADIUS.'
+  });
+}
+
+router.get('/nas', authenticate, allowNasRadiusPage, (req, res) => {
+  res.render('pages/nas', { title: 'Modul NAS', user: req.user, active: 'nas' });
+});
+router.get('/panduan/mikrotik', authenticate, (req, res) => res.redirect(302, '/nas'));
+router.get('/radius', authenticate, allowNasRadiusPage, (req, res) => {
+  res.render('pages/radius', { title: 'Modul RADIUS', user: req.user, active: 'radius' });
 });
 
 router.get('/isolir', authenticate, blockFinanceArea, (req, res) =>

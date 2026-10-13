@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <div class="app-layout">
+    <%- include('../partials/sidebar') %>
+    <div class="main-content">
+      <%- include('../partials/topbar') %>
+      <main class="page-content" style="max-width:720px;">
+        <div class="page-header">
+          <div class="page-header-left">
+            <h1>RADIUS</h1>
+            <p style="margin:6px 0 0;color:var(--text-secondary);font-size:14px;line-height:1.55;">
+              Ini setup <strong>server Fiberix</strong>, bukan menu mitra, dan bukan tempat sewa VPN.
+            </p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px;">
+          <div class="card-body" style="line-height:1.6;font-size:14px;">
+            <p style="margin:0 0 10px;"><strong>Fungsinya apa?</strong></p>
+            <p style="margin:0;color:var(--text-secondary);">
+              Memastikan login PPPoE/Hotspot dicek ke database billing Fiberix.
+              Daemon FreeRADIUS di LAN yang sama dengan billing. Mitra tidak mengisi SQL, tidak buka MySQL, tidak edit file server.
+            </p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px;border-color:#fed7aa;">
+          <div class="card-body" style="line-height:1.6;font-size:14px;">
+            <p style="margin:0 0 8px;"><strong>VPN cloud sewa di mana?</strong> Tidak di mana-mana.</p>
+            <p style="margin:0;color:var(--text-secondary);">
+              Jangan sewa BillingRadius, VPS VPN, atau L2TP orang lain.
+              Tunnel sudah dari Fiberix: <strong>WireGuard</strong> (RouterOS 7) atau <strong>L2TP/IPsec</strong> (RouterOS 6).
+              Mitra hanya tempel script — lihat panduan.
+            </p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px;">
+          <div class="card-body" style="line-height:1.6;font-size:14px;">
+            <p style="margin:0 0 8px;"><strong>Kenapa dulu kelihatan ribet / error?</strong></p>
+            <p style="margin:0;color:var(--text-secondary);">
+              Halaman lama memuat panduan edit file FreeRADIUS dan cuplikan SQL.
+              API-nya tidak terpasang, jadi muncul “Route not found” / “Memuat…”.
+              Itu bukan alur harian — sudah diganti halaman ini.
+            </p>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <a class="btn-primary" href="/panduan/mikrotik">Hubungkan MikroTik</a>
+          <a class="btn-secondary" href="/dashboard">Dashboard</a>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="/js/app.js"></script>
+</body>
+</html>
