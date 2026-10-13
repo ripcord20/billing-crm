@@ -151,9 +151,7 @@ router.get('/tenant', authenticate, allowTenantArea, (req, res) => {
 });
 
 router.get('/tenants', authenticate, (req, res) => {
-  const role = (req.user?.role?.name || '').toLowerCase();
-  if (role !== 'superadmin' && role !== 'admin') return res.redirect('/tenant');
-  res.render('pages/tenants', { title: 'Multi Tenant', user: req.user, active: 'tenants' });
+  return res.redirect('/dashboard');
 });
 
 // ═══════════════════════════════════════════════════════════════════
