@@ -151,9 +151,8 @@ router.get('/tenant', authenticate, allowTenantArea, (req, res) => {
 });
 
 router.get('/tenants', authenticate, (req, res) => {
-  const role = (req.user?.role?.name || '').toLowerCase();
-  if (role !== 'superadmin' && role !== 'admin') return res.redirect('/tenant');
-  res.render('pages/tenants', { title: 'Multi Tenant', user: req.user, active: 'tenants' });
+  const platform = String(process.env.SAAS_PUBLIC_URL || 'https://app.fiberix.my.id/platform').replace(/\/+$/, '');
+  return res.redirect(302, platform + '/');
 });
 
 // ═══════════════════════════════════════════════════════════════════

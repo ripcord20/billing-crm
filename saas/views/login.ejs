@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> · Fiberix Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="<%= base('/app.css') %>">
+</head>
+<body class="auth-body">
+  <main class="auth-card">
+    <div class="brand">
+      <span class="brand-mark">F</span>
+      <div>
+        <strong>Fiberix Platform</strong>
+        <small>Panel pemilik · bukan billing penyewa</small>
+      </div>
+    </div>
+    <h1>Masuk sebagai owner</h1>
+    <p class="lead">Kelola tenant, owner penyewa, dan RADIUS. Billing ISP ada di URL terpisah.</p>
+    <% if (error) { %><div class="alert"><%= error %></div><% } %>
+    <form method="post" action="<%= base('/login') %>">
+      <label>Email</label>
+      <input type="email" name="email" required autocomplete="username" placeholder="owner@fiberix.my.id">
+      <label>Password</label>
+      <input type="password" name="password" required autocomplete="current-password">
+      <button type="submit">Masuk ke dashboard</button>
+    </form>
+    <p class="foot">Penyewa login di <a href="<%= billingUrl %>"><%= billingUrl.replace(/^https?:\/\//,'') %></a></p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> · Fiberix Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="<%= base('/app.css') %>">
+</head>
+<body class="app-body">
+  <aside>
+    <div class="brand">
+      <span class="brand-mark">F</span>
+      <div>
+        <strong>Fiberix Platform</strong>
+        <small>Landlord</small>
+      </div>
+    </div>
+    <nav>
+      <a class="on" href="<%= base('/') %>">Dashboard</a>
+      <a href="<%= billingUrl %>" target="_blank" rel="noopener">Buka billing clone</a>
+    </nav>
+    <form method="post" action="<%= base('/logout') %>">
+      <button class="ghost" type="submit">Keluar</button>
+    </form>
+  </aside>
+  <main>
+    <header class="top">
+      <div>
+        <h1>Dashboard pemilik platform</h1>
+        <p>Ini bukan billing ISP. Ini panel sewa: tenant, owner, RADIUS.</p>
+      </div>
+      <div class="who"><%= admin.name %><small><%= admin.email %></small></div>
+    </header>
+
+    <section class="kpis">
+      <article><b id="kTenants"><%= data.tenants %></b><span>Tenant</span></article>
+      <article><b id="kActive"><%= data.tenants_active %></b><span>Aktif</span></article>
+      <article><b id="kSusp"><%= data.tenants_suspended %></b><span>Ditangguhkan</span></article>
+      <article><b id="kCust"><%= data.customers_bound %></b><span>Pelanggan terikat</span></article>
+      <article><b id="kFree"><%= data.customers_unassigned %></b><span>Belum terikat</span></article>
+      <article><b id="kNas"><%= data.nas %></b><span>NAS</span></article>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <div class="card-h">
+          <h2>Tenant</h2>
+          <button type="button" class="btn" onclick="SaaS.openCreate()">+ Tenant</button>
+        </div>
+        <table>
+          <thead><tr><th>Usaha</th><th>Status</th><th>Pelanggan</th><th>Owner</th><th></th></tr></thead>
+          <tbody id="tnBody"><tr><td colspan="5">Memuat…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2>Infrastruktur</h2>
+        <ul class="meta">
+          <li><span>Billing penyewa</span><a href="<%= data.billing_url %>" target="_blank" rel="noopener"><%= data.billing_url.replace(/^https?:\/\//,'') %></a></li>
+          <li><span>RADIUS daemon</span><code><%= data.radius_host %></code></li>
+          <li><span>Server RADIUS aktif</span><strong><%= data.radius_servers %></strong></li>
+        </ul>
+        <p class="hint">Penyewa tidak melihat modul RADIUS. Mereka login ke billing, lalu menu NAS.</p>
+      </div>
+    </section>
+  </main>
+
+  <div class="overlay" id="overlay" hidden>
+    <div class="modal" id="modal"></div>
+  </div>
+  <script>window.SAAS_BASE = <%- JSON.stringify(basePath) %>;</script>
+  <script src="<%= base('/app.js') %>"></script>
+</body>
+</html>
