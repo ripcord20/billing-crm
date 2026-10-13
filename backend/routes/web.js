@@ -622,7 +622,7 @@ function allowRadiusPage(req, res, next) {
   return res.status(403).render('pages/403', {
     title: 'Akses Ditolak',
     layout: false,
-    message: 'Modul RADIUS hanya untuk pemilik platform, bukan penyewa.'
+    message: 'Modul RADIUS tidak ditampilkan di billing. Kelola perangkat lewat NAS.'
   });
 }
 

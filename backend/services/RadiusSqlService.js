@@ -10,15 +10,53 @@ const { decryptSecret } = require('../utils/secretBox');
 const logger = require('../utils/logger');
 const { describeMysqlError, assertCloneSafeTarget } = require('../utils/radiusMysql');
 
+function isLocalMysqlHost(host) {
+  const h = String(host || '').trim();
+  return !h || h === '127.0.0.1' || h === 'localhost';
+}
+
+function billingDbAuth() {
+  return {
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASS || process.env.DB_PASSWORD || ''
+  };
+}
+
+function resolveMysqlAuth(server) {
+  let user = server.mysql_user || 'radius';
+  let password = '';
+  try {
+    password = decryptSecret(server.mysql_password || '');
+  } catch (_) {
+    password = '';
+  }
+  if (!password && isLocalMysqlHost(server.mysql_host)) {
+    const billing = billingDbAuth();
+    user = billing.user;
+    password = billing.password;
+  }
+  if (!password) {
+    throw Object.assign(
+      new Error('Password MySQL RADIUS tidak bisa dibaca. Isi RADIUS_MYSQL_PASSWORD di .env server, bukan dari menu billing.'),
+      { code: 'ER_ACCESS_DENIED_ERROR' }
+    );
+  }
+  return { user, password };
+}
+
 const pools = new Map();
 
 function poolKey(server) {
+  let user = server.mysql_user || 'radius';
+  try {
+    user = resolveMysqlAuth(server).user;
+  } catch (_) {}
   return [
     server.id,
     server.mysql_host,
     server.mysql_port,
     server.mysql_database,
-    server.mysql_user
+    user
   ].join('|');
 }
 
@@ -26,17 +64,12 @@ async function getPool(server) {
   assertCloneSafeTarget(server);
   const key = poolKey(server);
   if (pools.has(key)) return pools.get(key);
-  let password = '';
-  try {
-    password = decryptSecret(server.mysql_password || '');
-  } catch (e) {
-    throw Object.assign(new Error('Password MySQL RADIUS tidak bisa didekripsi. Isi ulang di modul RADIUS.'), { code: 'ER_ACCESS_DENIED_ERROR' });
-  }
+  const auth = resolveMysqlAuth(server);
   const pool = mysql.createPool({
     host: server.mysql_host || '127.0.0.1',
     port: server.mysql_port || 3306,
-    user: server.mysql_user || 'radius',
-    password,
+    user: auth.user,
+    password: auth.password,
     database: server.mysql_database || 'radius',
     waitForConnections: true,
     connectionLimit: 5,

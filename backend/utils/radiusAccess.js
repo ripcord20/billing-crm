@@ -4,8 +4,14 @@ function roleNameOf(role) {
   return String(role || '').toLowerCase();
 }
 
-/** Modul RADIUS (host/SQL FreeRADIUS) hanya pemilik platform. */
+/** BillingRadius: modul RADIUS tidak tampil di billing, hanya NAS. */
+function billingHidesRadiusModule() {
+  return process.env.FIBERIX_FULL_RADIUS === '1' || process.env.BILLING_HIDE_RADIUS === '1';
+}
+
+/** Modul RADIUS (host/SQL FreeRADIUS) hanya pemilik platform, tidak di billing. */
 function canSeeRadiusModule(role) {
+  if (billingHidesRadiusModule()) return false;
   return ['superadmin', 'admin', 'noc'].includes(roleNameOf(role));
 }
 
@@ -14,4 +20,4 @@ function canSeeNasModule(role) {
   return ['superadmin', 'admin', 'finance', 'tenant_owner', 'noc'].includes(roleNameOf(role));
 }
 
-module.exports = { canSeeRadiusModule, canSeeNasModule };
+module.exports = { canSeeRadiusModule, canSeeNasModule, billingHidesRadiusModule };
