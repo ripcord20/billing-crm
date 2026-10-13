@@ -34,6 +34,9 @@ sequelize.afterConnect(async (connection) => {
 const User = require('./User')(sequelize);
 const Role = require('./Role')(sequelize);
 const Tenant = require('./Tenant')(sequelize);
+const RadiusServer = require('./RadiusServer')(sequelize);
+const RadiusAccount = require('./RadiusAccount')(sequelize);
+const NasDevice = require('./NasDevice')(sequelize);
 const Permission = require('./Permission')(sequelize);
 const RolePermission = require('./RolePermission')(sequelize);
 const Customer = require('./Customer')(sequelize);
@@ -193,6 +196,26 @@ User.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
 Tenant.hasMany(Customer, { foreignKey: 'tenant_id', as: 'customers' });
 Customer.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
 
+Tenant.hasMany(RadiusServer, { foreignKey: 'tenant_id', as: 'radius_servers' });
+RadiusServer.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+Tenant.hasMany(NasDevice, { foreignKey: 'tenant_id', as: 'nas_devices' });
+NasDevice.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+RadiusServer.hasMany(NasDevice, { foreignKey: 'radius_server_id', as: 'nas_devices' });
+NasDevice.belongsTo(RadiusServer, { foreignKey: 'radius_server_id', as: 'radius_server' });
+NasDevice.belongsTo(Device, { foreignKey: 'device_id', as: 'device' });
+RadiusServer.hasMany(RadiusAccount, { foreignKey: 'radius_server_id', as: 'accounts' });
+RadiusAccount.belongsTo(RadiusServer, { foreignKey: 'radius_server_id', as: 'radius_server' });
+RadiusAccount.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
+RadiusAccount.belongsTo(NasDevice, { foreignKey: 'nas_id', as: 'nas' });
+RadiusAccount.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+Customer.hasMany(RadiusAccount, { foreignKey: 'customer_id', as: 'radius_accounts' });
+try {
+  const { attachTenantHooks } = require('../middleware/tenantContext');
+  attachTenantHooks(RadiusServer);
+  attachTenantHooks(NasDevice);
+  attachTenantHooks(RadiusAccount);
+} catch (_) {}
+
 // Role <-> Permission (Many-to-Many)
 Role.belongsToMany(Permission, { through: RolePermission, foreignKey: 'role_id', as: 'permissions' });
 Permission.belongsToMany(Role, { through: RolePermission, foreignKey: 'permission_id', as: 'roles' });
@@ -257,6 +280,9 @@ const db = {
   User,
   Role,
   Tenant,
+  RadiusServer,
+  RadiusAccount,
+  NasDevice,
   Permission,
   RolePermission,
   Customer,
