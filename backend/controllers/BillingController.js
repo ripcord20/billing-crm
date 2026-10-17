@@ -1740,7 +1740,7 @@ class BillingController {
           if (cust && cust.phone) {
             const GatewayService = require('../services/GatewayService');
             const { WaTemplate } = require('../models');
-            const { replaceVariables, getPaymentConfirmationData, getDefaultPaymentTemplate, getOrCreateCustomerLink } = require('../utils/templateHelper');
+            const { replaceVariables, getPaymentConfirmationData, getDefaultPaymentTemplate, getOrCreateCustomerLink, ensurePaidByLine } = require('../utils/templateHelper');
             const session = await GatewayService.getDefaultSendingSession();
             if (session) await GatewayService.warmSession(session.session_id);
             if (session && GatewayService.isConnected(session.session_id)) {
@@ -1748,6 +1748,7 @@ class BillingController {
               const tplContent = tplRow?.content || tplRow?.message || getDefaultPaymentTemplate();
               const MONTHS = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
               let companyName = ''; try { companyName = await getCompanyName(); } catch (_) {}
+              const markRole = String(req.user?.role?.name || '').toLowerCase();
               const data = getPaymentConfirmationData({
                 customerName: cust.name, customerId: cust.customer_id, customerPhone: cust.phone,
                 packageName: cust.package?.name,
@@ -1758,9 +1759,12 @@ class BillingController {
                 dueDate: cust.due_date, dueDateFormatted: cust.due_date ? moment(cust.due_date).format('DD/MM/YYYY') : '-',
                 invoiceNumber: invoice.invoice_number, invoiceId: invoice.id,
                 notes: notes || null, companyName,
-                permanentLink: await getOrCreateCustomerLink(cust)
+                permanentLink: await getOrCreateCustomerLink(cust),
+                collectorName: markRole === 'collector' ? (req.user?.name || '') : '',
+                collectedById: markRole === 'collector' ? (req.user?.id || null) : null,
+                userRole: markRole
               });
-              const msg = replaceVariables(tplContent, data);
+              const msg = ensurePaidByLine(replaceVariables(tplContent, data), data);
               await GatewayService.sendMessage(session.session_id, cust.phone, msg, null);
               waStatus = 'sent';
               if (tplRow) await tplRow.increment('usage_count').catch(() => {});

@@ -357,6 +357,7 @@ class PaymentController {
       const refNote = [bank, reference_no].filter(Boolean).join(' — ') || null;
 
       // Simpan payment
+      const recorderRole = String(req.user?.role?.name || '').toLowerCase();
       const payment = await Payment.create({
         invoice_id: invoice.id,
         amount: parseFloat(String(amount).replace(/[.,]/g, '') || 0) || parseFloat(amount),
@@ -364,6 +365,7 @@ class PaymentController {
         payment_date: payment_date || moment().format('YYYY-MM-DD'),
         reference_number: refNote,
         recorded_by: req.user?.id || null,
+        collected_by: recorderRole === 'collector' ? (req.user?.id || null) : null,
         notes: notes || null
       }, { transaction: t });
 
@@ -458,14 +460,17 @@ class PaymentController {
           referenceNo: reference_no,
           dueDate: effectiveDueAfter,
           invoiceNumber: invoice.invoice_number,
-          notes
+          notes,
+          collectorName: recorderRole === 'collector' ? (req.user?.name || '') : '',
+          collectedById: payment.collected_by || null,
+          userRole: recorderRole
         };
         setImmediate(async () => {
           let waSentStatus = 'failed';
           try {
             const GatewayService = require('../services/GatewayService');
             const { WaTemplate, Payment } = require('../models');
-            const { replaceVariables, getPaymentConfirmationData, getDefaultPaymentTemplate } = require('../utils/templateHelper');
+            const { replaceVariables, getPaymentConfirmationData, getDefaultPaymentTemplate, ensurePaidByLine } = require('../utils/templateHelper');
             const session = await GatewayService.getDefaultSendingSession();
             if (session) await GatewayService.warmSession(session.session_id);
             if (session && GatewayService.isConnected(session.session_id)) {
@@ -483,9 +488,10 @@ class PaymentController {
                 paymentDate: waCtx.paymentDate, paymentDateFormatted: fmtPay, method: waCtx.payMethod,
                 methodLabel: methodStr, bank: waCtx.bank, referenceNo: waCtx.referenceNo,
                 dueDate: waCtx.dueDate, dueDateFormatted: fmtDue, invoiceNumber: waCtx.invoiceNumber,
-                notes: waCtx.notes, companyName
+                notes: waCtx.notes, companyName,
+                collectorName: waCtx.collectorName, collectedById: waCtx.collectedById, userRole: waCtx.userRole
               });
-              const msg = replaceVariables(templateContent, templateData);
+              const msg = ensurePaidByLine(replaceVariables(templateContent, templateData), templateData);
               await GatewayService.sendMessage(session.session_id, waCtx.phone, msg, null);
               waSentStatus = 'sent';
               if (template) { try { await template.increment('usage_count'); } catch(_){} }
@@ -1421,7 +1427,7 @@ class PaymentController {
         WaSession, WaTemplate, Invoice, Customer, Package, Payment
       } = require('../models');
       const {
-        replaceVariables, getInvoiceData,
+        replaceVariables, getInvoiceData, ensurePaidByLine,
         getDefaultInvoiceUnpaidTemplate, getDefaultInvoicePaidTemplate,
         getOrCreateCustomerLink
       } = require('../utils/templateHelper');
@@ -1498,9 +1504,13 @@ class PaymentController {
       // Untuk paid invoice, ambil payment terakhir untuk info metode & tgl bayar.
       let paidDateStr   = null;
       let paymentMethodLabel = null;
+      let paidCollectorName = '';
+      let paidCollectedById = null;
+      let paidMethod = null;
       if (isPaid) {
         const lastPayment = await Payment.findOne({
           where: { invoice_id: invoice.id },
+          include: [{ association: 'collector', attributes: ['id', 'name'], required: false }],
           order: [['id', 'DESC']]
         });
         if (lastPayment) {
@@ -1508,6 +1518,9 @@ class PaymentController {
             ? moment(lastPayment.payment_date).format('DD MMMM YYYY')
             : (invoice.paid_date ? moment(invoice.paid_date).format('DD MMMM YYYY') : '-');
           paymentMethodLabel = require('../utils/paymentMethodLabel').methodLabel(lastPayment.payment_method);
+          paidMethod = lastPayment.payment_method;
+          paidCollectedById = lastPayment.collected_by || null;
+          paidCollectorName = lastPayment.collector?.name || '';
         } else if (invoice.paid_date) {
           paidDateStr = moment(invoice.paid_date).format('DD MMMM YYYY');
         }
@@ -1545,10 +1558,15 @@ class PaymentController {
         status: invoice.status,
         paymentMethodLabel,
         companyName,
-        permanentLink: await getOrCreateCustomerLink(customer)
+        permanentLink: await getOrCreateCustomerLink(customer),
+        collectorName: paidCollectorName,
+        collectedById: paidCollectedById,
+        paymentMethod: paidMethod
       });
 
-      const msg = replaceVariables(tplContent, tplData);
+      const msg = isPaid
+        ? ensurePaidByLine(replaceVariables(tplContent, tplData), tplData)
+        : replaceVariables(tplContent, tplData);
 
       // ── 5) Kirim & track ─────────────────────────────────────────
       await GatewayService.sendMessage(session.session_id, customer.phone, msg, null);

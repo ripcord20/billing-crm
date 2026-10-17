@@ -137,6 +137,51 @@ function replaceVariables(template, data) {
 }
 
 /**
+ * Siapa yang melunasi, untuk pesan WA ke pelanggan.
+ * Kolektor lapangan → "kolektor {nama}". Selain itu (pelanggan bayar sendiri /
+ * gateway / dicatat di kantor) → "saya".
+ */
+function describePaidBy(opts = {}) {
+  const method = String(opts.paymentMethod || opts.method || '').toLowerCase();
+  const role = String(opts.userRole || opts.roleName || '').toLowerCase();
+  const collectorName = String(opts.collectorName || '').trim();
+  const collectedById = opts.collectedById || opts.collected_by || null;
+  const isCollector = !!(collectedById || method === 'field_collection' || role === 'collector');
+  if (isCollector) {
+    const who = collectorName ? `kolektor ${collectorName}` : 'kolektor';
+    return {
+      dilunasi_oleh: who,
+      dilunasi_oleh_lengkap: `Dilunasi oleh ${who}`,
+      collector_name: collectorName || '-'
+    };
+  }
+  return {
+    dilunasi_oleh: 'saya',
+    dilunasi_oleh_lengkap: 'Dilunasi oleh saya',
+    collector_name: '-'
+  };
+}
+
+function paidByVars(opts) {
+  const d = describePaidBy(opts || {});
+  return {
+    dilunasi_oleh: d.dilunasi_oleh,
+    dilunasi_oleh_lengkap: d.dilunasi_oleh_lengkap,
+    collector_name: d.collector_name,
+    paid_by: d.dilunasi_oleh,
+    paid_by_label: d.dilunasi_oleh_lengkap
+  };
+}
+
+/** Sisipkan baris "Dilunasi oleh …" jika template lama belum memakai variabelnya. */
+function ensurePaidByLine(message, data) {
+  const line = data && data.dilunasi_oleh_lengkap;
+  if (!message || !line || line === '-') return message || '';
+  if (/dilunasi oleh/i.test(message)) return message;
+  return `${String(message).replace(/\s+$/, '')}\n\n${line}`;
+}
+
+/**
  * Get payment confirmation data for template
  * @param {object} params - Payment data
  * @returns {object} - Template variables
@@ -161,7 +206,10 @@ function getPaymentConfirmationData(params) {
     invoiceId,
     notes,
     companyName,
-    permanentLink
+    permanentLink,
+    collectorName,
+    collectedById,
+    userRole
   } = params;
 
   // Public invoice link (kalau invoiceId disertakan). Untuk template
@@ -248,7 +296,14 @@ function getPaymentConfirmationData(params) {
     // ikut ter-render. Caller boleh kirim companyName; bila tidak, fallback '-'.
     perusahaan: companyName || '-',
     company: companyName || '-',
-    company_name: companyName || '-'
+    company_name: companyName || '-',
+
+    ...paidByVars({
+      collectorName,
+      collectedById,
+      paymentMethod: method,
+      userRole
+    })
   };
 }
 
@@ -265,6 +320,7 @@ Terima kasih *{nama}*, pembayaran Anda telah dicatat.
 💰 Jumlah  : {jumlah}
 📅 Tgl Bayar: {tgl_bayar}
 💳 Metode  : {metode}
+👤 Dilunasi oleh: {dilunasi_oleh}
 
 *Aktif hingga: {aktif_hingga}*
 
@@ -295,7 +351,11 @@ function getInvoiceData(params) {
     status,            // 'unpaid'|'overdue'|'paid'
     paymentMethodLabel,
     companyName,
-    permanentLink      // URL link pembayaran permanen pelanggan (opsional)
+    permanentLink,     // URL link pembayaran permanen pelanggan (opsional)
+    collectorName,
+    collectedById,
+    paymentMethod,
+    userRole
   } = params;
 
   // {status} dalam Bahasa Indonesia untuk display di pesan WA
@@ -365,7 +425,14 @@ function getInvoiceData(params) {
     // Kosong kalau pelanggan belum punya token.
     link_bayar_permanen: permanentLink || '',
     link_permanen:       permanentLink || '',
-    permanent_link:      permanentLink || ''
+    permanent_link:      permanentLink || '',
+
+    ...paidByVars({
+      collectorName,
+      collectedById,
+      paymentMethod: paymentMethod || params.method,
+      userRole
+    })
   };
 }
 
@@ -400,6 +467,7 @@ Periode    : {periode}
 Total      : *{jumlah}*
 Tgl Bayar  : {tgl_bayar}
 Metode     : {metode}
+Dilunasi oleh: {dilunasi_oleh}
 Aktif s/d  : *{aktif_hingga}*
 
 📄 Lihat / unduh invoice: {link_invoice}
@@ -409,6 +477,9 @@ _Terima kasih telah menggunakan layanan kami_ 🙏`;
 
 module.exports = {
   replaceVariables,
+  describePaidBy,
+  paidByVars,
+  ensurePaidByLine,
   getPaymentConfirmationData,
   getDefaultPaymentTemplate,
   getInvoiceData,
