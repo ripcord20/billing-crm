@@ -7,8 +7,24 @@
    - kartu menu tanpa kotak putih (menyatu dengan background)
    - hilangkan semua border-left aksen
    - hamburger rapih & clean
+   Font Plus Jakarta: dimuat via <link> di halaman, bukan @import
+   (agar CSS shell tidak tertahan Google Fonts — ikon rumah sempat FOUC).
    ========================================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* FOUC guard: ikon menu tidak boleh mengisi viewport sebelum CSS lain siap */
+.bn-item svg,
+.bn-ic svg,
+.mdr-item svg,
+.mdr-hamb svg,
+.mtop-hamb svg,
+.mtop-bell svg,
+.tb-hamb svg {
+  width: 22px;
+  height: 22px;
+  max-width: 24px;
+  max-height: 24px;
+  flex-shrink: 0;
+}
 
 :root{
   --bg:#ffffff;
