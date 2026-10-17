@@ -2,7 +2,7 @@
 // FLAYNET — Shared MikroTik Selector
 // ============================================================
 // Dropdown selector MikroTik yang konsisten antar halaman
-// (Dashboard, PPPoE, Queue, IP Pool, Firewall, Traffic, Resource).
+// (Dashboard, PPPoE, Queue, Traffic, Resource).
 //
 // Cara pakai di view:
 //   1. Letakkan placeholder: <div id="mtSelectorMount"></div>

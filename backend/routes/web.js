@@ -215,13 +215,9 @@ router.get('/monitoring/queue', authenticate, blockFinanceArea, (req, res) => {
   res.render('pages/queue', { title: 'Simple Queue', user: req.user, active: 'queue' });
 });
 
-router.get('/monitoring/ippool', authenticate, blockFinanceArea, (req, res) => {
-  res.render('pages/ippool', { title: 'IP Pool Usage', user: req.user, active: 'ippool' });
-});
-
-router.get('/monitoring/firewall', authenticate, blockFinanceArea, (req, res) => {
-  res.render('pages/firewall', { title: 'Firewall Rules', user: req.user, active: 'firewall' });
-});
+// Modul IP Pool & Firewall dimatikan — redirect bookmark lama ke dashboard.
+router.get('/monitoring/ippool', authenticate, (req, res) => res.redirect('/dashboard'));
+router.get('/monitoring/firewall', authenticate, (req, res) => res.redirect('/dashboard'));
 
 router.get('/monitoring/olt', authenticate, blockFinanceArea, (req, res) => {
   res.render('pages/olt', { title: 'OLT Monitoring', user: req.user, active: 'olt' });
