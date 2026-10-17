@@ -571,6 +571,10 @@ class CollectorFieldController {
   // Kirim struk WA (dipakai background). Best-effort, swallow error.
   async _sendReceiptWA(ctx) {
     const GatewayService = require('../services/GatewayService');
+    const { WaTemplate } = require('../models');
+    const {
+      replaceVariables, getPaymentConfirmationData, getDefaultPaymentTemplate, ensurePaidByLine
+    } = require('../utils/templateHelper');
     const session = await GatewayService.getDefaultSendingSession();
     if (!session) return;
     await GatewayService.warmSession(session.session_id);
@@ -582,23 +586,36 @@ class CollectorFieldController {
     const fmtAmt = 'Rp ' + parseFloat(ctx.amount).toLocaleString('id-ID');
     const fmtDue = moment(ctx.dueDate).format('DD/MM/YYYY');
     const fmtPay = moment(ctx.payDate).format('DD/MM/YYYY');
-    const lines = [
-      `*Konfirmasi Pembayaran*${companyName ? ' — ' + companyName : ''}`,
-      ``,
-      `Halo ${ctx.customerName},`,
-      ctx.isPartial
-        ? `Pembayaran *sebagian* sebesar ${fmtAmt} telah kami terima.`
-        : `Pembayaran *LUNAS* sebesar ${fmtAmt} telah kami terima.`,
-      ``,
-      `No. Invoice : ${ctx.invoiceNumber}`,
-      `Tgl Bayar   : ${fmtPay}`,
-      ctx.isPartial ? `Sisa Tagihan: Rp ${Number(ctx.carryOver).toLocaleString('id-ID')} (ditagih bln depan)` : null,
-      `Jatuh Tempo Berikutnya: ${fmtDue}`,
-      `Ditagih oleh: ${ctx.collectorName}`,
-      ``,
-      `Terima kasih atas pembayaran Anda.`
-    ].filter(Boolean);
-    await GatewayService.sendMessage(session.session_id, ctx.phone, lines.join('\n'), null);
+    const tplRow = await WaTemplate.findOne({
+      where: { category: 'payment_confirm', is_active: true },
+      order: [['updated_at', 'DESC']]
+    });
+    const tplContent = tplRow?.content || tplRow?.message || getDefaultPaymentTemplate();
+    const data = getPaymentConfirmationData({
+      customerName: ctx.customerName,
+      customerId: ctx.customerId,
+      customerPhone: ctx.phone,
+      packageName: ctx.packageName,
+      amount: ctx.amount,
+      amountFormatted: fmtAmt,
+      paymentDate: ctx.payDate,
+      paymentDateFormatted: fmtPay,
+      method: 'field_collection',
+      methodLabel: 'Cash Collect',
+      dueDate: ctx.dueDate,
+      dueDateFormatted: fmtDue,
+      invoiceNumber: ctx.invoiceNumber,
+      companyName,
+      collectorName: ctx.collectorName,
+      collectedById: true,
+      userRole: 'collector'
+    });
+    let msg = ensurePaidByLine(replaceVariables(tplContent, data), data);
+    if (ctx.isPartial) {
+      msg += `\nSisa tagihan: Rp ${Number(ctx.carryOver).toLocaleString('id-ID')} (ditagih bulan depan)`;
+    }
+    await GatewayService.sendMessage(session.session_id, ctx.phone, msg, null);
+    if (tplRow) await tplRow.increment('usage_count').catch(() => {});
   }
 
   // ── Kirim payment link permanen via WA ────────────────────────────

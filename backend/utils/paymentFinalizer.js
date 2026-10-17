@@ -173,7 +173,7 @@ async function finalizePaidInvoice({ invoiceId, paymentId, channel = 'gateway', 
     try {
       const WAService = require('../services/WAService');
       const { WaSession, WaTemplate } = require('../models');
-      const { replaceVariables, getPaymentConfirmationData, getDefaultPaymentTemplate }
+      const { replaceVariables, getPaymentConfirmationData, getDefaultPaymentTemplate, ensurePaidByLine }
         = require('./templateHelper');
 
       const GatewayService = require('../services/GatewayService');
@@ -201,6 +201,14 @@ async function finalizePaidInvoice({ invoiceId, paymentId, channel = 'gateway', 
         let companyName = '';
         try { companyName = await require('./companyInfo').getCompanyName(); } catch (_) {}
 
+        let collectorName = '';
+        if (payment.collected_by) {
+          try {
+            const { User } = require('../models');
+            const col = await User.findByPk(payment.collected_by, { attributes: ['name'] });
+            collectorName = col?.name || '';
+          } catch (_) {}
+        }
         const data = getPaymentConfirmationData({
           customerName:         customer.name,
           customerId:           customer.customer_id,
@@ -218,9 +226,11 @@ async function finalizePaidInvoice({ invoiceId, paymentId, channel = 'gateway', 
           dueDateFormatted:     fmtDue,
           invoiceNumber:        invoice.invoice_number,
           notes:                payment.notes,
-          companyName
+          companyName,
+          collectorName,
+          collectedById:        payment.collected_by || null
         });
-        const msg = replaceVariables(templateContent, data);
+        const msg = ensurePaidByLine(replaceVariables(templateContent, data), data);
         await GatewayService.sendMessage(session.session_id, customer.phone, msg, null);
         result.waSent = 'sent';
         if (template) await template.increment('usage_count').catch(() => {});
