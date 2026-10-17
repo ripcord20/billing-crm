@@ -10,6 +10,8 @@
   function _on(id){ return _act === id ? ' active' : ''; }
 %>
 <style>
+  /* Ikon drawer: ukuran intrinsik supaya tidak FOUC sebesar layar */
+  .mdr-item svg,.mdr-hamb svg,.mtop-hamb svg,.mtop-bell svg,.bn-item svg,.bn-ic svg{width:20px;height:20px;max-width:24px;max-height:24px;flex-shrink:0}
   /* Hamburger lama (floating) dimatikan — diganti avatar di top nav sticky */
   .mdr-hamb{display:none !important;}
 
