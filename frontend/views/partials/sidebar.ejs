@@ -402,27 +402,36 @@
 
   <% } else { %>
 
-    <!-- OVERVIEW -->
+    <!-- OVERVIEW (dropdown) -->
+    <% const _overviewActive = ['dashboard','finance-dashboard','noc-dashboard','sales-dashboard'].includes(active); %>
     <div class="nav-section">
-      <span class="nav-section-title">OVERVIEW</span>
-      <a href="/dashboard" class="nav-item <%= active === 'dashboard' ? 'active' : '' %>">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-        <span>Dashboard</span>
-      </a>
-      <% if (user && user.role && (user.role.name === 'superadmin' || user.role.name === 'admin')) { %>
-      <a href="/finance" class="nav-item <%= active === 'finance-dashboard' ? 'active' : '' %>">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-        <span>Financial Dashboard</span>
-      </a>
-      <a href="/noc" class="nav-item <%= active === 'noc-dashboard' ? 'active' : '' %>">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="6" y1="9" x2="6.01" y2="9"/><line x1="10" y1="9" x2="14" y2="9"/></svg>
-        <span>NOC Dashboard</span>
-      </a>
-      <a href="/sales" class="nav-item <%= active === 'sales-dashboard' ? 'active' : '' %>">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-        <span>Sales Dashboard</span>
-      </a>
-      <% } %>
+      <div class="nav-group <%= _overviewActive ? 'open' : '' %>" data-nav-group="overview">
+        <button type="button" class="nav-item nav-group-toggle <%= _overviewActive ? 'active' : '' %>" onclick="toggleNavGroup(this)">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+          <span>Overview</span>
+          <svg class="nav-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="nav-group-children">
+          <a href="/dashboard" class="nav-sub <%= active === 'dashboard' ? 'active' : '' %>">
+            <span class="nav-sub-dot"></span>
+            <span>Dashboard</span>
+          </a>
+          <% if (user && user.role && (user.role.name === 'superadmin' || user.role.name === 'admin')) { %>
+          <a href="/finance" class="nav-sub <%= active === 'finance-dashboard' ? 'active' : '' %>">
+            <span class="nav-sub-dot"></span>
+            <span>Financial Dashboard</span>
+          </a>
+          <a href="/noc" class="nav-sub <%= active === 'noc-dashboard' ? 'active' : '' %>">
+            <span class="nav-sub-dot"></span>
+            <span>NOC Dashboard</span>
+          </a>
+          <a href="/sales" class="nav-sub <%= active === 'sales-dashboard' ? 'active' : '' %>">
+            <span class="nav-sub-dot"></span>
+            <span>Sales Dashboard</span>
+          </a>
+          <% } %>
+        </div>
+      </div>
     </div>
 
     <!-- MONITORING -->
@@ -792,7 +801,7 @@
   max-height:0;overflow:hidden;
   transition:max-height .25s ease;
 }
-.nav-group.open .nav-group-children{max-height:240px;}
+.nav-group.open .nav-group-children{max-height:320px;}
 .nav-sub{
   display:flex;align-items:center;gap:10px;
   padding:8px 18px 8px 44px;
