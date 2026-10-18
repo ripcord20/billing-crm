@@ -113,7 +113,7 @@ async function run(db) {
   });
 
   const radiusHost = process.env.RADIUS_HOST || '192.168.22.9';
-  const mysqlHost = process.env.RADIUS_MYSQL_HOST || radiusHost;
+  const mysqlHost = fiberixRadiusMysqlHost() || process.env.RADIUS_MYSQL_HOST || '127.0.0.1';
   const mysqlUser = process.env.RADIUS_MYSQL_USER || 'radius';
   const mysqlDb = process.env.RADIUS_MYSQL_DB || 'radius';
   const mysqlPassRaw = process.env.RADIUS_MYSQL_PASSWORD || '';
@@ -147,12 +147,11 @@ async function run(db) {
       mysql_database: mysqlDb,
       mysql_user: mysqlUser,
       mysql_password: mysqlPass,
-      notes: 'Server RADIUS LAN. Billing di 192.168.22.99. Isi password MySQL radius di modul RADIUS bila masih kosong.',
+      notes: 'FreeRADIUS 22.9. Isolir/provision menulis radcheck di billing 127.0.0.1.',
       is_active: true
     });
   } else {
-    // Opsi 1: jangan biarkan baris lama tertinggal di 127.0.0.1.
-    const pinHost = fiberixRadiusMysqlHost() || (mysqlHost === '192.168.22.9' ? mysqlHost : '');
+    const pinHost = fiberixRadiusMysqlHost();
     if (pinHost) {
       const patch = {
         mysql_host: pinHost,
@@ -160,7 +159,7 @@ async function run(db) {
         mysql_port: parseInt(process.env.RADIUS_MYSQL_PORT || radiusSrv.mysql_port || '3306', 10),
         mysql_database: mysqlDb || radiusSrv.mysql_database || 'radius',
         mysql_user: mysqlUser || radiusSrv.mysql_user || 'radius',
-        notes: 'Opsi 1: billing menulis radcheck ke MySQL daloRADIUS 192.168.22.9'
+        notes: 'FreeRADIUS 22.9 membaca radcheck di billing 127.0.0.1'
       };
       if (mysqlPass) patch.mysql_password = mysqlPass;
       await radiusSrv.update(patch);
@@ -172,8 +171,8 @@ async function run(db) {
   }
 
   try {
-    if (process.env.FIBERIX_FULL_RADIUS === '1' || process.env.RADIUS_MYSQL_HOST === '192.168.22.9') {
-      logger.info('[RadiusTenant] skip local bootstrap — full RADIUS memakai 192.168.22.9');
+    if (process.env.FIBERIX_FULL_RADIUS === '1' || fiberixRadiusMysqlHost()) {
+      logger.info('[RadiusTenant] skip local bootstrap — Isolir tulis radcheck billing 127.0.0.1');
     } else {
       await require('./RadiusLocalBootstrap').run(db);
     }

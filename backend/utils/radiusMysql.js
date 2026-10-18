@@ -2,9 +2,25 @@
 
 const crypto = require('crypto');
 
+function isLocalMysqlHost(host) {
+  const h = String(host || '').trim();
+  return !h || h === '127.0.0.1' || h === 'localhost';
+}
+
 function fiberixRadiusMysqlHost(env = process.env) {
   if (String(env.FIBERIX_FULL_RADIUS || '') !== '1') return '';
-  return String(env.RADIUS_MYSQL_HOST || env.RADIUS_HOST || '192.168.22.9').trim();
+  const fromEnv = String(env.RADIUS_MYSQL_HOST || '').trim();
+  // FreeRADIUS di 22.9 sudah baca schema radius di billing (127.0.0.1).
+  // MySQL lokal 22.9 hampir kosong — jangan tulis Isolir ke sana.
+  if (fromEnv && fromEnv !== '192.168.22.9') return fromEnv;
+  return '127.0.0.1';
+}
+
+/** Isolir/provision ke radcheck lokal: pakai user billing, bukan password MySQL 22.9. */
+function preferBillingMysqlAuth(env = process.env, host) {
+  if (String(env.FIBERIX_FULL_RADIUS || '') !== '1') return false;
+  if (env.RADIUS_MYSQL_PASSWORD) return false;
+  return isLocalMysqlHost(host || fiberixRadiusMysqlHost(env));
 }
 
 function effectiveMysqlHost(server, env = process.env) {
@@ -34,7 +50,7 @@ function describeMysqlError(err, server) {
   const code = err && err.code;
   if (code === 'ECONNREFUSED') {
     if (String((server && server.mysql_host) || '').includes('192.168.22.9')) {
-      return `MySQL RADIUS menolak koneksi di ${host}. Buka bind-address di 22.9 dan GRANT user dari 192.168.22.99 (scripts/fiberix-open-radius-mysql-22.9.sh).`;
+      return `MySQL RADIUS menolak koneksi di ${host}. Fiberix: FreeRADIUS 22.9 membaca radcheck di billing 127.0.0.1, bukan MySQL lokal 22.9.`;
     }
     return `MySQL RADIUS menolak koneksi di ${host}. Port 3306 tidak terbuka di host itu.`;
   }
@@ -156,5 +172,7 @@ module.exports = {
   describeMysqlError,
   FREERADIUS_TABLES,
   fiberixRadiusMysqlHost,
-  effectiveMysqlHost
+  effectiveMysqlHost,
+  isLocalMysqlHost,
+  preferBillingMysqlAuth
 };

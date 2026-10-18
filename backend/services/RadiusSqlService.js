@@ -8,12 +8,13 @@
 const mysql = require('mysql2/promise');
 const { decryptSecret } = require('../utils/secretBox');
 const logger = require('../utils/logger');
-const { describeMysqlError, assertCloneSafeTarget, effectiveMysqlHost } = require('../utils/radiusMysql');
-
-function isLocalMysqlHost(host) {
-  const h = String(host || '').trim();
-  return !h || h === '127.0.0.1' || h === 'localhost';
-}
+const {
+  describeMysqlError,
+  assertCloneSafeTarget,
+  effectiveMysqlHost,
+  isLocalMysqlHost,
+  preferBillingMysqlAuth
+} = require('../utils/radiusMysql');
 
 function billingDbAuth() {
   return {
@@ -29,6 +30,9 @@ function resolveMysqlAuth(server) {
       user: process.env.RADIUS_MYSQL_USER || server.mysql_user || 'radius',
       password: String(process.env.RADIUS_MYSQL_PASSWORD)
     };
+  }
+  if (preferBillingMysqlAuth(process.env, host)) {
+    return billingDbAuth();
   }
   let user = server.mysql_user || 'radius';
   let password = '';

@@ -1,6 +1,14 @@
 #!/bin/bash
+# JANGAN dijalankan di Fiberix live: FreeRADIUS 22.9 sudah
+# mods-enabled/sql server = 192.168.22.99. MySQL lokal 22.9 hampir kosong.
+# Isolir/provision menulis radcheck di billing 127.0.0.1.
 # Jalankan di server daloRADIUS 192.168.22.9 sebagai root.
 # Membuka MariaDB hanya dari billing 192.168.22.99, grant user radius.
+if [[ "${FORCE_OPEN_22_9_MYSQL:-}" != "1" ]]; then
+  echo "Dibatalkan: FreeRADIUS 22.9 sudah baca MySQL billing 192.168.22.99."
+  echo "Set FORCE_OPEN_22_9_MYSQL=1 hanya jika memang perlu buka 3306 di 22.9."
+  exit 1
+fi
 set -euo pipefail
 BILLING="${BILLING_LAN:-192.168.22.99}"
 BIND="${BIND_ADDR:-192.168.22.9}"

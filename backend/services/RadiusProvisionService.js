@@ -250,7 +250,7 @@ async function rename(customer, oldUsername, newUsername) {
   return { success: true, username: to, backend: 'radius' };
 }
 
-/** Samakan radius_accounts dengan username yang sudah ada di radcheck 22.9. Tidak menyalin password. */
+/** Samakan radius_accounts dengan username yang sudah ada di radcheck billing. Tidak menyalin password. */
 async function linkCustomersToRadcheck() {
   const server = await resolveServer();
   if (!server) return { linked: 0, skipped: true, reason: 'no_server' };
