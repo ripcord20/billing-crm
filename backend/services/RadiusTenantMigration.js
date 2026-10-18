@@ -4,6 +4,7 @@ const logger = require('../utils/logger');
 const { encryptSecret } = require('../utils/secretBox');
 const { pickExistingRadiusServer, duplicateServerIds } = require('../utils/radiusServerPick');
 const { ISOLIR_METHOD_ENUM_SQL } = require('../utils/isolirRadius');
+const { fiberixRadiusMysqlHost } = require('../utils/radiusMysql');
 
 function slugify(name) {
   return String(name || 'tenant')
@@ -149,6 +150,21 @@ async function run(db) {
       notes: 'Server RADIUS LAN. Billing di 192.168.22.99. Isi password MySQL radius di modul RADIUS bila masih kosong.',
       is_active: true
     });
+  } else {
+    // Opsi 1: jangan biarkan baris lama tertinggal di 127.0.0.1.
+    const pinHost = fiberixRadiusMysqlHost() || (mysqlHost === '192.168.22.9' ? mysqlHost : '');
+    if (pinHost) {
+      const patch = {
+        mysql_host: pinHost,
+        host: radiusSrv.host || radiusHost,
+        mysql_port: parseInt(process.env.RADIUS_MYSQL_PORT || radiusSrv.mysql_port || '3306', 10),
+        mysql_database: mysqlDb || radiusSrv.mysql_database || 'radius',
+        mysql_user: mysqlUser || radiusSrv.mysql_user || 'radius',
+        notes: 'Opsi 1: billing menulis radcheck ke MySQL daloRADIUS 192.168.22.9'
+      };
+      if (mysqlPass) patch.mysql_password = mysqlPass;
+      await radiusSrv.update(patch);
+    }
   }
 
   if (!defaultTenant.radius_server_id) {
@@ -163,6 +179,15 @@ async function run(db) {
     }
   } catch (e) {
     logger.warn('[RadiusTenant] local bootstrap: ' + e.message);
+  }
+
+  try {
+    if (fiberixRadiusMysqlHost()) {
+      const linked = await require('./RadiusProvisionService').linkCustomersToRadcheck();
+      logger.info('[RadiusTenant] link radcheck ' + JSON.stringify(linked));
+    }
+  } catch (e) {
+    logger.warn('[RadiusTenant] link radcheck: ' + e.message);
   }
 
   try {

@@ -8,7 +8,7 @@
 const mysql = require('mysql2/promise');
 const { decryptSecret } = require('../utils/secretBox');
 const logger = require('../utils/logger');
-const { describeMysqlError, assertCloneSafeTarget } = require('../utils/radiusMysql');
+const { describeMysqlError, assertCloneSafeTarget, effectiveMysqlHost } = require('../utils/radiusMysql');
 
 function isLocalMysqlHost(host) {
   const h = String(host || '').trim();
@@ -23,6 +23,13 @@ function billingDbAuth() {
 }
 
 function resolveMysqlAuth(server) {
+  const host = effectiveMysqlHost(server);
+  if (process.env.RADIUS_MYSQL_PASSWORD) {
+    return {
+      user: process.env.RADIUS_MYSQL_USER || server.mysql_user || 'radius',
+      password: String(process.env.RADIUS_MYSQL_PASSWORD)
+    };
+  }
   let user = server.mysql_user || 'radius';
   let password = '';
   try {
@@ -30,7 +37,7 @@ function resolveMysqlAuth(server) {
   } catch (_) {
     password = '';
   }
-  if (!password && isLocalMysqlHost(server.mysql_host)) {
+  if (!password && isLocalMysqlHost(host)) {
     const billing = billingDbAuth();
     user = billing.user;
     password = billing.password;
@@ -53,7 +60,7 @@ function poolKey(server) {
   } catch (_) {}
   return [
     server.id,
-    server.mysql_host,
+    effectiveMysqlHost(server),
     server.mysql_port,
     server.mysql_database,
     user
@@ -66,7 +73,7 @@ async function getPool(server) {
   if (pools.has(key)) return pools.get(key);
   const auth = resolveMysqlAuth(server);
   const pool = mysql.createPool({
-    host: server.mysql_host || '127.0.0.1',
+    host: effectiveMysqlHost(server),
     port: server.mysql_port || 3306,
     user: auth.user,
     password: auth.password,
@@ -85,7 +92,7 @@ async function withPool(server, fn) {
     return await fn(pool);
   } catch (e) {
     invalidatePool(server);
-    const err = new Error(describeMysqlError(e, server));
+    const err = new Error(describeMysqlError(e, Object.assign({}, server, { mysql_host: effectiveMysqlHost(server) })));
     err.code = e.code;
     throw err;
   }
@@ -109,7 +116,7 @@ async function testConnection(server) {
   return withPool(server, async (pool) => {
     const [rows] = await pool.query('SELECT 1 AS ok');
     const [[nas]] = await pool.query('SELECT COUNT(*) AS c FROM nas').catch(() => [[{ c: 0 }]]);
-    return { ok: true, ping: rows[0]?.ok === 1, nas_count: nas?.c || 0, host: server.mysql_host };
+    return { ok: true, ping: rows[0]?.ok === 1, nas_count: nas?.c || 0, host: effectiveMysqlHost(server) };
   });
 }
 
