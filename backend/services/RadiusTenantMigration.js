@@ -3,6 +3,7 @@
 const logger = require('../utils/logger');
 const { encryptSecret } = require('../utils/secretBox');
 const { pickExistingRadiusServer, duplicateServerIds } = require('../utils/radiusServerPick');
+const { ISOLIR_METHOD_ENUM_SQL } = require('../utils/isolirRadius');
 
 function slugify(name) {
   return String(name || 'tenant')
@@ -166,7 +167,7 @@ async function run(db) {
 
   try {
     await sequelize.query(
-      "ALTER TABLE isolir_logs MODIFY COLUMN isolir_method ENUM('static','pppoe','hotspot_binding','radius') DEFAULT 'static'"
+      "ALTER TABLE isolir_logs MODIFY COLUMN isolir_method " + ISOLIR_METHOD_ENUM_SQL + " DEFAULT 'static'"
     );
   } catch (e) {
     logger.warn('[RadiusTenant] isolir_method enum: ' + e.message);

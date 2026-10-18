@@ -1,16 +1,9 @@
 const IsolirService = require('../services/IsolirService');
 const { sequelize } = require('../models');
+const { detectIsolirMethod, canNetworkIsolir } = require('../utils/isolirRadius');
 
-// Tentukan metode isolir dari data customer (selaras dengan IsolirService).
-// Prioritas: connection_type eksplisit → fallback static_ip → pppoe.
 function detectMethod(r) {
-  const ct = (r.connection_type || '').toLowerCase();
-  if (ct === 'hotspot' && (r.mac_address || r.static_ip)) return 'hotspot_binding';
-  if (ct === 'pppoe'  && r.pppoe_username) return 'pppoe';
-  if (ct === 'static' && r.static_ip)      return 'static';
-  if (r.static_ip)      return 'static';
-  if (r.pppoe_username) return 'pppoe';
-  return 'unknown';
+  return detectIsolirMethod(r);
 }
 
 class IsolirController {
@@ -398,7 +391,7 @@ class IsolirController {
         // Eligible untuk isolir: punya MIKROTIK + method valid
         const isolirMethod = detectMethod(r);
         const hasMethod = isolirMethod !== 'unknown';
-        const isEligibleForIsolir = !!(hasMethod && r.mikrotik_id);
+        const isEligibleForIsolir = canNetworkIsolir(r, isolirMethod);
         const overdueDays = parseInt(r.days_overdue) || 0;
         const item = {
           id:              r.id,
