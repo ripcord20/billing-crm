@@ -579,7 +579,7 @@ async function loadIsolated() {
   el.innerHTML = '<table class="iso-tbl"><thead><tr><th>Pelanggan</th><th>Tipe</th><th>Target</th><th>Router</th><th>Jatuh Tempo</th><th>Diisolir</th><th>Aksi</th></tr></thead><tbody>' +
     rows.map(r => {
       const overdue = r.last_due ? _days(r.last_due) : 0;
-      const tb = r.isolir_method === 'pppoe' ? '<span class="tbadge pppoe">PPPoE</span>'
+      const tb = (r.isolir_method === 'radius' || r.isolir_method === 'pppoe') ? '<span class="tbadge pppoe">' + (r.isolir_method === 'radius' ? 'RADIUS' : 'PPPoE') + '</span>'
         : (r.isolir_method === 'hotspot_binding' ? '<span class="tbadge hotspot">IP Static Hotspot</span>'
         : (r.isolir_method === 'static' ? '<span class="tbadge static">Static IP</span>' : '<span class="tbadge" style="background:#f1f5f9;color:#64748b;">—</span>'));
       const target = (r.isolir_method === 'hotspot_binding' && (r.mac_address || r.static_ip))
@@ -656,7 +656,10 @@ function renderEligible() {
   const TYPE_LABEL = { pppoe: 'PPPoE', hotspot_binding: 'IP Static Hotspot', static: 'Static IP Biasa', all: 'Semua' };
   _setText('eligibleTitle', _ctypeFilter === 'all' ? 'Semua Pelanggan Eligible' : 'Pelanggan — ' + TYPE_LABEL[_ctypeFilter]);
 
-  const rows0 = _ctypeFilter === 'all' ? _eligible : _eligible.filter(c => c.isolir_method === _ctypeFilter);
+  const rows0 = _ctypeFilter === 'all' ? _eligible : _eligible.filter(c => {
+    if (_ctypeFilter === 'pppoe') return c.isolir_method === 'pppoe' || c.isolir_method === 'radius';
+    return c.isolir_method === _ctypeFilter;
+  });
   // Filter pencarian: nama / CID / IP / PPPoE
   const q = (document.getElementById('eligibleSearch')?.value || '').trim().toLowerCase();
   const rows = !q ? rows0 : rows0.filter(c =>
@@ -674,8 +677,8 @@ function renderEligible() {
   }
 
   // Badge tipe (warna konsisten dgn segmen)
-  const typeBadge = m => m === 'pppoe'
-    ? '<span class="tbadge pppoe">PPPoE</span>'
+  const typeBadge = m => (m === 'radius' || m === 'pppoe')
+    ? '<span class="tbadge pppoe">' + (m === 'radius' ? 'RADIUS' : 'PPPoE') + '</span>'
     : (m === 'hotspot_binding' ? '<span class="tbadge hotspot">IP Static Hotspot</span>'
     : (m === 'static' ? '<span class="tbadge static">Static IP</span>' : '<span class="tbadge" style="background:#f1f5f9;color:#64748b;">—</span>'));
 
@@ -725,8 +728,8 @@ async function loadLogs() {
       const target = r.static_ip
         ? `<span class="ip-tag">${_esc(r.static_ip)}</span>`
         : (r.pppoe_username ? `<span class="ip-tag" style="background:#fef3c7;border-color:#fde68a;color:#92400e;">PPPoE: ${_esc(r.pppoe_username)}</span>` : '<span style="color:#94a3b8;">–</span>');
-      const methodBadge = r.isolir_method === 'pppoe'
-        ? '<span class="badge amber" style="margin-left:4px;">PPPoE</span>'
+      const methodBadge = (r.isolir_method === 'radius' || r.isolir_method === 'pppoe')
+        ? '<span class="badge amber" style="margin-left:4px;">' + (r.isolir_method === 'radius' ? 'RADIUS' : 'PPPoE') + '</span>'
         : (r.isolir_method === 'static' ? '<span class="badge blue" style="margin-left:4px;">Static</span>'
         : (r.isolir_method === 'hotspot_binding' ? '<span class="badge" style="margin-left:4px;background:#dbeafe;color:#1e40af;border-color:#bfdbfe;">Hotspot</span>' : ''));
       return `<tr>
@@ -1189,6 +1192,7 @@ function renderDueItem(c) {
   // ── Badges (status indicators) ──
   const badges = [];
   if (c.isolir_method === 'static')      badges.push('<span class="due-badge static">Static</span>');
+  else if (c.isolir_method === 'radius') badges.push('<span class="due-badge pppoe">RADIUS</span>');
   else if (c.isolir_method === 'pppoe')  badges.push('<span class="due-badge pppoe">PPPoE</span>');
   else if (c.isolir_method === 'hotspot_binding') badges.push('<span class="due-badge static">Hotspot</span>');
 

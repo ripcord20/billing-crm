@@ -209,7 +209,7 @@
     }
     var PENDING = null; // {id, name, action}
 
-    var METHOD_LABEL = { hotspot_binding:'Hotspot', static:'Static IP', pppoe:'PPPoE', unknown:'—' };
+    var METHOD_LABEL = { hotspot_binding:'Hotspot', static:'Static IP', pppoe:'PPPoE', radius:'RADIUS', unknown:'—' };
 
     function methodOf(c){
       if(c.isolir_method) return c.isolir_method;
@@ -218,7 +218,12 @@
       if(c.static_ip) return 'static';
       return 'unknown';
     }
-    function canIsolir(c){ return methodOf(c)!=='unknown' && !!c.mikrotik_id; }
+    function canIsolir(c){
+      const m = methodOf(c);
+      if (m === 'unknown') return false;
+      if (m === 'pppoe' || m === 'radius') return true;
+      return !!c.mikrotik_id;
+    }
 
     // Format tanggal jatuh tempo + status warna berdasarkan selisih hari
     function dueInfo(c){

@@ -160,6 +160,7 @@ async function restore(customer) {
 
 async function isEnabled(tenantId) {
   try {
+    if (require('../utils/isolirRadius').fullRadiusEnabled()) return true;
     if (tenantId) {
       const scoped = await RadiusServer.findOne({ where: { tenant_id: tenantId, is_active: true } });
       if (scoped) return true;
@@ -167,7 +168,7 @@ async function isEnabled(tenantId) {
     const any = await RadiusServer.findOne({ where: { is_active: true }, order: [['id', 'ASC']] });
     return !!any;
   } catch (_) {
-    return false;
+    return require('../utils/isolirRadius').fullRadiusEnabled();
   }
 }
 
