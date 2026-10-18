@@ -1,5 +1,6 @@
 'use strict';
 
+const { Op } = require('sequelize');
 const { RadiusAccount, RadiusServer, NasDevice, Tenant, Customer, Package } = require('../models');
 const RadiusSQL = require('./RadiusSqlService');
 const { getTenantId } = require('../middleware/tenantContext');
@@ -249,6 +250,43 @@ async function rename(customer, oldUsername, newUsername) {
   return { success: true, username: to, backend: 'radius' };
 }
 
+/** Samakan radius_accounts dengan username yang sudah ada di radcheck billing. Tidak menyalin password. */
+async function linkCustomersToRadcheck() {
+  const server = await resolveServer();
+  if (!server) return { linked: 0, skipped: true, reason: 'no_server' };
+  const pool = await RadiusSQL.getPool(server);
+  const [users] = await pool.query("SELECT DISTINCT username FROM radcheck WHERE username != ''");
+  const names = new Set(users.map((u) => String(u.username || '').trim()).filter(Boolean));
+  const customers = await Customer.findAll({
+    attributes: ['id', 'pppoe_username', 'tenant_id', 'isolir_status'],
+    where: { pppoe_username: { [Op.ne]: null } }
+  });
+  let linked = 0;
+  let missing = 0;
+  for (const c of customers) {
+    const u = String(c.pppoe_username || '').trim();
+    if (!u) continue;
+    if (!names.has(u)) {
+      missing += 1;
+      continue;
+    }
+    const [acc, created] = await RadiusAccount.findOrCreate({
+      where: { customer_id: c.id, username: u },
+      defaults: {
+        tenant_id: c.tenant_id || getTenantId() || null,
+        radius_server_id: server.id,
+        status: c.isolir_status === 'isolated' ? 'isolated' : 'active',
+        last_sync_at: new Date()
+      }
+    });
+    if (!created) {
+      await acc.update({ radius_server_id: server.id, last_sync_at: new Date() });
+    }
+    linked += 1;
+  }
+  return { linked, missing, radcheck: names.size };
+}
+
 module.exports = {
   resolveServer,
   hasAccount,
@@ -259,5 +297,6 @@ module.exports = {
   isolir,
   restore,
   rename,
+  linkCustomersToRadcheck,
   rateLimitFromPackage
 };
