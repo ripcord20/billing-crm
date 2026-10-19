@@ -182,7 +182,10 @@ async function run(db) {
 
   try {
     if (fiberixRadiusMysqlHost()) {
-      const linked = await require('./RadiusProvisionService').linkCustomersToRadcheck();
+      const RadiusProvision = require('./RadiusProvisionService');
+      const imported = await RadiusProvision.importMissingPppoeToRadcheck();
+      logger.info('[RadiusTenant] import pppoe radcheck ' + JSON.stringify(imported));
+      const linked = await RadiusProvision.linkCustomersToRadcheck();
       logger.info('[RadiusTenant] link radcheck ' + JSON.stringify(linked));
     }
   } catch (e) {

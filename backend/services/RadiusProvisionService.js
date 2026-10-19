@@ -1,10 +1,11 @@
 'use strict';
 
 const { Op } = require('sequelize');
-const { RadiusAccount, RadiusServer, NasDevice, Tenant, Customer, Package } = require('../models');
+const { RadiusAccount, RadiusServer, NasDevice, Tenant, Customer, Package, sequelize } = require('../models');
 const RadiusSQL = require('./RadiusSqlService');
 const { getTenantId } = require('../middleware/tenantContext');
 const logger = require('../utils/logger');
+const { pppoeRowsMissingFromRadcheck } = require('../utils/radiusPppoeImport');
 
 function rateLimitFromPackage(pkg) {
   if (!pkg) return null;
@@ -250,6 +251,64 @@ async function rename(customer, oldUsername, newUsername) {
   return { success: true, username: to, backend: 'radius' };
 }
 
+async function hasPppoePasswordColumn() {
+  const [rows] = await sequelize.query(
+    `SELECT COUNT(*) AS c FROM information_schema.columns
+      WHERE table_schema = DATABASE() AND table_name = 'customers' AND column_name = 'pppoe_password'`
+  );
+  return !!(rows && rows[0] && parseInt(rows[0].c, 10) > 0);
+}
+
+/**
+ * Masukkan username PPPoE yang belum ada di radcheck.
+ * Password dari customers.pppoe_password (bukan dual-write /ppp/secret).
+ */
+async function importMissingPppoeToRadcheck() {
+  const server = await resolveServer();
+  if (!server) return { imported: 0, skipped: true, reason: 'no_server' };
+  if (!(await hasPppoePasswordColumn())) {
+    return { imported: 0, skipped: true, reason: 'no_pppoe_password_column' };
+  }
+
+  const pool = await RadiusSQL.getPool(server);
+  const [users] = await pool.query("SELECT DISTINCT username FROM radcheck WHERE username != ''");
+  const names = new Set(users.map((u) => String(u.username || '').trim()).filter(Boolean));
+
+  const [rows] = await sequelize.query(
+    `SELECT id, tenant_id, pppoe_username, pppoe_password, isolir_status
+       FROM customers
+      WHERE pppoe_username IS NOT NULL AND TRIM(pppoe_username) <> ''
+        AND pppoe_password IS NOT NULL AND TRIM(pppoe_password) <> ''`
+  );
+
+  const missing = pppoeRowsMissingFromRadcheck(rows, names);
+  let imported = 0;
+  let failed = 0;
+  for (const c of missing) {
+    try {
+      await RadiusSQL.provisionUser(server, { username: c.pppoe_username, password: c.pppoe_password });
+      if (c.isolir_status === 'isolated') {
+        await RadiusSQL.isolateUser(server, c.pppoe_username);
+      }
+      await RadiusAccount.findOrCreate({
+        where: { customer_id: c.id, username: c.pppoe_username },
+        defaults: {
+          tenant_id: c.tenant_id || getTenantId() || null,
+          radius_server_id: server.id,
+          status: c.isolir_status === 'isolated' ? 'isolated' : 'active',
+          last_sync_at: new Date()
+        }
+      });
+      names.add(c.pppoe_username);
+      imported += 1;
+    } catch (e) {
+      failed += 1;
+      logger.warn('[RadiusProvision] import ' + c.pppoe_username + ': ' + e.message);
+    }
+  }
+  return { imported, failed, missing: missing.length, radcheck: names.size };
+}
+
 /** Samakan radius_accounts dengan username yang sudah ada di radcheck billing. Tidak menyalin password. */
 async function linkCustomersToRadcheck() {
   const server = await resolveServer();
@@ -298,5 +357,7 @@ module.exports = {
   restore,
   rename,
   linkCustomersToRadcheck,
+  importMissingPppoeToRadcheck,
+  pppoeRowsMissingFromRadcheck,
   rateLimitFromPackage
 };
