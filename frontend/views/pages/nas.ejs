@@ -188,13 +188,13 @@
         </div>
       </div>
       <div class="nas-easy">
-        <h2>Cara paling mudah (tanpa VPS, tanpa WireGuard)</h2>
+        <h2>Cara paling mudah (tanpa VPN, tanpa WireGuard)</h2>
         <ol>
           <li>Pastikan MikroTik bisa ping server Fiberix / RADIUS (biasanya <code>192.168.22.9</code>).</li>
           <li>Klik <b>+ NAS</b> → isi Informasi NAS + Profile PPP → <b>Simpan &amp; sync</b>.</li>
           <li>Salin tab RouterOS v7 di bawah, tempel di New Terminal MikroTik.</li>
         </ol>
-        <p class="nas-easy-note">WireGuard hanya untuk router yang <em>tidak</em> satu LAN. Hub tunnel = CORE 1, bukan VPS dan bukan interface WG di Fiberix.</p>
+        <p class="nas-easy-note">WireGuard hanya untuk router yang <em>tidak</em> satu LAN. Hub tunnel = CORE 1, bukan VPN sewa dan bukan interface WG di Fiberix.</p>
       </div>
       <div class="nas-remote">
         <h2>MikroTik di luar jaringan lokal (beda kota / CGNAT)</h2>
@@ -238,13 +238,13 @@
         <div class="nas-detail-grid">
           <div class="nas-detail-card">
             <h2>Informasi Koneksi</h2>
-            <p class="sub">Cara MikroTik mencapai RADIUS Fiberix. LAN jika satu jaringan — tanpa VPS.</p>
+            <p class="sub">Cara MikroTik mencapai RADIUS Fiberix. LAN jika satu jaringan — tanpa VPN.</p>
             <label>Mode Koneksi</label>
             <select id="nasConnMode" onchange="onConnModeChange(); previewNasScript();">
               <option value="public">LAN / satu jaringan (disarankan)</option>
               <option value="vpn">Tunnel WireGuard (router beda jaringan)</option>
             </select>
-            <p id="nasLanHint" style="margin:-4px 0 12px;font-size:12px;color:#166534;line-height:1.45;">Disarankan jika MikroTik bisa ping server Fiberix. Cukup IP NAS + secret. Tidak perlu VPS dan tidak perlu WireGuard.</p>
+            <p id="nasLanHint" style="margin:-4px 0 12px;font-size:12px;color:#166534;line-height:1.45;">Disarankan jika MikroTik bisa ping server Fiberix. Cukup IP NAS + secret. Tidak perlu VPN dan tidak perlu WireGuard.</p>
             <div id="nasVpnTypeWrap" style="display:none;">
               <label>Tipe VPN</label>
               <select id="nasVpnType" onchange="previewNasScript();">
@@ -319,7 +319,7 @@
 <div id="wgServerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:520px;max-height:90vh;overflow:auto;">
     <h3 style="margin:0 0 4px;">Pengaturan WireGuard Server</h3>
-    <p style="margin:0 0 14px;color:#64748b;font-size:12px;line-height:1.5;">Ini proses di <b>server Fiberix yang sama</b> (kantor/LAN), <b>bukan VPS cloud</b>. Lewati seluruh pengaturan ini jika MikroTik sudah satu jaringan dengan Fiberix — pakai mode LAN. Isi endpoint hanya jika router di lokasi lain harus menembus ke server ini.</p>
+    <p style="margin:0 0 14px;color:#64748b;font-size:12px;line-height:1.5;">Ini proses di <b>server Fiberix yang sama</b> (kantor/LAN), <b>bukan VPN sewa</b>. Lewati seluruh pengaturan ini jika MikroTik sudah satu jaringan dengan Fiberix — pakai mode LAN. Isi endpoint hanya jika router di lokasi lain harus menembus ke server ini.</p>
     <p id="wgRuntime" style="margin:0 0 12px;font-size:12px;color:#64748b;"></p>
     <label style="font-size:13px;">Aktifkan WireGuard</label>
     <select id="wgEnabled" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
@@ -464,6 +464,6 @@
   .radius-guide-pre{margin:0;padding:12px;border-radius:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.45;white-space:pre-wrap;word-break:break-all;overflow:auto;}
 </style>
 <script src="/js/app.js"></script>
-<script src="/js/nas.js?v=poolbr1"></script>
+<script src="/js/nas.js?v=vpn1"></script>
 </body>
 </html>
