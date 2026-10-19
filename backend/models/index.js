@@ -128,6 +128,7 @@ const CollectionAssignment  = require('./CollectionAssignment')(sequelize);
 const CollectionAssignmentLog = require('./CollectionAssignmentLog')(sequelize);
 const CommissionPayment       = require('./CommissionPayment')(sequelize);
 const CashDeposit           = require('./CashDeposit')(sequelize);
+const FieldIncentive          = require('./FieldIncentive')(sequelize);
 
 // Reseller Voucher Hotspot — akun reseller, paket, ledger saldo
 const Reseller                = require('./Reseller')(sequelize);
@@ -332,6 +333,7 @@ const db = {
   CollectionAssignmentLog,
   CommissionPayment,
   CashDeposit,
+  FieldIncentive,
   Reseller,
   ResellerVoucherPackage,
   ResellerTransaction,
@@ -444,6 +446,15 @@ CommissionPayment.belongsTo(User, { foreignKey: 'paid_by', as: 'payer' });
 CashDeposit.belongsTo(User, { foreignKey: 'collector_id', as: 'collector' });
 CashDeposit.belongsTo(User, { foreignKey: 'verified_by',  as: 'verifier'  });
 User.hasMany(CashDeposit,   { foreignKey: 'collector_id', as: 'cash_deposits' });
+
+// FieldIncentive — insentif teknisi & kolektor
+FieldIncentive.belongsTo(User,     { foreignKey: 'user_id',     as: 'user'     });
+FieldIncentive.belongsTo(User,     { foreignKey: 'paid_by',     as: 'payer'    });
+FieldIncentive.belongsTo(Customer, { foreignKey: 'customer_id', as: 'customer' });
+FieldIncentive.belongsTo(Invoice,  { foreignKey: 'invoice_id',  as: 'invoice'  });
+User.hasMany(FieldIncentive,       { foreignKey: 'user_id',     as: 'field_incentives' });
+Customer.hasMany(FieldIncentive,   { foreignKey: 'customer_id', as: 'field_incentives' });
+Invoice.hasMany(FieldIncentive,    { foreignKey: 'invoice_id',  as: 'field_incentives' });
 
 // Payment <-> collector / assignment
 Payment.belongsTo(User,                 { foreignKey: 'collected_by',  as: 'collector'  });

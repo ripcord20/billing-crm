@@ -2232,6 +2232,10 @@ router.use('/collection', authenticate, demoGuard, collectionRoutes);
 const fieldRoutes = require('./collectorField');
 router.use('/field', authenticate, demoGuard, fieldRoutes);
 
+// ===== INSENTIF LAPANGAN (teknisi & kolektor) =====
+const fieldIncentiveRoutes = require('./fieldIncentive');
+router.use('/insentif', authenticate, demoGuard, fieldIncentiveRoutes);
+
 // ===== WA GATEWAY =====
 const waRoutes = require('./wa');
 router.use('/wa', authenticate, demoGuard, waRoutes);
