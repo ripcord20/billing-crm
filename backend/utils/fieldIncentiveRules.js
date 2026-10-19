@@ -69,8 +69,42 @@ function uniqueSourceKey(kind, sourceType, sourceId) {
   return `${kind}:${sourceType}:${sourceId}`;
 }
 
+const FIELD_ROLES = ['collector', 'technician', 'teknisi', 'noc'];
+
+function isFieldRole(name) {
+  return FIELD_ROLES.includes(String(name || '').toLowerCase());
+}
+
+function roleLabel(name) {
+  const n = String(name || '').toLowerCase();
+  if (n === 'collector') return 'Kolektor';
+  if (n === 'technician' || n === 'teknisi') return 'Teknisi';
+  if (n === 'noc') return 'NOC';
+  return name || '-';
+}
+
+function normalizeMac(raw) {
+  const hex = String(raw || '').toUpperCase().replace(/[^0-9A-F]/g, '');
+  if (hex.length === 12) return hex.match(/.{2}/g).join(':');
+  const t = String(raw || '').trim();
+  return t || null;
+}
+
+function normalizeRouterMeta(body) {
+  const b = body && typeof body === 'object' ? body : {};
+  const type = String(b.router_type || '').trim().slice(0, 80);
+  const sn = String(b.router_sn || '').trim().slice(0, 80);
+  const mac = normalizeMac(b.router_mac);
+  return {
+    router_type: type || null,
+    router_sn: sn || null,
+    router_mac: mac || null
+  };
+}
+
 module.exports = {
   DEFAULTS,
+  FIELD_ROLES,
   normalizeSettings,
   classifyPayment,
   feeForKind,
@@ -78,4 +112,8 @@ module.exports = {
   oilPeriodKey,
   oilPeriodLabel,
   uniqueSourceKey,
+  isFieldRole,
+  roleLabel,
+  normalizeMac,
+  normalizeRouterMeta,
 };

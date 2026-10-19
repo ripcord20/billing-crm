@@ -72,7 +72,11 @@ module.exports = (sequelize) => {
     },
     paid_at: { type: DataTypes.DATE, allowNull: true },
     paid_by: { type: DataTypes.INTEGER, allowNull: true },
-    notes:   { type: DataTypes.STRING(255), allowNull: true }
+    notes:   { type: DataTypes.STRING(255), allowNull: true },
+
+    router_type: { type: DataTypes.STRING(80), allowNull: true, comment: 'Tipe/merk router yang diambil' },
+    router_sn:   { type: DataTypes.STRING(80), allowNull: true, comment: 'Serial number' },
+    router_mac:  { type: DataTypes.STRING(32), allowNull: true, comment: 'MAC address' }
   }, {
     tableName: 'field_incentives',
     timestamps: true,

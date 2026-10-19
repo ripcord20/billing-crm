@@ -4,7 +4,6 @@ const { Op } = require('sequelize');
 const rules = require('../utils/fieldIncentiveRules');
 
 const SETTING_KEY = 'field_incentive_rules';
-const FIELD_ROLES = ['collector', 'technician'];
 
 async function getSettings() {
   const { AppSetting } = require('../models');
@@ -84,10 +83,11 @@ async function accrueFromPayment(payment, extras = {}) {
   });
 }
 
-async function accrueRouter({ userId, customerId, sourceType, sourceId, earnedAt, notes, settings }) {
+async function accrueRouter({ userId, customerId, sourceType, sourceId, earnedAt, notes, settings, router_type, router_sn, router_mac }) {
   if (!userId || !sourceId) return null;
   const s = settings || await getSettings();
   const earned = String(earnedAt || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const meta = rules.normalizeRouterMeta({ router_type, router_sn, router_mac });
   return _accrue({
     user_id: userId,
     kind: 'router',
@@ -100,7 +100,10 @@ async function accrueRouter({ userId, customerId, sourceType, sourceId, earnedAt
     customer_id: customerId || null,
     earned_at: earned,
     status: 'earned',
-    notes: notes || null
+    notes: notes || null,
+    router_type: meta.router_type,
+    router_sn: meta.router_sn,
+    router_mac: meta.router_mac
   });
 }
 
@@ -152,7 +155,9 @@ async function fieldStaffIds() {
   });
   return users.filter(u => {
     const n = (u.role && u.role.name) ? String(u.role.name).toLowerCase() : '';
-    return FIELD_ROLES.includes(n) && u.is_active !== false;
+    if (!rules.isFieldRole(n)) return false;
+    if (u.is_active === false || u.is_active === 0) return false;
+    return true;
   });
 }
 
@@ -235,7 +240,8 @@ async function staffList() {
   return users.map(u => ({
     id: u.id,
     name: u.name,
-    role: (u.role && u.role.name) || ''
+    role: (u.role && u.role.name) || '',
+    role_label: rules.roleLabel(u.role && u.role.name)
   })).sort((a, b) => a.name.localeCompare(b.name, 'id'));
 }
 
@@ -267,6 +273,7 @@ async function summary(year, month) {
         user_id: id,
         name: name || ('User #' + id),
         role: role || '',
+        role_label: rules.roleLabel(role),
         tagihan_count: 0, tagihan_amount: 0,
         sisa_count: 0, sisa_amount: 0,
         router_count: 0, router_amount: 0,

@@ -25,6 +25,9 @@ function serializeRow(r) {
     period_key: j.period_key,
     notes: j.notes,
     source_type: j.source_type,
+    router_type: j.router_type || null,
+    router_sn: j.router_sn || null,
+    router_mac: j.router_mac || null,
     customer: j.customer
       ? { id: j.customer.id, name: j.customer.name, customer_id: j.customer.customer_id }
       : null,
@@ -131,16 +134,24 @@ class FieldIncentiveController {
       const userId = parseInt(req.body.user_id, 10);
       const customerId = parseInt(req.body.customer_id, 10) || null;
       if (!userId) return res.status(400).json({ success: false, message: 'Pilih petugas dulu' });
+      const rules = require('../utils/fieldIncentiveRules');
+      const meta = rules.normalizeRouterMeta(req.body || {});
+      if (!meta.router_type) return res.status(400).json({ success: false, message: 'Isi tipe router' });
+      if (!meta.router_sn) return res.status(400).json({ success: false, message: 'Isi serial number (SN)' });
+      if (!meta.router_mac) return res.status(400).json({ success: false, message: 'Isi MAC address' });
       const earnedAt = String(req.body.earned_at || '').slice(0, 10)
         || new Date().toISOString().slice(0, 10);
-      const sourceId = `${userId}:${customerId || 0}:${earnedAt}`;
+      const sourceId = `${userId}:${customerId || 0}:${meta.router_sn}`;
       const row = await FieldIncentiveService.accrueRouter({
         userId,
         customerId,
         sourceType: 'manual_router',
         sourceId,
         earnedAt,
-        notes: req.body.notes || 'Pengambilan router'
+        notes: req.body.notes || 'Pengambilan router',
+        router_type: meta.router_type,
+        router_sn: meta.router_sn,
+        router_mac: meta.router_mac
       });
       res.json({ success: true, data: row, message: 'Fee ambil router dicatat.' });
     } catch (e) {

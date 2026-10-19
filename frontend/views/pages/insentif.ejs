@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/app.css?v=ins1">
+  <link rel="stylesheet" href="/css/app.css?v=ins2">
   <style>
     :root { --d-bg:#eef2f9; --d-card:#fff; --d-border:#e0e7f3; --d-text:#0d1b3e; --d-muted:#6b7fa8; --d-blue1:#1a6ef5; }
     .ins-page { font-family:'DM Sans',sans-serif; background:var(--d-bg) !important; }
@@ -36,9 +36,13 @@
     .rb-pay { color:#0d9488; border-color:#99f6e4; }
     .rb-oil { color:#d97706; border-color:#fde68a; }
     .rb-det { color:var(--d-blue1); border-color:#bfdbfe; }
-    .modal-ov { display:none; position:fixed; inset:0; background:rgba(13,27,62,.55); z-index:9999; align-items:center; justify-content:center; padding:16px; }
+    .modal-ov { display:none; position:fixed; inset:0; background:rgba(13,27,62,.55); z-index:9999; align-items:flex-start; justify-content:center; padding:12px 12px 96px; }
     .modal-ov.active { display:flex; }
-    .modal-bx { background:#fff; width:100%; max-width:480px; border-radius:20px; overflow:hidden; }
+    .modal-bx { background:#fff; width:100%; max-width:480px; border-radius:20px; overflow:auto; max-height:calc(100vh - 120px); margin-top:6vh; }
+    .role-b.noc { background:#fff7ed; color:#c2410c; }
+    .row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    #routerFields { display:none; gap:12px; }
+    @media(max-width:560px){ .row2 { grid-template-columns:1fr; } }
     .toast { position:fixed; bottom:22px; right:22px; background:#0d1b3e; color:#fff; padding:11px 16px; border-radius:12px; font-size:13px; z-index:10001; display:none; }
     .sug { border:1px solid var(--d-border); border-radius:10px; max-height:160px; overflow:auto; margin-top:6px; }
     .sug-i { padding:8px 12px; font-size:13px; cursor:pointer; }
@@ -135,6 +139,25 @@
       </label>
       <input type="hidden" id="addCustId">
       <div class="hint" id="addCustChosen" style="color:#0d1b3e;font-weight:600"></div>
+      <div id="routerFields">
+        <label class="hint">Tipe router
+          <input class="finput" id="addRouterType" list="routerTypes" placeholder="Huawei, ZTE, Mikrotik, …">
+          <datalist id="routerTypes">
+            <option value="Huawei">
+            <option value="ZTE">
+            <option value="Fiberhome">
+            <option value="Mikrotik">
+            <option value="Tenda">
+            <option value="TP-Link">
+            <option value="Mercusys">
+            <option value="Ruijie">
+          </datalist>
+        </label>
+        <div class="row2">
+          <label class="hint">SN<input class="finput" id="addRouterSn" placeholder="Serial number" autocomplete="off"></label>
+          <label class="hint">MAC<input class="finput" id="addRouterMac" placeholder="AA:BB:CC:DD:EE:FF" autocomplete="off"></label>
+        </div>
+      </div>
       <label class="hint">Tanggal kerja<input class="finput" id="addDate" type="date"></label>
       <label class="hint">Catatan<input class="finput" id="addNotes" placeholder="Opsional"></label>
     </div>
@@ -150,7 +173,7 @@
     <div style="padding:18px 20px;border-bottom:1px solid #eef2f9;font-weight:800" id="detTitle">Rincian</div>
     <div style="padding:8px 0 4px;max-height:420px;overflow:auto">
       <table class="ins-table" style="min-width:0">
-        <thead><tr><th>Tgl</th><th>Jenis</th><th>Pelanggan</th><th>Nilai</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Tgl</th><th>Jenis</th><th>Pelanggan / perangkat</th><th>Nilai</th><th>Status</th><th></th></tr></thead>
         <tbody id="detBody"></tbody>
       </table>
     </div>
@@ -191,9 +214,17 @@ function closeModal(id){document.getElementById(id).classList.remove('active');}
 
 function roleBadge(role){
   const r=String(role||'').toLowerCase();
-  if(r==='technician') return '<span class="role-b tech">Teknisi</span>';
+  if(r==='technician'||r==='teknisi') return '<span class="role-b tech">Teknisi</span>';
   if(r==='collector') return '<span class="role-b">Kolektor</span>';
+  if(r==='noc') return '<span class="role-b noc">NOC</span>';
   return '<span class="role-b">'+(role||'-')+'</span>';
+}
+function roleLabel(role){
+  const r=String(role||'').toLowerCase();
+  if(r==='technician'||r==='teknisi') return 'Teknisi';
+  if(r==='collector') return 'Kolektor';
+  if(r==='noc') return 'NOC';
+  return role||'-';
 }
 function kindLabel(k){return {tagihan:'Tagihan',sisa:'Sisa pemakaian',router:'Ambil router',oli:'Oli mesin'}[k]||k;}
 
@@ -259,7 +290,7 @@ async function saveRules(){
 
 function fillStaffSelect(){
   const s=document.getElementById('addUser');
-  s.innerHTML=staff.map(u=>`<option value="${u.id}">${u.name} (${u.role||'-'})</option>`).join('')||'<option value="">Tidak ada petugas</option>';
+  s.innerHTML=staff.map(u=>`<option value="${u.id}">${u.name} (${u.role_label||roleLabel(u.role)})</option>`).join('')||'<option value="">Tidak ada petugas</option>';
 }
 function openAdd(kind){
   addKind=kind;
@@ -269,7 +300,12 @@ function openAdd(kind){
   document.getElementById('addCustId').value='';
   document.getElementById('addCustChosen').textContent='';
   document.getElementById('addNotes').value='';
+  document.getElementById('addRouterType').value='';
+  document.getElementById('addRouterSn').value='';
+  document.getElementById('addRouterMac').value='';
   document.getElementById('addCustSug').style.display='none';
+  document.getElementById('routerFields').style.display=kind==='router'?'grid':'none';
+  document.getElementById('routerFields').style.gap=kind==='router'?'12px':'0';
   fillStaffSelect();
   document.getElementById('addModal').classList.add('active');
 }
@@ -301,7 +337,10 @@ async function saveAdd(){
       user_id:document.getElementById('addUser').value,
       customer_id:document.getElementById('addCustId').value||null,
       earned_at:document.getElementById('addDate').value,
-      notes:document.getElementById('addNotes').value
+      notes:document.getElementById('addNotes').value,
+      router_type:document.getElementById('addRouterType').value,
+      router_sn:document.getElementById('addRouterSn').value,
+      router_mac:document.getElementById('addRouterMac').value
     };
     const j=await api('/api/insentif/'+(addKind==='router'?'router':'sisa'),{method:'POST',body:JSON.stringify(body)});
     closeModal('addModal'); toast(j.message); load();
@@ -327,8 +366,11 @@ async function openDetail(id,name){
     tb.innerHTML=j.data.map(r=>{
       const val=r.unit==='botol'?(r.qty+' botol'):rp(r.amount);
       const cust=r.customer?(r.customer.name+' · '+(r.customer.customer_id||'')):'—';
+      const dev=r.kind==='router' && (r.router_type||r.router_sn||r.router_mac)
+        ? `<div class="hint">${[r.router_type,r.router_sn?('SN '+r.router_sn):'',r.router_mac?('MAC '+r.router_mac):''].filter(Boolean).join(' · ')}</div>`
+        : '';
       const voidBtn=r.status==='earned'?`<button class="rb" style="color:#dc2626;border-color:#fecaca" onclick="voidRow(${r.id})">Batal</button>`:'';
-      return `<tr><td>${r.earned_at||''}</td><td>${kindLabel(r.kind)}</td><td>${cust}</td><td>${val}</td><td>${r.status}</td><td>${voidBtn}</td></tr>`;
+      return `<tr><td>${r.earned_at||''}</td><td>${kindLabel(r.kind)}</td><td>${cust}${dev}</td><td>${val}</td><td>${r.status}</td><td>${voidBtn}</td></tr>`;
     }).join('');
   }catch(e){tb.innerHTML='<tr><td colspan="6" style="color:#b91c1c;padding:18px">'+e.message+'</td></tr>';}
 }

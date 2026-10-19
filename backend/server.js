@@ -827,6 +827,29 @@ const startServer = async () => {
       logger.warn('Failed to sync field_incentives: ' + (e.message || e));
     }
     try {
+      const routerCols = [
+        { name: 'router_type', ddl: 'VARCHAR(80) NULL', after: 'notes' },
+        { name: 'router_sn',   ddl: 'VARCHAR(80) NULL', after: 'router_type' },
+        { name: 'router_mac',  ddl: 'VARCHAR(32) NULL', after: 'router_sn' },
+      ];
+      for (const col of routerCols) {
+        const [rows] = await db.sequelize.query(
+          `SELECT COUNT(*) AS c FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+              AND table_name = 'field_incentives'
+              AND column_name = '${col.name}'`
+        );
+        if (!(rows && rows[0] && parseInt(rows[0].c) > 0)) {
+          await db.sequelize.query(
+            `ALTER TABLE field_incentives ADD COLUMN ${col.name} ${col.ddl} AFTER ${col.after}`
+          );
+          logger.info('Migrated: field_incentives.' + col.name + ' added');
+        }
+      }
+    } catch (e) {
+      logger.warn('Failed to migrate field_incentives router columns: ' + (e.message || e));
+    }
+    try {
       const [stopInv] = await db.sequelize.query(
         `SELECT COUNT(*) AS c FROM information_schema.columns
           WHERE table_schema = DATABASE()

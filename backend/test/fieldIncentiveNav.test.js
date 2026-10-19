@@ -12,6 +12,14 @@ assert.ok(page.includes('/api/insentif/summary'));
 assert.ok(page.includes('Fee tagihan'));
 assert.ok(page.includes('Oli mesin'));
 assert.ok(page.includes('Ambil router'));
+assert.ok(page.includes('Tipe router'));
+assert.ok(page.includes('id="addRouterSn"'));
+assert.ok(page.includes('id="addRouterMac"'));
+assert.ok(page.includes("role-b noc"));
+
+const svc = fs.readFileSync(path.join(__dirname, '../../backend/services/FieldIncentiveService.js'), 'utf8');
+assert.ok(svc.includes('isFieldRole'));
+assert.ok(svc.includes('router_sn'));
 
 const web = fs.readFileSync(path.join(__dirname, '../../backend/routes/web.js'), 'utf8');
 assert.ok(web.includes("router.get('/insentif'"));
