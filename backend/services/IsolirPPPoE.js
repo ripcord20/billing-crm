@@ -13,22 +13,24 @@
  *   1. Set profile kembali ke original (dari customers.pppoe_profile_original)
  *   2. Kick session lagi → reconnect dengan profile normal
  *
- * Setup MikroTik (auto saat Setup Firewall di IsolirFirewallV2):
- *   /ip pool add name=isolir-pool ranges=10.255.255.2-10.255.255.254
- *   /ppp profile add name=isolir-profile
- *     local-address=10.255.255.1
- *     remote-address=isolir-pool
- *     address-list=FLAYNET-ISOLIR
- *     rate-limit=128k/128k
+ * Setup MikroTik (auto saat Setup Firewall):
+ *   pool BILLINGRADIUS          10.2.64.2-10.2.79.254
+ *   pool EXPIRED_BILLINGRADIUS  10.200.200.2-10.200.201.254
+ *   profile EXPIRED_BILLINGRADIUS local-address=10.200.200.1 rate-limit=128k/128k
+ *   address-list EXPIRED = 10.200.200.0/23
  * ────────────────────────────────────────────────────────────────────
  */
 
-// Default nama profile & pool isolir. Bisa di-override via app_settings.
-const DEFAULT_ISOLIR_PROFILE = 'isolir-profile';
-const DEFAULT_ISOLIR_POOL    = 'isolir-pool';
-const DEFAULT_POOL_RANGES    = '10.255.255.2-10.255.255.254';
-const DEFAULT_LOCAL_ADDR     = '10.255.255.1';
-const DEFAULT_RATE_LIMIT     = '128k/128k';
+const {
+  isolirPppoeDefaults,
+} = require('../utils/isolirMikrotikDefaults');
+
+const _d = isolirPppoeDefaults();
+const DEFAULT_ISOLIR_PROFILE = _d.profileName;
+const DEFAULT_ISOLIR_POOL    = _d.poolName;
+const DEFAULT_POOL_RANGES    = _d.poolRange;
+const DEFAULT_LOCAL_ADDR     = _d.localAddr;
+const DEFAULT_RATE_LIMIT     = _d.rateLimit;
 
 // Runner dengan retry (sama seperti di IsolirFirewallV2)
 async function runWithRetry(api, words, maxRetry = 2) {
@@ -59,17 +61,25 @@ async function getPPPoESettings(sequelize) {
     `SELECT \`key\`, value FROM app_settings
       WHERE \`key\` IN ('isolir_pppoe_profile_name','isolir_pppoe_pool_name',
                         'isolir_pppoe_pool_range','isolir_pppoe_local_addr',
-                        'isolir_pppoe_rate_limit')`,
+                        'isolir_pppoe_rate_limit','isolir_pppoe_list_name',
+                        'isolir_pppoe_list_cidr','isolir_pppoe_list_bypass',
+                        'isolir_pppoe_pool_active_name','isolir_pppoe_pool_active_range')`,
     { type: sequelize.QueryTypes.SELECT }
   ).catch(() => []);
   const map = {};
   rows.forEach(r => { map[r.key] = r.value; });
+  const d = isolirPppoeDefaults();
   return {
-    profileName: map.isolir_pppoe_profile_name || DEFAULT_ISOLIR_PROFILE,
-    poolName:    map.isolir_pppoe_pool_name    || DEFAULT_ISOLIR_POOL,
-    poolRange:   map.isolir_pppoe_pool_range   || DEFAULT_POOL_RANGES,
-    localAddr:   map.isolir_pppoe_local_addr   || DEFAULT_LOCAL_ADDR,
-    rateLimit:   map.isolir_pppoe_rate_limit   || DEFAULT_RATE_LIMIT,
+    profileName:    map.isolir_pppoe_profile_name    || d.profileName,
+    poolName:       map.isolir_pppoe_pool_name       || d.poolName,
+    poolRange:      map.isolir_pppoe_pool_range      || d.poolRange,
+    localAddr:      map.isolir_pppoe_local_addr      || d.localAddr,
+    rateLimit:      map.isolir_pppoe_rate_limit      || d.rateLimit,
+    listName:       map.isolir_pppoe_list_name       || d.listName,
+    listCidr:       map.isolir_pppoe_list_cidr       || d.listCidr,
+    listBypass:     map.isolir_pppoe_list_bypass     || d.listBypass,
+    pppoePoolName:  map.isolir_pppoe_pool_active_name  || d.pppoePoolName,
+    pppoePoolRange: map.isolir_pppoe_pool_active_range || d.pppoePoolRange,
   };
 }
 
@@ -77,62 +87,84 @@ async function getPPPoESettings(sequelize) {
  * Setup IP pool & PPP profile isolir di MikroTik. Idempotent.
  * Dipanggil dari setupFirewallV2.
  */
+async function ensurePool(api, name, ranges, results) {
+  const existing = await runWithRetry(api, ['/ip/pool/print', '?name=' + name]);
+  if (existing.length === 0) {
+    await runWithRetry(api, ['/ip/pool/add', '=name=' + name, '=ranges=' + ranges]);
+    results.push(`✓ IP pool "${name}" dibuat (${ranges})`);
+    return;
+  }
+  const curRanges = String(existing[0].ranges || '').trim();
+  if (curRanges !== ranges && existing[0]['.id']) {
+    await runWithRetry(api, [
+      '/ip/pool/set', '=.id=' + existing[0]['.id'], '=ranges=' + ranges
+    ]);
+    results.push(`✓ IP pool "${name}" range disamakan ke ${ranges}`);
+  } else {
+    results.push(`• IP pool "${name}" sudah ada (${curRanges || ranges})`);
+  }
+}
+
+async function ensureListAddress(api, list, address, comment, results) {
+  const existing = await runWithRetry(api, [
+    '/ip/firewall/address-list/print', '?list=' + list, '?address=' + address
+  ]);
+  if (existing.length > 0) {
+    results.push(`• Address-list ${list} sudah berisi ${address}`);
+    return;
+  }
+  await runWithRetry(api, [
+    '/ip/firewall/address-list/add',
+    '=list=' + list,
+    '=address=' + address,
+    '=comment=' + comment
+  ]);
+  results.push(`✓ Address-list ${list} + ${address}`);
+}
+
 async function setupIsolirProfile(api, sequelize) {
   const cfg = await getPPPoESettings(sequelize);
   const results = [];
 
-  // ── 1. Pool ──
   try {
-    const existing = await runWithRetry(api, ['/ip/pool/print', '?name=' + cfg.poolName]);
-    if (existing.length === 0) {
-      await runWithRetry(api, [
-        '/ip/pool/add',
-        '=name=' + cfg.poolName,
-        '=ranges=' + cfg.poolRange
-      ]);
-      results.push(`✓ IP pool "${cfg.poolName}" dibuat (${cfg.poolRange})`);
-    } else {
-      // Update ranges kalau berbeda
-      const curRanges = String(existing[0].ranges || '').trim();
-      if (curRanges !== cfg.poolRange && existing[0]['.id']) {
-        await runWithRetry(api, [
-          '/ip/pool/set',
-          '=.id=' + existing[0]['.id'],
-          '=ranges=' + cfg.poolRange
-        ]);
-        results.push(`✓ IP pool "${cfg.poolName}" range diupdate ke ${cfg.poolRange}`);
-      } else {
-        results.push(`• IP pool "${cfg.poolName}" sudah ada`);
-      }
-    }
+    await ensurePool(api, cfg.pppoePoolName, cfg.pppoePoolRange, results);
   } catch (e) {
-    return { success: false, error: `Pool: ${e.message}`, details: results };
+    return { success: false, error: `Pool PPPoE: ${e.message}`, details: results };
   }
 
-  // ── 2. PPP Profile ──
+  try {
+    await ensurePool(api, cfg.poolName, cfg.poolRange, results);
+  } catch (e) {
+    return { success: false, error: `Pool isolir: ${e.message}`, details: results };
+  }
+
+  try {
+    await ensureListAddress(api, cfg.listName, cfg.listCidr, 'FIBERIX-ISOLIR-SUBNET', results);
+    await ensureListAddress(api, cfg.listBypass, cfg.localAddr, 'FIBERIX-ISOLIR-GW', results);
+  } catch (e) {
+    results.push(`⚠ Address-list: ${e.message}`);
+  }
+
   try {
     const existing = await runWithRetry(api, ['/ppp/profile/print', '?name=' + cfg.profileName]);
     const profileArgs = [
       '=name=' + cfg.profileName,
       '=local-address=' + cfg.localAddr,
       '=remote-address=' + cfg.poolName,
-      '=address-list=FLAYNET-ISOLIR',
       '=rate-limit=' + cfg.rateLimit
     ];
     if (existing.length === 0) {
       await runWithRetry(api, ['/ppp/profile/add', ...profileArgs]);
       results.push(`✓ PPP profile "${cfg.profileName}" dibuat`);
     } else if (existing[0]['.id']) {
-      // Update existing untuk memastikan semua field sinkron
       await runWithRetry(api, [
         '/ppp/profile/set',
         '=.id=' + existing[0]['.id'],
         '=local-address=' + cfg.localAddr,
         '=remote-address=' + cfg.poolName,
-        '=address-list=FLAYNET-ISOLIR',
         '=rate-limit=' + cfg.rateLimit
       ]);
-      results.push(`• PPP profile "${cfg.profileName}" sudah ada (sinkron field)`);
+      results.push(`• PPP profile "${cfg.profileName}" sudah ada (pool + rate-limit sinkron)`);
     }
   } catch (e) {
     return { success: false, error: `Profile: ${e.message}`, details: results };

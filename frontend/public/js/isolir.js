@@ -910,6 +910,12 @@ async function loadSettings() {
   const el = id => document.getElementById(id);
   if (el('graceDays'))      el('graceDays').value = cfg.isolir_grace_days || '0';
   if (el('isolirPageUrl'))  el('isolirPageUrl').value = cfg.isolir_page_url || '';
+  if (el('pppoePoolActiveName'))  el('pppoePoolActiveName').value  = cfg.isolir_pppoe_pool_active_name  || '';
+  if (el('pppoePoolActiveRange')) el('pppoePoolActiveRange').value = cfg.isolir_pppoe_pool_active_range || '';
+  if (el('pppoePoolName'))        el('pppoePoolName').value        = cfg.isolir_pppoe_pool_name        || '';
+  if (el('pppoePoolRange'))       el('pppoePoolRange').value       = cfg.isolir_pppoe_pool_range       || '';
+  if (el('pppoeProfileName'))     el('pppoeProfileName').value     = cfg.isolir_pppoe_profile_name     || '';
+  if (el('pppoeLocalAddr'))       el('pppoeLocalAddr').value       = cfg.isolir_pppoe_local_addr       || '';
   if (el('isolirNotifWa'))  el('isolirNotifWa').checked = cfg.isolir_notify_wa === '1';
   if (el('isolirAutoEnable')) el('isolirAutoEnable').checked = cfg.isolir_auto_enable === '1';
   // Jam auto-isolir (0-23). Kosong/'-1' = setiap jam (begitu lewat grace).
@@ -974,6 +980,12 @@ window.saveSettings = async function() {
   put('isolir_auto_enable', 'isolirAutoEnable', e => e.checked ? '1' : '0');
   put('isolir_auto_hour',   'isolirAutoHour',   e => e.value ?? '-1');
   put('isolir_wa_message',  'isolirWaMessage',  e => e.value || '');
+  put('isolir_pppoe_pool_active_name',  'pppoePoolActiveName',  e => e.value || '');
+  put('isolir_pppoe_pool_active_range', 'pppoePoolActiveRange', e => e.value || '');
+  put('isolir_pppoe_pool_name',         'pppoePoolName',        e => e.value || '');
+  put('isolir_pppoe_pool_range',        'pppoePoolRange',       e => e.value || '');
+  put('isolir_pppoe_profile_name',      'pppoeProfileName',     e => e.value || '');
+  put('isolir_pppoe_local_addr',        'pppoeLocalAddr',       e => e.value || '');
 
   // Customisasi halaman /p/isolir — hanya jika field-nya masih ada
   put('isolir_page_title',    'isolirPageTitle',    e => e.value || '');

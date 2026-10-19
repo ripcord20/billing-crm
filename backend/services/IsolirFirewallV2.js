@@ -1,14 +1,13 @@
 /**
  * IsolirFirewallV2.js
  * ────────────────────────────────────────────────────────────────────
- * Manajemen firewall isolir generasi-2 — strategi:
- *   1. Address-list FLAYNET-ISOLIR : IP pelanggan diisolir
- *   2. Address-list FLAYNET-BYPASS : IP/CIDR yang masih boleh diakses
- *      (gateway pembayaran, DNS publik, situs ISP, dll)
- *   3. NAT chain dstnat: redirect HTTP (port 80) dari ISOLIR ke
- *      halaman isolir, KECUALI tujuan ada di BYPASS
- *   4. Filter chain forward: DROP semua selain HTTP-redirect & BYPASS
- *      (HTTPS tidak bisa di-redirect karena TLS, jadi diblokir)
+ * Manajemen firewall isolir — diselaraskan dengan BillingRadius di CORE:
+ *   1. Address-list EXPIRED (10.200.200.0/23) : pelanggan isolir
+ *   2. Address-list EXPIRED_PAGE : tujuan yang masih boleh (halaman bayar, DNS, billing)
+ *   3. NAT dstnat: TCP 80+443 dari EXPIRED → redirect webproxy 3128
+ *      (proxy mengirim ke halaman Fiberix /p/isolir)
+ *   4. Filter forward: ALLOW bypass + DNS, lalu DROP — diletakkan
+ *      SEBELUM "Allow PPPoE to Internet" supaya benar-benar memotong traffic
  *
  * Kompatibel RouterOS v6 & v7 — menggunakan API client di IsolirService.js
  * yang sudah multi-mode (REST / Native v6 / Native v7 / Auto).
@@ -21,13 +20,15 @@
  * ────────────────────────────────────────────────────────────────────
  */
 const { sequelize } = require('../models');
+const {
+  LIST_ISOLIR, LIST_BYPASS, PROXY_PORT,
+} = require('../utils/isolirMikrotikDefaults');
 
-// ── Konstanta address-list & comment marker ──
-const LIST_ISOLIR  = 'FLAYNET-ISOLIR';
-const LIST_BYPASS  = 'FLAYNET-BYPASS';
-const TAG_NAT      = 'FLAYNET-ISOLIR-NAT';        // dstnat redirect HTTP
-const TAG_DROP_FWD = 'FLAYNET-ISOLIR-DROP-FWD';   // drop forward (selain bypass)
-const TAG_BYPASS_FWD = 'FLAYNET-ISOLIR-ALLOW-BYPASS'; // allow forward ke bypass (priority tinggi)
+// ── Comment marker rule Fiberix (tidak menghapus comment BILLINGRADIUS) ──
+const TAG_NAT        = 'FLAYNET-ISOLIR-NAT';
+const TAG_DROP_FWD   = 'FLAYNET-ISOLIR-DROP-FWD';
+const TAG_BYPASS_FWD = 'FLAYNET-ISOLIR-ALLOW-BYPASS';
+const TAG_DNS_FWD    = 'FLAYNET-ISOLIR-ALLOW-DNS';
 
 // Default bypass entries yang di-seed saat schema setup pertama kali.
 // IP server DIGSnet sendiri WAJIB ada (kalau tidak halaman isolir tidak bisa diakses!)
@@ -42,6 +43,7 @@ const DEFAULT_BYPASS_GLOBAL = [
   { address: '192.168.0.0/16',  label: 'LAN Private Range',      category: 'network' },
   { address: '10.0.0.0/8',      label: 'LAN Private Range',      category: 'network' },
   { address: '172.16.0.0/12',   label: 'LAN Private Range',      category: 'network' },
+  { address: '192.168.22.99',   label: 'Fiberix billing / halaman isolir', category: 'network' },
 ];
 
 // ════════════════════════════════════════════════════════════════════════
@@ -267,6 +269,23 @@ async function runWithRetry(api, words, maxRetry = 2) {
   throw lastErr;
 }
 
+async function placeBeforePppAccept(api, ruleId) {
+  if (!ruleId) return false;
+  const all = await runWithRetry(api, ['/ip/firewall/filter/print']);
+  const ppp = all.find(r =>
+    r.chain === 'forward' &&
+    (r.action === 'accept' || r.action === 'passthrough') &&
+    (r['in-interface'] === 'all-ppp' || String(r['in-interface'] || '').toLowerCase() === 'all-ppp')
+  );
+  if (!ppp || !ppp['.id'] || ppp['.id'] === ruleId) return false;
+  await runWithRetry(api, [
+    '/ip/firewall/filter/move',
+    '=numbers=' + ruleId,
+    '=destination=' + ppp['.id']
+  ]);
+  return true;
+}
+
 /**
  * Hapus semua rule lama yang dibuat oleh sistem isolir (termasuk legacy WAU).
  * Dipanggil di awal setupFirewall.
@@ -274,7 +293,7 @@ async function runWithRetry(api, words, maxRetry = 2) {
 async function purgeOldRules(api) {
   const tags = [
     'FLAYNET-ISOLIR-NAT', 'FLAYNET-ISOLIR-DROP-FWD',
-    'FLAYNET-ISOLIR-ALLOW-BYPASS',
+    'FLAYNET-ISOLIR-ALLOW-BYPASS', 'FLAYNET-ISOLIR-ALLOW-DNS',
     'FLAYNET-BLOCK-SRC', 'FLAYNET-BLOCK-DST',     // legacy v1 drop-only
     'WAU-BLOCK-SRC', 'WAU-BLOCK-DST',              // legacy original
   ];
@@ -318,10 +337,12 @@ async function syncBypassList(api, deviceId) {
   const merged = await getMergedBypassList(deviceId);
   let added = 0, removed = 0;
 
-  // Hapus semua entry FLAYNET-BYPASS yang ada
+  // Jangan hapus entri BillingRadius / Fiberix yang sudah ada.
   try {
     const existing = await runWithRetry(api, ['/ip/firewall/address-list/print', '?list=' + LIST_BYPASS]);
     for (const e of existing) {
+      const cmt = String(e.comment || '');
+      if (/BILLINGRADIUS|FIBERIX/i.test(cmt)) continue;
       if (e['.id']) {
         await runWithRetry(api, ['/ip/firewall/address-list/remove', '=.id=' + e['.id']]);
         removed++;
@@ -442,17 +463,16 @@ async function setupFirewallV2(api, device) {
       '/ip/firewall/nat/add',
       '=chain=dstnat',
       '=src-address-list=' + LIST_ISOLIR,
-      '=dst-address-list=!' + LIST_BYPASS,    // negation: TIDAK menuju bypass
+      '=dst-address-list=!' + LIST_BYPASS,
       '=protocol=tcp',
-      '=dst-port=80',
-      '=action=dst-nat',
-      '=to-addresses=' + target.host,
-      '=to-ports=' + target.port,
+      '=dst-port=80,443',
+      '=action=redirect',
+      '=to-ports=' + String(PROXY_PORT),
       '=comment=' + TAG_NAT
     ];
     const natRes = await runWithRetry(api, natParams);
     const natId = natRes[0]?.['.id'] || natRes[0]?.ret;
-    results.push(`✓ NAT rule: redirect HTTP → ${target.host}:${target.port}`);
+    results.push(`✓ NAT rule: HTTP+HTTPS (80,443) → webproxy ${PROXY_PORT} (halaman ${target.fullUrl})`);
 
     // Move ke awal dstnat chain (kalau API mendukung)
     // PENTING: kalau move gagal, rule baru ada di akhir chain — bisa kalah
@@ -498,56 +518,64 @@ async function setupFirewallV2(api, device) {
     ]);
     const allowId = allowRes[0]?.['.id'] || allowRes[0]?.ret;
     results.push(`✓ Filter ACCEPT: ISOLIR → BYPASS (whitelist)`);
-
-    // Move ke awal forward chain
-    if (allowId) {
-      try {
-        const allFilter = await runWithRetry(api, ['/ip/firewall/filter/print']);
-        const fwdRules = allFilter.filter(r => r.chain === 'forward' && r['.id'] !== allowId);
-        if (fwdRules.length > 0) {
-          await runWithRetry(api, [
-            '/ip/firewall/filter/move',
-            '=numbers=' + allowId,
-            '=destination=' + fwdRules[0]['.id']
-          ]).catch(() => null);
-        }
-      } catch (_) { /* best-effort */ }
-    }
   } catch (e) {
     errors.push('Filter ACCEPT: ' + e.message);
   }
 
-  // ── 7. Filter DROP: src=ISOLIR catch-all (selain HTTP yang sudah di-NAT) ──
-  // HTTP port 80 sudah di-redirect via DST-NAT (sebelum sampai chain forward),
-  // jadi rule DROP ini menangkap HTTPS, ICMP, dan semua traffic lain dari pelanggan
-  // diisolir yang TIDAK menuju bypass.
+  let dnsId = null;
+  try {
+    const dnsRes = await runWithRetry(api, [
+      '/ip/firewall/filter/add',
+      '=chain=forward',
+      '=src-address-list=' + LIST_ISOLIR,
+      '=protocol=udp',
+      '=dst-port=53',
+      '=action=accept',
+      '=comment=' + TAG_DNS_FWD
+    ]);
+    dnsId = dnsRes[0]?.['.id'] || dnsRes[0]?.ret;
+    results.push(`✓ Filter ACCEPT: ISOLIR → DNS UDP/53`);
+  } catch (e) {
+    errors.push('Filter DNS: ' + e.message);
+  }
+
+  // ── 7. Filter DROP: catch-all, diletakkan SEBELUM Allow PPPoE to Internet ──
+  let dropId = null;
   try {
     const dropRes = await runWithRetry(api, [
       '/ip/firewall/filter/add',
       '=chain=forward',
       '=src-address-list=' + LIST_ISOLIR,
+      '=dst-address-list=!' + LIST_BYPASS,
       '=action=drop',
       '=comment=' + TAG_DROP_FWD
     ]);
-    const dropId = dropRes[0]?.['.id'] || dropRes[0]?.ret;
-    results.push(`✓ Filter DROP: ISOLIR catch-all (block HTTPS & lainnya)`);
+    dropId = dropRes[0]?.['.id'] || dropRes[0]?.ret;
+    results.push(`✓ Filter DROP: ISOLIR catch-all (sebelum Allow PPPoE)`);
 
-    // Move ke setelah ALLOW rule
-    if (dropId) {
-      try {
-        const allFilter = await runWithRetry(api, ['/ip/firewall/filter/print']);
-        const allowIdx = allFilter.findIndex(r => r.comment === TAG_BYPASS_FWD);
-        const dropIdx  = allFilter.findIndex(r => r['.id'] === dropId);
-        if (allowIdx >= 0 && dropIdx > allowIdx + 1) {
-          // Drop sudah setelah allow — biarkan
-        } else if (allowIdx >= 0 && allFilter[allowIdx + 1] && allFilter[allowIdx + 1]['.id'] !== dropId) {
-          await runWithRetry(api, [
-            '/ip/firewall/filter/move',
-            '=numbers=' + dropId,
-            '=destination=' + allFilter[allowIdx + 1]['.id']
-          ]).catch(() => null);
-        }
-      } catch (_) { /* best-effort */ }
+    try {
+      const moved = await placeBeforePppAccept(api, dropId);
+      if (moved) results.push(`✓ Filter DROP dipindah sebelum "Allow PPPoE to Internet"`);
+      if (dnsId && dropId) {
+        await runWithRetry(api, [
+          '/ip/firewall/filter/move',
+          '=numbers=' + dnsId,
+          '=destination=' + dropId
+        ]).catch(() => null);
+      }
+      const allowRow = (await runWithRetry(api, ['/ip/firewall/filter/print']))
+        .find(r => r.comment === TAG_BYPASS_FWD);
+      const allowId2 = allowRow && allowRow['.id'];
+      const dnsOrDrop = dnsId || dropId;
+      if (allowId2 && dnsOrDrop) {
+        await runWithRetry(api, [
+          '/ip/firewall/filter/move',
+          '=numbers=' + allowId2,
+          '=destination=' + dnsOrDrop
+        ]).catch(() => null);
+      }
+    } catch (e) {
+      results.push(`⚠ Posisi filter isolir: ${e.message}`);
     }
   } catch (e) {
     errors.push('Filter DROP: ' + e.message);

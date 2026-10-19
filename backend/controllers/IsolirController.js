@@ -507,7 +507,11 @@ class IsolirController {
            'isolir_grace_days','isolir_notify_wa','isolir_page_url','isolir_auto_enable',
            'isolir_auto_hour','isolir_wa_message',
            'isolir_page_title','isolir_page_subtitle','isolir_page_color',
-           'isolir_page_footer','isolir_page_help_text','isolir_page_show_invoices'
+           'isolir_page_footer','isolir_page_help_text','isolir_page_show_invoices',
+           'isolir_pppoe_profile_name','isolir_pppoe_pool_name','isolir_pppoe_pool_range',
+           'isolir_pppoe_local_addr','isolir_pppoe_rate_limit',
+           'isolir_pppoe_list_name','isolir_pppoe_list_cidr','isolir_pppoe_list_bypass',
+           'isolir_pppoe_pool_active_name','isolir_pppoe_pool_active_range'
          )`,
         { type: sequelize.QueryTypes.SELECT }
       ).catch(() => []);
@@ -551,7 +555,11 @@ class IsolirController {
         'isolir_page_color',        // warna utama hex (default: #1a6ef5)
         'isolir_page_footer',       // teks footer tambahan
         'isolir_page_help_text',    // teks bantuan setelah daftar tagihan
-        'isolir_page_show_invoices' // '1'/'0' tampilkan rincian tagihan atau tidak
+        'isolir_page_show_invoices',
+        'isolir_pppoe_profile_name','isolir_pppoe_pool_name','isolir_pppoe_pool_range',
+        'isolir_pppoe_local_addr','isolir_pppoe_rate_limit',
+        'isolir_pppoe_list_name','isolir_pppoe_list_cidr','isolir_pppoe_list_bypass',
+        'isolir_pppoe_pool_active_name','isolir_pppoe_pool_active_range'
       ];
       for (const key of allowed) {
         if (req.body[key] !== undefined) {
