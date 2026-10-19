@@ -228,8 +228,8 @@ function buildCore1RemoteClientScript(opts) {
   }
   if (pppPool && pppLocal) {
     lines.push(
-      `/ip pool add name=FIBERIX ranges=${pppPool} comment="FIBERIX"`,
-      `/ppp profile add name=FIBERIX local-address=${pppLocal} remote-address=FIBERIX comment="FIBERIX"`
+      `:if ([:len [/ip pool find where name="BILLINGRADIUS"]] = 0) do={ /ip pool add name=BILLINGRADIUS ranges=${pppPool} comment="FIBERIX" }`,
+      `:if ([:len [/ppp profile find where name="BILLINGRADIUS"]] = 0) do={ /ppp profile add name=BILLINGRADIUS local-address=${pppLocal} remote-address=BILLINGRADIUS comment="FIBERIX" }`
     );
   }
 

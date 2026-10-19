@@ -111,8 +111,8 @@ window.openNas=()=>{
   document.getElementById('nasType').value='mikrotik';
   document.getElementById('nasConnMode').value='public';
   document.getElementById('nasVpnType').value='wireguard';
-  document.getElementById('nasPppPool').value='10.20.0.2-10.20.0.254';
-  document.getElementById('nasPppLocal').value='10.20.0.1';
+  document.getElementById('nasPppPool').value='10.2.64.2-10.2.79.254';
+  document.getElementById('nasPppLocal').value='10.2.64.1';
   __rosTab='v7';
   onConnModeChange();
   showNasDetail(true);
@@ -138,8 +138,8 @@ window.openNasDetail=async(id)=>{
   document.getElementById('nasType').value=n.type||'mikrotik';
   document.getElementById('nasConnMode').value=n.conn_mode==='vpn'?'vpn':'public';
   document.getElementById('nasVpnType').value=n.vpn_type||'wireguard';
-  document.getElementById('nasPppPool').value=n.ppp_pool_ranges||'10.20.0.2-10.20.0.254';
-  document.getElementById('nasPppLocal').value=n.ppp_local_address||'10.20.0.1';
+  document.getElementById('nasPppPool').value=n.ppp_pool_ranges||'10.2.64.2-10.2.79.254';
+  document.getElementById('nasPppLocal').value=n.ppp_local_address||'10.2.64.1';
   __rosTab='v7';
   onConnModeChange();
   showNasDetail(true);
@@ -324,7 +324,7 @@ function showWgQr(d, enabled){
     if(warn){
       if(d.endpoint_is_private){
         warn.style.display='block';
-        warn.textContent='Endpoint masih IP LAN server Fiberix (bukan VPS). HP di data seluler tidak handshake. Untuk tes di kantor, sambungkan HP ke Wi-Fi LAN yang sama.';
+        warn.textContent='Endpoint masih IP LAN server Fiberix (bukan VPN sewa). HP di data seluler tidak handshake. Untuk tes di kantor, sambungkan HP ke Wi-Fi LAN yang sama.';
       }else{
         warn.style.display='none';
         warn.textContent='';
@@ -380,10 +380,10 @@ function applyRosData(data, label){
   const radius=' Radius: '+(data.radius_host||'192.168.22.9')+'.';
   const lanDirect=data.conn_mode!=='vpn';
   document.getElementById('rosHint').textContent=lanDirect
-    ? 'API/sync: '+apiHost+':8728.'+radius+' Mode LAN: tempel script, tanpa VPS dan tanpa port-forward.'
+    ? 'API/sync: '+apiHost+':8728.'+radius+' Mode LAN: tempel script, tanpa VPN dan tanpa port-forward.'
     : (data.endpoint_is_lan
-      ? 'API/sync: '+apiHost+':8728 (tunnel ke IP LAN Fiberix).'+radius+' Bukan VPS cloud. Port-forward tidak dipakai.'
-      : 'API/sync: '+apiHost+':8728 (IP tunnel).'+radius+' Server tunnel = Fiberix, bukan VPS cloud.');
+      ? 'API/sync: '+apiHost+':8728 (tunnel ke IP LAN Fiberix).'+radius+' Bukan VPN sewa. Port-forward tidak dipakai.'
+      : 'API/sync: '+apiHost+':8728 (IP tunnel).'+radius+' Server tunnel = Fiberix, bukan VPN sewa.');
   const usage=(data.usage&&data.usage.length)?data.usage.join(' '):(data.notes||[]).join(' ');
   document.getElementById('rosNotes').textContent=usage;
   if(data.radius_host){

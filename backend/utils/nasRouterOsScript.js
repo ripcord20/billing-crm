@@ -10,11 +10,13 @@
  */
 
 const DEFAULT_RADIUS_HOST = process.env.RADIUS_HOST || '192.168.22.9';
+const ACTIVE_POOL_NAME = 'BILLINGRADIUS';
+const DEFAULT_PPP_POOL = '10.2.64.2-10.2.79.254';
+const DEFAULT_PPP_LOCAL = '10.2.64.1';
+const EXPIRED_POOL_NAME = 'EXPIRED_BILLINGRADIUS';
 const EXPIRED_POOL = '10.200.200.2-10.200.201.254';
 const EXPIRED_GW = '10.200.200.1';
 const EXPIRED_NET = '10.200.200.0/23';
-const DEFAULT_PPP_POOL = '10.20.0.2-10.20.0.254';
-const DEFAULT_PPP_LOCAL = '10.20.0.1';
 const PROXY_PORT = 3128;
 
 function escapeRos(s) {
@@ -75,13 +77,21 @@ function buildCleanup() {
   ];
 }
 
+function ensurePool(name, ranges) {
+  return `:if ([:len [/ip pool find where name="${name}"]] = 0) do={ /ip pool add name=${name} ranges=${ranges} comment="FIBERIX" }`;
+}
+
+function ensureProfile(name, gw, pool) {
+  return `:if ([:len [/ppp profile find where name="${name}"]] = 0) do={ /ppp profile add name=${name} local-address=${gw} remote-address=${pool} comment="FIBERIX" }`;
+}
+
 function buildPppProfile(pool, local) {
   const ranges = String(pool || '').trim();
   const gw = String(local || '').trim();
   if (!ranges || !gw) return [];
   return [
-    `/ip pool add name=FIBERIX ranges=${ranges} comment="FIBERIX"`,
-    `/ppp profile add name=FIBERIX local-address=${gw} remote-address=FIBERIX comment="FIBERIX"`
+    ensurePool(ACTIVE_POOL_NAME, ranges),
+    ensureProfile(ACTIVE_POOL_NAME, gw, ACTIVE_POOL_NAME)
   ];
 }
 
@@ -138,8 +148,8 @@ function buildRadiusIsolirAndNat(version, opts) {
     `/radius add service=ppp,hotspot address=${radiusHost} secret="${secret}" timeout=3s comment="FIBERIX"`,
     '/radius incoming set accept=yes',
     '/ppp aaa set use-radius=yes accounting=yes interim-update=00:04:00',
-    `/ip pool add name=EXPIRED_FIBERIX ranges=${EXPIRED_POOL} comment="FIBERIX"`,
-    `/ppp profile add name=EXPIRED_FIBERIX local-address=${EXPIRED_GW} remote-address=EXPIRED_FIBERIX comment="FIBERIX"`,
+    ensurePool(EXPIRED_POOL_NAME, EXPIRED_POOL),
+    ensureProfile(EXPIRED_POOL_NAME, EXPIRED_GW, EXPIRED_POOL_NAME),
     `/ip proxy set enabled=yes port=${PROXY_PORT} parent-proxy=0.0.0.0`,
     proxyRedirectLine(version, EXPIRED_NET, isolirTarget),
     `/ip firewall address-list add list=EXPIRED address=${EXPIRED_NET} comment="FIBERIX"`,
@@ -328,6 +338,10 @@ module.exports = {
   DEFAULT_RADIUS_HOST,
   DEFAULT_PPP_POOL,
   DEFAULT_PPP_LOCAL,
+  ACTIVE_POOL_NAME,
+  EXPIRED_POOL_NAME,
+  EXPIRED_POOL,
+  EXPIRED_GW,
   EXPIRED_NET,
   PROXY_PORT,
   buildNasRouterOsScript,
