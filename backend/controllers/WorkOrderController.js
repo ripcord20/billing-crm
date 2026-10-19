@@ -212,6 +212,30 @@ exports.update = async (req, res) => {
         // Jangan gagalkan update WO hanya karena hook komisi error
         console.error('[WorkOrder→Sales activation hook]', hookErr.message);
       }
+
+      try {
+        const type = fields.type || wo.type;
+        if (type === 'dismantle') {
+          const FieldIncentiveService = require('../services/FieldIncentiveService');
+          const uid = fields.assigned_user_id || wo.assigned_user_id;
+          if (uid) {
+            const earnedSrc = fields.completed_at || wo.completed_at || new Date();
+            const earnedAt = earnedSrc instanceof Date
+              ? earnedSrc.toISOString().slice(0, 10)
+              : String(earnedSrc).slice(0, 10);
+            await FieldIncentiveService.accrueRouter({
+              userId: uid,
+              customerId: fields.customer_id || wo.customer_id,
+              sourceType: 'work_order',
+              sourceId: wo.id,
+              earnedAt,
+              notes: wo.wo_number || 'Pengambilan router'
+            });
+          }
+        }
+      } catch (incErr) {
+        console.error('[WorkOrder→Insentif router]', incErr.message);
+      }
     }
 
     const result = await WorkOrder.findByPk(wo.id, { include: INC });

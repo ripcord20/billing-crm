@@ -817,6 +817,55 @@ const startServer = async () => {
       logger.warn('Failed to migrate customers stop columns: ' + (e.message || e));
     }
 
+    // ── Migrasi: field_incentives + invoices.is_stop_final (insentif lapangan)
+    try {
+      if (db.FieldIncentive) {
+        await db.FieldIncentive.sync();
+        logger.info('Synced: field_incentives table');
+      }
+    } catch (e) {
+      logger.warn('Failed to sync field_incentives: ' + (e.message || e));
+    }
+    try {
+      const routerCols = [
+        { name: 'router_type', ddl: 'VARCHAR(80) NULL', after: 'notes' },
+        { name: 'router_sn',   ddl: 'VARCHAR(80) NULL', after: 'router_type' },
+        { name: 'router_mac',  ddl: 'VARCHAR(32) NULL', after: 'router_sn' },
+      ];
+      for (const col of routerCols) {
+        const [rows] = await db.sequelize.query(
+          `SELECT COUNT(*) AS c FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+              AND table_name = 'field_incentives'
+              AND column_name = '${col.name}'`
+        );
+        if (!(rows && rows[0] && parseInt(rows[0].c) > 0)) {
+          await db.sequelize.query(
+            `ALTER TABLE field_incentives ADD COLUMN ${col.name} ${col.ddl} AFTER ${col.after}`
+          );
+          logger.info('Migrated: field_incentives.' + col.name + ' added');
+        }
+      }
+    } catch (e) {
+      logger.warn('Failed to migrate field_incentives router columns: ' + (e.message || e));
+    }
+    try {
+      const [stopInv] = await db.sequelize.query(
+        `SELECT COUNT(*) AS c FROM information_schema.columns
+          WHERE table_schema = DATABASE()
+            AND table_name = 'invoices'
+            AND column_name = 'is_stop_final'`
+      );
+      if (!(stopInv && stopInv[0] && parseInt(stopInv[0].c) > 0)) {
+        await db.sequelize.query(
+          `ALTER TABLE invoices ADD COLUMN is_stop_final TINYINT(1) NOT NULL DEFAULT 0 AFTER notes`
+        );
+        logger.info('Migrated: invoices.is_stop_final added');
+      }
+    } catch (e) {
+      logger.warn('Failed to migrate invoices.is_stop_final: ' + (e.message || e));
+    }
+
     // ── Migrasi: kolom verifikasi pembayaran manual (invoices) ──────────────
     // verification_status: alur konfirmasi MANUAL saja (transfer bank + bukti).
     //   none      = belum ada pengajuan

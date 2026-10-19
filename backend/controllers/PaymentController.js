@@ -971,8 +971,16 @@ class PaymentController {
         }
       }
 
+      const deletedPaymentId = payment.id;
       await payment.destroy({ transaction: t });
       await t.commit();
+
+      try {
+        const FieldIncentiveService = require('../services/FieldIncentiveService');
+        await FieldIncentiveService.voidByPayment(deletedPaymentId);
+      } catch (incErr) {
+        logger.warn('[Payment] Void insentif gagal:', incErr.message);
+      }
 
       // ── Recompute cash_held kolektor SETELAH commit (akurat) ──
       // Dihitung ulang dari sumber kebenaran: SUM(payment kolektor) -

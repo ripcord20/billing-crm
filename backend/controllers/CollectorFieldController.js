@@ -528,6 +528,13 @@ class CollectorFieldController {
 
       await t.commit();
 
+      try {
+        const FieldIncentiveService = require('../services/FieldIncentiveService');
+        await FieldIncentiveService.accrueFromPayment(payment, { invoice, customer });
+      } catch (incErr) {
+        console.error('[Field] Accrue insentif gagal:', incErr.message);
+      }
+
       // ── Auto-restore MikroTik bila pelanggan terisolir (after commit) ──
       if (customer.isolir_status === 'isolated' || customer.isolir_status === 'restoring') {
         const restoreId = customer.id, restoreCode = customer.customer_id;

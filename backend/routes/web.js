@@ -314,6 +314,12 @@ router.get('/collect', authenticate, blockFinanceArea, blockNocArea, blockSalesA
   res.render('pages/collection', { title: 'Collect Billing', user: req.user, active: 'collect' });
 });
 
+router.get('/insentif', authenticate, allowFinanceArea, blockNocArea, blockSalesArea, (req, res) => {
+  const roleName = (req.user?.role?.name || '').toLowerCase();
+  if (!['superadmin', 'admin', 'finance'].includes(roleName)) return res.redirect('/dashboard');
+  res.render('pages/insentif', { title: 'Insentif Lapangan', user: req.user, active: 'insentif' });
+});
+
 // ── Halaman lapangan kolektor (mobile-first) ─────────────────────────
 // Boleh diakses role collector (utama) + admin/superadmin (untuk supervisi).
 router.get('/collect/field', authenticate, blockFinanceArea, blockNocArea, blockSalesArea, (req, res) => {

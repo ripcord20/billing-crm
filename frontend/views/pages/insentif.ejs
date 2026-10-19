@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css?v=ins2">
+  <style>
+    :root { --d-bg:#eef2f9; --d-card:#fff; --d-border:#e0e7f3; --d-text:#0d1b3e; --d-muted:#6b7fa8; --d-blue1:#1a6ef5; }
+    .ins-page { font-family:'DM Sans',sans-serif; background:var(--d-bg) !important; }
+    .fin-grid { display:grid; grid-template-columns:repeat(5,1fr); background:#fff; border-radius:16px; border:1px solid #e8eaed; overflow:hidden; margin-bottom:16px; }
+    .fin-card { padding:18px 16px 16px; border-right:1px solid #e8eaed; min-height:104px; }
+    .fin-card:last-child { border-right:none; }
+    .xc-lbl { font-size:11.5px; font-weight:500; color:#64748b; margin-bottom:8px; }
+    .xc-val { font-size:24px; font-weight:800; color:#0f172a; letter-spacing:-.8px; line-height:1.1; }
+    .xc-sub { font-size:11px; color:#94a3b8; margin-top:7px; }
+    .w-card { background:#fff; border:1px solid var(--d-border); border-radius:18px; box-shadow:0 2px 12px rgba(26,110,245,.05); }
+    .btn-fin { padding:9px 16px; border-radius:11px; border:none; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+    .btn-primary-fin { background:var(--d-blue1); color:#fff; box-shadow:0 4px 14px rgba(26,110,245,.3); }
+    .btn-ghost { background:#fff; color:var(--d-text); border:1.5px solid var(--d-border); }
+    .btn-ok { background:#0d9488; color:#fff; }
+    .btn-amber { background:#d97706; color:#fff; }
+    .filter-select, .finput { padding:9px 12px; border:1.5px solid var(--d-border); border-radius:10px; font-family:inherit; font-size:13.5px; color:var(--d-text); background:#fff; outline:none; }
+    .finput { width:100%; box-sizing:border-box; }
+    .ins-table { width:100%; border-collapse:collapse; min-width:860px; }
+    .ins-table th { text-align:left; padding:10px 12px; font-size:11px; font-weight:600; color:var(--d-muted); border-bottom:1px solid var(--d-border); background:#f8faff; }
+    .ins-table td { padding:12px; font-size:13px; color:var(--d-text); border-bottom:1px solid #f0f4fc; vertical-align:middle; }
+    .ins-table td:first-child { white-space:nowrap; }
+    .role-b { font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; }
+    .role-b.tech { background:#ecfdf5; color:#047857; }
+    .st-open { color:#b45309; font-weight:700; font-size:12px; }
+    .st-paid { color:#059669; font-weight:700; font-size:12px; }
+    .st-none { color:#94a3b8; font-size:12px; }
+    .rb { padding:5px 11px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid; background:#fff; }
+    .rb-pay { color:#0d9488; border-color:#99f6e4; }
+    .rb-oil { color:#d97706; border-color:#fde68a; }
+    .rb-det { color:var(--d-blue1); border-color:#bfdbfe; }
+    .modal-ov { display:none; position:fixed; inset:0; background:rgba(13,27,62,.55); z-index:9999; align-items:flex-start; justify-content:center; padding:12px 12px 96px; }
+    .modal-ov.active { display:flex; }
+    .modal-bx { background:#fff; width:100%; max-width:480px; border-radius:20px; overflow:auto; max-height:calc(100vh - 120px); margin-top:6vh; }
+    .role-b.noc { background:#fff7ed; color:#c2410c; }
+    .row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    #routerFields { display:none; gap:12px; }
+    @media(max-width:560px){ .row2 { grid-template-columns:1fr; } }
+    .toast { position:fixed; bottom:22px; right:22px; background:#0d1b3e; color:#fff; padding:11px 16px; border-radius:12px; font-size:13px; z-index:10001; display:none; }
+    .sug { border:1px solid var(--d-border); border-radius:10px; max-height:160px; overflow:auto; margin-top:6px; }
+    .sug-i { padding:8px 12px; font-size:13px; cursor:pointer; }
+    .sug-i:hover { background:#f8faff; }
+    .hint { font-size:12px; color:#64748b; line-height:1.5; }
+    @media(max-width:980px){
+      .fin-grid { grid-template-columns:repeat(2,1fr); }
+      .fin-card { border-right:none; border-bottom:1px solid #e8eaed; }
+      .fin-card:last-child { grid-column:1 / -1; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout ins-page">
+  <%- include('../partials/sidebar') %>
+  <div class="main-content">
+    <%- include('../partials/topbar') %>
+    <main class="page-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-size:22px;font-weight:800;color:var(--d-text)">Insentif Lapangan</div>
+          <div style="font-size:13px;color:var(--d-muted);margin-top:2px">Fee mengikuti kerja, bukan jabatan — kolektor &amp; teknisi sama</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="selMonth" class="filter-select"></select>
+          <select id="selYear" class="filter-select"></select>
+          <button type="button" class="btn-fin btn-ghost" onclick="openRules()">Aturan</button>
+          <button type="button" class="btn-fin btn-ghost" onclick="openAdd('router')">+ Router</button>
+          <button type="button" class="btn-fin btn-ghost" onclick="openAdd('sisa')">+ Sisa tagihan</button>
+          <button type="button" class="btn-fin btn-primary-fin" onclick="backfill()">Hitung ulang bulan ini</button>
+        </div>
+      </div>
+
+      <div class="hint" style="margin-bottom:14px;background:#fff;border:1px solid var(--d-border);border-radius:12px;padding:11px 14px">
+        Tagihan lapangan <b>Rp 5.000</b>/invoice · sisa pemakaian pelanggan berhenti <b>Rp 15.000</b> (mengganti 5.000, tidak ditumpuk) · ambil router <b>Rp 15.000</b> · oli mesin tiap <b>2 bulan</b> (<span id="oilLbl">—</span>).
+      </div>
+
+      <div class="fin-grid">
+        <div class="fin-card"><div class="xc-lbl">Fee tagihan</div><div class="xc-val" id="kTag">0</div><div class="xc-sub">invoice lapangan</div></div>
+        <div class="fin-card"><div class="xc-lbl">Fee sisa</div><div class="xc-val" id="kSisa">0</div><div class="xc-sub">pemakaian akhir</div></div>
+        <div class="fin-card"><div class="xc-lbl">Ambil router</div><div class="xc-val" id="kRouter">0</div><div class="xc-sub">perangkat ditarik</div></div>
+        <div class="fin-card"><div class="xc-lbl">Oli mesin</div><div class="xc-val" id="kOli">0</div><div class="xc-sub" id="kOliSub">periode 2 bulan</div></div>
+        <div class="fin-card"><div class="xc-lbl">Belum dibayar</div><div class="xc-val" id="kOpen" style="color:#b45309">Rp 0</div><div class="xc-sub" id="kPaidSub">sudah dibayar Rp 0</div></div>
+      </div>
+
+      <div class="w-card" style="overflow:auto">
+        <table class="ins-table">
+          <thead>
+            <tr>
+              <th>Petugas</th>
+              <th>Role</th>
+              <th>Tagihan</th>
+              <th>Sisa</th>
+              <th>Router</th>
+              <th>Total fee</th>
+              <th>Status uang</th>
+              <th>Oli</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tb"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="modal-ov" id="rulesModal">
+  <div class="modal-bx">
+    <div style="padding:18px 20px;border-bottom:1px solid #eef2f9;font-weight:800">Aturan insentif</div>
+    <div style="padding:18px 20px;display:grid;gap:12px">
+      <label class="hint">Fee tagihan lapangan (Rp)<input class="finput" id="rTag" type="number" min="1"></label>
+      <label class="hint">Fee sisa pemakaian (Rp)<input class="finput" id="rSisa" type="number" min="1"></label>
+      <label class="hint">Fee ambil router (Rp)<input class="finput" id="rRouter" type="number" min="1"></label>
+      <label class="hint">Oli per periode 2 bulan (botol)<input class="finput" id="rOli" type="number" min="1"></label>
+    </div>
+    <div style="padding:14px 20px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #eef2f9">
+      <button type="button" class="btn-fin btn-ghost" onclick="closeModal('rulesModal')">Batal</button>
+      <button type="button" class="btn-fin btn-primary-fin" onclick="saveRules()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-ov" id="addModal">
+  <div class="modal-bx">
+    <div style="padding:18px 20px;border-bottom:1px solid #eef2f9;font-weight:800" id="addTitle">Catat fee</div>
+    <div style="padding:18px 20px;display:grid;gap:12px">
+      <label class="hint">Petugas
+        <select class="finput" id="addUser"></select>
+      </label>
+      <label class="hint">Pelanggan berhenti
+        <input class="finput" id="addCustQ" placeholder="Cari nama / ID" oninput="searchCust()">
+        <div class="sug" id="addCustSug" style="display:none"></div>
+      </label>
+      <input type="hidden" id="addCustId">
+      <div class="hint" id="addCustChosen" style="color:#0d1b3e;font-weight:600"></div>
+      <div id="routerFields">
+        <label class="hint">Tipe router
+          <input class="finput" id="addRouterType" list="routerTypes" placeholder="Huawei, ZTE, Mikrotik, …">
+          <datalist id="routerTypes">
+            <option value="Huawei">
+            <option value="ZTE">
+            <option value="Fiberhome">
+            <option value="Mikrotik">
+            <option value="Tenda">
+            <option value="TP-Link">
+            <option value="Mercusys">
+            <option value="Ruijie">
+          </datalist>
+        </label>
+        <div class="row2">
+          <label class="hint">SN<input class="finput" id="addRouterSn" placeholder="Serial number" autocomplete="off"></label>
+          <label class="hint">MAC<input class="finput" id="addRouterMac" placeholder="AA:BB:CC:DD:EE:FF" autocomplete="off"></label>
+        </div>
+      </div>
+      <label class="hint">Tanggal kerja<input class="finput" id="addDate" type="date"></label>
+      <label class="hint">Catatan<input class="finput" id="addNotes" placeholder="Opsional"></label>
+    </div>
+    <div style="padding:14px 20px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #eef2f9">
+      <button type="button" class="btn-fin btn-ghost" onclick="closeModal('addModal')">Batal</button>
+      <button type="button" class="btn-fin btn-primary-fin" onclick="saveAdd()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-ov" id="detModal">
+  <div class="modal-bx" style="max-width:640px">
+    <div style="padding:18px 20px;border-bottom:1px solid #eef2f9;font-weight:800" id="detTitle">Rincian</div>
+    <div style="padding:8px 0 4px;max-height:420px;overflow:auto">
+      <table class="ins-table" style="min-width:0">
+        <thead><tr><th>Tgl</th><th>Jenis</th><th>Pelanggan / perangkat</th><th>Nilai</th><th>Status</th><th></th></tr></thead>
+        <tbody id="detBody"></tbody>
+      </table>
+    </div>
+    <div style="padding:14px 20px;display:flex;justify-content:flex-end;border-top:1px solid #eef2f9">
+      <button type="button" class="btn-fin btn-ghost" onclick="closeModal('detModal')">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+const MONTHS=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const now=new Date();
+let year=now.getFullYear(), month=now.getMonth()+1;
+let settings={fee_tagihan:5000,fee_sisa:15000,fee_router:15000,oli_qty:1};
+let oilPeriod='';
+let addKind='router';
+let staff=[];
+
+function rp(n){return 'Rp '+Math.round(Number(n)||0).toLocaleString('id-ID');}
+function toast(m,ok=true){const t=document.getElementById('toast');t.textContent=m;t.style.background=ok?'#0d1b3e':'#b91c1c';t.style.display='block';setTimeout(()=>t.style.display='none',2800);}
+async function api(url,opt={}){
+  const r=await fetch(url,{credentials:'include',headers:{'Content-Type':'application/json',...(opt.headers||{})},...opt});
+  const j=await r.json().catch(()=>({success:false,message:'Gagal memuat'}));
+  if(!r.ok||!j.success) throw new Error(j.message||'Gagal');
+  return j;
+}
+function qs(){return '?year='+year+'&month='+month;}
+function closeModal(id){document.getElementById(id).classList.remove('active');}
+
+(function initPeriod(){
+  const sm=document.getElementById('selMonth'), sy=document.getElementById('selYear');
+  MONTHS.forEach((n,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent=n;if(i+1===month)o.selected=true;sm.appendChild(o);});
+  for(let y=now.getFullYear()-2;y<=now.getFullYear()+1;y++){const o=document.createElement('option');o.value=y;o.textContent=y;if(y===year)o.selected=true;sy.appendChild(o);}
+  sm.onchange=()=>{month=parseInt(sm.value,10);load();};
+  sy.onchange=()=>{year=parseInt(sy.value,10);load();};
+})();
+
+function roleBadge(role){
+  const r=String(role||'').toLowerCase();
+  if(r==='technician'||r==='teknisi') return '<span class="role-b tech">Teknisi</span>';
+  if(r==='collector') return '<span class="role-b">Kolektor</span>';
+  if(r==='noc') return '<span class="role-b noc">NOC</span>';
+  return '<span class="role-b">'+(role||'-')+'</span>';
+}
+function roleLabel(role){
+  const r=String(role||'').toLowerCase();
+  if(r==='technician'||r==='teknisi') return 'Teknisi';
+  if(r==='collector') return 'Kolektor';
+  if(r==='noc') return 'NOC';
+  return role||'-';
+}
+function kindLabel(k){return {tagihan:'Tagihan',sisa:'Sisa pemakaian',router:'Ambil router',oli:'Oli mesin'}[k]||k;}
+
+async function load(){
+  try{
+    const j=await api('/api/insentif/summary'+qs());
+    const d=j.data; settings=d.settings||settings; oilPeriod=d.oil_period||'';
+    document.getElementById('oilLbl').textContent=d.oil_label||oilPeriod;
+    document.getElementById('kTag').textContent=d.totals.tagihan_count;
+    document.getElementById('kSisa').textContent=d.totals.sisa_count;
+    document.getElementById('kRouter').textContent=d.totals.router_count;
+    document.getElementById('kOli').textContent=d.totals.oli_qty+' botol';
+    document.getElementById('kOliSub').textContent=d.oil_label||'periode 2 bulan';
+    document.getElementById('kOpen').textContent=rp(d.totals.money_open);
+    document.getElementById('kPaidSub').textContent='sudah dibayar '+rp(d.totals.money_paid);
+    const tb=document.getElementById('tb');
+    if(!d.people.length){tb.innerHTML='<tr><td colspan="9" style="padding:28px;text-align:center;color:#94a3b8">Belum ada teknisi/kolektor, atau belum ada fee di bulan ini. Pakai Hitung ulang untuk menarik pembayaran lapangan yang sudah ada.</td></tr>';return;}
+    tb.innerHTML=d.people.map(p=>{
+      const st=p.status_money==='paid'?'<span class="st-paid">Dibayar</span>':(p.status_money==='earned'?'<span class="st-open">Belum dibayar</span>':'<span class="st-none">—</span>');
+      const oli=p.oli_qty?(p.oli_status==='paid'?p.oli_qty+' botol · diserahkan':p.oli_qty+' botol · belum'):'—';
+      const payBtn=p.money_open>0?`<button class="rb rb-pay" onclick="payMoney(${p.user_id},'${p.name.replace(/'/g,'')}')">Bayar ${rp(p.money_open)}</button>`:'';
+      const oilBtn=(p.oli_qty&&p.oli_status!=='paid')?`<button class="rb rb-oil" onclick="payOil(${p.user_id},'${p.name.replace(/'/g,'')}')">Serahkan oli</button>`:'';
+      return `<tr>
+        <td style="font-weight:700">${p.name}</td>
+        <td>${roleBadge(p.role)}</td>
+        <td>${p.tagihan_count}<div class="hint">${rp(p.tagihan_amount)}</div></td>
+        <td>${p.sisa_count}<div class="hint">${rp(p.sisa_amount)}</div></td>
+        <td>${p.router_count}<div class="hint">${rp(p.router_amount)}</div></td>
+        <td style="font-weight:800">${rp(p.money_earned)}</td>
+        <td>${st}</td>
+        <td>${oli}</td>
+        <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap">
+          ${payBtn}${oilBtn}
+          <button class="rb rb-det" onclick="openDetail(${p.user_id},'${p.name.replace(/'/g,'')}')">Rincian</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }catch(e){toast(e.message,false);}
+}
+
+async function loadStaff(){
+  try{const j=await api('/api/insentif/staff');staff=j.data||[];}catch(_){staff=[];}
+}
+
+function openRules(){
+  document.getElementById('rTag').value=settings.fee_tagihan;
+  document.getElementById('rSisa').value=settings.fee_sisa;
+  document.getElementById('rRouter').value=settings.fee_router;
+  document.getElementById('rOli').value=settings.oli_qty;
+  document.getElementById('rulesModal').classList.add('active');
+}
+async function saveRules(){
+  try{
+    const j=await api('/api/insentif/settings',{method:'PUT',body:JSON.stringify({
+      fee_tagihan:document.getElementById('rTag').value,
+      fee_sisa:document.getElementById('rSisa').value,
+      fee_router:document.getElementById('rRouter').value,
+      oli_qty:document.getElementById('rOli').value
+    })});
+    settings=j.data; closeModal('rulesModal'); toast(j.message); load();
+  }catch(e){toast(e.message,false);}
+}
+
+function fillStaffSelect(){
+  const s=document.getElementById('addUser');
+  s.innerHTML=staff.map(u=>`<option value="${u.id}">${u.name} (${u.role_label||roleLabel(u.role)})</option>`).join('')||'<option value="">Tidak ada petugas</option>';
+}
+function openAdd(kind){
+  addKind=kind;
+  document.getElementById('addTitle').textContent=kind==='router'?'Catat ambil router':'Catat sisa tagihan';
+  document.getElementById('addDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('addCustQ').value='';
+  document.getElementById('addCustId').value='';
+  document.getElementById('addCustChosen').textContent='';
+  document.getElementById('addNotes').value='';
+  document.getElementById('addRouterType').value='';
+  document.getElementById('addRouterSn').value='';
+  document.getElementById('addRouterMac').value='';
+  document.getElementById('addCustSug').style.display='none';
+  document.getElementById('routerFields').style.display=kind==='router'?'grid':'none';
+  document.getElementById('routerFields').style.gap=kind==='router'?'12px':'0';
+  fillStaffSelect();
+  document.getElementById('addModal').classList.add('active');
+}
+let _custT=null;
+function searchCust(){
+  clearTimeout(_custT);
+  const q=document.getElementById('addCustQ').value.trim();
+  if(q.length<2){document.getElementById('addCustSug').style.display='none';return;}
+  _custT=setTimeout(async()=>{
+    try{
+      const r=await fetch('/api/customers/stopped?search='+encodeURIComponent(q)+'&limit=8',{credentials:'include'});
+      const j=await r.json();
+      const rows=j.data||j.rows||[];
+      const box=document.getElementById('addCustSug');
+      if(!rows.length){box.style.display='none';return;}
+      box.style.display='block';
+      box.innerHTML=rows.map(c=>`<div class="sug-i" onclick="pickCust(${c.id},'${String(c.name||'').replace(/'/g,'')}','${c.customer_id||''}')">${c.name} <span class="hint">${c.customer_id||''}</span></div>`).join('');
+    }catch(_){}
+  },220);
+}
+function pickCust(id,name,cid){
+  document.getElementById('addCustId').value=id;
+  document.getElementById('addCustChosen').textContent=name+' · '+cid;
+  document.getElementById('addCustSug').style.display='none';
+}
+async function saveAdd(){
+  try{
+    const body={
+      user_id:document.getElementById('addUser').value,
+      customer_id:document.getElementById('addCustId').value||null,
+      earned_at:document.getElementById('addDate').value,
+      notes:document.getElementById('addNotes').value,
+      router_type:document.getElementById('addRouterType').value,
+      router_sn:document.getElementById('addRouterSn').value,
+      router_mac:document.getElementById('addRouterMac').value
+    };
+    const j=await api('/api/insentif/'+(addKind==='router'?'router':'sisa'),{method:'POST',body:JSON.stringify(body)});
+    closeModal('addModal'); toast(j.message); load();
+  }catch(e){toast(e.message,false);}
+}
+
+async function payMoney(id,name){
+  if(!confirm('Tandai semua fee uang '+name+' bulan ini sebagai sudah dibayar?')) return;
+  try{const j=await api('/api/insentif/pay-money',{method:'POST',body:JSON.stringify({user_id:id,year,month})});toast(j.message);load();}catch(e){toast(e.message,false);}
+}
+async function payOil(id,name){
+  if(!confirm('Tandai oli '+name+' periode '+document.getElementById('oilLbl').textContent+' sudah diserahkan?')) return;
+  try{const j=await api('/api/insentif/pay-oil',{method:'POST',body:JSON.stringify({user_id:id,period_key:oilPeriod})});toast(j.message);load();}catch(e){toast(e.message,false);}
+}
+async function openDetail(id,name){
+  document.getElementById('detTitle').textContent='Rincian · '+name;
+  document.getElementById('detModal').classList.add('active');
+  const tb=document.getElementById('detBody');
+  tb.innerHTML='<tr><td colspan="6" style="padding:18px;color:#94a3b8">Memuat…</td></tr>';
+  try{
+    const j=await api('/api/insentif/detail/'+id+qs());
+    if(!j.data.length){tb.innerHTML='<tr><td colspan="6" style="padding:18px;color:#94a3b8;text-align:center">Belum ada catatan</td></tr>';return;}
+    tb.innerHTML=j.data.map(r=>{
+      const val=r.unit==='botol'?(r.qty+' botol'):rp(r.amount);
+      const cust=r.customer?(r.customer.name+' · '+(r.customer.customer_id||'')):'—';
+      const dev=r.kind==='router' && (r.router_type||r.router_sn||r.router_mac)
+        ? `<div class="hint">${[r.router_type,r.router_sn?('SN '+r.router_sn):'',r.router_mac?('MAC '+r.router_mac):''].filter(Boolean).join(' · ')}</div>`
+        : '';
+      const voidBtn=r.status==='earned'?`<button class="rb" style="color:#dc2626;border-color:#fecaca" onclick="voidRow(${r.id})">Batal</button>`:'';
+      return `<tr><td>${r.earned_at||''}</td><td>${kindLabel(r.kind)}</td><td>${cust}${dev}</td><td>${val}</td><td>${r.status}</td><td>${voidBtn}</td></tr>`;
+    }).join('');
+  }catch(e){tb.innerHTML='<tr><td colspan="6" style="color:#b91c1c;padding:18px">'+e.message+'</td></tr>';}
+}
+async function voidRow(id){
+  if(!confirm('Batalkan catatan insentif ini?')) return;
+  try{const j=await api('/api/insentif/'+id+'/void',{method:'POST',body:'{}'});toast(j.message);closeModal('detModal');load();}catch(e){toast(e.message,false);}
+}
+async function backfill(){
+  if(!confirm('Tarik ulang pembayaran lapangan & WO dismantle untuk '+MONTHS[month-1]+' '+year+'? Catatan yang sudah ada tidak didobel.')) return;
+  try{const j=await api('/api/insentif/backfill',{method:'POST',body:JSON.stringify({year,month})});toast(j.message);load();}catch(e){toast(e.message,false);}
+}
+
+loadStaff();
+load();
+</script>
+</body>
+</html>

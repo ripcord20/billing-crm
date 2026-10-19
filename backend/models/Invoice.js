@@ -75,6 +75,12 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: true
     },
+    is_stop_final: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: 'Invoice sisa pemakaian akhir pelanggan berhenti'
+    },
     pdf_path: {
       type: DataTypes.STRING(255),
       allowNull: true
