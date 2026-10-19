@@ -4,9 +4,9 @@
  * Web Proxy redirect untuk customer isolir.
  *
  * Strategi:
- *   - Aktifkan MikroTik Web Proxy (transparent mode, port 8080)
- *   - DST-NAT redirect HTTP (port 80) dari address-list FLAYNET-ISOLIR
- *     ke port web proxy (8080)
+ *   - Aktifkan MikroTik Web Proxy (port 3128, sama dengan BillingRadius)
+ *   - DST-NAT HTTP+HTTPS sudah di IsolirFirewallV2 (EXPIRED → 3128)
+ *   - Proxy access: sumber 10.200.200.0/23 → halaman Fiberix /p/isolir
  *   - Web Proxy Access rule: catch-all `action=deny redirect-to=<URL>`
  *     (proxy access TIDAK support src-address-list, hanya src-address.
  *      Strategi: NAT yang filter, proxy yang redirect — hanya customer
@@ -35,11 +35,12 @@
  * ────────────────────────────────────────────────────────────────────
  */
 const { sequelize } = require('../models');
+const {
+  PROXY_PORT, LIST_CIDR, isolirPppoeDefaults,
+} = require('../utils/isolirMikrotikDefaults');
 
-// ── Konstanta ──
-const PROXY_PORT = 8080;
-const TAG_NAT_REDIR  = 'FLAYNET-ISOLIR-WP-NAT';   // NAT redirect port 80 → 8080
-const TAG_PROXY_RULE = 'FLAYNET-ISOLIR-WP-DENY';  // Proxy access rule
+const TAG_NAT_REDIR  = 'FLAYNET-ISOLIR-WP-NAT';
+const TAG_PROXY_RULE = 'FLAYNET-ISOLIR-WP-DENY';
 
 // ════════════════════════════════════════════════════════════════════════
 // HELPER untuk akses settings dari DB
@@ -53,12 +54,14 @@ async function getWebProxySettings() {
     );
     const map = {};
     rows.forEach(r => { map[r.key] = r.value; });
+    const d = isolirPppoeDefaults();
     return {
-      enabled: map.isolir_webproxy_enabled === '1',
-      pageUrl: map.isolir_page_url || '',
+      enabled: map.isolir_webproxy_enabled !== '0',
+      pageUrl: map.isolir_page_url || d.pageUrl,
     };
   } catch (e) {
-    return { enabled: false, pageUrl: '' };
+    const d = isolirPppoeDefaults();
+    return { enabled: true, pageUrl: d.pageUrl };
   }
 }
 
@@ -157,11 +160,12 @@ async function setupIsolirWebProxy(api) {
   try {
     await runWithRetry(api, [
       '/ip/proxy/access/add',
-      '=action=deny',
-      '=redirect-to=' + pageUrl,
+      '=src-address=' + LIST_CIDR,
+      '=action=redirect',
+      '=action-data=' + pageUrl.replace(/^https?:\/\//, ''),
       '=comment=' + TAG_PROXY_RULE,
     ]);
-    results.push(`✓ Access rule "deny + redirect → ${pageUrl}" dibuat`);
+    results.push(`✓ Access rule "${LIST_CIDR} → ${pageUrl}" dibuat`);
   } catch (e) {
     errors.push(`Access rule: ${e.message}`);
     return { success: false, details: results, errors, warnings };
@@ -198,46 +202,9 @@ async function setupIsolirWebProxy(api) {
     }
   } catch (_) {}
 
-  // ── 6. Tambah NAT rule: redirect TCP port 80 → 8080 ──
-  try {
-    const natRes = await runWithRetry(api, [
-      '/ip/firewall/nat/add',
-      '=chain=dstnat',
-      '=protocol=tcp',
-      '=dst-port=80',
-      '=src-address-list=FLAYNET-ISOLIR',
-      '=action=redirect',
-      '=to-ports=' + String(PROXY_PORT),
-      '=comment=' + TAG_NAT_REDIR,
-    ]);
-    const natId = Array.isArray(natRes) && natRes[0]?.ret ? natRes[0].ret : null;
-    results.push(`✓ NAT rule "redirect port 80 → ${PROXY_PORT}" dibuat`);
-
-    // Move ke awal dstnat chain
-    if (natId) {
-      try {
-        const allNat = await runWithRetry(api, ['/ip/firewall/nat/print']);
-        const dstnatRules = allNat.filter(r => r.chain === 'dstnat' && r['.id'] !== natId);
-        if (dstnatRules.length > 0) {
-          await runWithRetry(api, [
-            '/ip/firewall/nat/move',
-            '=numbers=' + natId,
-            '=destination=' + dstnatRules[0]['.id']
-          ]);
-          results.push(`✓ NAT rule dipindah ke posisi atas chain dstnat`);
-        }
-      } catch (e) {
-        warnings.push(`NAT rule tidak bisa dipindah ke atas: ${e.message}. Cek Winbox: IP → Firewall → NAT.`);
-      }
-    }
-  } catch (e) {
-    errors.push(`NAT redirect: ${e.message}`);
-    return { success: false, details: results, errors, warnings };
-  }
-
-  results.push(`✓ Setup Web Proxy Redirect selesai`);
-  results.push(`  ℹ Customer isolir buka HTTP site → di-redirect ke ${pageUrl}`);
-  results.push(`  ℹ HTTPS site tetap tidak ke-redirect (limitation TLS) — customer akan lihat "Connection refused"`);
+  // NAT 80+443 → 3128 sudah dipasang IsolirFirewallV2 (tag FLAYNET-ISOLIR-NAT).
+  results.push(`✓ Setup Web Proxy selesai (port ${PROXY_PORT})`);
+  results.push(`  ℹ Pelanggan isolir buka HTTP/HTTPS → halaman ${pageUrl}`);
 
   return {
     success: true,

@@ -863,6 +863,49 @@
                 <input type="checkbox" id="isolirAutoEnable"> Auto isolir otomatis (tiap jam)
               </label>
 
+              <div class="pf-field" style="margin-bottom:12px;">
+                <label class="pf-label">URL Halaman Isolir (publik)</label>
+                <input type="text" class="pf-input" id="isolirPageUrl" placeholder="http://192.168.22.99:3003/p/isolir">
+                <div style="font-size:11px;color:var(--d-muted);margin-top:3px;">Halaman Fiberix tanpa login. Pelanggan diisolir diarahkan ke sini (HTTP LAN). Contoh: <code>http://192.168.22.99:3003/p/isolir</code></div>
+                <div id="isolirPageUrlWarn" style="display:none;font-size:11px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:6px 8px;margin-top:6px;line-height:1.45;"></div>
+              </div>
+
+              <div class="iso-sec-title" style="margin:16px 0 8px;">IP Pool — samakan BillingRadius</div>
+              <div class="pf-row2">
+                <div class="pf-field">
+                  <label class="pf-label">Pool PPPoE aktif</label>
+                  <input type="text" class="pf-input" id="pppoePoolActiveName" placeholder="BILLINGRADIUS">
+                  <div style="font-size:11px;color:var(--d-muted);margin-top:3px;">Nama pool pelanggan normal</div>
+                </div>
+                <div class="pf-field">
+                  <label class="pf-label">Range PPPoE aktif</label>
+                  <input type="text" class="pf-input" id="pppoePoolActiveRange" placeholder="10.2.64.2-10.2.79.254">
+                </div>
+              </div>
+              <div class="pf-row2">
+                <div class="pf-field">
+                  <label class="pf-label">Pool isolir</label>
+                  <input type="text" class="pf-input" id="pppoePoolName" placeholder="EXPIRED_BILLINGRADIUS">
+                </div>
+                <div class="pf-field">
+                  <label class="pf-label">Range isolir</label>
+                  <input type="text" class="pf-input" id="pppoePoolRange" placeholder="10.200.200.2-10.200.201.254">
+                </div>
+              </div>
+              <div class="pf-row2">
+                <div class="pf-field">
+                  <label class="pf-label">Profile isolir</label>
+                  <input type="text" class="pf-input" id="pppoeProfileName" placeholder="EXPIRED_BILLINGRADIUS">
+                </div>
+                <div class="pf-field">
+                  <label class="pf-label">Gateway isolir</label>
+                  <input type="text" class="pf-input" id="pppoeLocalAddr" placeholder="10.200.200.1">
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--d-muted);line-height:1.5;margin:0 0 12px;">
+                Saat Setup Firewall, Fiberix memakai pool yang sama dengan BillingRadius di CORE 1. Halaman isolir: <strong>/p/isolir</strong>. HTTP dan HTTPS diarahkan ke webproxy 3128, filter drop diletakkan sebelum Allow PPPoE.
+              </div>
+
               <div class="pf-field" style="margin-bottom:10px;">
                 <label class="pf-label">Template Pesan WA Saat Diisolir</label>
                 <textarea class="pf-input" id="isolirWaMessage" rows="3" placeholder="Yth {nama}, layanan internet Anda (ID: {cid}) untuk sementara kami nonaktifkan karena tagihan belum dibayar. Total: {tagihan}. Bayar di: {url}" style="font-family:inherit;resize:vertical;"></textarea>

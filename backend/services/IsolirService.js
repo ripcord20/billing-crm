@@ -1748,18 +1748,50 @@ async function ensureSchema() {
 
     // ── 1d. Default settings PPPoE isolir (kalau belum ada) ──
     try {
+      const d = require('../utils/isolirMikrotikDefaults').isolirPppoeDefaults();
       const defaults = [
-        ['isolir_pppoe_profile_name', 'isolir-profile', 'string', 'Nama PPP profile untuk pelanggan diisolir'],
-        ['isolir_pppoe_pool_name',    'isolir-pool',    'string', 'Nama IP pool untuk pelanggan PPPoE diisolir'],
-        ['isolir_pppoe_pool_range',   '10.255.255.2-10.255.255.254', 'string', 'Range IP pool isolir'],
-        ['isolir_pppoe_local_addr',   '10.255.255.1',   'string', 'Local-address PPP profile isolir (gateway)'],
-        ['isolir_pppoe_rate_limit',   '128k/128k',      'string', 'Rate-limit PPP profile isolir (rx/tx)'],
+        ['isolir_pppoe_profile_name', d.profileName, 'string', 'Nama PPP profile untuk pelanggan diisolir'],
+        ['isolir_pppoe_pool_name',    d.poolName,    'string', 'Nama IP pool isolir (samakan BillingRadius)'],
+        ['isolir_pppoe_pool_range',   d.poolRange,   'string', 'Range IP pool isolir'],
+        ['isolir_pppoe_local_addr',   d.localAddr,   'string', 'Local-address PPP profile isolir (gateway)'],
+        ['isolir_pppoe_rate_limit',   d.rateLimit,   'string', 'Rate-limit PPP profile isolir (rx/tx)'],
+        ['isolir_pppoe_list_name',    d.listName,    'string', 'Address-list sumber isolir'],
+        ['isolir_pppoe_list_cidr',    d.listCidr,    'string', 'Subnet address-list isolir'],
+        ['isolir_pppoe_list_bypass',  d.listBypass,  'string', 'Address-list tujuan yang tetap diizinkan'],
+        ['isolir_pppoe_pool_active_name',  d.pppoePoolName,  'string', 'Nama IP pool PPPoE aktif'],
+        ['isolir_pppoe_pool_active_range', d.pppoePoolRange, 'string', 'Range IP pool PPPoE aktif'],
+        ['isolir_webproxy_enabled',   '1',           'string', 'Webproxy isolir HTTP+HTTPS'],
+        ['isolir_page_url',           d.pageUrl,     'string', 'URL halaman isolir publik /p/isolir'],
       ];
       for (const [key, value, type, description] of defaults) {
         await sequelize.query(
           `INSERT IGNORE INTO app_settings (\`key\`, value, type, description) VALUES (?, ?, ?, ?)`,
           { replacements: [key, value, type, description] }
         );
+      }
+      const { isPlaceholderIsolirRange } = require('../utils/isolirMikrotikDefaults');
+      const cur = await sequelize.query(
+        "SELECT value FROM app_settings WHERE `key`='isolir_pppoe_pool_range' LIMIT 1",
+        { type: sequelize.QueryTypes.SELECT }
+      ).catch(() => []);
+      if (isPlaceholderIsolirRange(cur[0] && cur[0].value)) {
+        const updates = [
+          ['isolir_pppoe_profile_name', d.profileName],
+          ['isolir_pppoe_pool_name', d.poolName],
+          ['isolir_pppoe_pool_range', d.poolRange],
+          ['isolir_pppoe_local_addr', d.localAddr],
+          ['isolir_pppoe_list_name', d.listName],
+          ['isolir_pppoe_list_cidr', d.listCidr],
+          ['isolir_pppoe_list_bypass', d.listBypass],
+          ['isolir_pppoe_pool_active_name', d.pppoePoolName],
+          ['isolir_pppoe_pool_active_range', d.pppoePoolRange],
+        ];
+        for (const [key, value] of updates) {
+          await sequelize.query(
+            'UPDATE app_settings SET value=? WHERE `key`=?',
+            { replacements: [value, key] }
+          );
+        }
       }
     } catch(e) { /* abaikan */ }
 
