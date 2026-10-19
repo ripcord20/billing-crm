@@ -111,8 +111,8 @@ window.openNas=()=>{
   document.getElementById('nasType').value='mikrotik';
   document.getElementById('nasConnMode').value='public';
   document.getElementById('nasVpnType').value='wireguard';
-  document.getElementById('nasPppPool').value='10.20.0.2-10.20.0.254';
-  document.getElementById('nasPppLocal').value='10.20.0.1';
+  document.getElementById('nasPppPool').value='10.2.64.2-10.2.79.254';
+  document.getElementById('nasPppLocal').value='10.2.64.1';
   __rosTab='v7';
   onConnModeChange();
   showNasDetail(true);
@@ -138,8 +138,8 @@ window.openNasDetail=async(id)=>{
   document.getElementById('nasType').value=n.type||'mikrotik';
   document.getElementById('nasConnMode').value=n.conn_mode==='vpn'?'vpn':'public';
   document.getElementById('nasVpnType').value=n.vpn_type||'wireguard';
-  document.getElementById('nasPppPool').value=n.ppp_pool_ranges||'10.20.0.2-10.20.0.254';
-  document.getElementById('nasPppLocal').value=n.ppp_local_address||'10.20.0.1';
+  document.getElementById('nasPppPool').value=n.ppp_pool_ranges||'10.2.64.2-10.2.79.254';
+  document.getElementById('nasPppLocal').value=n.ppp_local_address||'10.2.64.1';
   __rosTab='v7';
   onConnModeChange();
   showNasDetail(true);
