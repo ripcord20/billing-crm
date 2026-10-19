@@ -684,7 +684,7 @@ input, select, textarea { font-family: inherit; }
   }
   .main-content { margin-left: 0; }
   .sidebar-toggle { display: flex !important; }
-  .summary-cards { grid-template-columns: repeat(2, 1fr); }
+  /* KPI biru: grid terkunci lebar HP — override di blok mobile dashboard di bawah */
   .search-box { display: none; }
   .topbar { padding: 0 16px; }
   .page-content { padding: 16px; }
@@ -2011,4 +2011,46 @@ input, select, textarea { font-family: inherit; }
 }
 @media (max-width: 640px) {
   .tod-kpi-row, .tod-grid, .tod-grid-tables { grid-template-columns: 1fr; }
+}
+
+/* ===== Mobile dashboard: KPI biru terkunci lebar layar (tanpa geser) ===== */
+@media (max-width: 768px) {
+  .page-content {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .summary-cards {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px;
+    background: none !important;
+    box-shadow: none !important;
+    border-radius: 0;
+    overflow: visible !important;
+    overflow-x: hidden !important;
+    scroll-snap-type: none !important;
+    width: 100%;
+    max-width: 100%;
+    margin: 0 0 16px !important;
+    padding: 0 !important;
+  }
+  .summary-cards::-webkit-scrollbar { display: none; }
+  .summary-card {
+    flex: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+    scroll-snap-align: unset !important;
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 48%, var(--accent) 100%);
+    border-radius: 18px;
+    padding: 16px 14px 14px;
+    box-shadow: 0 10px 22px -12px rgba(37, 99, 235, .4);
+  }
+  .summary-card:last-child { grid-column: 1 / -1; }
+  .summary-card:not(:last-child)::after { display: none; }
+  .sc-label { min-height: 0; margin-bottom: 8px; font-size: 11px; }
+  .sc-value { font-size: 28px; }
+  .sc-sub { font-size: 11px; }
+  .sc-ico { width: 28px; height: 28px; top: 12px; right: 10px; }
 }
