@@ -114,6 +114,14 @@ body.dash-home .kpi-grid {
   margin-bottom: 24px;
 }
 
+body.dash-home .kpi-card.is-click { cursor: pointer; }
+body.dash-home .kpi-icon-live.is-beat { animation: kpiBeat .65s ease-out; }
+@keyframes kpiBeat {
+  0% { transform: scale(1); }
+  45% { transform: scale(var(--sc-beat, 1.14)); }
+  100% { transform: scale(1); }
+}
+
 body.dash-home .kpi-card {
   background: var(--kpi-card);
   border: 1px solid var(--kpi-border);
