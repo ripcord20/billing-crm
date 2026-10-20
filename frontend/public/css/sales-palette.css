@@ -121,3 +121,107 @@ body.sales-home .btn-outline {
 body.sales-home .page-content a:not(.btn):not(.nav-item):not(.st-nav-item) {
   color: #67e8f9;
 }
+
+body.sales-home .page-content,
+body.sales-home .fx,
+body.sales-home .fx-section,
+body.sales-home .grid-2,
+body.sales-home .grid-2 > *,
+body.sales-home .grid-2b,
+body.sales-home .grid-2b > *,
+body.sales-home .card,
+body.sales-home .gauge-wrap,
+body.sales-home .gauge-legend,
+body.sales-home .gl-row,
+body.sales-home .gl-row .l {
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.sales-home .gl-row .l {
+  overflow-wrap: anywhere;
+}
+
+body.sales-home #donut,
+body.sales-home #donut svg,
+body.sales-home #anDonut,
+body.sales-home #anDonut svg {
+  max-width: 100%;
+  height: auto;
+}
+
+body.sales-home #donut text,
+body.sales-home #anDonut text {
+  fill: #ffffff;
+}
+
+@media (max-width: 768px) {
+  body.sales-home .grid-2b div[style*="overflow-x"],
+  body.sales-home .fx-section[data-section="pipeline"] div[style*="overflow-x"] {
+    overflow-x: visible !important;
+    max-width: 100%;
+  }
+
+  body.sales-home table:has(#recentBody),
+  body.sales-home table:has(#recentBody) tbody,
+  body.sales-home table:has(#recentBody) tr,
+  body.sales-home table:has(#recentBody) td,
+  body.sales-home table:has(#regBody),
+  body.sales-home table:has(#regBody) tbody,
+  body.sales-home table:has(#regBody) tr,
+  body.sales-home table:has(#regBody) td {
+    display: block;
+    width: 100% !important;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+
+  body.sales-home table:has(#recentBody) td.empty::before,
+  body.sales-home table:has(#regBody) td.empty::before {
+    content: none;
+  }
+
+  body.sales-home table:has(#regBody) td:nth-child(8)::before { content: "Aksi"; }
+
+  body.sales-home table:has(#regBody) td:nth-child(8) > div {
+    flex-wrap: wrap;
+  }
+
+  body.sales-home table:has(#recentBody) thead,
+  body.sales-home table:has(#regBody) thead {
+    display: none;
+  }
+
+  body.sales-home table:has(#recentBody) tr,
+  body.sales-home table:has(#regBody) tr {
+    margin: 0 0 10px;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  body.sales-home table:has(#recentBody) td::before,
+  body.sales-home table:has(#regBody) td::before {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.85;
+  }
+
+  body.sales-home table:has(#recentBody) td:nth-child(1)::before { content: "No. Reg"; }
+  body.sales-home table:has(#recentBody) td:nth-child(2)::before { content: "Pelanggan"; }
+  body.sales-home table:has(#recentBody) td:nth-child(3)::before { content: "Status"; }
+  body.sales-home table:has(#recentBody) td:nth-child(4)::before { content: "Tanggal"; }
+
+  body.sales-home table:has(#regBody) td:nth-child(2)::before { content: "No. Reg"; }
+  body.sales-home table:has(#regBody) td:nth-child(3)::before { content: "Pelanggan"; }
+  body.sales-home table:has(#regBody) td:nth-child(4)::before { content: "Paket"; }
+  body.sales-home table:has(#regBody) td:nth-child(5)::before { content: "Coverage"; }
+  body.sales-home table:has(#regBody) td:nth-child(6)::before { content: "Status"; }
+  body.sales-home table:has(#regBody) td:nth-child(7)::before { content: "Tanggal"; }
+}
