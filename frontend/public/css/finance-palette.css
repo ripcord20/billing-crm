@@ -438,6 +438,13 @@ body.fin-home #pnbpBody table {
   min-width: 100%;
 }
 
+/* Teks di sel tabel ikut putih di atas baris pelangi.
+   Badge yang punya background sendiri tetap warnanya.
+   nowrap angka dan lebar kolom tidak diubah. */
+body.fin-home table tbody td *:not([style*="background"]) {
+  color: #ffffff !important;
+}
+
 body.fin-home #agBody .fin-money,
 body.fin-home #taxBody .fin-money,
 body.fin-home #plBody .fin-money,
