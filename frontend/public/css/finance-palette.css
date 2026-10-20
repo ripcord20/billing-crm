@@ -445,6 +445,75 @@ body.fin-home table tbody td *:not([style*="background"]) {
   color: #ffffff !important;
 }
 
+/* Dashboard Overview: kartu pemasukan/pengeluaran berwarna.
+   Daftar yang berbentuk tabel ikut pelangi. nowrap angka tetap. */
+body.fin-home .kpi.tone-in {
+  background: linear-gradient(135deg, #059669, #0f766e 55%, #22d3ee) !important;
+  border-color: transparent !important;
+}
+body.fin-home .kpi.tone-out {
+  background: linear-gradient(135deg, #e11d48, #be185d 55%, #ff4ecd) !important;
+  border-color: transparent !important;
+}
+body.fin-home .kpi.tone-in .kpi-val,
+body.fin-home .kpi.tone-out .kpi-val,
+body.fin-home .kpi.tone-in .kpi-lbl,
+body.fin-home .kpi.tone-out .kpi-lbl,
+body.fin-home .kpi .kpi-delta,
+body.fin-home .kpi .kpi-delta .since {
+  color: #ffffff !important;
+}
+body.fin-home .kpi .kpi-iwrap,
+body.fin-home .kpi.tone-in .kpi-iwrap,
+body.fin-home .kpi.tone-out .kpi-iwrap {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+body.fin-home .kpi-val {
+  white-space: nowrap;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+body.fin-home .cl-list .cl-row:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.fin-home .cl-list .cl-row:nth-child(8n+2) { background: #0891b2 !important; }
+body.fin-home .cl-list .cl-row:nth-child(8n+3) { background: #059669 !important; }
+body.fin-home .cl-list .cl-row:nth-child(8n+4) { background: #b45309 !important; }
+body.fin-home .cl-list .cl-row:nth-child(8n+5) { background: #ea580c !important; }
+body.fin-home .cl-list .cl-row:nth-child(8n+6) { background: #e11d48 !important; }
+body.fin-home .cl-list .cl-row:nth-child(8n+7) { background: #db2777 !important; }
+body.fin-home .cl-list .cl-row:nth-child(8n+8) { background: #7c3aed !important; }
+
+body.fin-home .cl-list .cl-row .cl-name,
+body.fin-home .cl-list .cl-row .cl-meta,
+body.fin-home .cl-list .cl-row .cl-amt,
+body.fin-home .cl-list .cl-row .cl-meta .sep {
+  color: #ffffff !important;
+}
+body.fin-home .cl-list .cl-row.selected {
+  box-shadow: inset 0 0 0 2px #ffffff;
+}
+
+body.fin-home .ch-list .ch-row {
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+body.fin-home .ch-list .ch-row:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.fin-home .ch-list .ch-row:nth-child(8n+2) { background: #0891b2 !important; }
+body.fin-home .ch-list .ch-row:nth-child(8n+3) { background: #059669 !important; }
+body.fin-home .ch-list .ch-row:nth-child(8n+4) { background: #b45309 !important; }
+body.fin-home .ch-list .ch-row:nth-child(8n+5) { background: #ea580c !important; }
+body.fin-home .ch-list .ch-row:nth-child(8n+6) { background: #e11d48 !important; }
+body.fin-home .ch-list .ch-row:nth-child(8n+7) { background: #db2777 !important; }
+body.fin-home .ch-list .ch-row:nth-child(8n+8) { background: #7c3aed !important; }
+body.fin-home .ch-list .ch-row .ch-name,
+body.fin-home .ch-list .ch-row .ch-amt,
+body.fin-home .ch-list .ch-row .ch-meta,
+body.fin-home .ch-list .ch-row .ch-meta .pct {
+  color: #ffffff !important;
+  background: transparent;
+}
+
 body.fin-home #agBody .fin-money,
 body.fin-home #taxBody .fin-money,
 body.fin-home #plBody .fin-money,
