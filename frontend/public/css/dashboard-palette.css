@@ -1,55 +1,27 @@
 /* Dashboard (modul awal) — palet semantik.
    Satu aksen merek. Hijau / kuning / merah hanya untuk status. */
 
-html[data-theme="dark"] body.dash-home {
-  --text-secondary: #c5d0e2;
-  --text-muted: #a9b8d0;
-  --text-tertiary: #a9b8d0;
-  --kpi-card: #141c2e;
-  --kpi-border: #2c3c58;
-  --kpi-label: #d5deec;
-  --kpi-sub: #b7c3d6;
+/* Kartu selalu gelap seperti referensi, meski aplikasi sedang tema terang. */
+body.dash-home {
+  --kpi-card: #1a2336;
+  --kpi-border: #2c3a52;
+  --kpi-label: #9aa8bf;
+  --kpi-sub: #7f8da6;
   --kpi-metric: #f8fafc;
-  --kpi-data: #22d3ee;
-  --kpi-ok: #34d399;
-  --kpi-bad: #fb7185;
-  --kpi-warn: #fbbf24;
-  --kpi-neutral-ink: var(--primary-light);
-  --kpi-neutral-bg: color-mix(in srgb, var(--primary) 20%, transparent);
-  --kpi-data-ink: #22d3ee;
-  --kpi-data-bg: rgba(34, 211, 238, 0.14);
-  --kpi-ok-ink: #34d399;
-  --kpi-ok-bg: rgba(52, 211, 153, 0.16);
-  --kpi-bad-ink: #fb7185;
-  --kpi-bad-bg: rgba(251, 113, 133, 0.16);
-  --kpi-warn-ink: #fbbf24;
-  --kpi-warn-bg: rgba(251, 191, 36, 0.16);
-  --kpi-idle-ink: #cbd5e1;
-  --kpi-idle-bg: rgba(148, 163, 184, 0.16);
-}
-
-html[data-theme="light"] body.dash-home {
-  --kpi-card: #ffffff;
-  --kpi-border: #e2e8f0;
-  --kpi-label: #1e293b;
-  --kpi-sub: #475569;
-  --kpi-metric: #0f172a;
-  --kpi-data: #0e7490;
-  --kpi-ok: #047857;
-  --kpi-bad: #be123c;
-  --kpi-warn: #b45309;
-  --kpi-neutral-ink: var(--primary-dark);
-  --kpi-neutral-bg: color-mix(in srgb, var(--primary) 12%, #ffffff);
-  --kpi-data-ink: #0e7490;
-  --kpi-data-bg: #ecfeff;
-  --kpi-ok-ink: #047857;
-  --kpi-ok-bg: #ecfdf5;
-  --kpi-bad-ink: #be123c;
-  --kpi-bad-bg: #fff1f2;
-  --kpi-warn-ink: #b45309;
-  --kpi-warn-bg: #fffbeb;
-  --kpi-idle-ink: #475569;
-  --kpi-idle-bg: #f1f5f9;
+  --kpi-data: #2ee6c0;
+  --kpi-ok: #3ddc97;
+  --kpi-bad: #ff6b8a;
+  --kpi-warn: #f5c451;
+  --kpi-neutral-ink: #b7a6ff;
+  --kpi-neutral-bg: rgba(124, 92, 255, 0.22);
+  --kpi-data-ink: #3ddc97;
+  --kpi-data-bg: rgba(46, 230, 160, 0.16);
+  --kpi-ok-ink: #3ddc97;
+  --kpi-ok-bg: rgba(61, 220, 151, 0.18);
+  --kpi-bad-ink: #ff6b8a;
+  --kpi-bad-bg: rgba(255, 107, 138, 0.18);
+  --kpi-warn-ink: #f5c451;
+  --kpi-warn-bg: rgba(245, 196, 81, 0.2);
 }
 
 /* Chrome halaman dashboard saja */
@@ -125,14 +97,14 @@ body.dash-home .kpi-icon-live.is-beat { animation: kpiBeat .65s ease-out; }
 body.dash-home .kpi-card {
   background: var(--kpi-card);
   border: 1px solid var(--kpi-border);
-  border-radius: 16px;
-  padding: 18px 18px 16px;
-  min-height: 138px;
+  border-radius: 18px;
+  padding: 16px 18px 15px;
+  min-height: 128px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 14px;
-  box-shadow: var(--shadow-sm);
+  gap: 18px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
 }
 
 body.dash-home .kpi-top {
@@ -174,9 +146,9 @@ body.dash-home .kpi-value-row {
 }
 
 body.dash-home .kpi-value {
-  font-size: 36px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
   line-height: 1;
 }
 
@@ -205,11 +177,10 @@ body.dash-home .kpi-ok .kpi-icon { background: var(--kpi-ok-bg); color: var(--kp
 body.dash-home .kpi-bad .kpi-value { color: var(--kpi-bad); }
 body.dash-home .kpi-bad .kpi-icon { background: var(--kpi-bad-bg); color: var(--kpi-bad-ink); }
 
-/* CPU: netral saat sehat, kuning lalu merah hanya jika beban naik */
-body.dash-home .kpi-load.is-ok .kpi-value { color: var(--kpi-metric); }
-body.dash-home .kpi-load.is-ok .kpi-icon { background: var(--kpi-idle-bg); color: var(--kpi-idle-ink); }
-
+/* CPU emas seperti referensi. Merah hanya saat beban kritis. */
+body.dash-home .kpi-load.is-ok .kpi-value,
 body.dash-home .kpi-load.is-warn .kpi-value { color: var(--kpi-warn); }
+body.dash-home .kpi-load.is-ok .kpi-icon,
 body.dash-home .kpi-load.is-warn .kpi-icon { background: var(--kpi-warn-bg); color: var(--kpi-warn-ink); }
 
 body.dash-home .kpi-load.is-hot .kpi-value { color: var(--kpi-bad); }
