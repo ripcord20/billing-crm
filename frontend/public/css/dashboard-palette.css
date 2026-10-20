@@ -341,48 +341,48 @@ body.dash-home .kpi-sub {
   display: none;
 }
 
-body.dash-home .kpi-neutral .kpi-value { color: #ffffff; text-shadow: 0 0 12px rgba(34, 211, 238, 0.45); }
-body.dash-home .kpi-neutral .kpi-icon {
-  background: rgba(34, 211, 238, 0.12);
-  color: #22d3ee;
-  border-color: rgba(34, 211, 238, 0.45);
+body.dash-home .kpi-card .kpi-label,
+body.dash-home .kpi-card .kpi-value,
+body.dash-home .kpi-card .kpi-unit {
+  color: #ffffff !important;
+  text-shadow: none;
 }
 
-body.dash-home .kpi-data .kpi-value { color: #22d3ee; text-shadow: 0 0 12px rgba(34, 211, 238, 0.45); }
-body.dash-home .kpi-data .kpi-icon {
-  background: rgba(34, 211, 238, 0.12);
-  color: #22d3ee;
-  border-color: rgba(34, 211, 238, 0.45);
+body.dash-home .kpi-card .kpi-icon {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
 }
 
-body.dash-home .kpi-ok .kpi-value { color: #4ade80; text-shadow: 0 0 12px rgba(74, 222, 128, 0.4); }
-body.dash-home .kpi-ok .kpi-icon {
-  background: rgba(74, 222, 128, 0.12);
-  color: #4ade80;
-  border-color: rgba(74, 222, 128, 0.45);
+body.dash-home .kpi-card.kpi-neutral {
+  background: linear-gradient(135deg, #0891b2 0%, #1d4ed8 58%, #818cf8 100%) !important;
+  border-color: transparent !important;
 }
 
-body.dash-home .kpi-bad .kpi-value { color: #ff4ecd; text-shadow: 0 0 12px rgba(255, 78, 205, 0.5); }
-body.dash-home .kpi-bad .kpi-icon {
-  background: rgba(255, 78, 205, 0.12);
-  color: #ff4ecd;
-  border-color: rgba(255, 78, 205, 0.45);
+body.dash-home .kpi-card.kpi-data {
+  background: linear-gradient(135deg, #0891b2 0%, #4f46e5 58%, #22d3ee 100%) !important;
+  border-color: transparent !important;
 }
 
-body.dash-home .kpi-load.is-ok .kpi-value,
-body.dash-home .kpi-load.is-warn .kpi-value { color: #fde047; text-shadow: 0 0 12px rgba(253, 224, 71, 0.4); }
-body.dash-home .kpi-load.is-ok .kpi-icon,
-body.dash-home .kpi-load.is-warn .kpi-icon {
-  background: rgba(253, 224, 71, 0.12);
-  color: #fde047;
-  border-color: rgba(253, 224, 71, 0.45);
+body.dash-home .kpi-card.kpi-ok {
+  background: linear-gradient(135deg, #059669 0%, #0f766e 52%, #22d3ee 100%) !important;
+  border-color: transparent !important;
 }
 
-body.dash-home .kpi-load.is-hot .kpi-value { color: #ff4ecd; text-shadow: 0 0 12px rgba(255, 78, 205, 0.5); }
-body.dash-home .kpi-load.is-hot .kpi-icon {
-  background: rgba(255, 78, 205, 0.12);
-  color: #ff4ecd;
-  border-color: rgba(255, 78, 205, 0.45);
+body.dash-home .kpi-card.kpi-bad {
+  background: linear-gradient(135deg, #e11d48 0%, #be185d 50%, #ff4ecd 100%) !important;
+  border-color: transparent !important;
+}
+
+body.dash-home .kpi-card.kpi-load.is-ok,
+body.dash-home .kpi-card.kpi-load.is-warn {
+  background: linear-gradient(135deg, #d97706 0%, #c2410c 52%, #f59e0b 100%) !important;
+  border-color: transparent !important;
+}
+
+body.dash-home .kpi-card.kpi-load.is-hot {
+  background: linear-gradient(135deg, #e11d48 0%, #db2777 52%, #ff4ecd 100%) !important;
+  border-color: transparent !important;
 }
 
 /* Tabel ONT Offline: teks terang, kolom tidak dikunci ke lebar HP.
