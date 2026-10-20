@@ -1,0 +1,247 @@
+/* Kulit NOC Dashboard, selaras dengan Monitoring Overview.
+   Hanya tampilan. Grid, data, dan aksi tidak diubah. */
+
+body.noc-home {
+  --nc-bg: #070814;
+  --nc-card: #141028;
+  --nc-border: rgba(34, 211, 238, 0.35);
+  --nc-text: #f8fafc;
+  --nc-muted: #e2e8f0;
+  --nc-panel: #100c22;
+  --nc-accent: #22d3ee;
+  --nc-hover: rgba(34, 211, 238, 0.12);
+
+  --bg: #070814;
+  --bg-card: #141028;
+  --bg-sidebar: #100c22;
+  --bg-hover: rgba(255, 78, 205, 0.12);
+  --bg-input: #070814;
+  --border: rgba(34, 211, 238, 0.35);
+  --text: #f8fafc;
+  --text-primary: #f8fafc;
+  --text-secondary: #f1f5f9;
+  --text-muted: #e2e8f0;
+
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+
+body.noc-home .main-content,
+body.noc-home .page-content {
+  background: transparent !important;
+  color: #f8fafc !important;
+}
+
+body.noc-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+
+body.noc-home .sidebar-header {
+  border-color: rgba(255, 78, 205, 0.28);
+}
+
+body.noc-home .logo-text,
+body.noc-home .page-header h1 {
+  color: #f8fafc;
+}
+
+body.noc-home .nav-section-title {
+  color: #e2e8f0;
+}
+
+body.noc-home .nav-item {
+  color: #f8fafc;
+}
+
+body.noc-home .nav-item:hover,
+body.noc-home .topbar-btn:hover,
+body.noc-home .sidebar-toggle:hover {
+  background: rgba(255, 78, 205, 0.12);
+  color: #ffffff;
+}
+
+body.noc-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+
+body.noc-home .nav-item.active .nav-icon {
+  color: #22d3ee !important;
+}
+
+body.noc-home .sidebar a.nav-sub:link,
+body.noc-home .sidebar a.nav-sub:visited,
+body.noc-home .sidebar a.nav-sub:hover,
+body.noc-home .sidebar a.nav-sub:focus,
+body.noc-home .sidebar a.nav-sub:active,
+body.noc-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.noc-home .sidebar a.nav-sub:hover,
+body.noc-home .sidebar a.nav-sub.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+}
+
+body.noc-home .sidebar a.nav-sub .nav-sub-dot,
+body.noc-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #67e8f9 !important;
+}
+
+body.noc-home .sidebar a.nav-sub .nav-badge {
+  -webkit-text-fill-color: currentColor;
+}
+
+body.noc-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+
+body.noc-home .search-box,
+body.noc-home .search-box input,
+body.noc-home .topbar-btn,
+body.noc-home .icon-btn-sm {
+  background: #070814;
+  color: #e2e8f0;
+  border-color: rgba(34, 211, 238, 0.35);
+}
+
+body.noc-home .nc-header,
+body.noc-home .nc-panel,
+body.noc-home .nc-stat-cell,
+body.noc-home .nc-empty-state,
+body.noc-home .nc-uplink-panel,
+body.noc-home .nc-router-card,
+body.noc-home .nc-ul-card,
+body.noc-home .nc-qa-item {
+  background: #141028;
+  border-color: rgba(34, 211, 238, 0.35);
+  color: #f8fafc;
+}
+
+body.noc-home .nc-header-text h1,
+body.noc-home .nc-stat-lbl,
+body.noc-home .nc-stat-val,
+body.noc-home .nc-ul-name,
+body.noc-home .nc-router-card .rc-name,
+body.noc-home .ts-name,
+body.noc-home .ts-pct,
+body.noc-home .ts-dc-val {
+  color: #f8fafc;
+}
+
+body.noc-home .nc-header-text p,
+body.noc-home .nc-panel-title,
+body.noc-home .nc-stat-sub,
+body.noc-home .nc-stat-sub-info,
+body.noc-home .nc-stat-unit,
+body.noc-home .nc-uplink-sub,
+body.noc-home .nc-ul-port,
+body.noc-home .nc-ul-meta,
+body.noc-home .ts-cat,
+body.noc-home .ts-bytes,
+body.noc-home .ts-dc-lbl {
+  color: #e2e8f0;
+}
+
+body.noc-home .nc-stat-val.t-blue,
+body.noc-home .clr-blue,
+body.noc-home .nc-stat-cell.t-blue .ic {
+  color: #67e8f9;
+}
+
+body.noc-home .nc-stat-val.t-green,
+body.noc-home .clr-ok,
+body.noc-home .nc-live {
+  color: #4ade80;
+}
+
+body.noc-home .nc-stat-val.t-red,
+body.noc-home .clr-danger {
+  color: #fb7185;
+}
+
+body.noc-home .nc-stat-val.t-amber,
+body.noc-home .clr-warn,
+body.noc-home .clr-orange {
+  color: #fde047;
+}
+
+body.noc-home .clr-cyan {
+  color: #22d3ee;
+}
+
+body.noc-home .nc-stat-cell.router-info {
+  background: linear-gradient(135deg, #0891b2 0%, #4f46e5 58%, #ff4ecd 100%) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+body.noc-home .nc-stat-cell.router-info .nc-stat-lbl,
+body.noc-home .nc-stat-cell.router-info .nc-stat-val,
+body.noc-home .nc-stat-cell.router-info .nc-stat-sub-info,
+body.noc-home .nc-stat-cell.router-info .ic {
+  color: #ffffff !important;
+}
+
+body.noc-home .nc-int-btn.active,
+body.noc-home .ts-tab.active {
+  background: #22d3ee !important;
+  color: #070814 !important;
+}
+
+body.noc-home .nc-monitor-add-btn,
+body.noc-home .nc-modal-btn.primary {
+  background: linear-gradient(90deg, #22d3ee, #818cf8 55%, #ff4ecd) !important;
+  color: #070814 !important;
+  border: none;
+}
+
+body.noc-home .nc-router-select,
+body.noc-home .nc-theme-btn,
+body.noc-home .nc-refresh-btn,
+body.noc-home .nc-int-btns {
+  background: #100c22;
+  color: #f8fafc;
+  border-color: rgba(34, 211, 238, 0.35);
+}
+
+body.noc-home .nc-int-btn {
+  color: #e2e8f0;
+}
+
+body.noc-home .page-content a:not(.btn):not(.nav-item):not(.st-nav-item):not(.nc-qa-item):not(.nc-ul-card) {
+  color: #67e8f9;
+}
+
+body.noc-home .nc-qa-item,
+body.noc-home .nc-ul-card {
+  color: #f8fafc;
+}
+
+body.noc-home .apexcharts-text,
+body.noc-home .apexcharts-datalabel-value,
+body.noc-home .apexcharts-xaxis text,
+body.noc-home .apexcharts-yaxis text,
+body.noc-home .apexcharts-legend-text {
+  fill: #f8fafc !important;
+}
+
+body.noc-home .apexcharts-gridline {
+  stroke: rgba(34, 211, 238, 0.2);
+}
+
+body.noc-home [style*="color:#3b82f6"] {
+  color: #67e8f9 !important;
+}
+
+body.noc-home [style*="color:#06b6d4"] {
+  color: #22d3ee !important;
+}
