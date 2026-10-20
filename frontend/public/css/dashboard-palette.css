@@ -435,14 +435,18 @@ body.dash-home .ont-off-table td:nth-child(6) { min-width: 168px; }
 body.dash-home .ont-off-table th:nth-child(7),
 body.dash-home .ont-off-table td:nth-child(7) { min-width: 96px; }
 
-body.dash-home .ont-off-table .oo-name {
-  color: #ffffff;
+/* Menang atas a:not(.btn) di sidebar (warna merek biru). */
+body.dash-home .ont-off-table a.oo-name,
+body.dash-home .ont-off-table a.oo-name:link,
+body.dash-home .ont-off-table a.oo-name:visited,
+body.dash-home .ont-off-table a.oo-name:hover,
+body.dash-home .ont-off-table a.oo-name:active {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
   font-weight: 800;
   font-size: 13.5px;
   text-decoration: none;
 }
-
-body.dash-home .ont-off-table .oo-name:hover { color: #c4b5fd; }
 
 body.dash-home .ont-off-table .oo-mono {
   color: #f8fafc;
