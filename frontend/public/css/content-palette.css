@@ -1,0 +1,222 @@
+/* Kulit Content Monitoring. Hanya tampilan.
+   Tab, filter router, refresh, dan data tidak diubah. */
+
+body.cm-home {
+  --bg: #070814;
+  --text: #f8fafc;
+  --muted: #e2e8f0;
+  --text-primary: #f8fafc;
+  --text-muted: #e2e8f0;
+  --border: rgba(34, 211, 238, 0.35);
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+
+body.cm-home .main-content,
+body.cm-home .page-content {
+  background: transparent !important;
+  color: #f8fafc;
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.cm-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+
+body.cm-home .logo-text { color: #f8fafc; }
+body.cm-home .nav-item { color: #f8fafc; }
+
+body.cm-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+
+body.cm-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+
+body.cm-home .sidebar a.nav-sub:link,
+body.cm-home .sidebar a.nav-sub:visited,
+body.cm-home .sidebar a.nav-sub:hover,
+body.cm-home .sidebar a.nav-sub:focus,
+body.cm-home .sidebar a.nav-sub:active,
+body.cm-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.cm-home .sidebar a.nav-sub .nav-sub-dot,
+body.cm-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #67e8f9 !important;
+}
+
+body.cm-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+
+body.cm-home .search-box,
+body.cm-home .search-box input,
+body.cm-home .topbar-btn {
+  background: #100c22;
+  color: #f8fafc;
+  border-color: rgba(34, 211, 238, 0.35);
+}
+
+body.cm-home .cm-hdr-l h1,
+body.cm-home .cm-hdr-l p {
+  color: #f8fafc !important;
+}
+
+body.cm-home .mt-selector-wrap {
+  background: #100c22 !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+  color: #f8fafc !important;
+}
+
+body.cm-home .mt-selector {
+  background: transparent !important;
+  color: #f8fafc !important;
+}
+
+body.cm-home .cm-btn {
+  background: linear-gradient(135deg, #0891b2, #4f46e5 58%, #ff4ecd) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+body.cm-home .chip-idle {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  color: #e2e8f0 !important;
+}
+body.cm-home .chip-idle .live-dot { background: #cbd5e1 !important; }
+
+body.cm-home .chip-live {
+  background: rgba(16, 185, 129, 0.18) !important;
+  border-color: rgba(52, 211, 153, 0.45) !important;
+  color: #4ade80 !important;
+}
+body.cm-home .chip-live .live-dot { background: #4ade80 !important; }
+
+body.cm-home .chip-busy {
+  background: rgba(34, 211, 238, 0.16) !important;
+  border-color: rgba(34, 211, 238, 0.45) !important;
+  color: #67e8f9 !important;
+}
+body.cm-home .chip-busy .live-dot { background: #67e8f9 !important; }
+
+body.cm-home #cmTrafficCard {
+  background: linear-gradient(145deg, #0891b2 0%, #1d4ed8 55%, #4f46e5 100%) !important;
+  border-color: transparent !important;
+}
+body.cm-home #cmDestCard {
+  background: linear-gradient(145deg, #7c3aed 0%, #db2777 52%, #e11d48 100%) !important;
+  border-color: transparent !important;
+}
+
+body.cm-home .cm-card {
+  color: #ffffff;
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.cm-home .cm-card-title,
+body.cm-home .cm-desc,
+body.cm-home .cm-sub,
+body.cm-home .cm-empty,
+body.cm-home .cm-empty .cm-hint,
+body.cm-home .cm-dc-val,
+body.cm-home .cm-dc-lbl {
+  color: #ffffff !important;
+}
+
+body.cm-home .cm-empty a {
+  color: #ffffff !important;
+  text-decoration: underline;
+}
+
+body.cm-home .cm-ic {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+body.cm-home .cm-tabs {
+  background: rgba(0, 0, 0, 0.28) !important;
+}
+
+body.cm-home .cm-tab {
+  color: #ffffff !important;
+}
+
+body.cm-home .cm-tab.active {
+  background: #ffffff !important;
+  color: #1e1b4b !important;
+  box-shadow: none !important;
+}
+
+body.cm-home .cm-list .cm-row:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.cm-home .cm-list .cm-row:nth-child(8n+2) { background: #0891b2 !important; }
+body.cm-home .cm-list .cm-row:nth-child(8n+3) { background: #059669 !important; }
+body.cm-home .cm-list .cm-row:nth-child(8n+4) { background: #b45309 !important; }
+body.cm-home .cm-list .cm-row:nth-child(8n+5) { background: #ea580c !important; }
+body.cm-home .cm-list .cm-row:nth-child(8n+6) { background: #e11d48 !important; }
+body.cm-home .cm-list .cm-row:nth-child(8n+7) { background: #db2777 !important; }
+body.cm-home .cm-list .cm-row:nth-child(8n+8) { background: #7c3aed !important; }
+
+body.cm-home .cm-row {
+  border-radius: 10px;
+}
+
+body.cm-home .cm-name,
+body.cm-home .cm-cat,
+body.cm-home .cm-pct,
+body.cm-home .cm-bytes {
+  color: #ffffff !important;
+}
+
+body.cm-home .cm-dot {
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+body.cm-home .cm-table-wrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+body.cm-home .cm-table thead th {
+  background: linear-gradient(90deg, #0891b2 0%, #4f46e5 48%, #ff4ecd 100%) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+body.cm-home .cm-table tbody td,
+body.cm-home .cm-table tbody td .cm-host,
+body.cm-home .cm-table tbody td .cm-ptr,
+body.cm-home .cm-table tbody td .cm-meta,
+body.cm-home .cm-table tbody td div {
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+body.cm-home .cm-table tbody tr:nth-child(8n+1) td { background: #1d4ed8 !important; }
+body.cm-home .cm-table tbody tr:nth-child(8n+2) td { background: #0891b2 !important; }
+body.cm-home .cm-table tbody tr:nth-child(8n+3) td { background: #059669 !important; }
+body.cm-home .cm-table tbody tr:nth-child(8n+4) td { background: #b45309 !important; }
+body.cm-home .cm-table tbody tr:nth-child(8n+5) td { background: #ea580c !important; }
+body.cm-home .cm-table tbody tr:nth-child(8n+6) td { background: #e11d48 !important; }
+body.cm-home .cm-table tbody tr:nth-child(8n+7) td { background: #db2777 !important; }
+body.cm-home .cm-table tbody tr:nth-child(8n+8) td { background: #7c3aed !important; }
+
+body.cm-home .apexcharts-text,
+body.cm-home .apexcharts-datalabel,
+body.cm-home .apexcharts-legend-text {
+  fill: #ffffff !important;
+  color: #ffffff !important;
+}
