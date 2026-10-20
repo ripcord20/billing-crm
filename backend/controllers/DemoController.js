@@ -136,7 +136,7 @@ class DemoController {
         message: 'Akun demo berhasil dibuat',
         data: {
           token,
-          redirect: '/dashboard',
+          redirect: '/modul',
           expiresAt,
           expiresInHours: DEMO_TTL_HOURS,
           user: {

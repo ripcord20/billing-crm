@@ -69,6 +69,7 @@ function homePathForRole(roleName) {
   if (r === 'noc') return '/noc';
   if (r === 'sales') return '/sales';
   if (r === 'tenant_owner') return '/tenant';
+  if (r === 'demo') return '/modul';
   return '/dashboard';
 }
 
