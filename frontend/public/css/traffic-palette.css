@@ -229,3 +229,52 @@ body.tf-home .apexcharts-datalabel {
 }
 
 body.tf-home .apexcharts-gridline { stroke: #475569; }
+
+/* Kartu ringkasan Interface Traffic. Grid tidak diubah. */
+body.tf-home #tc-running {
+  background: linear-gradient(135deg, #059669, #0f766e 55%, #22d3ee) !important;
+}
+body.tf-home #tc-down {
+  background: linear-gradient(135deg, #e11d48, #be185d 55%, #ff4ecd) !important;
+}
+body.tf-home #tc-rx {
+  background: linear-gradient(135deg, #0891b2, #1d4ed8 58%, #22d3ee) !important;
+}
+body.tf-home #tc-tx {
+  background: linear-gradient(135deg, #d97706, #c2410c 55%, #fbbf24) !important;
+}
+body.tf-home .tf-card .card-lbl,
+body.tf-home .tf-card .card-val,
+body.tf-home .tf-card .card-sub {
+  color: #ffffff !important;
+}
+body.tf-home .tf-card .card-pill {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+body.tf-home .tf-card .sp-line { stroke: #ffffff !important; }
+body.tf-home .tf-card .sp-fill { fill: rgba(255, 255, 255, 0.2) !important; }
+body.tf-home .tf-card .sp-dot { fill: #ffffff !important; }
+body.tf-home .tf-card.tc-active {
+  box-shadow: inset 0 0 0 2px #ffffff, 0 0 0 3px #ff4ecd !important;
+}
+
+body.tf-home .iface-grid .iface-card:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.tf-home .iface-grid .iface-card:nth-child(8n+2) { background: #0891b2 !important; }
+body.tf-home .iface-grid .iface-card:nth-child(8n+3) { background: #059669 !important; }
+body.tf-home .iface-grid .iface-card:nth-child(8n+4) { background: #b45309 !important; }
+body.tf-home .iface-grid .iface-card:nth-child(8n+5) { background: #ea580c !important; }
+body.tf-home .iface-grid .iface-card:nth-child(8n+6) { background: #e11d48 !important; }
+body.tf-home .iface-grid .iface-card:nth-child(8n+7) { background: #db2777 !important; }
+body.tf-home .iface-grid .iface-card:nth-child(8n+8) { background: #7c3aed !important; }
+body.tf-home .iface-card .iface-name,
+body.tf-home .iface-card .iface-comment,
+body.tf-home .iface-card .rate-lbl,
+body.tf-home .iface-card .rate-val,
+body.tf-home .iface-card .rate-val.rx,
+body.tf-home .iface-card .rate-val.tx {
+  color: #ffffff !important;
+}
+body.tf-home .iface-card.selected {
+  box-shadow: inset 0 0 0 2px #ffffff !important;
+}
