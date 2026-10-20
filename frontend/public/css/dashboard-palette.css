@@ -1,65 +1,68 @@
-/* Tampilan dashboard mengikuti referensi SKYNET.
-   Hanya kulit halaman dashboard. Menu, data, dan modul lain tidak diubah. */
+/* Dashboard Monitoring Overview: kulit gelap SKYNET dipadu neon cyberpunk.
+   Hanya tampilan. Menu, data, dan modul lain tidak diubah. */
 
 body.dash-home {
-  --bg: #0f172a;
-  --bg-card: #1e293b;
-  --bg-sidebar: #1e293b;
-  --bg-hover: rgba(51, 65, 85, 0.55);
-  --bg-input: #0f172a;
-  --border: #334155;
+  --bg: #070814;
+  --bg-card: #141028;
+  --bg-sidebar: #100c22;
+  --bg-hover: rgba(255, 78, 205, 0.12);
+  --bg-input: #070814;
+  --border: rgba(34, 211, 238, 0.35);
   --text: #f8fafc;
   --text-primary: #f8fafc;
   --text-secondary: #f1f5f9;
   --text-muted: #e2e8f0;
   --text-tertiary: #e2e8f0;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.28);
+  --shadow-sm: 0 0 0 1px rgba(34, 211, 238, 0.12);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 12px 32px rgba(255, 78, 205, 0.12);
 
-  --kpi-card: #1e293b;
-  --kpi-border: rgba(51, 65, 85, 0.8);
-  --kpi-label: #94a3b8;
-  --kpi-sub: #64748b;
+  --kpi-card: #141028;
+  --kpi-border: rgba(34, 211, 238, 0.35);
+  --kpi-label: #e2e8f0;
+  --kpi-sub: #c4b5fd;
   --kpi-metric: #ffffff;
-  --kpi-data: #34d399;
-  --kpi-ok: #34d399;
-  --kpi-bad: #fb7185;
-  --kpi-warn: #fbbf24;
-  --kpi-neutral-ink: #818cf8;
-  --kpi-neutral-bg: rgba(99, 102, 241, 0.1);
-  --kpi-neutral-line: rgba(99, 102, 241, 0.2);
-  --kpi-data-ink: #34d399;
-  --kpi-data-bg: rgba(16, 185, 129, 0.1);
-  --kpi-data-line: rgba(16, 185, 129, 0.2);
-  --kpi-ok-ink: #34d399;
-  --kpi-ok-bg: rgba(16, 185, 129, 0.1);
-  --kpi-ok-line: rgba(16, 185, 129, 0.2);
-  --kpi-bad-ink: #fb7185;
-  --kpi-bad-bg: rgba(244, 63, 94, 0.1);
-  --kpi-bad-line: rgba(244, 63, 94, 0.2);
-  --kpi-warn-ink: #fbbf24;
-  --kpi-warn-bg: rgba(245, 158, 11, 0.1);
-  --kpi-warn-line: rgba(245, 158, 11, 0.2);
+  --kpi-data: #22d3ee;
+  --kpi-ok: #4ade80;
+  --kpi-bad: #ff4ecd;
+  --kpi-warn: #fde047;
+  --kpi-neutral-ink: #22d3ee;
+  --kpi-neutral-bg: rgba(34, 211, 238, 0.12);
+  --kpi-neutral-line: rgba(34, 211, 238, 0.4);
+  --kpi-data-ink: #22d3ee;
+  --kpi-data-bg: rgba(34, 211, 238, 0.12);
+  --kpi-data-line: rgba(34, 211, 238, 0.4);
+  --kpi-ok-ink: #4ade80;
+  --kpi-ok-bg: rgba(74, 222, 128, 0.12);
+  --kpi-ok-line: rgba(74, 222, 128, 0.4);
+  --kpi-bad-ink: #ff4ecd;
+  --kpi-bad-bg: rgba(255, 78, 205, 0.12);
+  --kpi-bad-line: rgba(255, 78, 205, 0.45);
+  --kpi-warn-ink: #fde047;
+  --kpi-warn-bg: rgba(253, 224, 71, 0.12);
+  --kpi-warn-line: rgba(253, 224, 71, 0.45);
 
-  background: #0f172a;
-  color: #f1f5f9;
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814;
+  color: #f8fafc;
 }
 
 body.dash-home .main-content,
 body.dash-home .page-content {
-  background: #0f172a;
-  color: #f1f5f9;
+  background: transparent;
+  color: #f8fafc;
 }
 
 body.dash-home .sidebar {
-  background: rgba(30, 41, 59, 0.96);
-  border-right-color: #334155;
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
 }
 
 body.dash-home .sidebar-header,
 body.dash-home .sidebar-footer {
-  border-color: #334155;
+  border-color: rgba(255, 78, 205, 0.28);
 }
 
 body.dash-home .logo-text,
@@ -69,9 +72,9 @@ body.dash-home .card-header h3 {
 }
 
 body.dash-home .logo-icon {
-  background: linear-gradient(135deg, #4f46e5, #06b6d4);
+  background: linear-gradient(135deg, #ff4ecd, #22d3ee);
   border-radius: 12px;
-  box-shadow: 0 8px 18px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.45);
 }
 
 body.dash-home .nav-section-title {
@@ -87,35 +90,36 @@ body.dash-home .nav-item {
 body.dash-home .nav-item:hover,
 body.dash-home .topbar-btn:hover,
 body.dash-home .sidebar-toggle:hover {
-  background: rgba(51, 65, 85, 0.55);
+  background: rgba(255, 78, 205, 0.12);
   color: #ffffff;
 }
 
 body.dash-home .nav-item.active {
-  background: rgba(99, 102, 241, 0.15);
-  color: #818cf8;
-  box-shadow: inset -3px 0 0 #6366f1;
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
 }
 
 body.dash-home .nav-item.active .nav-icon {
-  color: #818cf8;
+  color: #22d3ee !important;
 }
 
 body.dash-home .topbar {
-  background: #1e293b;
-  border-bottom-color: #334155;
-  color: #f1f5f9;
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
 }
 
 body.dash-home .search-box,
 body.dash-home .search-box:focus-within {
-  background: rgba(15, 23, 42, 0.8);
-  border-color: #334155;
+  background: rgba(7, 8, 20, 0.85);
+  border-color: rgba(34, 211, 238, 0.35);
   box-shadow: none;
 }
 
 body.dash-home .search-box:focus-within {
-  border-color: #6366f1;
+  border-color: #ff4ecd;
+  box-shadow: 0 0 0 3px rgba(255, 78, 205, 0.18);
 }
 
 body.dash-home .search-box input,
@@ -145,34 +149,35 @@ body.dash-home .mt-selector,
 body.dash-home .iface-select,
 body.dash-home .period-select,
 body.dash-home .icon-btn-sm {
-  background: #0f172a;
-  color: #e2e8f0;
-  border-color: #334155;
+  background: #070814;
+  color: #f8fafc;
+  border-color: rgba(34, 211, 238, 0.4);
 }
 
 body.dash-home .card {
-  background: #1e293b;
-  border-color: rgba(51, 65, 85, 0.8);
-  color: #e2e8f0;
+  background: #141028;
+  border-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
   border-radius: 12px;
+  box-shadow: 0 0 0 1px rgba(255, 78, 205, 0.08);
 }
 
 body.dash-home .card-header,
 body.dash-home .interface-item {
-  border-color: rgba(51, 65, 85, 0.8);
+  border-color: rgba(255, 78, 205, 0.22);
 }
 
 body.dash-home .card-icon,
 body.dash-home .card-link {
-  color: #818cf8;
+  color: #22d3ee;
 }
 
 body.dash-home .bandwidth-widget {
-  background: #0f172a;
+  background: #070814;
 }
 
 body.dash-home .bw-bar {
-  background: #334155;
+  background: #2a2150;
 }
 
 /* Kartu angka — sama dengan stat card referensi */
@@ -192,8 +197,8 @@ body.dash-home .kpi-grid {
 }
 
 body.dash-home .kpi-card {
-  background: #1e293b;
-  border: 1px solid rgba(51, 65, 85, 0.8);
+  background: #141028;
+  border: 1px solid rgba(34, 211, 238, 0.32);
   border-radius: 12px;
   padding: 20px;
   min-height: 118px;
@@ -201,12 +206,13 @@ body.dash-home .kpi-card {
   flex-direction: column;
   justify-content: space-between;
   gap: 12px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
-  transition: border-color 0.15s ease;
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.08);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 body.dash-home .kpi-card:hover {
-  border-color: #475569;
+  border-color: #ff4ecd;
+  box-shadow: 0 0 22px rgba(255, 78, 205, 0.22);
 }
 
 body.dash-home .kpi-card.is-click { cursor: pointer; }
@@ -268,7 +274,7 @@ body.dash-home .kpi-value-row .kpi-value { margin-top: 0; font-size: 24px; }
 body.dash-home .kpi-unit {
   font-size: 18px;
   font-weight: 700;
-  color: #34d399;
+  color: #22d3ee;
 }
 
 body.dash-home .stat-label,
@@ -302,55 +308,55 @@ body.dash-home .apexcharts-yaxis-label {
 }
 
 body.dash-home .apexcharts-gridline {
-  stroke: #64748b;
+  stroke: rgba(255, 78, 205, 0.35);
 }
 
 body.dash-home .kpi-sub {
   display: none;
 }
 
-body.dash-home .kpi-neutral .kpi-value { color: #ffffff; }
+body.dash-home .kpi-neutral .kpi-value { color: #ffffff; text-shadow: 0 0 12px rgba(34, 211, 238, 0.45); }
 body.dash-home .kpi-neutral .kpi-icon {
-  background: rgba(99, 102, 241, 0.1);
-  color: #818cf8;
-  border-color: rgba(99, 102, 241, 0.2);
+  background: rgba(34, 211, 238, 0.12);
+  color: #22d3ee;
+  border-color: rgba(34, 211, 238, 0.45);
 }
 
-body.dash-home .kpi-data .kpi-value { color: #34d399; }
+body.dash-home .kpi-data .kpi-value { color: #22d3ee; text-shadow: 0 0 12px rgba(34, 211, 238, 0.45); }
 body.dash-home .kpi-data .kpi-icon {
-  background: rgba(16, 185, 129, 0.1);
-  color: #34d399;
-  border-color: rgba(16, 185, 129, 0.2);
+  background: rgba(34, 211, 238, 0.12);
+  color: #22d3ee;
+  border-color: rgba(34, 211, 238, 0.45);
 }
 
-body.dash-home .kpi-ok .kpi-value { color: #34d399; }
+body.dash-home .kpi-ok .kpi-value { color: #4ade80; text-shadow: 0 0 12px rgba(74, 222, 128, 0.4); }
 body.dash-home .kpi-ok .kpi-icon {
-  background: rgba(16, 185, 129, 0.1);
-  color: #34d399;
-  border-color: rgba(16, 185, 129, 0.2);
+  background: rgba(74, 222, 128, 0.12);
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.45);
 }
 
-body.dash-home .kpi-bad .kpi-value { color: #fb7185; }
+body.dash-home .kpi-bad .kpi-value { color: #ff4ecd; text-shadow: 0 0 12px rgba(255, 78, 205, 0.5); }
 body.dash-home .kpi-bad .kpi-icon {
-  background: rgba(244, 63, 94, 0.1);
-  color: #fb7185;
-  border-color: rgba(244, 63, 94, 0.2);
+  background: rgba(255, 78, 205, 0.12);
+  color: #ff4ecd;
+  border-color: rgba(255, 78, 205, 0.45);
 }
 
 body.dash-home .kpi-load.is-ok .kpi-value,
-body.dash-home .kpi-load.is-warn .kpi-value { color: #fbbf24; }
+body.dash-home .kpi-load.is-warn .kpi-value { color: #fde047; text-shadow: 0 0 12px rgba(253, 224, 71, 0.4); }
 body.dash-home .kpi-load.is-ok .kpi-icon,
 body.dash-home .kpi-load.is-warn .kpi-icon {
-  background: rgba(245, 158, 11, 0.1);
-  color: #fbbf24;
-  border-color: rgba(245, 158, 11, 0.2);
+  background: rgba(253, 224, 71, 0.12);
+  color: #fde047;
+  border-color: rgba(253, 224, 71, 0.45);
 }
 
-body.dash-home .kpi-load.is-hot .kpi-value { color: #fb7185; }
+body.dash-home .kpi-load.is-hot .kpi-value { color: #ff4ecd; text-shadow: 0 0 12px rgba(255, 78, 205, 0.5); }
 body.dash-home .kpi-load.is-hot .kpi-icon {
-  background: rgba(244, 63, 94, 0.1);
-  color: #fb7185;
-  border-color: rgba(244, 63, 94, 0.2);
+  background: rgba(255, 78, 205, 0.12);
+  color: #ff4ecd;
+  border-color: rgba(255, 78, 205, 0.45);
 }
 
 /* Tabel ONT Offline: teks terang, kolom tidak dikunci ke lebar HP.
@@ -368,8 +374,8 @@ body.dash-home .ont-off-wrap {
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
-  background: #1e293b;
-  border-color: #334155;
+  background: #141028;
+  border-color: rgba(34, 211, 238, 0.35);
 }
 
 body.dash-home .ont-off-scroll {
@@ -403,20 +409,20 @@ body.dash-home .ont-off-table th {
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.04em;
-  color: #0f172a;
-  background: #f8fafc;
+  color: #22d3ee;
+  background: #100c22;
 }
 
 body.dash-home .ont-off-table td {
   padding: 10px 14px;
   color: #f8fafc;
-  background: #1e293b;
-  border-top: 1px solid #334155;
+  background: #141028;
+  border-top: 1px solid rgba(255, 78, 205, 0.22);
   font-size: 13px;
 }
 
 body.dash-home .ont-off-table tr:hover td {
-  background: #334155;
+  background: #24183f;
   color: #ffffff;
 }
 
@@ -459,8 +465,9 @@ body.dash-home .ont-off-table .oo-olt {
   white-space: nowrap;
   padding: 3px 10px;
   border-radius: 999px;
-  background: #dbeafe;
-  color: #1e3a8a;
+  background: rgba(34, 211, 238, 0.14);
+  color: #67e8f9;
+  border: 1px solid rgba(34, 211, 238, 0.45);
   font-weight: 800;
   font-size: 12px;
   line-height: 1.2;
