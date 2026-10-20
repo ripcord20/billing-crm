@@ -42,4 +42,11 @@ financeAccess.allowFinanceArea(
 );
 assert.strictEqual(redirected, '/modul');
 
+const guardSrc = fs.readFileSync(path.join(root, 'backend/middleware/demoGuard.js'), 'utf8');
+assert.match(guardSrc, /\/auth\/logout/);
+assert.match(guardSrc, /function matchesWhitelist/);
+const authSrc = fs.readFileSync(path.join(root, 'backend/middleware/auth.js'), 'utf8');
+assert.match(authSrc, /skipNext/);
+assert.match(authSrc, /\/modul/);
+
 console.log('demoModul.test.js OK');

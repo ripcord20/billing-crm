@@ -544,7 +544,10 @@
     })();
     // Gabungkan tujuan server-role dengan FLYN_NEXT (kalau ada, next menang).
     window.flynDest = function(serverRedirect){
-      return window.FLYN_NEXT || serverRedirect || '/dashboard';
+      var next = window.FLYN_NEXT;
+      // Jangan paksa semua role ke /modul. Itu hanya home akun demo.
+      if (next === '/modul' && serverRedirect && serverRedirect !== '/modul') next = '';
+      return next || serverRedirect || '/dashboard';
     };
   </script>
   <!-- ════════════════════════════════════════════════════════════════
