@@ -33,6 +33,15 @@ function isFinanceAreaUser(req) {
   return r === 'superadmin' || r === 'admin' || r === 'finance' || r === 'tenant_owner';
 }
 
+function isDemoRole(req) {
+  return _roleName(req) === 'demo';
+}
+
+function isFinanceDashboardPath(req) {
+  const p = (req.path || req.originalUrl || '').split('?')[0];
+  return p === '/finance' || p.startsWith('/finance/');
+}
+
 /**
  * Page-level guard: izinkan superadmin/admin/finance, tolak yang lain.
  * Dipakai di route /finance/*.
@@ -40,6 +49,11 @@ function isFinanceAreaUser(req) {
 function allowFinanceArea(req, res, next) {
   if (!req.user) return res.redirect('/login');
   if (isFinanceAreaUser(req)) return next();
+  // Akun demo boleh melihat pelanggan/tagihan/paket; dashboard finance tetap terkunci.
+  if (isDemoRole(req)) {
+    if (isFinanceDashboardPath(req)) return res.redirect('/modul');
+    return next();
+  }
 
   // Technician → arahkan ke dashboard technician
   if (_roleName(req) === 'technician') return res.redirect('/technician');
@@ -67,7 +81,7 @@ function blockFinanceArea(req, res, next) {
  */
 function apiAllowFinanceArea(req, res, next) {
   if (!req.user) return res.status(401).json({ success: false, message: 'Authentication required' });
-  if (isFinanceAreaUser(req)) return next();
+  if (isFinanceAreaUser(req) || isDemoRole(req)) return next();
   return res.status(403).json({ success: false, message: 'Akses ditolak untuk role Anda' });
 }
 
@@ -85,6 +99,7 @@ function apiBlockFinanceArea(req, res, next) {
 module.exports = {
   isFinanceRole,
   isFinanceAreaUser,
+  isDemoRole,
   allowFinanceArea,
   blockFinanceArea,
   apiAllowFinanceArea,

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <div class="app-layout">
+    <%- include('../partials/sidebar') %>
+    <div class="main-content">
+      <%- include('../partials/topbar') %>
+      <main class="page-content">
+        <div class="page-header">
+          <div class="page-header-left">
+            <h1>Modul Billing</h1>
+            <p class="mod-lead">Peta modul <%= appName %> untuk ISP yang sedang mencoba akun demo. Boleh dibuka dan dilihat — data sampel, tanpa mengubah produksi.</p>
+          </div>
+        </div>
+
+        <div class="mod-note">
+          <strong>Cara pakai.</strong>
+          Klik <em>Lihat</em> untuk masuk ke modul yang aktif di demo.
+          Badge <em>Versi penuh</em> artinya modul itu ada di billing, tapi dikunci di akun demo (isolir, NAS, gateway pesan, pengaturan).
+        </div>
+
+        <%
+          const groups = [
+            {
+              title: 'Overview',
+              items: [
+                { name: 'Dashboard', desc: 'Ringkasan pelanggan, tagihan, dan status jaringan.', href: '/dashboard', open: true },
+                { name: 'Financial Dashboard', desc: 'KPI uang masuk, tunggakan, dan kesehatan kas.', href: '/finance', open: false },
+                { name: 'NOC Dashboard', desc: 'Pantau sesi, perangkat, dan alarm jaringan.', href: '/noc', open: false },
+                { name: 'Sales Dashboard', desc: 'Pendaftaran dan pipeline pelanggan baru.', href: '/sales', open: false }
+              ]
+            },
+            {
+              title: 'Pelanggan & tagihan',
+              items: [
+                { name: 'Daftar Pelanggan', desc: 'Profil, paket, status aktif / isolir / berhenti.', href: '/customers', open: true },
+                { name: 'Pelanggan Berhenti', desc: 'Arsip pelanggan yang sudah ditutup.', href: '/customers/stopped', open: true },
+                { name: 'Paket Layanan', desc: 'Harga, kecepatan, dan masa aktif paket.', href: '/packages', open: true },
+                { name: 'Daftar Tagihan', desc: 'Invoice bulanan, jatuh tempo, lunas / belum.', href: '/billing', open: true },
+                { name: 'Pembayaran', desc: 'Catat bayar cash, transfer, atau lapangan.', href: '/payments', open: true },
+                { name: 'Collect Billing', desc: 'Tugas kolektor dan setoran harian.', href: '/collect', open: true }
+              ]
+            },
+            {
+              title: 'Jaringan',
+              items: [
+                { name: 'PPPoE Sessions', desc: 'Siapa yang online di MikroTik saat ini.', href: '/monitoring/pppoe', open: true },
+                { name: 'NAS', desc: 'Daftarkan router, pool PPP, dan script MikroTik.', href: '/nas', open: false },
+                { name: 'Isolir', desc: 'Putus / pulihkan pelanggan menunggak otomatis.', href: '/isolir', open: false },
+                { name: 'OLT / ONT', desc: 'Status ONU, LOS, dan manajemen fiber.', href: '/monitoring/olt-management', open: true },
+                { name: 'Device Management', desc: 'Router, radio, dan perangkat NOC.', href: '/devices', open: true },
+                { name: 'Infrastructure', desc: 'Peta ODC/ODP dan jalur distribusi.', href: '/infrastructure', open: true },
+                { name: 'Hotspot', desc: 'Voucher dan sesi hotspot.', href: '/monitoring/hotspot', open: true }
+              ]
+            },
+            {
+              title: 'Lapangan',
+              items: [
+                { name: 'Tickets', desc: 'Gangguan pelanggan dan tindak lanjut.', href: '/tickets', open: true },
+                { name: 'Work Order', desc: 'Pasang, cabut, dan tugas teknisi.', href: '/work-orders', open: true },
+                { name: 'GPS Tracking', desc: 'Posisi petugas di lapangan.', href: '/gps-tracking', open: true },
+                { name: 'Aset', desc: 'Router, ONU, dan stok gudang.', href: '/assets', open: true }
+              ]
+            },
+            {
+              title: 'Komunikasi',
+              items: [
+                { name: 'WA Gateway', desc: 'Tagihan, peringatan, dan broadcast WhatsApp.', href: '/whatsapp', open: false },
+                { name: 'Telegram', desc: 'Laporan operasional ke grup NOC.', href: '/telegram', open: false },
+                { name: 'Email', desc: 'Invoice dan pengumuman lewat email.', href: '/email-broadcast', open: false }
+              ]
+            }
+          ];
+        %>
+
+        <% groups.forEach(function(g){ %>
+          <section class="mod-group">
+            <h2><%= g.title %></h2>
+            <div class="mod-grid">
+              <% g.items.forEach(function(it){ %>
+                <article class="mod-card <%= it.open ? 'is-open' : 'is-locked' %>">
+                  <div class="mod-card-top">
+                    <h3><%= it.name %></h3>
+                    <% if (it.open) { %>
+                      <span class="mod-badge open">Demo</span>
+                    <% } else { %>
+                      <span class="mod-badge lock">Versi penuh</span>
+                    <% } %>
+                  </div>
+                  <p><%= it.desc %></p>
+                  <% if (it.open) { %>
+                    <a class="mod-link" href="<%= it.href %>">Lihat</a>
+                  <% } else { %>
+                    <span class="mod-muted">Terkunci di akun demo</span>
+                  <% } %>
+                </article>
+              <% }) %>
+            </div>
+          </section>
+        <% }) %>
+      </main>
+    </div>
+  </div>
+  <style>
+    .mod-lead{margin:6px 0 0;max-width:640px;color:var(--text-secondary);font-size:14px;line-height:1.5;}
+    .mod-note{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin:0 0 22px;font-size:13px;color:var(--text-secondary);line-height:1.5;}
+    .mod-note strong{color:var(--text);}
+    .mod-group{margin:0 0 28px;}
+    .mod-group h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin:0 0 12px;}
+    .mod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+    .mod-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-height:148px;box-shadow:var(--shadow-sm);}
+    .mod-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+    .mod-card h3{margin:0;font-size:15px;font-weight:700;color:var(--text);}
+    .mod-card p{margin:0;flex:1;font-size:13px;line-height:1.45;color:var(--text-secondary);}
+    .mod-badge{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:999px;white-space:nowrap;}
+    .mod-badge.open{background:#dcfce7;color:#166534;}
+    .mod-badge.lock{background:#f1f5f9;color:#64748b;}
+    .mod-link{align-self:flex-start;font-size:13px;font-weight:600;color:var(--primary);text-decoration:none;}
+    .mod-link:hover{text-decoration:underline;}
+    .mod-muted{font-size:12px;color:var(--text-muted);}
+    .mod-card.is-locked{opacity:.92;}
+    [data-theme="dark"] .mod-badge.open{background:#14532d;color:#bbf7d0;}
+    [data-theme="dark"] .mod-badge.lock{background:#1e293b;color:#94a3b8;}
+    @media (max-width:640px){
+      .mod-grid{grid-template-columns:1fr;}
+    }
+  </style>
+  <script src="/js/app.js"></script>
+</body>
+</html>

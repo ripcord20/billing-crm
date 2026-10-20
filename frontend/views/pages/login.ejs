@@ -544,7 +544,10 @@
     })();
     // Gabungkan tujuan server-role dengan FLYN_NEXT (kalau ada, next menang).
     window.flynDest = function(serverRedirect){
-      return window.FLYN_NEXT || serverRedirect || '/dashboard';
+      var next = window.FLYN_NEXT;
+      // Jangan paksa semua role ke /modul. Itu hanya home akun demo.
+      if (next === '/modul' && serverRedirect && serverRedirect !== '/modul') next = '';
+      return next || serverRedirect || '/dashboard';
     };
   </script>
   <!-- ════════════════════════════════════════════════════════════════
@@ -663,7 +666,22 @@
           <button type="submit" class="login-btn" id="loginBtn">
             Sign in
           </button>
+          <div class="demo-login-box">
+            <p class="demo-login-kicker">ISP yang ingin lihat modul billing</p>
+            <button type="button" class="demo-login-btn" id="demoSharedFill">Isi akun demo</button>
+            <button type="button" class="demo-login-btn demo-login-ghost" id="demoQuickStart">Buat sesi demo baru</button>
+            <p id="demoLoadingMsg" class="demo-login-status" style="display:none;">Menyiapkan akun demo…</p>
+            <p id="demoErrorMsg" class="demo-login-error" style="display:none;"></p>
+            <p class="demo-login-hint">Setelah masuk, halaman pertama adalah daftar modul. Data sampel, tidak mengubah produksi.</p>
+          </div>
           <style>
+            .demo-login-box{margin-top:18px;padding:14px 14px 12px;border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc;}
+            .demo-login-kicker{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#64748b;margin:0 0 10px;}
+            .demo-login-btn{width:100%;padding:11px 14px;margin:0 0 8px;border:1px solid #bfdbfe;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;}
+            .demo-login-ghost{background:#fff;border-color:#e2e8f0;color:#334155;}
+            .demo-login-hint{margin:4px 0 0;font-size:12px;color:#64748b;line-height:1.45;}
+            .demo-login-status,.demo-login-error{margin:0 0 8px;font-size:13px;}
+            .demo-login-error{color:#dc2626;}
             @keyframes demoSpin { to { transform: rotate(360deg); } }
             #demoQuickStart:hover, #demoSharedFill:hover { transform: translateY(-1px); }
             #demoQuickStart:disabled, #demoSharedFill:disabled { opacity: .5; cursor: wait; transform: none; }

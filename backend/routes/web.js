@@ -142,6 +142,10 @@ router.get('/dashboard', authenticate, blockFinanceArea, blockNocArea, blockSale
   res.render('pages/dashboard', { title: 'Dashboard', user: req.user, active: 'dashboard' });
 });
 
+router.get('/modul', authenticate, (req, res) => {
+  res.render('pages/modul', { title: 'Modul Billing', user: req.user, active: 'modul' });
+});
+
 router.get('/tenant', authenticate, allowTenantArea, (req, res) => {
   res.render('pages/tenant-dashboard', {
     title: 'Dashboard Tenant',

@@ -19,9 +19,18 @@ const logger = require('../utils/logger');
 // Route yang BOLEH di-POST oleh demo (minimal sekali — hanya untuk UX dasar)
 const DEMO_POST_WHITELIST = [
   '/api/auth/logout',
+  '/auth/logout',
   '/api/auth/refresh',
-  '/api/dashboard-layout',   // user boleh simpan layout dashboardnya sendiri
+  '/auth/refresh',
+  '/api/dashboard-layout',
+  '/dashboard-layout',
 ];
+
+function matchesWhitelist(path, listed) {
+  const p = String(path || '').split('?')[0];
+  const alt = p.startsWith('/api/') ? p.slice(4) : (p.startsWith('/') ? '/api' + p : p);
+  return listed.some((w) => p === w || alt === w || p.startsWith(w + '/') || alt.startsWith(w + '/'));
+}
 
 // Path prefix yang DILARANG total untuk demo (baik GET maupun mutasi)
 // Ini melindungi endpoint yang mengeksekusi perintah ke perangkat riil.
@@ -89,10 +98,7 @@ function continueGuard(req, res, next, method, path) {
   }
 
   // 4. Cek whitelist untuk method mutasi
-  const isWhitelisted = DEMO_POST_WHITELIST.some(p =>
-    path === p || path.startsWith(p + '/')
-  );
-  if (isWhitelisted) return next();
+  if (matchesWhitelist(path, DEMO_POST_WHITELIST)) return next();
 
   // 5. Default: tolak
   logger.warn(`[DEMO-GUARD] Blocked ${method} ${path} for demo user ${req.user.email}`);
@@ -145,6 +151,7 @@ module.exports = {
   demoMaskResponse,
   maskSensitiveFields,
   isDemoUser,
+  matchesWhitelist,
   DEMO_BLOCKED_PREFIXES,
   DEMO_POST_WHITELIST,
 };

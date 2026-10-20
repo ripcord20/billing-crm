@@ -14,6 +14,7 @@ assert.strictEqual(slugify('ISP Baru Jaya'), 'isp-baru-jaya');
 assert.strictEqual(slugify('  '), 'tenant');
 assert.strictEqual(homePathForRole('tenant_owner'), '/tenant');
 assert.strictEqual(homePathForRole('superadmin'), '/dashboard');
+assert.strictEqual(homePathForRole('demo'), '/modul');
 
 const ownerReq = { user: { tenant_id: 7, role: { name: 'tenant_owner' } } };
 assert.strictEqual(isTenantOwner(ownerReq), true);

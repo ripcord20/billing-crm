@@ -7,10 +7,14 @@ const { User, Role, Permission, Tenant } = require('../models');
 function buildLoginRedirect(req) {
   try {
     const original = req.originalUrl || req.url || '';
+    const pathOnly = String(original).split('?')[0];
+    // /modul hanya landing akun demo — jangan dibawa sebagai ?next= setelah logout.
+    const skipNext = pathOnly === '/modul' || pathOnly.startsWith('/modul/');
     const safe = typeof original === 'string'
       && original.startsWith('/')
       && !original.startsWith('//')
-      && !original.startsWith('/login');
+      && !original.startsWith('/login')
+      && !skipNext;
     if (safe) {
       return '/login?next=' + encodeURIComponent(original);
     }
