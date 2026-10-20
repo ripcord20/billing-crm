@@ -377,3 +377,50 @@ body.fin-home .fin [style*="border:1.5px solid #dbe3ef"] {
 }
 
 body.fin-home.finmask .fin-money::after { color: #e2e8f0; }
+
+/* Angka uang dan umur tunggakan tidak boleh terpotong di HP.
+   Kalau tidak muat, geser ke kanan di dalam kartu. */
+body.fin-home .fin-grid,
+body.fin-home .fin-main,
+body.fin-home .fin-rail,
+body.fin-home #agCard,
+body.fin-home #taxCard,
+body.fin-home #plCard,
+body.fin-home #cfCard,
+body.fin-home #pnbpCard {
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.fin-home #agBody,
+body.fin-home #taxBody,
+body.fin-home #plBody,
+body.fin-home #cfBody,
+body.fin-home #pnbpBody {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+body.fin-home #agBody table,
+body.fin-home #taxBody table,
+body.fin-home #plBody table,
+body.fin-home #cfBody table,
+body.fin-home #pnbpBody table {
+  width: max-content !important;
+  min-width: 100%;
+}
+
+body.fin-home #agBody .fin-money,
+body.fin-home #taxBody .fin-money,
+body.fin-home #plBody .fin-money,
+body.fin-home #cfBody .fin-money,
+body.fin-home #pnbpBody .fin-money,
+body.fin-home #agBody td:nth-child(2),
+body.fin-home #agBody td:nth-child(2) span,
+body.fin-home #agTotalBadge .fin-money {
+  white-space: nowrap !important;
+}
