@@ -115,7 +115,6 @@ body.noc-home .icon-btn-sm {
 
 body.noc-home .nc-header,
 body.noc-home .nc-panel,
-body.noc-home .nc-stat-cell,
 body.noc-home .nc-empty-state,
 body.noc-home .nc-uplink-panel,
 body.noc-home .nc-router-card,
@@ -178,17 +177,59 @@ body.noc-home .clr-cyan {
   color: #22d3ee;
 }
 
-body.noc-home .nc-stat-cell.router-info {
-  background: linear-gradient(135deg, #0891b2 0%, #4f46e5 58%, #ff4ecd 100%) !important;
+body.noc-home .nc-status-bar .nc-stat-cell {
   border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.65);
+}
+
+body.noc-home .nc-status-bar .nc-stat-cell .nc-stat-lbl,
+body.noc-home .nc-status-bar .nc-stat-cell .nc-stat-val,
+body.noc-home .nc-status-bar .nc-stat-cell .nc-stat-sub-info,
+body.noc-home .nc-status-bar .nc-stat-cell .nc-stat-unit,
+body.noc-home .nc-status-bar .nc-stat-cell .ic,
+body.noc-home .nc-status-bar .nc-stat-clickable::after {
   color: #ffffff !important;
 }
 
-body.noc-home .nc-stat-cell.router-info .nc-stat-lbl,
-body.noc-home .nc-stat-cell.router-info .nc-stat-val,
-body.noc-home .nc-stat-cell.router-info .nc-stat-sub-info,
-body.noc-home .nc-stat-cell.router-info .ic {
-  color: #ffffff !important;
+body.noc-home .nc-status-bar .nc-stat-cell .ic {
+  background: rgba(255, 255, 255, 0.18) !important;
+}
+
+body.noc-home .nc-status-bar .nc-stat-cell.t-slate {
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 55%, #22d3ee 100%) !important;
+}
+
+body.noc-home .nc-status-bar .nc-stat-cell.t-blue {
+  background: linear-gradient(135deg, #0891b2 0%, #1d4ed8 58%, #818cf8 100%) !important;
+}
+
+body.noc-home .nc-status-bar .nc-stat-cell.router-info {
+  background: linear-gradient(135deg, #0891b2 0%, #4f46e5 58%, #ff4ecd 100%) !important;
+}
+
+body.noc-home .nc-status-bar .nc-stat-cell:has(#sOntOnline) {
+  background: linear-gradient(135deg, #059669 0%, #0f766e 52%, #22d3ee 100%) !important;
+}
+
+body.noc-home .nc-status-bar .nc-stat-cell:has(#sOntOffline) {
+  background: linear-gradient(135deg, #e11d48 0%, #be185d 50%, #ff4ecd 100%) !important;
+}
+
+body.noc-home .nc-status-bar .nc-stat-cell:has(#sIsolated) {
+  background: linear-gradient(135deg, #d97706 0%, #c2410c 52%, #f43f5e 100%) !important;
+}
+
+body.noc-home .nc-status-bar .nc-stat-cell:has(#sTickets) {
+  background: linear-gradient(135deg, #ea580c 0%, #db2777 52%, #a855f7 100%) !important;
+}
+
+body.noc-home .nc-status-bar .nc-stat-cell:has(#sCustomers) {
+  background: linear-gradient(135deg, #16a34a 0%, #047857 52%, #22d3ee 100%) !important;
+}
+
+body.noc-home .nc-status-bar .nc-stat-cell.t-teal {
+  background: linear-gradient(135deg, #0d9488 0%, #4338ca 55%, #22d3ee 100%) !important;
 }
 
 body.noc-home .nc-int-btn.active,
