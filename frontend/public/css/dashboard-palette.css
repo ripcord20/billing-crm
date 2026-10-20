@@ -8,11 +8,11 @@ body.dash-home {
   --bg-hover: rgba(51, 65, 85, 0.55);
   --bg-input: #0f172a;
   --border: #334155;
-  --text: #f1f5f9;
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
-  --text-tertiary: #94a3b8;
+  --text: #f8fafc;
+  --text-primary: #f8fafc;
+  --text-secondary: #f1f5f9;
+  --text-muted: #e2e8f0;
+  --text-tertiary: #e2e8f0;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.28);
@@ -75,12 +75,12 @@ body.dash-home .logo-icon {
 }
 
 body.dash-home .nav-section-title {
-  color: #94a3b8;
+  color: #e2e8f0;
   letter-spacing: 0.06em;
 }
 
 body.dash-home .nav-item {
-  color: #cbd5e1;
+  color: #f8fafc;
   border-radius: 8px;
 }
 
@@ -125,7 +125,13 @@ body.dash-home .search-box input::placeholder {
 
 body.dash-home .search-box input::placeholder,
 body.dash-home .search-box svg {
-  color: #94a3b8;
+  color: #e2e8f0;
+}
+
+body.dash-home .sidebar-header span,
+body.dash-home .sidebar-footer,
+body.dash-home .sidebar-footer span {
+  color: #e2e8f0 !important;
 }
 
 body.dash-home .topbar-btn svg,
@@ -214,10 +220,10 @@ body.dash-home .kpi-top {
 
 body.dash-home .kpi-label {
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: #f8fafc;
   line-height: 1.35;
   min-height: 0;
 }
@@ -261,8 +267,42 @@ body.dash-home .kpi-value-row .kpi-value { margin-top: 0; font-size: 24px; }
 
 body.dash-home .kpi-unit {
   font-size: 18px;
-  font-weight: 400;
+  font-weight: 700;
   color: #34d399;
+}
+
+body.dash-home .stat-label,
+body.dash-home .ds-label,
+body.dash-home .bs-label,
+body.dash-home .legend-item,
+body.dash-home .growth-label,
+body.dash-home .revenue-label,
+body.dash-home .revenue-label-new,
+body.dash-home .revenue-detail-new,
+body.dash-home .outstanding-label,
+body.dash-home .outstanding-detail,
+body.dash-home .map-legend,
+body.dash-home .bw-label,
+body.dash-home .bw-time,
+body.dash-home .bw-labels,
+body.dash-home .iface-name,
+body.dash-home .dev-ip,
+body.dash-home .dev-cpu {
+  color: #f1f5f9;
+}
+
+body.dash-home .apexcharts-xaxis text,
+body.dash-home .apexcharts-yaxis text,
+body.dash-home .apexcharts-legend-text,
+body.dash-home .apexcharts-datalabel,
+body.dash-home .apexcharts-xaxis-label,
+body.dash-home .apexcharts-yaxis-label {
+  fill: #f8fafc !important;
+  color: #f8fafc !important;
+}
+
+body.dash-home .apexcharts-gridline {
+  stroke: #64748b;
 }
 
 body.dash-home .kpi-sub {
