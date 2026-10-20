@@ -1,111 +1,209 @@
-/* Dashboard (modul awal) — palet semantik.
-   Satu aksen merek. Hijau / kuning / merah hanya untuk status. */
+/* Tampilan dashboard mengikuti referensi SKYNET.
+   Hanya kulit halaman dashboard. Menu, data, dan modul lain tidak diubah. */
 
-/* Kartu selalu gelap seperti referensi, meski aplikasi sedang tema terang. */
 body.dash-home {
-  --kpi-card: #1a2336;
-  --kpi-border: #2c3a52;
-  --kpi-label: #9aa8bf;
-  --kpi-sub: #7f8da6;
-  --kpi-metric: #f8fafc;
-  --kpi-data: #2ee6c0;
-  --kpi-ok: #3ddc97;
-  --kpi-bad: #ff6b8a;
-  --kpi-warn: #f5c451;
-  --kpi-neutral-ink: #b7a6ff;
-  --kpi-neutral-bg: rgba(124, 92, 255, 0.22);
-  --kpi-data-ink: #3ddc97;
-  --kpi-data-bg: rgba(46, 230, 160, 0.16);
-  --kpi-ok-ink: #3ddc97;
-  --kpi-ok-bg: rgba(61, 220, 151, 0.18);
-  --kpi-bad-ink: #ff6b8a;
-  --kpi-bad-bg: rgba(255, 107, 138, 0.18);
-  --kpi-warn-ink: #f5c451;
-  --kpi-warn-bg: rgba(245, 196, 81, 0.2);
+  --bg: #0f172a;
+  --bg-card: #1e293b;
+  --bg-sidebar: #1e293b;
+  --bg-hover: rgba(51, 65, 85, 0.55);
+  --bg-input: #0f172a;
+  --border: #334155;
+  --text: #f1f5f9;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-tertiary: #94a3b8;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.28);
+
+  --kpi-card: #1e293b;
+  --kpi-border: rgba(51, 65, 85, 0.8);
+  --kpi-label: #94a3b8;
+  --kpi-sub: #64748b;
+  --kpi-metric: #ffffff;
+  --kpi-data: #34d399;
+  --kpi-ok: #34d399;
+  --kpi-bad: #fb7185;
+  --kpi-warn: #fbbf24;
+  --kpi-neutral-ink: #818cf8;
+  --kpi-neutral-bg: rgba(99, 102, 241, 0.1);
+  --kpi-neutral-line: rgba(99, 102, 241, 0.2);
+  --kpi-data-ink: #34d399;
+  --kpi-data-bg: rgba(16, 185, 129, 0.1);
+  --kpi-data-line: rgba(16, 185, 129, 0.2);
+  --kpi-ok-ink: #34d399;
+  --kpi-ok-bg: rgba(16, 185, 129, 0.1);
+  --kpi-ok-line: rgba(16, 185, 129, 0.2);
+  --kpi-bad-ink: #fb7185;
+  --kpi-bad-bg: rgba(244, 63, 94, 0.1);
+  --kpi-bad-line: rgba(244, 63, 94, 0.2);
+  --kpi-warn-ink: #fbbf24;
+  --kpi-warn-bg: rgba(245, 158, 11, 0.1);
+  --kpi-warn-line: rgba(245, 158, 11, 0.2);
+
+  background: #0f172a;
+  color: #f1f5f9;
 }
 
-/* Chrome halaman dashboard saja */
+body.dash-home .main-content,
+body.dash-home .page-content {
+  background: #0f172a;
+  color: #f1f5f9;
+}
+
+body.dash-home .sidebar {
+  background: rgba(30, 41, 59, 0.96);
+  border-right-color: #334155;
+}
+
+body.dash-home .sidebar-header,
+body.dash-home .sidebar-footer {
+  border-color: #334155;
+}
+
+body.dash-home .logo-text,
+body.dash-home .page-header h1,
+body.dash-home .card-header h3 {
+  color: #f8fafc;
+}
+
 body.dash-home .logo-icon {
-  background: linear-gradient(145deg, var(--primary-dark), var(--primary));
+  background: linear-gradient(135deg, #4f46e5, #06b6d4);
+  border-radius: 12px;
+  box-shadow: 0 8px 18px rgba(99, 102, 241, 0.25);
 }
 
-html[data-theme="dark"] body.dash-home .nav-section-title {
-  color: #b7c3d6;
+body.dash-home .nav-section-title {
+  color: #94a3b8;
+  letter-spacing: 0.06em;
 }
 
-html[data-theme="dark"] body.dash-home .nav-item:hover,
-html[data-theme="dark"] body.dash-home .topbar-btn:hover,
-html[data-theme="dark"] body.dash-home .sidebar-toggle:hover {
-  background: #1a2438;
-  color: #f8fafc;
+body.dash-home .nav-item {
+  color: #cbd5e1;
+  border-radius: 8px;
 }
 
-html[data-theme="dark"] body.dash-home .nav-item.active {
-  background: color-mix(in srgb, var(--primary) 24%, #10182a);
-  color: #f8fafc;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 50%, transparent);
+body.dash-home .nav-item:hover,
+body.dash-home .topbar-btn:hover,
+body.dash-home .sidebar-toggle:hover {
+  background: rgba(51, 65, 85, 0.55);
+  color: #ffffff;
 }
 
-html[data-theme="light"] body.dash-home .nav-item.active {
-  background: color-mix(in srgb, var(--primary) 12%, #ffffff);
-  color: var(--primary-dark);
+body.dash-home .nav-item.active {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+  box-shadow: inset -3px 0 0 #6366f1;
 }
 
 body.dash-home .nav-item.active .nav-icon {
-  color: inherit;
+  color: #818cf8;
 }
 
-html[data-theme="dark"] body.dash-home .search-box {
+body.dash-home .topbar {
+  background: #1e293b;
+  border-bottom-color: #334155;
+  color: #f1f5f9;
+}
+
+body.dash-home .search-box,
+body.dash-home .search-box:focus-within {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: #334155;
+  box-shadow: none;
+}
+
+body.dash-home .search-box:focus-within {
+  border-color: #6366f1;
+}
+
+body.dash-home .search-box input,
+body.dash-home .search-box input::placeholder {
+  color: #e2e8f0;
+}
+
+body.dash-home .search-box input::placeholder,
+body.dash-home .search-box svg {
+  color: #94a3b8;
+}
+
+body.dash-home .topbar-btn svg,
+body.dash-home .sidebar-toggle svg {
+  color: #cbd5e1;
+}
+
+body.dash-home .btn-secondary,
+body.dash-home .mt-selector-wrap,
+body.dash-home .mt-selector,
+body.dash-home .iface-select,
+body.dash-home .period-select,
+body.dash-home .icon-btn-sm {
   background: #0f172a;
-  border-color: #2c3c58;
+  color: #e2e8f0;
+  border-color: #334155;
 }
 
-html[data-theme="dark"] body.dash-home .search-box:focus-within {
+body.dash-home .card {
+  background: #1e293b;
+  border-color: rgba(51, 65, 85, 0.8);
+  color: #e2e8f0;
+  border-radius: 12px;
+}
+
+body.dash-home .card-header,
+body.dash-home .interface-item {
+  border-color: rgba(51, 65, 85, 0.8);
+}
+
+body.dash-home .card-icon,
+body.dash-home .card-link {
+  color: #818cf8;
+}
+
+body.dash-home .bandwidth-widget {
   background: #0f172a;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
 }
 
-html[data-theme="dark"] body.dash-home .search-box input::placeholder {
-  color: #b7c3d6;
+body.dash-home .bw-bar {
+  background: #334155;
 }
 
-html[data-theme="dark"] body.dash-home .bandwidth-widget {
-  background: #10182a;
-}
-
-html[data-theme="dark"] body.dash-home .bw-bar {
-  background: #243049;
-}
-
-/* Kartu metrik — permukaan netral, warna hanya di angka dan ikon */
+/* Kartu angka — sama dengan stat card referensi */
 body.dash-home .kpi-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  grid-template-columns: 1fr;
+  gap: 16px;
   margin-bottom: 24px;
 }
 
-body.dash-home .kpi-card.is-click { cursor: pointer; }
-body.dash-home .kpi-icon-live.is-beat { animation: kpiBeat .65s ease-out; }
-@keyframes kpiBeat {
-  0% { transform: scale(1); }
-  45% { transform: scale(var(--sc-beat, 1.14)); }
-  100% { transform: scale(1); }
+@media (min-width: 768px) {
+  body.dash-home .kpi-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (min-width: 1024px) {
+  body.dash-home .kpi-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 
 body.dash-home .kpi-card {
-  background: var(--kpi-card);
-  border: 1px solid var(--kpi-border);
-  border-radius: 18px;
-  padding: 16px 18px 15px;
-  min-height: 128px;
+  background: #1e293b;
+  border: 1px solid rgba(51, 65, 85, 0.8);
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 118px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 18px;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+  gap: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  transition: border-color 0.15s ease;
 }
+
+body.dash-home .kpi-card:hover {
+  border-color: #475569;
+}
+
+body.dash-home .kpi-card.is-click { cursor: pointer; }
 
 body.dash-home .kpi-top {
   display: flex;
@@ -115,77 +213,102 @@ body.dash-home .kpi-top {
 }
 
 body.dash-home .kpi-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--kpi-label);
+  color: #94a3b8;
   line-height: 1.35;
-  min-height: 2.7em;
+  min-height: 0;
 }
 
 body.dash-home .kpi-icon {
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
   border-radius: 12px;
+  border: 1px solid transparent;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-body.dash-home .kpi-icon svg {
-  width: 20px;
-  height: 20px;
+body.dash-home .kpi-icon svg { width: 20px; height: 20px; }
+
+body.dash-home .kpi-icon-live.is-beat { animation: kpiBeat .65s ease-out; }
+@keyframes kpiBeat {
+  0% { transform: scale(1); }
+  45% { transform: scale(var(--sc-beat, 1.12)); }
+  100% { transform: scale(1); }
 }
 
 body.dash-home .kpi-value-row {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 6px;
+  margin-top: 4px;
 }
 
 body.dash-home .kpi-value {
-  font-size: 40px;
-  font-weight: 800;
-  letter-spacing: -0.04em;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
   line-height: 1;
+  margin-top: 4px;
 }
 
+body.dash-home .kpi-value-row .kpi-value { margin-top: 0; font-size: 24px; }
+
 body.dash-home .kpi-unit {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--kpi-data);
+  font-size: 18px;
+  font-weight: 400;
+  color: #34d399;
 }
 
 body.dash-home .kpi-sub {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--kpi-sub);
-  margin-top: 6px;
+  display: none;
 }
 
-body.dash-home .kpi-neutral .kpi-value { color: var(--kpi-metric); }
-body.dash-home .kpi-neutral .kpi-icon { background: var(--kpi-neutral-bg); color: var(--kpi-neutral-ink); }
+body.dash-home .kpi-neutral .kpi-value { color: #ffffff; }
+body.dash-home .kpi-neutral .kpi-icon {
+  background: rgba(99, 102, 241, 0.1);
+  color: #818cf8;
+  border-color: rgba(99, 102, 241, 0.2);
+}
 
-body.dash-home .kpi-data .kpi-value { color: var(--kpi-data); }
-body.dash-home .kpi-data .kpi-icon { background: var(--kpi-data-bg); color: var(--kpi-data-ink); }
+body.dash-home .kpi-data .kpi-value { color: #34d399; }
+body.dash-home .kpi-data .kpi-icon {
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.2);
+}
 
-body.dash-home .kpi-ok .kpi-value { color: var(--kpi-ok); }
-body.dash-home .kpi-ok .kpi-icon { background: var(--kpi-ok-bg); color: var(--kpi-ok-ink); }
+body.dash-home .kpi-ok .kpi-value { color: #34d399; }
+body.dash-home .kpi-ok .kpi-icon {
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.2);
+}
 
-body.dash-home .kpi-bad .kpi-value { color: var(--kpi-bad); }
-body.dash-home .kpi-bad .kpi-icon { background: var(--kpi-bad-bg); color: var(--kpi-bad-ink); }
+body.dash-home .kpi-bad .kpi-value { color: #fb7185; }
+body.dash-home .kpi-bad .kpi-icon {
+  background: rgba(244, 63, 94, 0.1);
+  color: #fb7185;
+  border-color: rgba(244, 63, 94, 0.2);
+}
 
-/* CPU emas seperti referensi. Merah hanya saat beban kritis. */
 body.dash-home .kpi-load.is-ok .kpi-value,
-body.dash-home .kpi-load.is-warn .kpi-value { color: var(--kpi-warn); }
+body.dash-home .kpi-load.is-warn .kpi-value { color: #fbbf24; }
 body.dash-home .kpi-load.is-ok .kpi-icon,
-body.dash-home .kpi-load.is-warn .kpi-icon { background: var(--kpi-warn-bg); color: var(--kpi-warn-ink); }
+body.dash-home .kpi-load.is-warn .kpi-icon {
+  background: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.2);
+}
 
-body.dash-home .kpi-load.is-hot .kpi-value { color: var(--kpi-bad); }
-body.dash-home .kpi-load.is-hot .kpi-icon { background: var(--kpi-bad-bg); color: var(--kpi-bad-ink); }
-
-@media (max-width: 720px) {
-  body.dash-home .kpi-grid { grid-template-columns: 1fr; }
+body.dash-home .kpi-load.is-hot .kpi-value { color: #fb7185; }
+body.dash-home .kpi-load.is-hot .kpi-icon {
+  background: rgba(244, 63, 94, 0.1);
+  color: #fb7185;
+  border-color: rgba(244, 63, 94, 0.2);
 }
