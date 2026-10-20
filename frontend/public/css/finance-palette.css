@@ -1,0 +1,379 @@
+/* Kulit financial dashboard, selaras dengan dashboard utama.
+   Hanya tampilan. Angka, menu, dan aksi tidak diubah. */
+
+body.fin-home {
+  --bg: #0f172a;
+  --bg-card: #1e293b;
+  --bg-sidebar: #1e293b;
+  --bg-hover: rgba(51, 65, 85, 0.55);
+  --bg-input: #0f172a;
+  --border: #334155;
+  --text: #f8fafc;
+  --text-primary: #f8fafc;
+  --text-secondary: #f1f5f9;
+  --text-muted: #e2e8f0;
+  background: #0f172a;
+  color: #f1f5f9;
+}
+
+body.fin-home .main-content,
+body.fin-home .page-content {
+  background: #0f172a;
+  color: #f1f5f9;
+}
+
+body.fin-home .sidebar {
+  background: rgba(30, 41, 59, 0.96);
+  border-right-color: #334155;
+}
+
+body.fin-home .sidebar-header,
+body.fin-home .sidebar-footer {
+  border-color: #334155;
+}
+
+body.fin-home .logo-text,
+body.fin-home .logo-icon {
+  color: #f8fafc;
+}
+
+body.fin-home .logo-icon {
+  background: linear-gradient(135deg, #4f46e5, #06b6d4);
+  border-radius: 12px;
+}
+
+body.fin-home .nav-section-title,
+body.fin-home .sidebar-header span,
+body.fin-home .sidebar-footer,
+body.fin-home .sidebar-footer span {
+  color: #e2e8f0 !important;
+}
+
+body.fin-home .nav-item {
+  color: #f8fafc;
+}
+
+body.fin-home .nav-item:hover,
+body.fin-home .topbar-btn:hover,
+body.fin-home .sidebar-toggle:hover {
+  background: rgba(51, 65, 85, 0.55);
+  color: #ffffff;
+}
+
+body.fin-home .nav-item.active,
+body.fin-home .nav-item.active .nav-icon {
+  background: rgba(99, 102, 241, 0.15) !important;
+  color: #818cf8 !important;
+  box-shadow: inset -3px 0 0 #6366f1;
+}
+
+body.fin-home .topbar {
+  background: #1e293b;
+  border-bottom-color: #334155;
+  color: #f1f5f9;
+}
+
+body.fin-home .search-box,
+body.fin-home .search-box input,
+body.fin-home .topbar-btn,
+body.fin-home .icon-btn-sm {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+body.fin-home .fin-head h1,
+body.fin-home .card-head h3,
+body.fin-home .kpi-val,
+body.fin-home .dtx-strip-val,
+body.fin-home .dd-body,
+body.fin-home .dd-val,
+body.fin-home .cl-name,
+body.fin-home .cl-amt,
+body.fin-home .cl-foot strong,
+body.fin-home .ins-title,
+body.fin-home .qm-head-body h3,
+body.fin-home .cr-val,
+body.fin-home .cb-amt,
+body.fin-home .cr-strip strong,
+body.fin-home .ch-name,
+body.fin-home .ch-amt,
+body.fin-home .ch-total-val,
+body.fin-home .tx-desc,
+body.fin-home .tx-amt,
+body.fin-home .mini-val,
+body.fin-home .donut-center .val,
+body.fin-home .dl-item .amt,
+body.fin-home .act-desc,
+body.fin-home .cl-popover-item,
+body.fin-home .bulk-log-row,
+body.fin-home .toast,
+body.fin-home .toast-title {
+  color: #f8fafc;
+}
+
+body.fin-home .fin-head .sub,
+body.fin-home .card-head .h-sub,
+body.fin-home .kpi-lbl,
+body.fin-home .dtx-strip-lbl,
+body.fin-home .dd-lbl,
+body.fin-home .dd-sub,
+body.fin-home .cl-meta,
+body.fin-home .ins-msg,
+body.fin-home .mini-lbl,
+body.fin-home .mini-sub,
+body.fin-home .tx-table thead th,
+body.fin-home .tx-id,
+body.fin-home .tx-date,
+body.fin-home .cf-legend,
+body.fin-home .donut-center .lbl,
+body.fin-home .dl-item .name,
+body.fin-home .ch-total-lbl,
+body.fin-home .empty,
+body.fin-home .empty .t,
+body.fin-home .qm-head-sub,
+body.fin-home .qm-field label,
+body.fin-home .rem-lbl {
+  color: #e2e8f0;
+}
+
+body.fin-home .card,
+body.fin-home .kpi,
+body.fin-home .mini,
+body.fin-home .ins-card,
+body.fin-home .dtx-strip-item,
+body.fin-home .dd-item,
+body.fin-home .qm-modal,
+body.fin-home .toast,
+body.fin-home .cl-popover {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+  box-shadow: none;
+}
+
+body.fin-home .kpi:hover,
+body.fin-home .dd-item:hover,
+body.fin-home .ins-card:hover,
+body.fin-home .mini:hover {
+  border-color: #64748b;
+  box-shadow: none;
+}
+
+body.fin-home .kpi.tone-in .kpi-val,
+body.fin-home .tx-amt.in { color: #34d399; }
+body.fin-home .kpi.tone-out .kpi-val,
+body.fin-home .tx-amt.out { color: #fb7185; }
+body.fin-home .kpi.tone-in .kpi-iwrap { color: #34d399; background: rgba(16, 185, 129, 0.15); }
+body.fin-home .kpi.tone-out .kpi-iwrap { color: #fb7185; background: rgba(244, 63, 94, 0.15); }
+body.fin-home .tx-icon.in { color: #34d399; background: rgba(16, 185, 129, 0.15); }
+body.fin-home .tx-icon.out { color: #fb7185; background: rgba(244, 63, 94, 0.15); }
+
+body.fin-home .dtx-strip-cnt,
+body.fin-home .range-pills,
+body.fin-home .cl-tabs,
+body.fin-home .rem-toggle,
+body.fin-home .qm-close,
+body.fin-home .qm-actions,
+body.fin-home .empty .ic,
+body.fin-home .bulk-log {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+body.fin-home .range-pills button,
+body.fin-home .cl-tab,
+body.fin-home .fin-pmode {
+  color: #e2e8f0;
+}
+
+body.fin-home .range-pills button.active,
+body.fin-home .cl-tab.active,
+body.fin-home .fin-pmode.active {
+  background: #334155;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+body.fin-home .cl-tab-cnt,
+body.fin-home .cl-tab.active .cl-tab-cnt {
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+body.fin-home .tx-table thead th,
+body.fin-home .tx-table tbody td,
+body.fin-home .cl-row + .cl-row,
+body.fin-home .qm-head,
+body.fin-home .card-head {
+  border-color: #334155;
+}
+
+body.fin-home .tx-table tbody td { color: #f8fafc; }
+body.fin-home .tx-table tbody tr:hover,
+body.fin-home .cl-row:hover,
+body.fin-home .qa-item:hover,
+body.fin-home .cl-popover-item:hover {
+  background: #334155;
+  color: #ffffff;
+}
+
+body.fin-home .bal-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  box-shadow: none;
+}
+
+body.fin-home .bal-btn {
+  background: #6366f1;
+  color: #ffffff;
+}
+
+body.fin-home .bal-btn.ghost {
+  background: transparent;
+  color: #f8fafc;
+  border-color: #64748b;
+}
+
+body.fin-home .qa-item {
+  color: #f8fafc !important;
+}
+
+body.fin-home .qa-icon {
+  background: rgba(99, 102, 241, 0.15);
+  color: #c7d2fe;
+}
+
+body.fin-home .qa-arrow,
+body.fin-home .qa-item:hover .qa-arrow { color: #e2e8f0; }
+
+body.fin-home .card-head .link {
+  color: #c7d2fe !important;
+  background: rgba(99, 102, 241, 0.15);
+}
+
+body.fin-home .fin a:not(.btn):not(.nav-item):not(.st-nav-item):not(.bal-btn) {
+  color: #f8fafc;
+}
+
+body.fin-home .collect-card circle:not(#crRing) { stroke: #334155; }
+
+body.fin-home .apexcharts-xaxis text,
+body.fin-home .apexcharts-yaxis text,
+body.fin-home .apexcharts-legend-text,
+body.fin-home .apexcharts-datalabel,
+body.fin-home .cf-svg text {
+  fill: #f8fafc !important;
+  color: #f8fafc !important;
+}
+
+body.fin-home .apexcharts-gridline,
+body.fin-home .cf-svg line { stroke: #475569; }
+
+body.fin-home #finPeriodBar > button,
+body.fin-home #finPeriodBar select,
+body.fin-home #finMaskBtn,
+body.fin-home #finPeriodBar > div {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+
+body.fin-home #finMaskBtn.on {
+  background: #4f46e5 !important;
+  color: #ffffff !important;
+  border-color: #4f46e5 !important;
+}
+
+body.fin-home .qm-field input,
+body.fin-home .qm-field select,
+body.fin-home .qm-field textarea,
+body.fin-home .cl-pagesize-sel,
+body.fin-home .cl-pager-btn {
+  background: #0f172a;
+  color: #f8fafc;
+  border-color: #334155;
+}
+
+body.fin-home .qm-btn.ghost,
+body.fin-home .bulk-bar-btn.ghost,
+body.fin-home .cl-tpl-link {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+body.fin-home .qm-btn.primary,
+body.fin-home .fab-expense {
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+body.fin-home .cl-avatar {
+  background: rgba(99, 102, 241, 0.2);
+  color: #e0e7ff;
+}
+
+body.fin-home .cl-days.upcoming { background: rgba(99, 102, 241, 0.2); color: #c7d2fe; }
+body.fin-home .cl-days.today { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+body.fin-home .cl-days.past { background: rgba(244, 63, 94, 0.18); color: #fb7185; }
+
+body.fin-home .bulk-bar {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: #4338ca;
+}
+
+body.fin-home .bulk-bar-info { color: #e0e7ff; }
+
+body.fin-home .skel {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 200% 100%;
+}
+
+/* Panel yang diisi JavaScript memakai warna terang langsung di elemen. */
+body.fin-home .fin [style*="color:#0f172a"],
+body.fin-home .fin [style*="color:#0d1b3e"],
+body.fin-home .fin [style*="color:#1e293b"],
+body.fin-home .fin [style*="color:#1e3a8a"],
+body.fin-home .fin [style*="color:#334155"] {
+  color: #f8fafc !important;
+}
+
+body.fin-home .fin [style*="color:#475569"],
+body.fin-home .fin [style*="color:#64748b"],
+body.fin-home .fin [style*="color:#94a3b8"],
+body.fin-home .fin [style*="color:#7587a6"],
+body.fin-home .fin [style*="color:#9ca3af"] {
+  color: #e2e8f0 !important;
+}
+
+body.fin-home .fin [style*="color:#1d4ed8"],
+body.fin-home .fin [style*="color:#0b3d8c"],
+body.fin-home .fin [style*="color:#2563eb"] {
+  color: #c7d2fe !important;
+}
+
+body.fin-home .fin [style*="background:#f8fafc"],
+body.fin-home .fin [style*="background:#fff;"],
+body.fin-home .fin [style*="background:#fff\""],
+body.fin-home .fin [style*="background:#ffffff"],
+body.fin-home .fin [style*="background:#eff6ff"],
+body.fin-home .fin [style*="background:#f0fdf4"],
+body.fin-home .fin [style*="background:#fafbff"],
+body.fin-home .fin [style*="background:#eff4ff"] {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+body.fin-home .fin [style*="border-bottom:1px solid #f1f5f9"],
+body.fin-home .fin [style*="border-bottom:1px solid #f5f7fa"],
+body.fin-home .fin [style*="border-top:1px solid #eef2f9"],
+body.fin-home .fin [style*="border-bottom:2px solid #eef2f9"],
+body.fin-home .fin [style*="border:1px solid #eef2f9"],
+body.fin-home .fin [style*="border:1.5px solid #bfdbfe"],
+body.fin-home .fin [style*="border:1.5px solid #dbe3ef"] {
+  border-color: #334155 !important;
+}
+
+body.fin-home.finmask .fin-money::after { color: #e2e8f0; }
