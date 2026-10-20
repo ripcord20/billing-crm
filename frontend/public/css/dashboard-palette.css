@@ -352,3 +352,118 @@ body.dash-home .kpi-load.is-hot .kpi-icon {
   color: #fb7185;
   border-color: rgba(244, 63, 94, 0.2);
 }
+
+/* Tabel ONT Offline: teks terang, kolom tidak dikunci ke lebar HP.
+   Geser ke kanan di dalam kartu. */
+body.dash-home .page-content,
+body.dash-home .dashboard-grid,
+body.dash-home .dashboard-grid > .card,
+body.dash-home .card-body,
+body.dash-home #alertsList {
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.dash-home .ont-off-wrap {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body.dash-home .ont-off-scroll {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  max-height: 420px;
+  overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+}
+
+body.dash-home .ont-off-table {
+  width: max-content;
+  min-width: 920px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+body.dash-home .ont-off-table th,
+body.dash-home .ont-off-table td {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+body.dash-home .ont-off-table th {
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+body.dash-home .ont-off-table td {
+  padding: 10px 14px;
+  color: #f8fafc;
+  background: #1e293b;
+  border-top: 1px solid #334155;
+  font-size: 13px;
+}
+
+body.dash-home .ont-off-table tr:hover td {
+  background: #334155;
+  color: #ffffff;
+}
+
+body.dash-home .ont-off-table th:nth-child(1),
+body.dash-home .ont-off-table td:nth-child(1) { min-width: 140px; }
+body.dash-home .ont-off-table th:nth-child(2),
+body.dash-home .ont-off-table td:nth-child(2) { min-width: 176px; }
+body.dash-home .ont-off-table th:nth-child(3),
+body.dash-home .ont-off-table td:nth-child(3) { min-width: 128px; }
+body.dash-home .ont-off-table th:nth-child(4),
+body.dash-home .ont-off-table td:nth-child(4) { min-width: 108px; }
+body.dash-home .ont-off-table th:nth-child(5),
+body.dash-home .ont-off-table td:nth-child(5) { min-width: 96px; }
+body.dash-home .ont-off-table th:nth-child(6),
+body.dash-home .ont-off-table td:nth-child(6) { min-width: 168px; }
+body.dash-home .ont-off-table th:nth-child(7),
+body.dash-home .ont-off-table td:nth-child(7) { min-width: 96px; }
+
+body.dash-home .ont-off-table .oo-name {
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 13.5px;
+  text-decoration: none;
+}
+
+body.dash-home .ont-off-table .oo-name:hover { color: #c4b5fd; }
+
+body.dash-home .ont-off-table .oo-mono {
+  color: #f8fafc;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
+body.dash-home .ont-off-table .oo-olt {
+  display: inline-block;
+  white-space: nowrap;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+body.dash-home .ont-off-table .oo-cid,
+body.dash-home .ont-off-table .oo-time {
+  color: #e2e8f0;
+  font-size: 12.5px;
+}
