@@ -7,11 +7,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/dashboard-palette.css">
   <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 </head>
-<body>
+<body class="dash-home">
   <div class="app-layout">
     <%- include('../partials/sidebar') %>
     <div class="main-content">
@@ -46,33 +47,71 @@
 
         <!-- Dashboard styles live in app.css (token + dark mode) -->
 
-        <!-- Summary Cards -->
-        <div class="summary-cards ui-enter">
-          <div class="summary-card gradient-blue">
-            <div class="sc-label">Total Number<br>PPPoE Active</div>
-            <div class="sc-value" id="pppoeActiveCount">0</div>
-            <div class="sc-sub">Sessions online</div>
-          </div>
-          <div class="summary-card gradient-blue">
-            <div class="sc-label">Total Bandwidth<br>Download</div>
-            <div class="sc-value" id="totalBandwidth">0</div>
-            <div class="sc-sub">Mbps aggregate</div>
-          </div>
-          <div class="summary-card gradient-blue">
-            <div class="sc-label">ONT Online<br>To Date</div>
-            <div class="sc-value" id="ontOnlineCount">0</div>
-            <div class="sc-sub">Active ONTs</div>
-          </div>
-          <div class="summary-card gradient-blue">
-            <div class="sc-label">Total Number<br>ONT Offline</div>
-            <div class="sc-value" id="ontOfflineCount">0</div>
-            <div class="sc-sub">Need attention</div>
-          </div>
-          <div class="summary-card gradient-blue">
-            <div class="sc-label">CPU Load<br>Average</div>
-            <div class="sc-value" id="cpuLoadAvg">0%</div>
-            <div class="sc-sub" id="cpuDeviceName">Router</div>
-          </div>
+        <!-- Summary cards: angka netral/cyan, hijau-kuning-merah hanya untuk status -->
+        <div class="kpi-grid ui-enter">
+          <article class="kpi-card kpi-neutral">
+            <div class="kpi-top">
+              <div class="kpi-label">Total Number<br>PPPoE Active</div>
+              <span class="kpi-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </span>
+            </div>
+            <div>
+              <div class="kpi-value" id="pppoeActiveCount">0</div>
+              <div class="kpi-sub">Sessions online</div>
+            </div>
+          </article>
+          <article class="kpi-card kpi-data">
+            <div class="kpi-top">
+              <div class="kpi-label">Total Bandwidth<br>Download</div>
+              <span class="kpi-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M5 21h14"/></svg>
+              </span>
+            </div>
+            <div>
+              <div class="kpi-value-row">
+                <span class="kpi-value" id="totalBandwidth">0</span>
+                <span class="kpi-unit">Mbps</span>
+              </div>
+              <div class="kpi-sub">Aggregate download</div>
+            </div>
+          </article>
+          <article class="kpi-card kpi-ok">
+            <div class="kpi-top">
+              <div class="kpi-label">ONT Online<br>To Date</div>
+              <span class="kpi-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></svg>
+              </span>
+            </div>
+            <div>
+              <div class="kpi-value" id="ontOnlineCount">0</div>
+              <div class="kpi-sub">Active ONTs</div>
+            </div>
+          </article>
+          <article class="kpi-card kpi-bad">
+            <div class="kpi-top">
+              <div class="kpi-label">Total Number<br>ONT Offline</div>
+              <span class="kpi-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></svg>
+              </span>
+            </div>
+            <div>
+              <div class="kpi-value" id="ontOfflineCount">0</div>
+              <div class="kpi-sub">Need attention</div>
+            </div>
+          </article>
+          <article class="kpi-card kpi-load is-ok" id="cpuKpi">
+            <div class="kpi-top">
+              <div class="kpi-label">CPU Load<br>Average</div>
+              <span class="kpi-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg>
+              </span>
+            </div>
+            <div>
+              <div class="kpi-value" id="cpuLoadAvg">0%</div>
+              <div class="kpi-sub" id="cpuDeviceName">Router</div>
+            </div>
+          </article>
         </div>
 
         <!-- ── Panel "Perlu Perhatian" / Needs Attention ── -->
