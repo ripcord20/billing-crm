@@ -1,0 +1,271 @@
+/* Kulit PPPoE Active Sessions. Hanya tampilan.
+   Grid kartu, tab, filter, dan aksi tidak diubah. */
+
+body.pp-home {
+  --bg: #070814;
+  --text: #f8fafc;
+  --muted: #e2e8f0;
+  --faint: #e2e8f0;
+  --text-primary: #f8fafc;
+  --text-muted: #e2e8f0;
+  --border: rgba(34, 211, 238, 0.35);
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+
+body.pp-home .main-content,
+body.pp-home .page-content {
+  background: transparent !important;
+  color: #f8fafc;
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.pp-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+
+body.pp-home .logo-text { color: #f8fafc; }
+body.pp-home .nav-item { color: #f8fafc; }
+
+body.pp-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+
+body.pp-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+
+body.pp-home .sidebar a.nav-sub:link,
+body.pp-home .sidebar a.nav-sub:visited,
+body.pp-home .sidebar a.nav-sub:hover,
+body.pp-home .sidebar a.nav-sub:focus,
+body.pp-home .sidebar a.nav-sub:active,
+body.pp-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.pp-home .sidebar a.nav-sub .nav-sub-dot,
+body.pp-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #67e8f9 !important;
+}
+
+body.pp-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+
+body.pp-home .search-box,
+body.pp-home .search-box input,
+body.pp-home .topbar-btn {
+  background: #100c22;
+  color: #f8fafc;
+  border-color: rgba(34, 211, 238, 0.35);
+}
+
+body.pp-home .pp-hdr-l h1,
+body.pp-home .pp-hdr-l p {
+  color: #f8fafc !important;
+}
+
+body.pp-home .mt-selector-wrap {
+  background: #100c22 !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+  color: #f8fafc !important;
+}
+
+body.pp-home .mt-selector {
+  background: transparent !important;
+  color: #f8fafc !important;
+}
+
+body.pp-home .live-chip {
+  background: rgba(16, 185, 129, 0.18) !important;
+  border-color: rgba(52, 211, 153, 0.45) !important;
+  color: #4ade80 !important;
+}
+body.pp-home .live-chip .ldot { background: #4ade80 !important; }
+
+body.pp-home .btn-outline {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.pp-home .btn-blue,
+body.pp-home .btn-pp-save {
+  background: linear-gradient(135deg, #0891b2, #4f46e5 58%, #ff4ecd) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+body.pp-home .pp-cards {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+body.pp-home #pc-total {
+  background: linear-gradient(135deg, #0891b2, #1d4ed8 58%, #22d3ee) !important;
+}
+body.pp-home #pc-pppoe {
+  background: linear-gradient(135deg, #059669, #0f766e 55%, #22d3ee) !important;
+}
+body.pp-home #pc-enabled {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed 55%, #818cf8) !important;
+}
+body.pp-home #pc-disabled {
+  background: linear-gradient(135deg, #e11d48, #be185d 55%, #ff4ecd) !important;
+}
+body.pp-home #pc-offline {
+  background: linear-gradient(135deg, #d97706, #c2410c 55%, #fbbf24) !important;
+}
+
+body.pp-home .pp-card .card-lbl,
+body.pp-home .pp-card .card-val,
+body.pp-home .pp-card .card-sub {
+  color: #ffffff !important;
+}
+
+body.pp-home .pp-card .card-val { white-space: nowrap; }
+
+body.pp-home .pp-card .card-pill {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+
+body.pp-home .pp-card .sp-line { stroke: #ffffff !important; }
+body.pp-home .pp-card .sp-fill { fill: rgba(255, 255, 255, 0.22) !important; }
+body.pp-home .pp-card .sp-dot { fill: #ffffff !important; }
+
+body.pp-home .pp-card.pc-active {
+  box-shadow: inset 0 0 0 3px #ffffff !important;
+}
+
+body.pp-home .pp-tbl-wrap {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.pp-home .pp-tabbar { border-bottom-color: rgba(34, 211, 238, 0.28) !important; }
+
+body.pp-home .pp-tab { color: #e2e8f0 !important; }
+
+body.pp-home .pp-tab.active {
+  color: #67e8f9 !important;
+  border-bottom-color: #67e8f9 !important;
+  background: transparent !important;
+}
+
+body.pp-home .pp-tab-badge,
+body.pp-home .pp-tab.active .pp-tab-badge {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+body.pp-home .search-wrap input,
+body.pp-home .pp-toolbar select,
+body.pp-home #filterService {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.pp-home .pp-table-scroll {
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.pp-home .pp-table thead th {
+  background: linear-gradient(90deg, #0891b2 0%, #4f46e5 48%, #ff4ecd 100%) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+body.pp-home .pp-table tbody td,
+body.pp-home .pp-table .username-cell,
+body.pp-home .pp-table .mac-cell,
+body.pp-home .pp-table .num-cell,
+body.pp-home .pp-table td::before {
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+body.pp-home .pp-table tbody tr:nth-child(8n+1) td { background: #1d4ed8 !important; }
+body.pp-home .pp-table tbody tr:nth-child(8n+2) td { background: #0891b2 !important; }
+body.pp-home .pp-table tbody tr:nth-child(8n+3) td { background: #059669 !important; }
+body.pp-home .pp-table tbody tr:nth-child(8n+4) td { background: #b45309 !important; }
+body.pp-home .pp-table tbody tr:nth-child(8n+5) td { background: #ea580c !important; }
+body.pp-home .pp-table tbody tr:nth-child(8n+6) td { background: #e11d48 !important; }
+body.pp-home .pp-table tbody tr:nth-child(8n+7) td { background: #db2777 !important; }
+body.pp-home .pp-table tbody tr:nth-child(8n+8) td { background: #7c3aed !important; }
+
+body.pp-home .tbl-empty,
+body.pp-home .tbl-empty p { color: #ffffff !important; }
+
+body.pp-home .pp-modal {
+  background: #141028 !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(34, 211, 238, 0.35);
+}
+
+body.pp-home .pp-modal-hdr h3,
+body.pp-home .pp-form-label,
+body.pp-home #cm-title,
+body.pp-home #cm-message,
+body.pp-home #cm-detail {
+  color: #f8fafc !important;
+}
+
+body.pp-home .pp-form-control,
+body.pp-home .pp-modal-close,
+body.pp-home .btn-pp-cancel {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.pp-home .pb-md {
+  background: #141028 !important;
+  color: #f8fafc !important;
+}
+body.pp-home .pb-hd h3,
+body.pp-home .pb-hd p,
+body.pp-home .pb-fg label,
+body.pp-home .pb-hint,
+body.pp-home .pb-drop .n,
+body.pp-home .pb-drop .s,
+body.pp-home .pb-st .l,
+body.pp-home .pb-st .v,
+body.pp-home .pb-tb td {
+  color: #f8fafc !important;
+}
+body.pp-home .pb-x,
+body.pp-home .pb-fg select,
+body.pp-home .pb-fg input,
+body.pp-home .pb-btn-o,
+body.pp-home .pb-drop,
+body.pp-home .pb-st {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.pp-home .pb-tb th {
+  background: linear-gradient(90deg, #0891b2 0%, #4f46e5 48%, #ff4ecd 100%) !important;
+  color: #ffffff !important;
+}
+body.pp-home .pb-tb tbody tr:nth-child(8n+1) td { background: #1d4ed8 !important; }
+body.pp-home .pb-tb tbody tr:nth-child(8n+2) td { background: #0891b2 !important; }
+body.pp-home .pb-tb tbody tr:nth-child(8n+3) td { background: #059669 !important; }
+body.pp-home .pb-tb tbody tr:nth-child(8n+4) td { background: #b45309 !important; }
+body.pp-home .pb-tb tbody tr:nth-child(8n+5) td { background: #ea580c !important; }
+body.pp-home .pb-tb tbody tr:nth-child(8n+6) td { background: #e11d48 !important; }
+body.pp-home .pb-tb tbody tr:nth-child(8n+7) td { background: #db2777 !important; }
+body.pp-home .pb-tb tbody tr:nth-child(8n+8) td { background: #7c3aed !important; }
