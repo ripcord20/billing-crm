@@ -67,6 +67,30 @@ body.fin-home .nav-item.active .nav-icon {
   box-shadow: inset -3px 0 0 #6366f1;
 }
 
+body.fin-home .sidebar a.nav-sub:link,
+body.fin-home .sidebar a.nav-sub:visited,
+body.fin-home .sidebar a.nav-sub:hover,
+body.fin-home .sidebar a.nav-sub:focus,
+body.fin-home .sidebar a.nav-sub:active,
+body.fin-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.fin-home .sidebar a.nav-sub:hover,
+body.fin-home .sidebar a.nav-sub.active {
+  background: rgba(129, 140, 248, 0.16) !important;
+}
+
+body.fin-home .sidebar a.nav-sub .nav-sub-dot,
+body.fin-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #c4b5fd !important;
+}
+
+body.fin-home .sidebar a.nav-sub .nav-badge {
+  -webkit-text-fill-color: currentColor;
+}
+
 body.fin-home .topbar {
   background: #1e293b;
   border-bottom-color: #334155;

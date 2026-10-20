@@ -61,6 +61,30 @@ body.tf-home .nav-item.active .nav-icon {
   box-shadow: inset -3px 0 0 #6366f1;
 }
 
+body.tf-home .sidebar a.nav-sub:link,
+body.tf-home .sidebar a.nav-sub:visited,
+body.tf-home .sidebar a.nav-sub:hover,
+body.tf-home .sidebar a.nav-sub:focus,
+body.tf-home .sidebar a.nav-sub:active,
+body.tf-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.tf-home .sidebar a.nav-sub:hover,
+body.tf-home .sidebar a.nav-sub.active {
+  background: rgba(129, 140, 248, 0.16) !important;
+}
+
+body.tf-home .sidebar a.nav-sub .nav-sub-dot,
+body.tf-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #c4b5fd !important;
+}
+
+body.tf-home .sidebar a.nav-sub .nav-badge {
+  -webkit-text-fill-color: currentColor;
+}
+
 body.tf-home .topbar {
   background: #1e293b;
   border-bottom-color: #334155;

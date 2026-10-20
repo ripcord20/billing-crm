@@ -104,6 +104,32 @@ body.dash-home .nav-item.active .nav-icon {
   color: #22d3ee !important;
 }
 
+/* Submenu (Dashboard, NMS, Traffic, ...) diwarnai biru brand oleh white-label.
+   Di sidebar gelap warna itu tenggelam, jadi pakai putih. */
+body.dash-home .sidebar a.nav-sub:link,
+body.dash-home .sidebar a.nav-sub:visited,
+body.dash-home .sidebar a.nav-sub:hover,
+body.dash-home .sidebar a.nav-sub:focus,
+body.dash-home .sidebar a.nav-sub:active,
+body.dash-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.dash-home .sidebar a.nav-sub:hover,
+body.dash-home .sidebar a.nav-sub.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+}
+
+body.dash-home .sidebar a.nav-sub .nav-sub-dot,
+body.dash-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #67e8f9 !important;
+}
+
+body.dash-home .sidebar a.nav-sub .nav-badge {
+  -webkit-text-fill-color: currentColor;
+}
+
 body.dash-home .topbar {
   background: #100c22;
   border-bottom-color: rgba(34, 211, 238, 0.28);
