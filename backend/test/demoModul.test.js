@@ -28,4 +28,18 @@ assert.match(sidebar, /href="\/modul"/);
 const demoCtl = fs.readFileSync(path.join(root, 'backend/controllers/DemoController.js'), 'utf8');
 assert.match(demoCtl, /redirect: '\/modul'/);
 
+const financeAccess = require('../middleware/financeAccess');
+const demoReq = { user: { role: { name: 'demo' } }, path: '/customers' };
+let nextCalled = false;
+financeAccess.allowFinanceArea(demoReq, { redirect() { throw new Error('should not redirect'); }, status() { throw new Error('should not 403'); } }, () => { nextCalled = true; });
+assert.strictEqual(nextCalled, true);
+
+let redirected = '';
+financeAccess.allowFinanceArea(
+  { user: { role: { name: 'demo' } }, path: '/finance' },
+  { redirect(to) { redirected = to; } },
+  () => { throw new Error('finance dashboard should stay locked'); }
+);
+assert.strictEqual(redirected, '/modul');
+
 console.log('demoModul.test.js OK');
