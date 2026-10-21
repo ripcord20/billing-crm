@@ -794,6 +794,45 @@ class HsgqOltService {
     return cards;
   }
 
+  _vlansFromServicePorts(rows) {
+    const map = new Map();
+    for (const row of rows || []) {
+      const vid = parseInt(row.user_vlan, 10);
+      if (!vid || vid < 1 || vid > 4094) continue;
+      if (!map.has(vid)) map.set(vid, { ports: new Set(), count: 0 });
+      const item = map.get(vid);
+      const pon = parseInt(row.port_id, 10);
+      if (pon) item.ports.add('PON' + pon);
+      item.count++;
+    }
+    return [...map.entries()].sort((a, b) => a[0] - b[0]).map(([vid, item]) => ({
+      vid,
+      name: null,
+      type: 'service-port',
+      ports: [...item.ports].sort().join(', ') + (item.count ? ` · ${item.count} ONU` : ''),
+      sources: ['summary'],
+    }));
+  }
+
+  async getVlans() {
+    if (!this.username) return [];
+    const igc = new HsgqIgcHttpService({
+      host: this.host,
+      username: this.username,
+      password: this.password,
+      name: this.name,
+      timeout: Math.min(this.timeout || 8000, 15000),
+      httpPort: this.httpPort,
+    });
+    try {
+      const rows = await igc.getServicePorts();
+      return this._vlansFromServicePorts(rows);
+    } catch (e) {
+      logger.warn(`[HsgqOlt:${this.name}] VLAN IGC: ${e.message}`);
+      return [];
+    }
+  }
+
   async getProfiles() {
     const igc = new HsgqIgcHttpService({
       host: this.host,

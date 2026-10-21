@@ -145,6 +145,13 @@ class HsgqIgcHttpService {
 
   // Daftar ONT HSGQ GPON. rstate 1 = berjalan. Selain itu, last_d_cause
   // berisi "Power down", "Laser out", atau "LOAi" (bukan DyingGasp).
+  // Service-port GPON. user_vlan adalah VLAN yang dipakai ONU.
+  // svlan 0 dan new_svlan 4096 pada firmware IGB bukan VLAN yang sah.
+  async getServicePorts() {
+    const data = await this._get('/serviceport?form=all');
+    return Array.isArray(data) ? data : [];
+  }
+
   async getPonAuth(portId) {
     const data = await this._get(`/gponont_mgmt?form=auth&port_id=${encodeURIComponent(portId)}`);
     return Array.isArray(data) ? data : [];

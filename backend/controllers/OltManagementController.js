@@ -305,6 +305,20 @@ async function brandReadText(cfg, cmd) {
   }
 }
 
+async function readSnmpVlans(cfg) {
+  const brand = String(cfg.brand || '').toLowerCase();
+  if ((brand !== 'hsgq' && brand !== 'hioso') || !snmpAvailable(cfg)) return null;
+  const snmp = makeSnmp(cfg);
+  if (typeof snmp.getVlans !== 'function') return null;
+  try {
+    const data = await snmp.getVlans();
+    return Array.isArray(data) ? data : null;
+  } catch (e) {
+    logger.warn('[OltMgmt] VLAN SNMP/IGC gagal: ' + e.message);
+    return null;
+  }
+}
+
 function getCfgOr404(req, res) {
   const id = parseInt(req.params.id);
   const cfg = loadConfigs().find(c => c.id === id);
@@ -1183,6 +1197,8 @@ class OltManagementController {
   // ── VLAN global ───────────────────────────────────────────────────
   async vlans(req, res) {
     const cfg = getCfgOr404(req, res); if (!cfg) return;
+    const snmpVlans = await readSnmpVlans(cfg);
+    if (snmpVlans && snmpVlans.length) return res.json({ success: true, data: snmpVlans });
     const svc = makeService(cfg);
     try {
       await svc.connect();
@@ -1225,6 +1241,11 @@ class OltManagementController {
   async vlanDetail(req, res) {
     const cfg = getCfgOr404(req, res); if (!cfg) return;
     const vid = req.params.vid;
+    const snmpVlans = await readSnmpVlans(cfg);
+    if (snmpVlans && snmpVlans.length) {
+      const row = snmpVlans.find((v) => Number(v.vid) === parseInt(vid, 10));
+      if (row) return res.json({ success: true, data: row });
+    }
     const svc = makeService(cfg);
     try {
       await svc.connect();
