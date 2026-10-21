@@ -29,6 +29,7 @@
 
 const BaseCliOltService = require('./BaseCliOltService');
 const logger = require('../utils/logger');
+const onuPhase = require('../utils/onuPhase');
 
 class GponCliOltService extends BaseCliOltService {
   constructor(config = {}) {
@@ -47,6 +48,7 @@ class GponCliOltService extends BaseCliOltService {
       onuList:      'show onu_information',          // semua ONU pada port aktif
       onuOptical:   'show onu optical-info {id} all',// redaman 1 ONU
       onuDetail:    'show onu detail-info {id}',     // detail 1 ONU
+      onuState:     'show onu state',                // phase (dying-gasp vs LOS)
       uncfg:        'show onu auto-find',            // ONU belum terdaftar
       // System & ringkasan
       sysInfo:      'show system info',              // uptime/versi
@@ -109,6 +111,13 @@ class GponCliOltService extends BaseCliOltService {
     await this._enterIf(port);
     const out = await this.exec(this.cmd.onuList);
     let list = this.parseOnuList(out, port);
+    if (!list.length) {
+      const alt = await this._safeExec(`show ont info ${port} all`)
+        || await this._safeExec('show ont info all');
+      if (alt) list = this.parseOnuList(alt, port);
+    }
+    await this._overlayPhases(list, port);
+    this._applyPhaseQuality(list);
 
     if (withPower) {
       for (const o of list) {
@@ -116,8 +125,11 @@ class GponCliOltService extends BaseCliOltService {
           const optOut = await this.exec(this._fmt(this.cmd.onuOptical, { id: o.onu_id }));
           const p = this.parseOptical(optOut, o.onu_id);
           o.onu_rx_dbm = p.onu_rx_dbm;
-          o.quality    = p.quality;
-        } catch (e) { o.onu_rx_dbm = null; o.quality = 'unknown'; }
+          o.quality    = onuPhase.qualityFor(o.phase_state, p.quality, optOut);
+        } catch (e) {
+          o.onu_rx_dbm = null;
+          o.quality = onuPhase.qualityFor(o.phase_state, 'unknown');
+        }
       }
     }
     await this._exitIf();
@@ -145,13 +157,20 @@ class GponCliOltService extends BaseCliOltService {
   async getOnuDetail(portRef, onuId) {
     const port = this._normPort(portRef);
     await this._enterIf(port);
-    const [detOut, optOut] = [
-      await this._safeExec(this._fmt(this.cmd.onuDetail, { id: onuId })),
-      await this._safeExec(this._fmt(this.cmd.onuOptical, { id: onuId })),
-    ];
+    let detOut = await this._safeExec(this._fmt(this.cmd.onuDetail, { id: onuId }));
+    if (!detOut || !/state|phase|sn|serial|cause/i.test(detOut)) {
+      detOut = (await this._safeExec(`show ont info ${port} ${onuId}`)) || detOut;
+    }
+    const optOut = await this._safeExec(this._fmt(this.cmd.onuOptical, { id: onuId }))
+      || await this._safeExec(`show ont optical-info ${port} ${onuId}`);
     await this._exitIf();
     const detail = this.parseOnuDetail(detOut, port, onuId);
-    detail.power = this.parseOptical(optOut, onuId);
+    const power = this.parseOptical(optOut, onuId);
+    power.quality = onuPhase.qualityFor(detail.phase_state, power.quality, `${detOut}\n${optOut}`);
+    detail.power = power;
+    if (!detail.diagnosis && power.quality === 'dyinggasp') {
+      detail.diagnosis = 'Dying Gasp — ONU kehilangan listrik (adapter cabut / PLN mati), bukan putus fiber.';
+    }
     return detail;
   }
 
@@ -229,13 +248,24 @@ class GponCliOltService extends BaseCliOltService {
         await this._enterIf(port);
         const out = await this.exec(this.cmd.onuList);
         let list = this.parseOnuList(out, port);
+        if (!list.length) {
+          const alt = await this._safeExec(`show ont info ${port} all`)
+            || await this._safeExec('show ont info all');
+          if (alt) list = this.parseOnuList(alt, port);
+        }
+        await this._overlayPhases(list, port);
+        this._applyPhaseQuality(list);
         if (withPower) {
           for (const o of list) {
             try {
               const optOut = await this.exec(this._fmt(this.cmd.onuOptical, { id: o.onu_id }));
               const pw = this.parseOptical(optOut, o.onu_id);
-              o.onu_rx_dbm = pw.onu_rx_dbm; o.quality = pw.quality;
-            } catch (e) { o.onu_rx_dbm = null; o.quality = 'unknown'; }
+              o.onu_rx_dbm = pw.onu_rx_dbm;
+              o.quality = onuPhase.qualityFor(o.phase_state, pw.quality, optOut);
+            } catch (e) {
+              o.onu_rx_dbm = null;
+              o.quality = onuPhase.qualityFor(o.phase_state, 'unknown');
+            }
           }
         }
         await this._exitIf();
@@ -373,36 +403,139 @@ class GponCliOltService extends BaseCliOltService {
   // PARSERS (default Cortina/CDATA-style — override di subclass bila beda)
   // ════════════════════════════════════════════════════════════════════
 
-  // Output umum:
-  //   ONU-ID  SN              State    Description
-  //   1       CDTAxxxxxxxx    online   Customer-A
+  // Output yang didukung:
+  //   Cortina:  ONU-ID  SN              State       Description
+  //             1       CDTAxxxxxxxx    dying-gasp  Agus pasar
+  //   Huawei:   F/S P ONT SN            Control Run        Config  Match
+  //             0/0 1 1  CDTAxxxxxxxx   Active  dying-gasp success match
+  //   Phase:    ONU-ID  Admin  OMCC  Phase
+  //             1       enable disable dying-gasp
   parseOnuList(out, port) {
     const list = [];
+    const seen = new Set();
     String(out).split('\n').forEach(line => {
       const t = line.trim();
-      // baris data: diawali angka (onu id)
-      const m = t.match(/^(\d+)\s+([0-9A-Za-z\-:]+)\s+(\S+)(?:\s+(.*))?$/);
-      if (!m) return;
-      if (/onu[\s_-]?id/i.test(t)) return; // header
-      const onuId = parseInt(m[1]);
-      const sn = m[2];
-      const stateRaw = (m[3] || '').toLowerCase();
-      let status = 'offline';
-      if (/online|up|working|active|auth|normal/.test(stateRaw)) status = 'online';
-      else if (/disable|deactiv/.test(stateRaw)) status = 'disabled';
-      list.push({
+      if (!t) return;
+      if (/onu[\s_-]?id|onuindex|admin\s*state|run\s*state|control\s*flag|phase\s*state|config\s*state|^[-_=]{3,}$|^total:/i.test(t)) return;
+
+      const parsed = this._parseOnuListLine(t, port);
+      if (!parsed || seen.has(parsed.onu_id)) return;
+      seen.add(parsed.onu_id);
+      list.push(parsed);
+    });
+    return list;
+  }
+
+  _parseOnuListLine(t, port) {
+    // Huawei-style: [F/S] P ONT SN Control Run Config Match [desc]
+    const hw = t.match(/^(?:\d+\/\d+\s+)?(\d+)\s+(\d+)\s+([0-9A-Za-z]{8,})\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(?:\s+(.*))?$/);
+    if (hw && onuPhase.looksLikeSn(hw[3])) {
+      const onuId = parseInt(hw[2], 10);
+      const token = onuPhase.findPhaseToken(`${hw[5]} ${hw[4]} ${t}`) || { raw: hw[5], phase: onuPhase.normalize(hw[5]) };
+      const phase = token.phase || onuPhase.normalize(hw[5]) || hw[5];
+      return {
         onu_id: onuId,
         port,
         onu_if: `${port}/${onuId}`,
-        sn,
+        sn: hw[3],
         type: null,
-        name: m[4] ? m[4].trim() : null,
-        admin_state: null,
-        phase_state: m[3] || null,
-        status,
-      });
-    });
-    return list;
+        name: hw[8] ? hw[8].trim() : null,
+        admin_state: hw[4],
+        phase_state: phase,
+        last_down_cause: (phase === 'dyinggasp' || phase === 'los') ? phase : null,
+        status: onuPhase.statusFromPhase(phase, { admin: hw[4] }),
+      };
+    }
+
+    const m = t.match(/^(\d+)\s+(.+)$/);
+    if (!m) return null;
+    const onuId = parseInt(m[1], 10);
+    if (!onuId) return null;
+    const rest = m[2].trim();
+    const cols = rest.split(/\s+/);
+    const token = onuPhase.findPhaseToken(rest);
+
+    let sn = null;
+    for (const col of cols) {
+      if (token && onuPhase.normalize(col) === token.phase) continue;
+      if (onuPhase.looksLikeSn(col)) { sn = col; break; }
+    }
+
+    let name = null;
+    if (token) {
+      const idx = rest.toLowerCase().indexOf(String(token.raw).toLowerCase());
+      if (idx >= 0) {
+        name = rest.slice(idx + token.raw.length).trim()
+          .replace(/^(success|fail(?:ed)?|match|mismatch|enable|disable)\s+/ig, '')
+          .replace(/^(success|fail(?:ed)?|match|mismatch)\s+/ig, '')
+          .trim() || null;
+      }
+    } else if (sn && cols.length >= 3) {
+      const snIdx = cols.indexOf(sn);
+      name = cols.slice(snIdx + 2).join(' ').trim() || null;
+    }
+
+    const phase = token ? token.phase : onuPhase.normalize(cols[1] || cols[0]);
+    return {
+      onu_id: onuId,
+      port,
+      onu_if: `${port}/${onuId}`,
+      sn,
+      type: null,
+      name,
+      admin_state: null,
+      phase_state: phase || cols[1] || cols[0] || null,
+      last_down_cause: (phase === 'dyinggasp' || phase === 'los') ? phase : null,
+      status: onuPhase.statusFromPhase(phase, {}),
+    };
+  }
+
+  _applyPhaseQuality(list) {
+    for (const o of list) {
+      o.quality = onuPhase.qualityFor(o.phase_state, o.quality);
+    }
+  }
+
+  // Ambil phase yang lebih akurat (dying-gasp vs LOS) dari perintah khusus.
+  async _overlayPhases(list, port) {
+    if (!list.length) return;
+    const cmds = [
+      this.cmd.onuState,
+      'show onu state',
+      `show ont offline-reason ${port} all`,
+      'show ont offline-reason all',
+      `show ont info ${port} all`,
+    ].filter(Boolean);
+
+    for (const cmd of cmds) {
+      const out = await this._safeExec(cmd);
+      if (!out || (/invalid|unknown command|incomplete|error/i.test(out) && !onuPhase.findPhaseToken(out))) continue;
+      const parsed = this.parseOnuList(out, port);
+      if (!parsed.length) continue;
+      const byId = new Map(parsed.map(p => [p.onu_id, p]));
+      for (const o of list) {
+        const hit = byId.get(o.onu_id);
+        if (!hit) continue;
+        const incoming = onuPhase.normalize(hit.phase_state);
+        if (!incoming) continue;
+        const existing = onuPhase.normalize(o.phase_state);
+        // Dying-gasp lebih spesifik dari LOS/offline — jangan ditimpa balik.
+        const better = incoming === 'dyinggasp'
+          || (incoming === 'los' && existing !== 'dyinggasp')
+          || !['dyinggasp', 'los'].includes(existing);
+        if (better) {
+          o.phase_state = incoming;
+          if (incoming === 'dyinggasp' || incoming === 'los') o.last_down_cause = incoming;
+          o.status = onuPhase.statusFromPhase(incoming, { admin: o.admin_state });
+        }
+        if (!o.sn && hit.sn) o.sn = hit.sn;
+        if (!o.name && hit.name) o.name = hit.name;
+      }
+      break;
+    }
+
+    // Tidak fetch detail per-ONU di sini: 1 perintah overlay sudah cukup
+    // dan menghindari lonjakan RAM/CPU saat discover banyak PON.
   }
 
   // show onu auto-find:
@@ -430,7 +563,9 @@ class GponCliOltService extends BaseCliOltService {
   //   5       -22.30   2.10     -23.40       45    3.3   12
   parseOptical(out, onuId) {
     const s = String(out);
-    const noSignal = /no\s*signal|los|n\/a/i.test(s) && !/-?\d+\.\d+/.test(s);
+    const dyingGasp = onuPhase.isDyingGasp(s) || onuPhase.extractDownCause(s) === 'dyinggasp';
+    // Jangan anggap substring "los" di kata lain; dying-gasp bukan LOS.
+    const noSignal = (/no\s*signal|\blos\b|n\/a/i.test(s) && !/-?\d+\.\d+/.test(s) && !dyingGasp);
     // Cari baris yang memuat onuId lalu ambil angka desimal pertama (Rx) & kedua (Tx)
     let onu_rx = null, onu_tx = null, olt_rx = null;
     const lines = s.split('\n');
@@ -455,7 +590,8 @@ class GponCliOltService extends BaseCliOltService {
     }
 
     let quality = 'unknown';
-    if (noSignal || onu_rx === null && /off|los/i.test(s)) quality = 'los';
+    if (dyingGasp) quality = 'dyinggasp';
+    else if (noSignal || onu_rx === null && /\b(off|los)\b/i.test(s)) quality = 'los';
     else if (onu_rx !== null) {
       if (onu_rx >= this.rxGood) quality = 'good';
       else if (onu_rx >= this.rxWarning) quality = 'warning';
@@ -481,18 +617,26 @@ class GponCliOltService extends BaseCliOltService {
       return m ? m[1].trim() : null;
     };
     const distStr = get('Distance') || get('ONU Distance');
+    const downCause = onuPhase.extractDownCause(out)
+      || onuPhase.normalize(get('Last down cause') || get('Last offline reason') || get('Down cause') || '');
+    const phaseRaw = get('Phase') || get('Phase state') || get('Run state') || get('State') || get('Status');
+    const phase = downCause === 'dyinggasp' ? 'dyinggasp' : (onuPhase.normalize(phaseRaw) || phaseRaw);
     return {
       onu_if:        `${port}/${onuId}`,
-      name:          get('Name'),
+      name:          get('Name') || get('Description'),
       type:          get('Type') || get('Model'),
-      state:         get('State') || get('Status'),
-      admin_state:   get('Admin'),
-      phase_state:   get('Phase'),
+      state:         get('State') || get('Status') || get('Run state'),
+      admin_state:   get('Admin') || get('Control flag'),
+      phase_state:   phase,
+      last_down_cause: downCause || null,
       auth_mode:     get('Auth') || get('Authentication'),
       serial_number: get('SN') || get('Serial') || get('Serial number'),
       description:   get('Description'),
       distance_m:    distStr ? (parseInt(String(distStr).replace(/[^\d]/g, '')) || null) : null,
       online_duration: get('Online') || get('Duration') || get('Uptime'),
+      diagnosis:     phase === 'dyinggasp'
+        ? 'Dying Gasp — ONU kehilangan listrik (adapter cabut / PLN mati), bukan putus fiber.'
+        : (phase === 'los' ? 'LOS — OLT tidak menerima sinyal optik dari ONU. Cek fiber & redaman.' : null),
       raw: String(out).trim().slice(0, 4000),
     };
   }

@@ -138,7 +138,7 @@ class NocController {
    *   - Device (router) Up/Down
    *   - Resources CPU/RAM overload
    *   - PPPoE session mass disconnect/connect
-   * History disimpan di memory, retention 24 jam, hilang saat pm2 restart.
+   * History disimpan di memory, retention 12 jam, hilang saat pm2 restart.
    */
   async alerts(req, res) {
     try {

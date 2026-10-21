@@ -1140,6 +1140,11 @@ const startServer = async () => {
     // Start cron jobs
     CronService.start();
 
+    // Cap cache in-memory (WA msgstore, traffic poller, NOC alerts) + log heap.
+    try { require('./utils/memoryGuard').start(); } catch (e) {
+      logger.warn('MemoryGuard.start gagal: ' + (e.message || e));
+    }
+
     // Start NOC Alerts Service — polling untuk Live Alerts di dashboard NOC.
     // In-memory state, retention 24 jam. Hilang saat pm2 restart (intended).
     const NocAlertsService = require('./services/NocAlertsService');
@@ -1169,6 +1174,7 @@ const startServer = async () => {
       CronService.stop();
       try { require('./services/TelegramBotService').stop(); } catch (_) {}
       NocAlertsService.stop();
+      try { require('./utils/memoryGuard').stop(); } catch (_) {}
       try { require('./services/UplinkMonitorService').stop(); } catch (_) {}
       await db.sequelize.close();
       server.close(() => process.exit(0));

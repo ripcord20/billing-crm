@@ -21,7 +21,8 @@
  * Field (prefix + suffix di-WALK, lalu .<onu_id> di akhir):
  *   Name     : <base1>.500.10.2.3.3.1.2.<onuIDSuffix>
  *   Serial   : <base1>.500.10.2.3.3.1.18.<onuIDSuffix>
- *   Status   : <base1>.500.10.2.3.8.1.4.<onuIDSuffix>   (1=logging,2=LOS,3=sync/online,... )
+ *   Status   : <base1>.500.10.2.3.8.1.4.<onuIDSuffix>
+ *              1=logging 2=LOS 3/4=working 5=dyingGasp 6=authFail 7=offline
  *   RxPower  : <base1>.500.20.2.2.2.1.10.<onuIDSuffix>
  *   Distance : <base1>.500.10.2.3.10.1.2.<onuIDSuffix>
  *   Desc     : <base1>.500.10.2.3.3.1.3.<onuIDSuffix>
@@ -34,6 +35,7 @@
  */
 
 const logger = require('../utils/logger');
+const onuPhase = require('../utils/onuPhase');
 
 let snmp;
 try { snmp = require('net-snmp'); }
@@ -60,14 +62,12 @@ const ONU_TYPE_IFINDEX_BASE = 268435456; // 0x10000000
 const ONU_TYPE_SLOT_STRIDE  = 65536;     // 0x10000
 const ONU_TYPE_INCREMENT    = 256;       // 0x100
 
-// Status code ZTE (umum): petakan ke online/offline
+function mapPhase(code) {
+  return onuPhase.fromSnmpCode(code);
+}
+
 function mapStatus(code) {
-  const c = parseInt(code);
-  // 3 = working/online di banyak firmware C320; 1=logging, 2=LOS/offline
-  if (c === 3) return 'online';
-  if (c === 1) return 'offline';   // sedang proses
-  if (c === 2) return 'offline';   // LOS
-  return c >= 3 ? 'online' : 'offline';
+  return onuPhase.statusFromPhase(mapPhase(code));
 }
 
 class ZteSnmpService {
@@ -158,8 +158,11 @@ class ZteSnmpService {
         const onuId = parseInt(idStr);
         const rxRaw = rxs[onuId];
         const rx = this._toDbm(rxRaw);
+        const phase = mapPhase(statuses[onuId]);
         let quality = 'unknown';
         if (rx !== null) quality = rx >= this.rxGood ? 'good' : (rx >= this.rxWarning ? 'warning' : 'critical');
+        else if (rxRaw == null || rx === null) quality = phase === 'dyinggasp' || phase === 'los' ? phase : 'unknown';
+        quality = onuPhase.qualityFor(phase, quality);
         return {
           onu_id: onuId,
           board, pon,
@@ -168,8 +171,9 @@ class ZteSnmpService {
           name: this._serialToStr(names[onuId]) || null,
           sn: this._serialToStr(serials[onuId]) || null,
           type: types[onuId] != null ? String(types[onuId]) : null,
-          status: mapStatus(statuses[onuId]),
-          phase_state: statuses[onuId] != null ? String(statuses[onuId]) : null,
+          status: onuPhase.statusFromPhase(phase),
+          phase_state: phase,
+          phase_code: statuses[onuId] != null ? parseInt(statuses[onuId], 10) : null,
           onu_rx_dbm: rx,
           quality,
         };
@@ -204,12 +208,19 @@ class ZteSnmpService {
       this._getSingle(`${BASE1}${PFX.desc}.${sfx.id}`, onuId),
     ]);
     const power = await this.getOnuPower(ref, onuId);
+    const phase = mapPhase(status);
+    power.quality = onuPhase.qualityFor(phase, power.quality);
     return {
       onu_if: `${board}/${pon}:${onuId}`,
       name: this._serialToStr(name), serial_number: this._serialToStr(serial),
-      state: mapStatus(status), phase_state: status != null ? String(status) : null,
+      state: onuPhase.statusFromPhase(phase),
+      phase_state: phase,
+      last_down_cause: (phase === 'dyinggasp' || phase === 'los') ? phase : null,
       description: this._serialToStr(desc),
       distance_m: dist != null ? parseInt(dist) || null : null,
+      diagnosis: phase === 'dyinggasp'
+        ? 'Dying Gasp — ONU kehilangan listrik (adapter cabut / PLN mati), bukan putus fiber.'
+        : (phase === 'los' ? 'LOS — OLT tidak menerima sinyal optik dari ONU. Cek fiber & redaman.' : null),
       power,
     };
   }

@@ -28,6 +28,7 @@ class HiosoOltService extends GponCliOltService {
         onuList:      'show ont info',
         onuOptical:   'show ont optical-info {id}',
         onuDetail:    'show ont info {id}',
+        onuState:     'show ont info',
         uncfg:        'show ont auto-find',
         authorize:    'ont confirm {id} sn-auth {sn} type {type}',
         editName:     'ont {id} name {name}',

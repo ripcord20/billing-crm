@@ -22,6 +22,7 @@ const QRCode = require('qrcode');
 const path   = require('path');
 const fs     = require('fs');
 const logger = require('../utils/logger');
+const { slimWaMessage } = require('../utils/memorySlim');
 
 // Cocokkan pesan masuk dgn keyword auto-reply. keyword bisa berisi BEBERAPA
 // kata dipisah koma (mis. "terimakasih, makasih, mksih") — pesan cocok bila
@@ -59,12 +60,15 @@ const qrStore  = new Map();  // sessionId -> { raw, image, timestamp }
 //     write via file .tmp + rename) supaya broadcast besar tidak IO per-pesan.
 //   • Serialisasi pakai BufferJSON dari Baileys — payload media mengandung
 //     Buffer (mediaKey, fileSha256, dst) yang korup jika JSON.stringify biasa.
-//   • Prune: entri > MSG_STORE_TTL (default 7 hari) dibuang saat load & save;
-//     LRU cap MAX_MSG_STORE (default 5000, override via env WA_MSG_STORE_MAX).
+//   • Prune: entri > MSG_STORE_TTL (default 48 jam) dibuang saat load & save;
+//     LRU cap MAX_MSG_STORE (default 1500, override via env WA_MSG_STORE_MAX).
+//   • Konten di-slim (buang jpegThumbnail/waveform) supaya media tidak
+//     menahan puluhan KB Buffer per pesan di heap + file persist.
 //   • Flush sinkron saat SIGINT/SIGTERM (PM2 kirim SIGINT saat restart).
 const msgStore = new Map();
-const MAX_MSG_STORE = parseInt(process.env.WA_MSG_STORE_MAX || '5000');
-const MSG_STORE_TTL = parseInt(process.env.WA_MSG_STORE_TTL_MS || String(7 * 24 * 60 * 60 * 1000)); // 7 hari
+const MAX_MSG_STORE = parseInt(process.env.WA_MSG_STORE_MAX || '1500', 10);
+const MSG_STORE_TTL = parseInt(process.env.WA_MSG_STORE_TTL_MS || String(48 * 60 * 60 * 1000), 10); // 48 jam
+const MAX_RETRY_CACHE = parseInt(process.env.WA_RETRY_CACHE_MAX || '2000', 10);
 
 const MSG_STORE_DIR  = path.join(__dirname, '../../uploads/wa_msgstore');
 const MSG_STORE_FILE = path.join(MSG_STORE_DIR, 'msgstore.json');
@@ -97,14 +101,21 @@ if (!BufferJSON || !BufferJSON.replacer) {
 // Buang entri kadaluarsa + enforce cap (Map mempertahankan urutan insertion → LRU).
 function pruneMsgStore() {
   const now = Date.now();
+  let expired = 0;
   for (const [k, v] of msgStore) {
-    if (!v || !v.t || (now - v.t) > MSG_STORE_TTL) msgStore.delete(k);
+    if (!v || !v.t || (now - v.t) > MSG_STORE_TTL) {
+      msgStore.delete(k);
+      expired++;
+    }
   }
+  let evicted = 0;
   while (msgStore.size > MAX_MSG_STORE) {
     const firstKey = msgStore.keys().next().value;
     if (firstKey === undefined) break;
     msgStore.delete(firstKey);
+    evicted++;
   }
+  return { size: msgStore.size, expired, evicted, max: MAX_MSG_STORE };
 }
 
 // Tulis store ke disk secara atomic (tmp + rename) agar file tidak korup
@@ -145,7 +156,7 @@ function scheduleMsgStoreSave() {
     const obj = JSON.parse(raw, BufferJSON.reviver);
     for (const k of Object.keys(obj)) {
       const v = obj[k];
-      if (v && v.c) msgStore.set(k, v);
+      if (v && v.c) msgStore.set(k, { c: slimWaMessage(v.c), t: v.t || Date.now() });
     }
     pruneMsgStore();
     logger.info('[WA] msgstore loaded: ' + msgStore.size + ' pesan (persist anti-"Waiting")');
@@ -181,7 +192,7 @@ function putSentMessage(sessionId, messageId, content) {
     const firstKey = msgStore.keys().next().value;
     if (firstKey !== undefined) msgStore.delete(firstKey);
   }
-  msgStore.set(sessionId + '|' + messageId, { c: content, t: Date.now() });
+  msgStore.set(sessionId + '|' + messageId, { c: slimWaMessage(content), t: Date.now() });
   scheduleMsgStoreSave();
 }
 
@@ -206,7 +217,13 @@ function makeRetryCounterCache() {
   const m = new Map();
   return {
     get:  (k) => m.get(k),
-    set:  (k, v) => { m.set(k, v); },
+    set:  (k, v) => {
+      if (!m.has(k) && m.size >= MAX_RETRY_CACHE) {
+        const first = m.keys().next().value;
+        if (first !== undefined) m.delete(first);
+      }
+      m.set(k, v);
+    },
     del:  (k) => { m.delete(k); },
     flushAll: () => m.clear(),
   };
@@ -1146,4 +1163,4 @@ async function deleteMessage(sessionId, chatTarget, messageId) {
   return true;
 }
 
-module.exports = { createSession, sendMessage, sendMedia, sendBroadcast, disconnectSession, getSessionStatus, isConnected, getSessions, restoreAllSessions, qrStore, getProfilePicture, flushMsgStoreSync, deleteMessage, listGroups };
+module.exports = { createSession, sendMessage, sendMedia, sendBroadcast, disconnectSession, getSessionStatus, isConnected, getSessions, restoreAllSessions, qrStore, getProfilePicture, flushMsgStoreSync, deleteMessage, listGroups, pruneMsgStore, slimWaMessage, putSentMessage, getSentMessage };

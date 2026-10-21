@@ -26,6 +26,7 @@ class ZimmlinkOltService extends GponCliOltService {
         onuList:      'show onu_information',
         onuOptical:   'show onu optical-info {id} all',
         onuDetail:    'show onu_information {id}',
+        onuState:     'show onu state',
         uncfg:        'show onu auto-find',
         authorize:    'onu add {id} type {type} sn {sn}',
         editName:     'onu {id} name {name}',

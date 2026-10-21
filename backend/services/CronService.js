@@ -65,6 +65,7 @@ const { Op } = require('sequelize');
 const logger = require('../utils/logger');
 const ConfigCrypto = require('../utils/ConfigCrypto');
 const { getCompanyName } = require('../utils/companyInfo');
+const { createExclusiveRunner } = require('../utils/exclusiveRun');
 
 // Models yang dibutuhkan
 const { QueueHistory, Invoice, Customer, TrafficData, DeviceLog } = require('../models');
@@ -76,22 +77,23 @@ class CronService {
   constructor() {
     this.jobs    = [];
     this.io      = null;
+    this._exclusive = createExclusiveRunner();
 
     // Jobs yang berjalan di constructor (bukan di start())
     cron.schedule('0 7 * * *', () => this._runDailyAlerts());
-    cron.schedule('0 * * * *', () => this._runAutoIsolir());
+    cron.schedule('0 * * * *', () => this._exclusive.run('autoIsolir', () => this._runAutoIsolir()));
 
     // Sampler traffic interface hotspot — tiap 5 menit, untuk riwayat kapasitas.
     try {
       const TrafficHistory = require('./TrafficHistoryService');
-      cron.schedule('*/5 * * * *', () => TrafficHistory.sample().catch(() => {}));
+      cron.schedule('*/5 * * * *', () => this._exclusive.run('trafficHistory', () => TrafficHistory.sample()).catch(() => {}));
       cron.schedule('30 3 * * *', () => TrafficHistory.prune(30).catch(() => {})); // retensi 30 hari
       setTimeout(() => TrafficHistory.sample().catch(() => {}), 8000);             // sampel awal
     } catch (e) { console.error('[Cron] traffic sampler:', e.message); }
 
     try {
       const QosSla = require('./QosSlaService');
-      cron.schedule('*/5 * * * *', () => QosSla.runCycle().catch((e) => console.error('[Cron] qos sla:', e.message)));
+      cron.schedule('*/5 * * * *', () => this._exclusive.run('qosSla', () => QosSla.runCycle()).catch((e) => console.error('[Cron] qos sla:', e.message)));
       setTimeout(() => QosSla.runCycle().catch(() => {}), 18000);
     } catch (e) { console.error('[Cron] qos sla schedule:', e.message); }
 
@@ -147,7 +149,7 @@ class CronService {
     // start, lalu update DB & broadcast ke UI — jadi tak perlu klik "Verifikasi
     // Status" manual. Tiap 3 menit + sekali ~10 detik setelah start.
     try {
-      cron.schedule('*/3 * * * *', () => this._autoVerifyFonnte().catch(() => {}));
+      cron.schedule('*/3 * * * *', () => this._exclusive.run('fonnteVerify', () => this._autoVerifyFonnte()).catch(() => {}));
       setTimeout(() => this._autoVerifyFonnte().catch(() => {}), 10000);
     } catch (e) { console.error('[Cron] fonnte auto-verify:', e.message); }
 
@@ -159,8 +161,8 @@ class CronService {
     // ulang. Session yang butuh scan QR TIDAK dipaksa (di luar kendali). Tiap
     // 2 menit + sekali ~14 detik setelah start.
     try {
-      cron.schedule('*/2 * * * *', () => this._autoReconnectWaha().catch(() => {}));
-      cron.schedule('*/2 * * * *', () => this._reconcilePendingWa().catch(() => {}));
+      cron.schedule('*/2 * * * *', () => this._exclusive.run('wahaReconnect', () => this._autoReconnectWaha()).catch(() => {}));
+      cron.schedule('*/2 * * * *', () => this._exclusive.run('waReconcile', () => this._reconcilePendingWa()).catch(() => {}));
       setTimeout(() => this._autoReconnectWaha().catch(() => {}), 14000);
     } catch (e) { console.error('[Cron] waha auto-reconnect:', e.message); }
 
@@ -388,25 +390,19 @@ class CronService {
     // Lihat DatabaseCleanupController.TABLES entry `device_logs`.
 
     // ── 5. Queue traffic history (setiap 1 menit) ────────────────────
-    this.jobs.push(cron.schedule('* * * * *', async () => {
-      await this._pollQueueHistory();
-    }));
+    this.jobs.push(cron.schedule('* * * * *', () => this._exclusive.run('queueHistory', () => this._pollQueueHistory())));
 
     // ── 6. (REMOVED) Cleanup queue history — sekarang dihandle job #3 ─
     // Lihat DatabaseCleanupController.TABLES entry `queue_history`.
 
     // ── 7. GenieACS ONT poll (setiap 5 menit) ────────────────────────
-    this.jobs.push(cron.schedule('*/5 * * * *', async () => {
-      await this._pollGenieACS();
-    }));
+    this.jobs.push(cron.schedule('*/5 * * * *', () => this._exclusive.run('genieacs', () => this._pollGenieACS())));
 
     // ── 8. OLT SNMP poll (setiap 5 menit) — BARU ─────────────────────
     // Berjalan bersamaan dengan GenieACS, tidak saling mengganggu.
     // ONT dari OLT SNMP masuk ke tabel yang sama (ont_devices),
     // dibedakan via kolom 'source'.
-    this.jobs.push(cron.schedule('*/5 * * * *', async () => {
-      await this._pollOltSNMP();
-    }));
+    this.jobs.push(cron.schedule('*/5 * * * *', () => this._exclusive.run('oltSnmp', () => this._pollOltSNMP())));
 
     // ── 9. Cleanup ONT signal history (setiap hari jam 03:30) ────────
     this.jobs.push(cron.schedule('30 3 * * *', async () => {
@@ -591,9 +587,7 @@ class CronService {
     // ── 16. Device Traffic Poll (setiap 1 menit) ────────────────────────
     // Polling traffic dari device MikroTik yang pakai monitoring API.
     // Data disimpan ke traffic_data untuk bandwidth trends chart di dashboard.
-    this.jobs.push(cron.schedule('* * * * *', async () => {
-      await this._pollDeviceTraffic();
-    }));
+    this.jobs.push(cron.schedule('* * * * *', () => this._exclusive.run('deviceTraffic', () => this._pollDeviceTraffic())));
 
     // ── 16b. Telegram Monitoring (interval dinamis dari setting) ────────
     // Deteksi gangguan (perangkat down / ONT disconnect / IP pelanggan

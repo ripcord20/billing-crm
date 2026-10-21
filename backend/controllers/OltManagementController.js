@@ -37,6 +37,7 @@ const ZteSnmpService = require('../services/ZteSnmpService');
 const ConfigCrypto = require('../utils/ConfigCrypto');
 const oltQueue = require('../services/OltQueue');
 const logger = require('../utils/logger');
+const { stripRawFields } = require('../utils/memorySlim');
 const { logOltAction } = require('../middleware/activityLogger');
 
 // Merek yang memakai pola interface ZTE (frame/slot/port:onu).
@@ -76,7 +77,8 @@ function getCache(oltId) {
 function setCache(oltId, payload) {
   try {
     const all = loadCacheAll();
-    all[String(oltId)] = { ...payload, cachedAt: new Date().toISOString() };
+    // Buang dump CLI/SNMP (`raw`) — tidak dipakai UI, menahan file + heap.
+    all[String(oltId)] = { ...stripRawFields(payload), cachedAt: new Date().toISOString() };
     fs.writeFileSync(CACHE_PATH, JSON.stringify(all), 'utf8');
   } catch (e) { logger.warn('[OltMgmt] Gagal simpan cache: ' + e.message); }
 }
