@@ -1,0 +1,349 @@
+/* Kulit Hotspot Binding. Hanya tampilan.
+   Kisi kartu, lebar tabel, dan susunan kartu di HP tidak diubah. */
+
+html:has(body.hb-home) {
+  background: #100c22;
+  color-scheme: dark;
+}
+
+body.hb-home {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+
+body.hb-home .main-content,
+body.hb-home .page-content {
+  background: transparent !important;
+  color: #f8fafc;
+}
+
+body.hb-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+
+body.hb-home .logo-text,
+body.hb-home .nav-section-title,
+body.hb-home .nav-item { color: #f8fafc; }
+
+body.hb-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+
+body.hb-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+
+body.hb-home .sidebar a.nav-sub:link,
+body.hb-home .sidebar a.nav-sub:visited,
+body.hb-home .sidebar a.nav-sub:hover,
+body.hb-home .sidebar a.nav-sub:focus,
+body.hb-home .sidebar a.nav-sub:active,
+body.hb-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.hb-home .sidebar a.nav-sub .nav-sub-dot,
+body.hb-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #67e8f9 !important;
+}
+
+body.hb-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+
+body.hb-home .search-box,
+body.hb-home .search-box input,
+body.hb-home .topbar-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.hb-home .hb-head h1,
+body.hb-home .hb-title,
+body.hb-home .hb-card-t,
+body.hb-home .modal-box h3,
+body.hb-home .confirm-box h3,
+body.hb-home .scan-anim-txt,
+body.hb-home .scan-summary strong {
+  color: #ffffff !important;
+}
+
+body.hb-home .hb-head p,
+body.hb-home .hb-sub,
+body.hb-home .empty,
+body.hb-home .modal-box p,
+body.hb-home .confirm-box p,
+body.hb-home .fg label,
+body.hb-home .fhint,
+body.hb-home .scan-summary,
+body.hb-home .scan-anim-sub,
+body.hb-home .hb-pg-info,
+body.hb-home .hb-routerbar label,
+body.hb-home .ar-toggle,
+body.hb-home .sp-chk {
+  color: #e2e8f0 !important;
+}
+
+body.hb-home .btn-primary,
+body.hb-home .btn-blue,
+body.hb-home .confirm-ok-info {
+  background: linear-gradient(135deg, #0891b2, #db2777) !important;
+  color: #ffffff !important;
+}
+
+body.hb-home .btn-primary:disabled {
+  background: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+body.hb-home .btn-ghost,
+body.hb-home .confirm-actions .btn-ghost {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.hb-home .btn-danger,
+body.hb-home .confirm-ok-danger {
+  background: linear-gradient(135deg, #e11d48, #f43f5e) !important;
+  color: #ffffff !important;
+}
+
+body.hb-home .btn-green,
+body.hb-home .confirm-ok-success {
+  background: linear-gradient(135deg, #059669, #10b981) !important;
+  color: #ffffff !important;
+}
+
+body.hb-home .btn-amber,
+body.hb-home .confirm-ok-warn {
+  background: linear-gradient(135deg, #d97706, #f59e0b) !important;
+  color: #ffffff !important;
+}
+
+body.hb-home .hbs-grid {
+  background: #100c22 !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+body.hb-home #hbs-total {
+  background: linear-gradient(145deg, #0891b2, #1d4ed8 58%, #22d3ee) !important;
+  border-color: transparent !important;
+}
+body.hb-home #hbs-active {
+  background: linear-gradient(145deg, #059669, #0f766e 55%, #34d399) !important;
+  border-color: transparent !important;
+}
+body.hb-home #hbs-isolated {
+  background: linear-gradient(145deg, #be185d, #e11d48 55%, #ff4ecd) !important;
+  border-color: transparent !important;
+}
+body.hb-home #hbs-mismatch {
+  background: linear-gradient(145deg, #b45309, #ea580c 55%, #fde047) !important;
+  border-color: transparent !important;
+}
+
+body.hb-home .hbs-card.sc-active {
+  box-shadow: inset 0 0 0 3px #ffffff !important;
+}
+
+body.hb-home .hbs-card .hbs-label,
+body.hb-home .hbs-card .hbs-num,
+body.hb-home .hbs-card .hbs-sub,
+body.hb-home .hbs-card.sc-active .hbs-label,
+body.hb-home .hbs-card.sc-active .hbs-num,
+body.hb-home .hbs-card.sc-active .hbs-sub {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+
+body.hb-home .hbs-card .hbs-spark-line,
+body.hb-home .hbs-card.sc-active .hbs-spark-line { stroke: #ffffff !important; }
+body.hb-home .hbs-card .hbs-spark-fill,
+body.hb-home .hbs-card.sc-active .hbs-spark-fill { fill: rgba(255, 255, 255, 0.22) !important; }
+body.hb-home .hbs-card .hbs-spark-dot,
+body.hb-home .hbs-card.sc-active .hbs-spark-dot { fill: #ffffff !important; }
+
+body.hb-home .hb-stat:nth-child(4n+1) { background: #1d4ed8 !important; border-color: transparent !important; }
+body.hb-home .hb-stat:nth-child(4n+2) { background: #059669 !important; border-color: transparent !important; }
+body.hb-home .hb-stat:nth-child(4n+3) { background: #e11d48 !important; border-color: transparent !important; }
+body.hb-home .hb-stat:nth-child(4n+4) { background: #b45309 !important; border-color: transparent !important; }
+body.hb-home .hb-stat .l,
+body.hb-home .hb-stat .v { color: #ffffff !important; }
+
+body.hb-home .hb-routerbar,
+body.hb-home .hb-tabs,
+body.hb-home .hb-card,
+body.hb-home .host-summary,
+body.hb-home .modal-box,
+body.hb-home .confirm-box,
+body.hb-home .bulk-bar {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.28) !important;
+  color: #f8fafc;
+}
+
+body.hb-home #mismatchCard {
+  background: #451a03 !important;
+  border-color: #fbbf24 !important;
+}
+body.hb-home #mismatchCard .hb-card-t { color: #fde68a !important; }
+
+body.hb-home .hb-tab { color: #e2e8f0 !important; }
+body.hb-home .hb-tab.active,
+body.hb-home .hb-tab.active:hover {
+  background: linear-gradient(135deg, #0891b2, #db2777) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+body.hb-home .hb-proto,
+body.hb-home .hbs-filter-tag {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  -webkit-text-fill-color: #1d4ed8;
+}
+body.hb-home .hbs-filter-tag button { color: #1d4ed8 !important; -webkit-text-fill-color: #1d4ed8; }
+
+body.hb-home .conn-badge.ok { background: #dcfce7 !important; color: #15803d !important; -webkit-text-fill-color: #15803d; }
+body.hb-home .conn-badge.bad { background: #fee2e2 !important; color: #b91c1c !important; -webkit-text-fill-color: #b91c1c; }
+body.hb-home .conn-badge.chk { background: #f1f5f9 !important; color: #475569 !important; -webkit-text-fill-color: #475569; }
+body.hb-home .conn-badge.ok .dot { background: #22c55e !important; }
+body.hb-home .conn-badge.bad .dot { background: #ef4444 !important; }
+body.hb-home .conn-badge.chk .dot { background: #94a3b8 !important; }
+
+body.hb-home .confirm-ic.danger { background: #fee2e2 !important; color: #dc2626 !important; }
+body.hb-home .confirm-ic.warn { background: #fef3c7 !important; color: #d97706 !important; }
+body.hb-home .confirm-ic.info { background: #dbeafe !important; color: #1d4ed8 !important; }
+body.hb-home .confirm-ic.success { background: #d1fae5 !important; color: #059669 !important; }
+
+body.hb-home select,
+body.hb-home .fg input,
+body.hb-home .fg select,
+body.hb-home .hb-search input,
+body.hb-home .hb-fselect,
+body.hb-home .hb-pg-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.hb-home .hb-pg-btn.act {
+  background: linear-gradient(135deg, #0891b2, #db2777) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+body.hb-home .traf-range {
+  background: #070814 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.hb-home .traf-rbtn { color: #e2e8f0 !important; }
+body.hb-home .traf-rbtn.active {
+  background: linear-gradient(135deg, #0891b2, #db2777) !important;
+  color: #ffffff !important;
+}
+
+body.hb-home #trafCard span,
+body.hb-home #trafCard strong { color: #e2e8f0 !important; }
+body.hb-home #trafRx { color: #22d3ee !important; -webkit-text-fill-color: #22d3ee; }
+body.hb-home #trafTx { color: #4ade80 !important; -webkit-text-fill-color: #4ade80; }
+
+body.hb-home .hb-tbl thead th,
+body.hb-home .scan-tbl thead th {
+  background: linear-gradient(90deg, #0891b2, #4f46e5 55%, #db2777) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+body.hb-home .hb-tbl tbody tr:nth-child(8n+1),
+body.hb-home .scan-tbl tbody tr:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.hb-home .hb-tbl tbody tr:nth-child(8n+2),
+body.hb-home .scan-tbl tbody tr:nth-child(8n+2) { background: #0891b2 !important; }
+body.hb-home .hb-tbl tbody tr:nth-child(8n+3),
+body.hb-home .scan-tbl tbody tr:nth-child(8n+3) { background: #059669 !important; }
+body.hb-home .hb-tbl tbody tr:nth-child(8n+4),
+body.hb-home .scan-tbl tbody tr:nth-child(8n+4) { background: #b45309 !important; }
+body.hb-home .hb-tbl tbody tr:nth-child(8n+5),
+body.hb-home .scan-tbl tbody tr:nth-child(8n+5) { background: #ea580c !important; }
+body.hb-home .hb-tbl tbody tr:nth-child(8n+6),
+body.hb-home .scan-tbl tbody tr:nth-child(8n+6) { background: #e11d48 !important; }
+body.hb-home .hb-tbl tbody tr:nth-child(8n+7),
+body.hb-home .scan-tbl tbody tr:nth-child(8n+7) { background: #db2777 !important; }
+body.hb-home .hb-tbl tbody tr:nth-child(8n+8),
+body.hb-home .scan-tbl tbody tr:nth-child(8n+8) { background: #7c3aed !important; }
+
+body.hb-home .hb-tbl td,
+body.hb-home .scan-tbl td {
+  color: #ffffff !important;
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+body.hb-home .hb-tbl td::before,
+body.hb-home .scan-tbl td::before { color: #e2e8f0 !important; }
+
+body.hb-home .hb-tbl a:not(.btn):link,
+body.hb-home .hb-tbl a:not(.btn):visited,
+body.hb-home .scan-tbl a:not(.btn):link,
+body.hb-home .scan-tbl a:not(.btn):visited {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+
+body.hb-home .hb-tbl .badge.green,
+body.hb-home .scan-tbl .badge.green { background: #d1fae5 !important; color: #047857 !important; -webkit-text-fill-color: #047857; }
+body.hb-home .hb-tbl .badge.red,
+body.hb-home .scan-tbl .badge.red { background: #ffe4e6 !important; color: #be123c !important; -webkit-text-fill-color: #be123c; }
+body.hb-home .hb-tbl .badge.amber,
+body.hb-home .scan-tbl .badge.amber { background: #fef3c7 !important; color: #92400e !important; -webkit-text-fill-color: #92400e; }
+body.hb-home .hb-tbl .badge.blue,
+body.hb-home .scan-tbl .badge.blue { background: #dbeafe !important; color: #1d4ed8 !important; -webkit-text-fill-color: #1d4ed8; }
+body.hb-home .hb-tbl .badge.gray,
+body.hb-home .scan-tbl .badge.gray { background: #f1f5f9 !important; color: #475569 !important; -webkit-text-fill-color: #475569; }
+
+body.hb-home .scan-cust.act { background: #dcfce7 !important; color: #15803d !important; -webkit-text-fill-color: #15803d; }
+body.hb-home .scan-cust.iso { background: #fee2e2 !important; color: #b91c1c !important; -webkit-text-fill-color: #b91c1c; }
+body.hb-home .tag-ip { background: #dbeafe !important; color: #1e40af !important; -webkit-text-fill-color: #1e40af; }
+body.hb-home .tag-mac { background: #f1f5f9 !important; color: #334155 !important; -webkit-text-fill-color: #334155; }
+body.hb-home .scan-bound,
+body.hb-home .scan-muted { color: #e2e8f0 !important; }
+
+body.hb-home .radar {
+  background: radial-gradient(circle, #1e1b4b 0%, #070814 70%) !important;
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.45) !important;
+}
+body.hb-home .radar .ring { border-color: rgba(34, 211, 238, 0.35) !important; }
+body.hb-home .scan-prog { background: #1e293b !important; }
+
+body.hb-home .bottom-nav {
+  background: #100c22;
+  border-top: 1px solid rgba(34, 211, 238, 0.28);
+  box-shadow: none;
+}
+
+body.hb-home .bottom-nav a.bn-item:link,
+body.hb-home .bottom-nav a.bn-item:visited,
+body.hb-home .bottom-nav a.bn-item:hover,
+body.hb-home .bottom-nav a.bn-item:focus,
+body.hb-home .bottom-nav a.bn-item:active,
+body.hb-home .bottom-nav a.bn-item.active,
+body.hb-home .bottom-nav button.bn-item,
+body.hb-home .bottom-nav .bn-item span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+
+body.hb-home .bottom-nav .bn-icon svg,
+body.hb-home .bottom-nav .bn-item.active .bn-icon svg,
+body.hb-home .bottom-nav .bn-item:hover .bn-icon svg { stroke: #ffffff !important; }
+
+body.hb-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }
