@@ -753,11 +753,11 @@ const OltMgmt = {
       //   OffLine  = belum ranging / baru di-provisioning (tunggu 1-2 menit)
       //   SyncMib/Ranging = sedang proses online
       const phase = String(o.phase_state || '').toLowerCase().replace(/\(.*\)$/, '');
+      const phaseLbl = this._phaseLabel(o);
       let stTxt;
       if (o.status === 'online') stTxt = 'Online';
       else if (o.status === 'disabled') stTxt = 'Disabled';
-      else if (/dying[\s_-]*gasp/i.test(phase)) stTxt = 'Dying Gasp';
-      else if (phase === 'los' || phase === 'loss') stTxt = 'LOS';
+      else if (phaseLbl) stTxt = phaseLbl;
       else if (phase === 'ranging' || phase === 'syncmib' || phase === 'logging' || phase === 'initial') stTxt = 'Ranging…';
       else stTxt = 'Offline';
       const stTitle = (o.status !== 'online' && phase) ? ` title="Phase OLT: ${esc(phase)}"` : '';
@@ -875,6 +875,9 @@ const OltMgmt = {
         ? '<span class="rx-badge rx-loading"><span class="spin spin-sm"></span></span>'
         : '<span class="mut" style="font-size:11px">—</span>';
     }
+    const downLbl = this._phaseLabel(o);
+    if (this.isDyingGasp(o) && downLbl) return `<span class="rx-badge rx-unknown">${downLbl}</span>`;
+    if (this.isOpticalDown(o) && downLbl) return `<span class="rx-badge rx-los">${downLbl}</span>`;
     if (o.onu_rx_dbm === null) {
       const q = o.quality || 'unknown';
       if (q === 'los') return '<span class="rx-badge rx-los">LOS</span>';
@@ -889,7 +892,7 @@ const OltMgmt = {
     const total   = this.onus.length;
     const online  = this.onus.filter(o => o.status === 'online').length;
     const offline = total - online;
-    const bad     = this.onus.filter(o => typeof o.onu_rx_dbm === 'number' && o.onu_rx_dbm < -25).length;
+    const bad     = this.onus.filter(o => typeof o.onu_rx_dbm === 'number' && o.onu_rx_dbm < -25 && !this.isDyingGasp(o) && !this.isOpticalDown(o)).length;
 
     document.getElementById('statOnline').textContent  = online;
     document.getElementById('statOffline').textContent = offline;
@@ -911,7 +914,7 @@ const OltMgmt = {
   // ════════════════════ Tren (chart) ════════════════════
   _pushTrend() {
     const online = this.onus.filter(o => o.status === 'online').length;
-    const rxVals = this.onus.map(o => o.onu_rx_dbm).filter(v => typeof v === 'number');
+    const rxVals = this.onus.filter(o => !this.isDyingGasp(o) && !this.isOpticalDown(o)).map(o => o.onu_rx_dbm).filter(v => typeof v === 'number');
     const avgRx = rxVals.length ? (rxVals.reduce((a, b) => a + b, 0) / rxVals.length) : null;
     this.trend.push({ t: Date.now(), online, avgRx });
     if (this.trend.length > 30) this.trend.shift();
@@ -1066,9 +1069,28 @@ const OltMgmt = {
     }
   },
 
-  // Dying gasp = modem sempat lapor listrik putus ke OLT. Bukan LOS optik.
+  // Listrik putus: ZTE menulis DyingGasp, HSGQ GPON menulis Power down.
+  // Keduanya satu kartu. Laser out / LOAi tetap LOS (sinyal optik hilang).
+  _phaseRaw(o) {
+    return String((o && (o.phase_state || o.phase)) || '');
+  },
   isDyingGasp(o) {
-    return /dying[\s_-]*gasp/i.test(String((o && (o.phase_state || o.phase)) || ''));
+    const p = this._phaseRaw(o);
+    return /dying[\s_-]*gasp/i.test(p) || /power[\s_-]*down/i.test(p);
+  },
+  isOpticalDown(o) {
+    const p = this._phaseRaw(o).trim();
+    return /laser[\s_-]*out/i.test(p) || /^loa[i1]$/i.test(p) || /^(los|loss|losi)$/i.test(p);
+  },
+  _phaseLabel(o) {
+    const p = this._phaseRaw(o).trim();
+    if (/power[\s_-]*down/i.test(p)) return 'Power Down';
+    if (/dying[\s_-]*gasp/i.test(p)) return 'Dying Gasp';
+    if (/laser[\s_-]*out/i.test(p)) return 'Laser Out';
+    if (/^loa[i1]$/i.test(p)) return 'LOAi';
+    if (/^losi$/i.test(p)) return 'LOSi';
+    if (/^(los|loss)$/i.test(p)) return 'LOS';
+    return null;
   },
 
   // ════════════════════ Distribusi kualitas redaman (dBm) ════════════════════
@@ -1086,8 +1108,8 @@ const OltMgmt = {
       { key: 'good',     name: 'Good',         desc: '≥ -25 dBm · sinyal baik',     color: '#16a34a' },
       { key: 'warning',  name: 'Warning',      desc: '-25 s/d -28 dBm · waspada',   color: '#f59e0b' },
       { key: 'critical', name: 'Bad',          desc: '< -28 dBm · sinyal lemah',    color: '#dc2626' },
-      { key: 'los',      name: 'LOS',          desc: 'tak ada sinyal optik',        color: '#64748b' },
-      { key: 'dyinggasp', name: 'Dying Gasp',   desc: 'listrik modem putus',         color: '#7c3aed' },
+      { key: 'los',      name: 'LOS',          desc: 'tak ada sinyal · Laser Out',  color: '#64748b' },
+      { key: 'dyinggasp', name: 'Power Down',   desc: 'listrik putus · Dying Gasp',  color: '#7c3aed' },
       { key: 'unmeasured', name: 'Belum diukur', desc: 'redaman belum terbaca',     color: '#cbd5e1' },
     ];
 
@@ -1095,6 +1117,7 @@ const OltMgmt = {
     const counts = { good: 0, warning: 0, critical: 0, los: 0, dyinggasp: 0, unmeasured: 0 };
     this.onus.forEach(o => {
       if (this.isDyingGasp(o)) { counts.dyinggasp++; return; }
+      if (this.isOpticalDown(o)) { counts.los++; return; }
       const q = o.quality;
       if (q === 'good' || q === 'warning' || q === 'critical' || q === 'los') counts[q]++;
       else counts.unmeasured++;   // unknown / null / belum diambil
@@ -1219,6 +1242,8 @@ const OltMgmt = {
     const match = (o) => {
       if (key === 'dyinggasp') return this.isDyingGasp(o);
       if (this.isDyingGasp(o)) return false;
+      if (key === 'los') return o.quality === 'los' || this.isOpticalDown(o);
+      if (this.isOpticalDown(o)) return false;
       if (key === 'unmeasured') return !['good','warning','critical','los'].includes(o.quality);
       return o.quality === key;
     };
@@ -1231,7 +1256,8 @@ const OltMgmt = {
     } else {
       const rows = list.map(o => {
         const name = o.name || o.description || '(tanpa nama)';
-        const rx = this.isDyingGasp(o) ? 'Dying Gasp' : ((typeof o.onu_rx_dbm === 'number') ? `${o.onu_rx_dbm.toFixed(1)} dBm` : (o.quality === 'los' ? 'LOS' : '—'));
+        const downLbl = (this.isDyingGasp(o) || this.isOpticalDown(o)) ? this._phaseLabel(o) : null;
+        const rx = downLbl || ((typeof o.onu_rx_dbm === 'number') ? `${o.onu_rx_dbm.toFixed(1)} dBm` : (o.quality === 'los' ? 'LOS' : '—'));
         const idx = (o.onu_if || '').replace('gpon-onu_', '');
         const ifEsc = this._esc(o.onu_if || '');
         return `<tr class="rxq-clickable" onclick="OltMgmt.showDetail('${ifEsc}')" title="Lihat detail ONU">
