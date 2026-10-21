@@ -1,0 +1,143 @@
+/* Kulit GPS Tracking. Hanya tampilan.
+   Kisi armada, peta, dan popup Leaflet tidak diubah. */
+
+html:has(body.gps-home) { background: #100c22; color-scheme: dark; }
+body.gps-home {
+  background: #070814 !important;
+  color: #f8fafc !important;
+}
+body.gps-home .main-content,
+body.gps-home .page-content,
+body.gps-home .fleet-page { background: #070814 !important; color: #f8fafc; }
+body.gps-home .sidebar { background: rgba(16, 12, 34, 0.96); border-right-color: rgba(34, 211, 238, 0.28); }
+body.gps-home .logo-text,
+body.gps-home .nav-section-title,
+body.gps-home .nav-item { color: #f8fafc; }
+body.gps-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+body.gps-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+body.gps-home .sidebar a.nav-sub:link,
+body.gps-home .sidebar a.nav-sub:visited,
+body.gps-home .sidebar a.nav-sub:hover,
+body.gps-home .sidebar a.nav-sub:focus,
+body.gps-home .sidebar a.nav-sub:active,
+body.gps-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+body.gps-home .sidebar a.nav-sub .nav-sub-dot,
+body.gps-home .sidebar a.nav-sub.active .nav-sub-dot { background: #67e8f9 !important; }
+body.gps-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+body.gps-home .search-box,
+body.gps-home .search-box input,
+body.gps-home .topbar-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.gps-home .fleet-topbar,
+body.gps-home .fleet-bottom,
+body.gps-home .fleet-side,
+body.gps-home .bp,
+body.gps-home .m-stats,
+body.gps-home .mob-toggle {
+  background: #141028 !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+body.gps-home .ft-title,
+body.gps-home .fs-title,
+body.gps-home .bp-title,
+body.gps-home .ms-num,
+body.gps-home .ms-label { color: #ffffff !important; }
+body.gps-home .fs-action,
+body.gps-home .bp-action,
+body.gps-home .ms-sub { color: #67e8f9 !important; }
+body.gps-home .ms-bar.idle { background: #f59e0b !important; }
+body.gps-home .ms-bar.active { background: #22d3ee !important; }
+body.gps-home .btn-f,
+body.gps-home .m-ctrl-btn,
+body.gps-home .m-search input {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.gps-home .btn-f.primary,
+body.gps-home .m-ctrl-btn.active {
+  background: linear-gradient(135deg, #0891b2, #7c3aed) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+body.gps-home .mob-tab { color: #e2e8f0 !important; }
+body.gps-home .mob-tab.active { color: #22d3ee !important; }
+
+body.gps-home .tc:nth-child(8n+1),
+body.gps-home .al-item:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.gps-home .tc:nth-child(8n+2),
+body.gps-home .al-item:nth-child(8n+2) { background: #0891b2 !important; }
+body.gps-home .tc:nth-child(8n+3),
+body.gps-home .al-item:nth-child(8n+3) { background: #059669 !important; }
+body.gps-home .tc:nth-child(8n+4),
+body.gps-home .al-item:nth-child(8n+4) { background: #b45309 !important; }
+body.gps-home .tc:nth-child(8n+5),
+body.gps-home .al-item:nth-child(8n+5) { background: #ea580c !important; }
+body.gps-home .tc:nth-child(8n+6),
+body.gps-home .al-item:nth-child(8n+6) { background: #e11d48 !important; }
+body.gps-home .tc:nth-child(8n+7),
+body.gps-home .al-item:nth-child(8n+7) { background: #db2777 !important; }
+body.gps-home .tc:nth-child(8n+8),
+body.gps-home .al-item:nth-child(8n+8) { background: #7c3aed !important; }
+body.gps-home .tc-name,
+body.gps-home .tl-title,
+body.gps-home .tl-addr,
+body.gps-home .tl-stats,
+body.gps-home .al-name,
+body.gps-home .al-msg,
+body.gps-home .al-time,
+body.gps-home .empty-s { color: #ffffff !important; }
+body.gps-home .tc .tc-badge {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  -webkit-text-fill-color: #1d4ed8;
+}
+body.gps-home .pp-badge {
+  background: #dbeafe !important;
+  color: #1e3a8a !important;
+  -webkit-text-fill-color: #1e3a8a;
+}
+body.gps-home .al-av.warn { background: #f59e0b !important; color: #ffffff !important; }
+body.gps-home .al-av.danger { background: #e11d48 !important; color: #ffffff !important; }
+body.gps-home .al-av.info { background: #0891b2 !important; color: #ffffff !important; }
+
+body.gps-home .leaflet-popup-content-wrapper,
+body.gps-home .leaflet-popup-content { background: #ffffff !important; color: #0f172a !important; }
+body.gps-home .leaflet-popup-tip { background: #ffffff !important; }
+body.gps-home .leaflet-popup-content .pp-name,
+body.gps-home .leaflet-popup-content .pp-ticket,
+body.gps-home .leaflet-popup-content .pp-val,
+body.gps-home .leaflet-popup-content .pp-lbl,
+body.gps-home .leaflet-popup-content .pp-rk,
+body.gps-home .leaflet-popup-content .pp-rv,
+body.gps-home .leaflet-popup-content .pp-street,
+body.gps-home .leaflet-popup-content .pp-coord { color: #0f172a !important; -webkit-text-fill-color: #0f172a; }
+
+body.gps-home .bottom-nav { background: #100c22; border-top: 1px solid rgba(34, 211, 238, 0.28); }
+body.gps-home .bottom-nav a.bn-item:link,
+body.gps-home .bottom-nav a.bn-item:visited,
+body.gps-home .bottom-nav a.bn-item:hover,
+body.gps-home .bottom-nav a.bn-item:focus,
+body.gps-home .bottom-nav a.bn-item:active,
+body.gps-home .bottom-nav a.bn-item.active,
+body.gps-home .bottom-nav button.bn-item,
+body.gps-home .bottom-nav .bn-item span { color: #ffffff !important; -webkit-text-fill-color: #ffffff; }
+body.gps-home .bottom-nav .bn-icon svg,
+body.gps-home .bottom-nav .bn-item.active .bn-icon svg { stroke: #ffffff !important; }
+body.gps-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }
