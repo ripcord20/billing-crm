@@ -2348,6 +2348,7 @@ router.post  ('/olt-mgmt/:id/onu/reboot',    authenticate, demoGuard, authorize(
 router.post  ('/olt-mgmt/:id/onu/factory-reset', authenticate, demoGuard, authorize('superadmin','admin'), OltMgmtController.factoryResetOnu.bind(OltMgmtController));
 router.post  ('/olt-mgmt/:id/onu/eth-port',  authenticate, demoGuard, authorize('superadmin','admin'), OltMgmtController.setOnuEthPort.bind(OltMgmtController));
 router.post  ('/olt-mgmt/:id/onu/verify',    authenticate, demoGuard, OltMgmtController.verifyOnu.bind(OltMgmtController));
+router.post  ('/olt-mgmt/:id/onu/retry-provision', authenticate, demoGuard, authorize('superadmin','admin'), OltMgmtController.retryProvision.bind(OltMgmtController));
 router.delete('/olt-mgmt/:id/onu',           authenticate, demoGuard, authorize('superadmin'),         OltMgmtController.deleteOnu.bind(OltMgmtController));
 // Dashboard: system info & ringkasan per-PON
 router.get   ('/olt-mgmt/:id/system',        authenticate, demoGuard, OltMgmtController.systemInfo.bind(OltMgmtController));

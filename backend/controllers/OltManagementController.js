@@ -43,6 +43,24 @@ const { logOltAction } = require('../middleware/activityLogger');
 // Merek lain (chipset/EPON) memakai pola port/onu_id.
 const ZTE_STYLE = new Set(['zte']);
 function isZteStyle(brand) { return ZTE_STYLE.has(String(brand || 'zte').toLowerCase()); }
+
+function annotateOnuConfig(data) {
+  if (!data || typeof data !== 'object') return data;
+  const phase = String(data.phase_state || data.phase || '').toLowerCase();
+  const offline = /los|loss|offline|off-?line|dying|power.?off/.test(phase);
+  const failed = data.config_failed === true || /fail/i.test(String(data.config_state || ''));
+  if (failed) {
+    data.config_failed = true;
+    if (!data.config_error) {
+      data.config_error = offline
+        ? 'Config State: Fail. Modem LOS atau mati. Status antrean: Pending - Device Offline. Konfigurasi dilanjutkan setelah modem online.'
+        : 'Config State: Fail. OLT menolak konfigurasi ONU. Periksa profil, VLAN, dan service-port, lalu ulangi provisioning.';
+    }
+    if (!data.diagnosis) data.diagnosis = data.config_error;
+  }
+  if (offline) data.queue_status = 'Pending - Device Offline';
+  return data;
+}
 // Merek EPON (ONU diidentifikasi via MAC, bukan SN GPON).
 const EPON_BRANDS = new Set(['hsgq']);
 function isEpon(brand) { return EPON_BRANDS.has(String(brand || '').toLowerCase()); }
@@ -466,11 +484,11 @@ class OltManagementController {
           svc.getOnuDetail(onuIf),
           svc.getOnuPower(onuIf).catch(() => null),
         ]);
-        data = { ...detail, power };
+        data = annotateOnuConfig({ ...detail, power });
       } else {
         const { pon, id } = this._chipsetRef(req);
         if (pon == null || id == null) return res.status(400).json({ success: false, message: 'Parameter pon & id wajib' });
-        data = await svc.getOnuDetail(pon, id);  // sudah termasuk power
+        data = annotateOnuConfig(await svc.getOnuDetail(pon, id));  // sudah termasuk power
       }
       res.json({ success: true, data });
     } catch (err) {
@@ -853,8 +871,43 @@ class OltManagementController {
       // tries/interval bisa dioverride dari body untuk verifikasi cepat.
       const tries = Math.min(parseInt(req.body.tries) || 6, 12);
       const intervalMs = Math.min(parseInt(req.body.intervalMs) || 8000, 15000);
-      const data = await svc.verifyOnu(onuIf, { tries, intervalMs });
+      const data = annotateOnuConfig(await svc.verifyOnu(onuIf, { tries, intervalMs }));
       res.json({ success: true, data });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    } finally {
+      await svc.disconnect().catch(() => {});
+    }
+  }
+
+  // ── Ulangi provisioning bila Config State Fail ────────────────────
+  async retryProvision(req, res) {
+    const cfg = getCfgOr404(req, res); if (!cfg) return;
+    if (!isZteStyle(cfg.brand)) {
+      return res.status(400).json({ success: false, message: 'Ulangi provisioning saat ini untuk OLT ZTE. Merek lain: segarkan detail ONU.' });
+    }
+    const onuIf = req.body.onuIf || req.query.if;
+    if (!onuIf) return res.status(400).json({ success: false, message: 'onuIf wajib' });
+    const svc = makeService(cfg);
+    try {
+      await svc.connect();
+      const result = await svc.retryProvision(onuIf);
+      logOltAction(req, {
+        action: result.pending ? 'pending' : 'update',
+        oltId: cfg.id,
+        target: onuIf,
+        description: result.pending
+          ? `Provisioning ONU ${onuIf} ditunda (Pending - Device Offline) di OLT ${cfg.name}`
+          : `Ulangi provisioning ONU ${onuIf} di OLT ${cfg.name}: ${result.message || ''}`,
+        meta: { status: result.status, pending: !!result.pending },
+      });
+      res.json({
+        success: true,
+        pending: !!result.pending,
+        status: result.status,
+        message: result.message,
+        data: annotateOnuConfig(result.data),
+      });
     } catch (err) {
       res.status(500).json({ success: false, message: err.message });
     } finally {

@@ -168,6 +168,25 @@ class GenieacsService {
 
   // ========== TASK MANAGEMENT ==========
 
+  // Modem dianggap offline bila belum pernah Inform, atau Inform terakhir
+  // sudah lewat 3x interval (minimal 15 menit). Konfigurasi tidak dipaksa
+  // lewat Connection Request; task tetap masuk antrean ACS sampai Inform.
+  isInformStale(lastInform, intervalSec, now = Date.now()) {
+    const interval = Number(intervalSec) || 300;
+    const staleMs = Math.max(interval * 3, 15 * 60) * 1000;
+    const last = lastInform ? new Date(lastInform).getTime() : NaN;
+    if (!Number.isFinite(last)) return true;
+    return (now - last) > staleMs;
+  }
+
+  async _deferBecauseOffline(deviceId) {
+    const eta = await this.getInformEta(deviceId);
+    // Gagal baca data perangkat bukan bukti modem mati. Tetap coba
+    // Connection Request seperti sebelumnya, jangan tandai offline.
+    if (!eta || eta.lookupFailed) return { defer: false, eta };
+    return { defer: this.isInformStale(eta.lastInform, eta.interval), eta };
+  }
+
   async createTask(deviceId, task, options = {}) {
     try {
       const client = this._getAxios();
@@ -175,9 +194,18 @@ class GenieacsService {
       // lalu encode sekali untuk URL yang benar
       const decoded   = decodeURIComponent(deviceId);
       const encodedId = encodeURIComponent(decoded);
+      let pendingOffline = false;
+      let offlineEta = null;
+      if (!options.forceConnection) {
+        const st = await this._deferBecauseOffline(decoded);
+        pendingOffline = st.defer;
+        offlineEta = st.eta;
+      }
       const params = {};
-      if (options.timeout)    params.timeout = options.timeout;
-      if (options.connection !== undefined) params.connection = options.connection;
+      if (!pendingOffline) {
+        if (options.timeout)    params.timeout = options.timeout;
+        if (options.connection !== undefined) params.connection = options.connection;
+      }
 
       // PENTING: validateStatus override supaya 202 (Accepted, task queued tapi
       // Connection Request gagal) tidak throw. Kita perlu bedakan:
@@ -190,9 +218,18 @@ class GenieacsService {
       });
       // Status 202 = task queued (Connection Request fail/timeout)
       // Status 200 = task executed
-      const executed = res.status === 200;
-      const queued   = res.status === 202;
-      return { success: true, data: res.data, executed, queued, httpStatus: res.status };
+      const executed = !pendingOffline && res.status === 200;
+      const queued   = pendingOffline || res.status === 202;
+      return {
+        success: true,
+        data: res.data,
+        executed,
+        queued,
+        pendingOffline,
+        statusLabel: pendingOffline ? 'Pending - Device Offline' : null,
+        eta: pendingOffline ? offlineEta : null,
+        httpStatus: res.status,
+      };
     } catch (err) {
       logger.error('GenieACS createTask error:', err.message);
       return { success: false, error: err.response?.data || err.message };
@@ -222,7 +259,7 @@ class GenieacsService {
   // Reboot device
   async rebootDevice(deviceId) {
     const task = { name: 'reboot' };
-    return this.createTask(deviceId, task, { connection: '1', timeout: 30000 });
+    return this.createTask(deviceId, task, { connection: '1', timeout: 30000, forceConnection: true });
   }
 
   // ── Set PeriodicInformInterval via setParameterValues ────────
@@ -238,7 +275,7 @@ class GenieacsService {
   // Factory Reset
   async factoryResetDevice(deviceId) {
     const task = { name: 'factoryReset' };
-    return this.createTask(deviceId, task, { connection: '1', timeout: 30000 });
+    return this.createTask(deviceId, task, { connection: '1', timeout: 30000, forceConnection: true });
   }
 
   // Refresh object/param
@@ -573,7 +610,7 @@ class GenieacsService {
       const projection = '_id,_lastInform,InternetGatewayDevice.ManagementServer.PeriodicInformInterval';
       const result = await this.getDevice(decoded, projection);
       if (!result.success || !result.data) {
-        return { interval: 300, lastInform: null, nextInform: null, etaMinutes: 5, etaText: '± 1-15 menit' };
+        return { interval: 300, lastInform: null, nextInform: null, etaMinutes: 5, etaText: '± 1-15 menit', lookupFailed: true };
       }
 
       const d = result.data;
@@ -614,7 +651,7 @@ class GenieacsService {
       };
     } catch (err) {
       logger.warn('[GenieACS] getInformEta failed:', err.message);
-      return { interval: 300, lastInform: null, nextInform: null, etaMinutes: 5, etaText: '± 1-15 menit' };
+      return { interval: 300, lastInform: null, nextInform: null, etaMinutes: 5, etaText: '± 1-15 menit', lookupFailed: true };
     }
   }
 }

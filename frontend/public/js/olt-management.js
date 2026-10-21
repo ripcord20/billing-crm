@@ -1812,11 +1812,25 @@ const OltMgmt = {
         <div class="info-note" style="margin-bottom:14px">Toleransi Rx ONU normal hingga ~-25 dBm. Di bawah -28 dBm perlu perbaikan optik. "LOS" = tidak ada sinyal (kabel putus/ONU mati).</div>`;
     }
 
+    const cfgFail = d.config_failed === true || /fail/i.test(String(d.config_state || ''));
+    const offline = d.queue_status === 'Pending - Device Offline' || /los|loss|offline|off-?line/i.test(String(d.phase_state || ''));
     const diagHtml = d.diagnosis
-      ? `<div class="info-note" style="margin-bottom:14px;border-left:3px solid ${/los/i.test(d.phase_state||'') ? '#dc2626' : '#d97706'};background:${/los/i.test(d.phase_state||'') ? '#fef2f2' : '#fffbeb'}">⚠ ${esc(d.diagnosis)}</div>`
+      ? `<div class="info-note" style="margin-bottom:14px;border-left:3px solid ${offline ? '#dc2626' : '#d97706'};background:${offline ? '#fef2f2' : '#fffbeb'}">⚠ ${esc(d.diagnosis)}</div>`
       : '';
+    const queueHtml = offline
+      ? `<div class="info-note" style="margin-bottom:14px;border-left:3px solid #d97706;background:#fffbeb"><b>Pending - Device Offline.</b> Konfigurasi tidak dikirim sampai modem online atau Inform kembali.</div>`
+      : '';
+    const retryHtml = cfgFail
+      ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <button type="button" class="btn btn-sm" onclick="OltMgmt.showDetail('${esc(d.onu_if || '')}')">Refresh Provisioning</button>
+          <button type="button" class="btn btn-sm btn-green" onclick="OltMgmt.retryProvision('${esc(d.onu_if || '')}')" ${offline ? 'disabled title="Menunggu modem online"' : ''}>Ulangi provisioning</button>
+        </div>`
+      : '';
+    const cfgCell = cfgFail
+      ? `<span style="color:#b91c1c;font-weight:800">${esc(d.config_state || 'Fail')}</span>`
+      : esc(d.config_state || '—');
 
-    return `${diagHtml}${powerHtml}
+    return `${diagHtml}${queueHtml}${retryHtml}${powerHtml}
       <div class="det-grid">
         <div class="det-cell"><div class="det-k">Interface</div><div class="det-v mono">${esc(d.onu_if||'—')}</div></div>
         <div class="det-cell"><div class="det-k">Serial Number</div><div class="det-v mono">${esc(d.serial_number||'—')}</div></div>
@@ -1824,7 +1838,7 @@ const OltMgmt = {
         <div class="det-cell"><div class="det-k">Type</div><div class="det-v">${esc(d.type||'—')}</div></div>
         <div class="det-cell"><div class="det-k">State</div><div class="det-v">${esc(d.state||'—')}</div></div>
         <div class="det-cell"><div class="det-k">Phase State</div><div class="det-v">${esc(d.phase_state||'—')}</div></div>
-        <div class="det-cell"><div class="det-k">Config State</div><div class="det-v">${esc(d.config_state||'—')}</div></div>
+        <div class="det-cell"><div class="det-k">Config State</div><div class="det-v">${cfgCell}</div></div>
         <div class="det-cell"><div class="det-k">Admin State</div><div class="det-v">${esc(d.admin_state||'—')}</div></div>
         <div class="det-cell"><div class="det-k">Auth Mode</div><div class="det-v">${esc(d.auth_mode||'—')}</div></div>
         <div class="det-cell"><div class="det-k">Jarak (Distance)</div><div class="det-v">${d.distance_m != null ? d.distance_m + ' m' : '—'}</div></div>
@@ -1834,6 +1848,25 @@ const OltMgmt = {
   },
 
   closeDetail() { document.getElementById('detailModal').classList.remove('show'); },
+
+  async retryProvision(onuIf) {
+    if (!onuIf || !this.activeOltId) return;
+    try {
+      const res = await App.api(`/olt-mgmt/${this.activeOltId}/onu/retry-provision`, {
+        method: 'POST', body: JSON.stringify({ onuIf }),
+      });
+      if (res?.pending) App.showToast(res.message || 'Pending - Device Offline', 'warning');
+      else if (res?.success) App.showToast(res.message || 'Provisioning diulang', 'success');
+      else App.showToast(res?.message || 'Gagal mengulang provisioning', 'error');
+      if (res?.data) {
+        document.getElementById('detailBody').innerHTML = this._renderDetail(res.data);
+      } else {
+        this.showDetail(onuIf);
+      }
+    } catch (e) {
+      App.showToast('Error: ' + e.message, 'error');
+    }
+  },
 
   // ════════════════════ Traffic real-time ONU ════════════════════
   async openOnuTraffic(onuIf, name) {
