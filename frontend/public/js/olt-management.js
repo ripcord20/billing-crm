@@ -249,7 +249,6 @@ const OltMgmt = {
     const o = this.olts.find(x => x.id === id);
     this.activeStyle = o ? (o.style || (o.brand === 'zte' ? 'zte' : 'chipset')) : 'zte';
     this.activeEpon = o ? !!o.epon : false;
-    document.getElementById('connLbl').textContent = o ? `Aktif: ${o.name} (${o.host})` : '';
     document.getElementById('ponBar').style.display = 'flex';
     document.getElementById('btnUncfg').disabled = false;
     // Sesuaikan label & placeholder PON port menurut gaya brand
@@ -299,7 +298,7 @@ const OltMgmt = {
       const res = await App.api(`/olt-mgmt/${this.activeOltId}/discover?cached=1`);
       if (res?.success && res.data && (res.data.onus || res.data.ports)) {
         hadCache = true;
-        this.applyDiscoverData(res.data, { cached: true });
+        this.applyDiscoverData(res.data);
       }
     } catch (e) { /* lanjut ke live */ }
     if (!hadCache && body) {
@@ -310,7 +309,7 @@ const OltMgmt = {
   },
 
   // Terapkan payload discover (dari cache maupun live) ke seluruh UI
-  applyDiscoverData(d, { cached = false } = {}) {
+  applyDiscoverData(d) {
     d = d || {};
     this.onus = d.onus || [];
     this.portSummaryData = d.ports || [];
@@ -325,25 +324,6 @@ const OltMgmt = {
     this._pushTrend();
     this.renderPortSummaryFromDiscover();
     if (d.system) this.applySystem(d.system);
-    const o = this.olts.find(x => x.id === this.activeOltId);
-    const onlineTot = this.onus.filter(x => x.status === 'online').length;
-    const stamp = d.cachedAt ? this._timeAgo(d.cachedAt) : null;
-    const tag = cached ? `<span class="card-pill pill-gray" style="margin-left:4px" title="Data tersimpan, sedang disegarkan">tersimpan${stamp ? ' · ' + stamp : ''}</span>` : '';
-    document.getElementById('connLbl').innerHTML =
-      `Aktif: ${esc(o?.name || '')} <span class="mut">· ${this.onus.length} ONU di ${this.portSummaryData.length} PON · ${onlineTot} online</span>${tag}`;
-  },
-
-  // Format "x menit lalu" sederhana
-  _timeAgo(iso) {
-    try {
-      const diff = Math.max(0, Date.now() - new Date(iso).getTime());
-      const m = Math.floor(diff / 60000);
-      if (m < 1) return 'baru saja';
-      if (m < 60) return `${m} mnt lalu`;
-      const h = Math.floor(m / 60);
-      if (h < 24) return `${h} jam lalu`;
-      return `${Math.floor(h / 24)} hr lalu`;
-    } catch (e) { return ''; }
   },
 
   // ════════════════════ Auto-discover (muat semua ONU) ════════════════════
@@ -360,7 +340,6 @@ const OltMgmt = {
     const body = document.getElementById('onuBody');
     if (!silent) {
       body.innerHTML = `<tr class="loading-row"><td colspan="6"><span class="spin"></span> Menemukan PON port &amp; memuat ONU...</td></tr>`;
-      document.getElementById('connLbl').innerHTML = `Aktif: ${esc(o?.name || '')} <span class="mut">· memuat…</span>`;
     }
     try {
       // Muat daftar ONU DULU tanpa redaman → tabel tampil instan.
@@ -374,8 +353,7 @@ const OltMgmt = {
       const d = res.data || {};
       // Jika live tidak mengembalikan system (mis. SNMP), ambil terpisah
       if (!d.system) this.loadSystem(true);
-      this.applyDiscoverData(d, { cached: false });
-      if (res.via === 'snmp') document.getElementById('connLbl').innerHTML += ' <span class="card-pill pill-teal" style="margin-left:4px">SNMP</span>';
+      this.applyDiscoverData(d);
 
       // Redaman: SNMP sudah cepat & sertakan power → tak perlu progressive.
       // Untuk CLI (atau bila redaman belum ada), ambil menyusul per-PON.
@@ -538,7 +516,6 @@ const OltMgmt = {
         App.showToast(res.message || 'OLT dihapus', 'success');
         if (this.activeOltId === id) {
           this.activeOltId = null;
-          document.getElementById('connLbl').textContent = 'Pilih OLT untuk mulai';
           document.getElementById('ponBar').style.display = 'none';
           document.getElementById('btnUncfg').disabled = true;
           this.onus = []; this.renderOnus(); this._resetStats();
