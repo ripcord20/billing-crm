@@ -504,3 +504,41 @@ body.dash-home .ont-off-table .oo-time {
   color: #e2e8f0;
   font-size: 12.5px;
 }
+
+/* Status bar Android dan navigasi bawah menyatu dengan header gelap.
+   Hanya warna chrome. Kartu, teks, ukuran, dan posisi menu tidak diubah. */
+html:has(body.dash-home) {
+  background: #100c22;
+  color-scheme: dark;
+}
+
+body.dash-home .bottom-nav {
+  background: #100c22;
+  border-top: 1px solid rgba(34, 211, 238, 0.28);
+  box-shadow: none;
+}
+
+body.dash-home .bn-item {
+  color: #cbd5e1;
+}
+
+body.dash-home .bn-icon svg,
+body.dash-home .bn-more .bn-icon svg {
+  stroke: #cbd5e1;
+}
+
+body.dash-home .bn-item.active,
+body.dash-home .bn-item:hover {
+  color: #1e78ff;
+}
+
+body.dash-home .bn-item.active .bn-icon svg,
+body.dash-home .bn-item:hover .bn-icon svg,
+body.dash-home .bn-more:hover .bn-icon svg,
+body.dash-home .bn-more.active .bn-icon svg {
+  stroke: #1e78ff;
+}
+
+body.dash-home .bn-item.active::after {
+  background: #1e78ff;
+}
