@@ -4,10 +4,13 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#100c22">
+  <meta name="color-scheme" content="dark">
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="stylesheet" href="/css/telegram-shared.css">
+  <link rel="stylesheet" href="/css/telegram-shared.css?v=tg1">
+  <link rel="stylesheet" href="/css/telegram-palette.css?v=tg1">
 </head>
-<body>
+<body class="tg-home">
 <div class="app-layout">
   <%- include('../partials/sidebar', { active: active }) %>
   <div class="main-content">

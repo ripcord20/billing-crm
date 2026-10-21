@@ -4,7 +4,10 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#100c22">
+  <meta name="color-scheme" content="dark">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/telegram-palette.css?v=tg1">
   <style>
     :root{
       --et-bg:#eef2f9;--et-card:#fff;--et-border:#e0e7f3;
@@ -217,9 +220,19 @@
     .tm-card{background:#fff;border-radius:18px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 48px rgba(0,0,0,.18);}
     .tm-h{display:flex;align-items:center;justify-content:space-between;padding:18px 22px 14px;border-bottom:1px solid #e8eaed;}
     .tm-x{background:#f4f8ff;border:1.5px solid #e0e7f3;border-radius:8px;width:30px;height:30px;cursor:pointer;color:#6b7fa8;font-size:16px;}
+
+    /* Ponsel: baris riwayat dan perintah tidak melebar ke samping */
+    @media (max-width: 760px) {
+      body.tg-home .page-content { overflow-x: hidden; }
+      .tg-hist-row { flex-wrap: wrap !important; }
+      .tg-hist-when { white-space: normal !important; }
+      .botcmd-item { flex-wrap: wrap; align-items: flex-start; }
+      .botcmd-meta { max-width: 100%; justify-content: flex-start; }
+      .rm-sc-lbl, .et-item-d, .tg-check-d { white-space: normal; }
+    }
   </style>
 </head>
-<body>
+<body class="tg-home">
 <div class="app-layout">
   <%- include('../partials/sidebar', { active: active }) %>
   <div class="main-content">
@@ -373,6 +386,8 @@
               <span class="tg-notif-tx"><div class="tg-notif-t">Uplink Terpin Down</div><div class="tg-notif-d">Hanya port yang di-pin di Device Management — khusus uplink</div></span>
               <button type="button" class="tg-test-btn" onclick="event.preventDefault();TG.testNotif('uplink')" title="Kirim contoh notifikasi Uplink Down">Tes</button><label class="et-switch"><input type="checkbox" id="tg-notif-uplink" checked onchange="onAnyChange();syncNotifCard(this)"><span class="et-track"></span></label>
             </label>
+          </div>
+
           </div>
 
           <!-- Ambang beban router (CPU/RAM) & filter interface -->
@@ -838,7 +853,8 @@
 
 <script>window.__COMPANY = <%- JSON.stringify(appName || 'ISP') %>;</script>
 <script src="/js/app.js"></script>
-  <script src="/js/telegram-center.js?v=uplink1"></script>
+<script src="/js/placeholder-insert.js"></script>
+<script src="/js/telegram-center.js?v=ph1"></script>
 <script src="/js/bot-commands.js"></script>
 </body>
 </html>
