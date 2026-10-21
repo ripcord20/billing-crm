@@ -376,6 +376,42 @@
     padding:14px; background:var(--lg-gray-50); border-radius:8px;
     color:var(--lg-gray-400); font-style:italic; font-size:12.5px; text-align:center;
   }
+
+  /* Ponsel: satu kartu per log, tanpa geser ke samping */
+  @media (max-width: 760px) {
+    .lg-table-wrap { overflow-x: hidden; }
+    .lg-table { width: 100%; min-width: 0; }
+    .lg-table thead { display: none; }
+    .lg-table tbody tr {
+      display: block;
+      padding: 10px 12px 8px;
+    }
+    .lg-table tbody td {
+      display: block;
+      width: auto;
+      padding: 5px 0;
+      border-bottom: none;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .lg-table tbody td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.78);
+      margin-bottom: 2px;
+    }
+    .lg-table tbody td[colspan]::before { content: none; }
+    .lg-time-main,
+    .lg-user-email,
+    .lg-badge,
+    .lg-desc,
+    .lg-ip { white-space: normal; }
+    .lg-field-actions { flex-wrap: wrap; }
+  }
 </style>
 
 <!-- ════ DETAIL MODAL ════ -->
@@ -494,15 +530,15 @@
 
     return `
       <tr class="lg-row-clickable" data-log-id="${log.id}">
-        <td>
+        <td data-label="Time">
           <div class="lg-time-main">${ts ? esc(fmtFullTime(ts)) : '—'}</div>
           <div class="lg-time-sub">${ts ? esc(fmtRelTime(ts)) : ''}</div>
         </td>
-        <td>${userHtml}</td>
-        <td><span class="lg-badge ${actionClass}">${esc(log.action || '—')}</span></td>
-        <td><span class="lg-module">${esc(moduleLabel)}</span></td>
-        <td class="lg-desc">${esc(log.description || '—')}</td>
-        <td class="lg-ip">${esc(log.ip_address || log.ipAddress || '—')}</td>
+        <td data-label="User">${userHtml}</td>
+        <td data-label="Action"><span class="lg-badge ${actionClass}">${esc(log.action || '—')}</span></td>
+        <td data-label="Module"><span class="lg-module">${esc(moduleLabel)}</span></td>
+        <td class="lg-desc" data-label="Description">${esc(log.description || '—')}</td>
+        <td class="lg-ip" data-label="IP Address">${esc(log.ip_address || log.ipAddress || '—')}</td>
       </tr>`;
   }
 
