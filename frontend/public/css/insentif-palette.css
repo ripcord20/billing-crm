@@ -1,0 +1,134 @@
+/* Kulit Insentif Lapangan. Hanya tampilan.
+   Kisi 5 kartu dan lebar tabel 860px tidak diubah. */
+
+html:has(body.ins-home) { background: #100c22; color-scheme: dark; }
+body.ins-home {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+body.ins-home .app-layout.ins-page,
+body.ins-home .main-content,
+body.ins-home .page-content { background: transparent !important; color: #f8fafc; }
+body.ins-home .sidebar { background: rgba(16, 12, 34, 0.96); border-right-color: rgba(34, 211, 238, 0.28); }
+body.ins-home .logo-text,
+body.ins-home .nav-section-title,
+body.ins-home .nav-item { color: #f8fafc; }
+body.ins-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+body.ins-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+body.ins-home .sidebar a.nav-sub:link,
+body.ins-home .sidebar a.nav-sub:visited,
+body.ins-home .sidebar a.nav-sub:hover,
+body.ins-home .sidebar a.nav-sub:focus,
+body.ins-home .sidebar a.nav-sub:active,
+body.ins-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+body.ins-home .sidebar a.nav-sub .nav-sub-dot,
+body.ins-home .sidebar a.nav-sub.active .nav-sub-dot { background: #67e8f9 !important; }
+body.ins-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+body.ins-home .search-box,
+body.ins-home .search-box input,
+body.ins-home .topbar-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.ins-home .page-content > div[style*="justify-content:space-between"] > div:first-child > div:first-child { color: #ffffff !important; }
+body.ins-home .page-content > div[style*="justify-content:space-between"] > div:first-child > div:nth-child(2),
+body.ins-home .hint { color: #e2e8f0 !important; }
+body.ins-home .hint {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.28) !important;
+}
+body.ins-home .btn-primary-fin { background: linear-gradient(135deg, #0891b2, #7c3aed) !important; color: #ffffff !important; }
+body.ins-home .btn-ghost {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.ins-home .btn-ok { background: linear-gradient(135deg, #059669, #0f766e) !important; color: #ffffff !important; }
+body.ins-home .btn-amber { background: linear-gradient(135deg, #b45309, #ea580c) !important; color: #ffffff !important; }
+body.ins-home .fin-grid {
+  background: #100c22 !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+body.ins-home .fin-card:nth-child(1) { background: linear-gradient(145deg, #0891b2, #1d4ed8 58%, #22d3ee) !important; }
+body.ins-home .fin-card:nth-child(2) { background: linear-gradient(145deg, #059669, #0f766e 55%, #34d399) !important; }
+body.ins-home .fin-card:nth-child(3) { background: linear-gradient(145deg, #be185d, #e11d48 55%, #ff4ecd) !important; }
+body.ins-home .fin-card:nth-child(4) { background: linear-gradient(145deg, #b45309, #ea580c 55%, #fde047) !important; }
+body.ins-home .fin-card:nth-child(5) { background: linear-gradient(145deg, #7c3aed, #db2777 55%, #ff4ecd) !important; }
+body.ins-home .xc-lbl,
+body.ins-home .xc-val,
+body.ins-home .xc-sub,
+body.ins-home #kOpen,
+body.ins-home #kPaidSub,
+body.ins-home #kOliSub { color: #ffffff !important; }
+body.ins-home .w-card,
+body.ins-home .modal-bx {
+  background: #141028 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #f8fafc !important;
+}
+body.ins-home .filter-select,
+body.ins-home .finput {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.ins-home .ins-table th {
+  background: #100c22 !important;
+  color: #e2e8f0 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+body.ins-home .ins-table tbody tr:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.ins-home .ins-table tbody tr:nth-child(8n+2) { background: #0891b2 !important; }
+body.ins-home .ins-table tbody tr:nth-child(8n+3) { background: #059669 !important; }
+body.ins-home .ins-table tbody tr:nth-child(8n+4) { background: #b45309 !important; }
+body.ins-home .ins-table tbody tr:nth-child(8n+5) { background: #ea580c !important; }
+body.ins-home .ins-table tbody tr:nth-child(8n+6) { background: #e11d48 !important; }
+body.ins-home .ins-table tbody tr:nth-child(8n+7) { background: #db2777 !important; }
+body.ins-home .ins-table tbody tr:nth-child(8n+8) { background: #7c3aed !important; }
+body.ins-home .ins-table td { color: #ffffff !important; background: transparent !important; border-bottom-color: rgba(255, 255, 255, 0.08) !important; }
+body.ins-home .role-b { background: #e0e7ff !important; color: #3730a3 !important; -webkit-text-fill-color: #3730a3; }
+body.ins-home .role-b.tech { background: #dcfce7 !important; color: #047857 !important; -webkit-text-fill-color: #047857; }
+body.ins-home .role-b.noc { background: #ffedd5 !important; color: #c2410c !important; -webkit-text-fill-color: #c2410c; }
+body.ins-home .st-open { color: #fde68a !important; }
+body.ins-home .st-paid { color: #86efac !important; }
+body.ins-home .st-none { color: #e2e8f0 !important; }
+body.ins-home .rb.rb-pay { background: #dcfce7 !important; color: #0f766e !important; border-color: #86efac !important; -webkit-text-fill-color: #0f766e; }
+body.ins-home .rb.rb-oil { background: #ffedd5 !important; color: #c2410c !important; border-color: #fdba74 !important; -webkit-text-fill-color: #c2410c; }
+body.ins-home .rb.rb-det { background: #dbeafe !important; color: #1d4ed8 !important; border-color: #93c5fd !important; -webkit-text-fill-color: #1d4ed8; }
+body.ins-home .sug { background: #100c22 !important; border-color: rgba(34, 211, 238, 0.28) !important; }
+body.ins-home .sug-i { color: #f8fafc !important; }
+body.ins-home .sug-i:hover { background: #1e1b4b !important; }
+body.ins-home .toast { background: #100c22 !important; color: #ffffff !important; border: 1px solid rgba(34, 211, 238, 0.4); }
+body.ins-home .bottom-nav {
+  background: #100c22;
+  border-top: 1px solid rgba(34, 211, 238, 0.28);
+}
+body.ins-home .bottom-nav a.bn-item:link,
+body.ins-home .bottom-nav a.bn-item:visited,
+body.ins-home .bottom-nav a.bn-item:hover,
+body.ins-home .bottom-nav a.bn-item:focus,
+body.ins-home .bottom-nav a.bn-item:active,
+body.ins-home .bottom-nav a.bn-item.active,
+body.ins-home .bottom-nav button.bn-item,
+body.ins-home .bottom-nav .bn-item span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+body.ins-home .bottom-nav .bn-icon svg,
+body.ins-home .bottom-nav .bn-item.active .bn-icon svg { stroke: #ffffff !important; }
+body.ins-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }
