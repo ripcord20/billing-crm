@@ -213,6 +213,98 @@ function makeSnmp(cfg) {
   });
 }
 
+function portsToCards(ports, sys, kind) {
+  const list = Array.isArray(ports) ? ports : [];
+  const cards = [{
+    slot_label: '0',
+    status: 'INSERVICE',
+    type: 'control',
+    cfgType: (sys && sys.model) || kind || 'OLT',
+    realType: kind || 'OLT',
+    port: list.length || null,
+    hw_version: sys && sys.hw_version || null,
+    sw_version: sys && sys.version || null,
+    temperature_c: sys && sys.temperature_c != null ? sys.temperature_c : null,
+    cpu_percent: sys && sys.cpu_percent != null ? sys.cpu_percent : null,
+    note: sys && sys.uptime ? `uptime ${sys.uptime}` : null,
+  }];
+  list.forEach((p) => {
+    const online = Number(p.online) || 0;
+    const total = Number(p.total) || 0;
+    cards.push({
+      slot_label: String(p.port),
+      status: online > 0 ? 'INSERVICE' : 'OFFLINE',
+      type: 'pon',
+      cfgType: 'PON',
+      realType: 'PON',
+      port: p.port,
+      note: `${online} online / ${total} ONU`,
+    });
+  });
+  return cards;
+}
+
+function cliOutputUseless(cmd, out) {
+  const text = String(out || '').trim();
+  if (!text) return true;
+  const flat = text.replace(/\s+/g, '').toLowerCase();
+  const want = String(cmd || '').replace(/\s+/g, '').toLowerCase();
+  if (flat === want) return true;
+  if (text.length < 400 && /unknown command|invalid input|incomplete command|unrecognized|%\s*error/i.test(text)) return true;
+  return false;
+}
+
+async function brandReadText(cfg, cmd) {
+  const brand = String(cfg.brand || '').toLowerCase();
+  if ((brand !== 'hsgq' && brand !== 'hioso') || !snmpAvailable(cfg)) return null;
+  const c = String(cmd || '').toLowerCase();
+  const snmp = makeSnmp(cfg);
+  const close = () => { try { if (typeof snmp.closeSession === 'function') snmp.closeSession(); } catch (e) { /* */ } };
+  try {
+    if (/line-?profile|service-?profile|srv-?profile|t-?cont|profil/.test(c) && typeof snmp.getProfiles === 'function') {
+      const d = await snmp.getProfiles();
+      const lines = [];
+      const wantSrv = /service|srv/.test(c);
+      if (!wantSrv || /line|t-?cont|dba|profil/.test(c)) {
+        lines.push('Line profile');
+        (d.tcontDetail || []).forEach((p) => lines.push([p.name, p.typeLabel || '', p.bwLabel || ''].filter(Boolean).join('  ')));
+        if (!(d.tcontDetail || []).length) lines.push('(kosong)');
+      }
+      if (wantSrv || /profil/.test(c)) {
+        lines.push('Service profile');
+        (d.trafficDetail || []).forEach((p) => lines.push(`${p.name}  ETH ${p.bwLabel || '-'}  POTS ${p.note || '-'}`));
+        if (!(d.trafficDetail || []).length) lines.push('(kosong)');
+      }
+      return lines.join('\n');
+    }
+    if (/card|board|slot|\bpon\b/.test(c)) {
+      let cards = null;
+      if (typeof snmp.getCards === 'function') cards = await snmp.getCards();
+      else if (typeof snmp.getAllOnus === 'function') {
+        const all = await snmp.getAllOnus();
+        cards = portsToCards(all.ports, all.system, brand.toUpperCase());
+      }
+      if (!cards || !cards.length) return null;
+      return cards.map((card) => [card.slot_label, card.realType || card.cfgType || '', card.status || '', card.sw_version || '', card.note || ''].filter(Boolean).join('  ')).join('\n');
+    }
+    if (/version|system|cpu|temp|uptime|device/.test(c) && typeof snmp.getSystemInfo === 'function') {
+      const s = await snmp.getSystemInfo();
+      if (!s || s.error) return null;
+      return [
+        `Model: ${s.model || '-'}`,
+        `Versi: ${s.version || '-'}`,
+        `Hardware: ${s.hw_version || '-'}`,
+        `Uptime: ${s.uptime || '-'}`,
+        `CPU: ${s.cpu_percent == null ? '-' : s.cpu_percent + '%'}`,
+        `Suhu: ${s.temperature_c == null ? '-' : s.temperature_c + ' C'}`,
+      ].join('\n');
+    }
+    return null;
+  } finally {
+    close();
+  }
+}
+
 function getCfgOr404(req, res) {
   const id = parseInt(req.params.id);
   const cfg = loadConfigs().find(c => c.id === id);
@@ -338,11 +430,28 @@ class OltManagementController {
     }
   }
 
-  // ── Daftar kartu/slot (hanya ZTE) ─────────────────────────────────
+  // ── Daftar kartu/slot / port PON (semua OLT terdaftar) ─────────────
   async cards(req, res) {
     const cfg = getCfgOr404(req, res); if (!cfg) return;
-    if (!isZteStyle(cfg.brand)) return res.json({ success: true, data: [], message: 'Tidak didukung untuk brand ini' });
+    const brand = String(cfg.brand || '').toLowerCase();
+    if ((brand === 'hsgq' || brand === 'hioso') && snmpAvailable(cfg)) {
+      try {
+        const snmp = makeSnmp(cfg);
+        let data = null;
+        if (typeof snmp.getCards === 'function') data = await snmp.getCards();
+        else if (typeof snmp.getAllOnus === 'function') {
+          const all = await snmp.getAllOnus();
+          data = portsToCards(all.ports, all.system, brand.toUpperCase());
+        }
+        if (Array.isArray(data) && data.length) return res.json({ success: true, data, via: 'snmp' });
+      } catch (e) {
+        logger.warn('[OltMgmt] cards SNMP gagal, fallback CLI: ' + e.message);
+      }
+    }
     const svc = makeService(cfg);
+    if (typeof svc.getCards !== 'function') {
+      return res.json({ success: true, data: [], message: 'Daftar card tidak tersedia pada OLT ini' });
+    }
     try {
       await svc.connect();
       const data = await svc.getCards();
@@ -637,13 +746,42 @@ class OltManagementController {
     }
   }
 
-  // ── Baca profil OLT (untuk wizard provisioning) ───────────────────
+  // ── Baca profil OLT (T-CONT ZTE, DBA C-DATA, line/service HSGQ) ──
   async profiles(req, res) {
     const cfg = getCfgOr404(req, res); if (!cfg) return;
-    if (!isZteStyle(cfg.brand)) {
-      return res.json({ success: true, data: { tcont: [], traffic: [], onuTypes: [] }, note: 'Profil OLT hanya didukung untuk ZTE' });
+    const brand = String(cfg.brand || '').toLowerCase();
+    if (brand === 'hioso') {
+      return res.json({ success: true, data: {
+        tcont: [], traffic: [], tcontDetail: [], trafficDetail: [], onuTypes: [], writable: false,
+        labels: {
+          tcont: 'Profil bandwidth',
+          traffic: 'Profil layanan',
+          note: 'OLT HIOSO ini dibaca lewat SNMP. Firmware tidak mengirim profil T-CONT atau DBA.',
+          emptyTcont: 'Tidak ada profil bandwidth pada OLT ini.',
+          emptyTraffic: 'Tidak ada profil layanan pada OLT ini.',
+        },
+      } });
+    }
+    if (brand === 'hsgq' && snmpAvailable(cfg)) {
+      try {
+        const data = await makeSnmp(cfg).getProfiles();
+        const has = data && ((data.tcontDetail && data.tcontDetail.length) || (data.trafficDetail && data.trafficDetail.length));
+        if (has) return res.json({ success: true, data, via: 'igc' });
+      } catch (e) {
+        logger.warn('[OltMgmt] profil IGC gagal, fallback CLI: ' + e.message);
+      }
     }
     const svc = makeService(cfg);
+    if (typeof svc.getProfiles !== 'function') {
+      return res.json({ success: true, data: {
+        tcont: [], traffic: [], tcontDetail: [], trafficDetail: [], onuTypes: [], writable: false,
+        labels: {
+          note: 'OLT ini tidak mengirim profil T-CONT.',
+          emptyTcont: 'Tidak ada profil pada OLT ini.',
+          emptyTraffic: 'Tidak ada profil pada OLT ini.',
+        },
+      } });
+    }
     try {
       await svc.connect();
       const data = await svc.getProfiles();
@@ -960,16 +1098,30 @@ class OltManagementController {
       return res.status(400).json({ success: false, message: 'Hanya perintah baca (show/display) yang diizinkan di diagnostik' });
     }
     const svc = makeService(cfg);
+    let out = '';
+    let cliErr = null;
     try {
       await svc.connect();
-      let out;
       if (typeof svc.exec === 'function') out = await svc.exec(cmd);
-      res.json({ success: true, data: { cmd, output: String(out || '').slice(0, 8000) } });
     } catch (err) {
-      res.status(500).json({ success: false, message: err.message });
+      cliErr = err.message;
     } finally {
       await svc.disconnect().catch(() => {});
     }
+    if (!cliOutputUseless(cmd, out)) {
+      return res.json({ success: true, data: { cmd, output: String(out).slice(0, 8000) } });
+    }
+    try {
+      const alt = await brandReadText(cfg, cmd);
+      if (alt) return res.json({ success: true, data: { cmd, output: String(alt).slice(0, 8000) } });
+    } catch (e) {
+      cliErr = cliErr || e.message;
+    }
+    const brand = String(cfg.brand || '').toLowerCase();
+    const hint = (brand === 'hsgq' || brand === 'hioso')
+      ? '\n\nPerintah yang terbaca: show version, show card, show line-profile, show service-profile.'
+      : '';
+    return res.json({ success: true, data: { cmd, output: String(out || cliErr || 'Tidak ada output').slice(0, 2000) + hint } });
   }
 
   // Helper: ekstrak {pon,id} chipset dari body (mendukung onuIf="port/id")

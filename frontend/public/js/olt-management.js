@@ -249,6 +249,7 @@ const OltMgmt = {
     const o = this.olts.find(x => x.id === id);
     this.activeStyle = o ? (o.style || (o.brand === 'zte' ? 'zte' : 'chipset')) : 'zte';
     this.activeEpon = o ? !!o.epon : false;
+    this.activeBrand = o ? String(o.brand || '').toLowerCase() : '';
     document.getElementById('ponBar').style.display = 'flex';
     document.getElementById('btnUncfg').disabled = false;
     // Sesuaikan label & placeholder PON port menurut gaya brand
@@ -1314,15 +1315,16 @@ const OltMgmt = {
     document.getElementById('sysHw').textContent = d.hw_version || '—';
   },
 
-  // ════════════════════ Daftar Card / Slot GPON ════════════════════
-  // Memuat hasil "show card" + "show environment" untuk ditampilkan sebagai
-  // kartu detail per slot di tab Sistem (hanya untuk OLT ZTE).
+  // ════════════════════ Daftar Card / Slot / port PON ════════════════════
   async loadCards(silent) {
     const panel = document.getElementById('cardsPanel');
     const empty = document.getElementById('cardsEmpty');
-    if (!panel || !this.activeOltId) return;
-    // Hanya tampil untuk ZTE — brand lain tidak punya konsep slot/card
-    if (!this._isZte()) { panel.style.display = 'none'; if (empty) empty.style.display = ''; return; }
+    if (!panel) return;
+    if (!this.activeOltId) {
+      panel.style.display = 'none';
+      if (empty) empty.style.display = '';
+      return;
+    }
     panel.style.display = '';
     if (empty) empty.style.display = 'none';
     const grid = document.getElementById('cardsGrid');
@@ -1375,8 +1377,8 @@ const OltMgmt = {
       : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><line x1="7" y1="10" x2="7" y2="14"/><line x1="11" y1="10" x2="11" y2="14"/><line x1="15" y1="10" x2="15" y2="14"/><line x1="19" y1="10" x2="19" y2="14"/></svg>';
 
     const fmt = (v) => (v == null || v === '') ? '<span class="gc-v muted">—</span>' : `<span class="gc-v" title="${esc(String(v))}">${esc(String(v))}</span>`;
-    const cardTypeLabel = isCtrl ? 'Control Card' : (c.type === 'pon' ? 'GPON Card' : 'Card');
-    const portsLbl = isCtrl ? 'Port' : 'PON';
+    const cardTypeLabel = isCtrl ? 'Control Card' : (c.type === 'pon' ? 'GPON Card' : (c.type === 'uplink' ? 'Uplink' : 'Card'));
+    const portsLbl = (isCtrl || c.type === 'uplink') ? 'Port' : 'PON';
 
     // ── Gauge melingkar suhu (hero, terinspirasi referензi monitoring) ──
     // Skala 0–80°C. Warna semantik: hijau <60, kuning 60-69, merah ≥70.
@@ -1445,6 +1447,7 @@ const OltMgmt = {
       <div class="gpon-card-body">
         <div class="gc-row"><span class="gc-k">HW Ver</span>${fmt(c.hw_version)}</div>
         <div class="gc-row"><span class="gc-k">SW Ver</span>${fmt(c.sw_version)}</div>
+        ${c.note ? `<div class="gc-row"><span class="gc-k">Info</span><span class="gc-v">${esc(c.note)}</span></div>` : ''}
       </div>
       ${barsHtml}
     </div>`;
@@ -1455,12 +1458,19 @@ const OltMgmt = {
     const el = document.getElementById('rawSuggest');
     if (!el) return;
     let cmds;
+    const brand = this.activeBrand || '';
     if (this._isZte()) {
       cmds = ['show card', 'show onu-type gpon', 'show card-temperature', 'show processor', 'show gpon onu state gpon-olt_1/2/1', 'show gpon profile tcont', 'show gpon onu uncfg', 'show vlan summary'];
+    } else if (brand === 'cdata') {
+      cmds = ['show version', 'show device', 'show cpu', 'show temperature', 'show dba-profile all', 'show vlan all', 'show ont info all'];
+    } else if (brand === 'hsgq') {
+      cmds = ['show version', 'show card', 'show line-profile', 'show service-profile', 'show vlan all', 'show onu-info all'];
+    } else if (brand === 'hioso') {
+      cmds = ['show version', 'show card', 'show ont info'];
     } else if (this.activeEpon) {
-      cmds = ['show onu-info all', 'show vlan', 'board', 'show system'];
+      cmds = ['show onu-info all', 'show vlan all', 'show version', 'show card'];
     } else {
-      cmds = ['show onu_information', 'show vlan all', 'show system info', 'show card'];
+      cmds = ['show version', 'show vlan all', 'show device', 'show card'];
     }
     el.innerHTML = cmds.map(c => `<button class="pon-pill" onclick="document.getElementById('rawCmd').value=this.textContent;OltMgmt.runRaw()">${esc(c)}</button>`).join('');
   },
@@ -1499,48 +1509,72 @@ const OltMgmt = {
       if (!res?.success) { tEl.innerHTML = fEl.innerHTML = `<div class="ot-alert err show">${esc(res?.message || 'Gagal')}</div>`; return; }
       const d = res.data || {};
       this._profilesCache = d;
-      tEl.innerHTML = this._renderTcontProfiles(d.tcontDetail || [], d.tcont || []);
-      fEl.innerHTML = this._renderTrafficProfiles(d.trafficDetail || [], d.traffic || []);
+      this._profileWritable = d.writable !== false;
+      const labels = d.labels || {};
+      const setText = (id, v) => { const el = document.getElementById(id); if (el && v) el.textContent = v; };
+      setText('tcontTitle', labels.tcont);
+      setText('trafficTitle', labels.traffic);
+      setText('tcontSub', labels.tcontSub);
+      setText('trafficSub', labels.trafficSub);
+      const note = document.getElementById('profilNote');
+      if (note && labels.note) note.textContent = labels.note;
+      const addT = document.getElementById('btnAddTcont');
+      const addF = document.getElementById('btnAddTraffic');
+      if (addT) addT.style.display = this._profileWritable ? '' : 'none';
+      if (addF) addF.style.display = this._profileWritable ? '' : 'none';
+      tEl.innerHTML = this._renderTcontProfiles(d.tcontDetail || [], d.tcont || [], labels);
+      fEl.innerHTML = this._renderTrafficProfiles(d.trafficDetail || [], d.traffic || [], labels);
     } catch (e) {
       tEl.innerHTML = fEl.innerHTML = `<div class="ot-alert err show">${esc(e.message)}</div>`;
     }
   },
 
-  _renderTcontProfiles(detail, names) {
-    // gabungkan detail (punya bandwidth) dengan nama saja (fallback)
+  _renderTcontProfiles(detail, names, labels) {
+    labels = labels || {};
     const byName = {}; detail.forEach(p => byName[p.name] = p);
     names.forEach(n => { if (!byName[n]) byName[n] = { name: n }; });
     const rows = Object.values(byName);
-    if (!rows.length) return '<div style="padding:20px;color:var(--faint)">Belum ada profil T-CONT.</div>';
-    const typeLabel = (t) => ({1:'Fixed',2:'Assured',3:'Assured+Max',4:'Maximum',5:'Fixed+Ass+Max'}[t] || (t!=null?'Type '+t:'—'));
-    return `<table class="onu-table"><thead><tr><th>Nama</th><th>Type</th><th>Max BW</th><th style="text-align:right">Aksi</th></tr></thead><tbody>` +
+    if (!rows.length) return `<div style="padding:20px;color:var(--faint)">${esc(labels.emptyTcont || 'Belum ada profil T-CONT.')}</div>`;
+    const cols = labels.tcontCols || ['Nama', 'Type', 'Max BW'];
+    const typeLabel = (p) => {
+      if (p.typeLabel) return p.typeLabel;
+      const t = p.type;
+      return ({1:'Fixed',2:'Assured',3:'Assured+Max',4:'Maximum',5:'Fixed+Ass+Max'}[t] || (t!=null?'Type '+t:'—'));
+    };
+    const canDel = this._profileWritable !== false;
+    return `<table class="onu-table"><thead><tr><th>${esc(cols[0] || 'Nama')}</th><th>${esc(cols[1] || 'Type')}</th><th>${esc(cols[2] || 'Max BW')}</th><th style="text-align:right">Aksi</th></tr></thead><tbody>` +
       rows.map(p => {
         const isDefault = /^default$/i.test(p.name);
-        const mbw = p.mbw != null ? (p.mbw >= 1000 ? (p.mbw/1000).toFixed(0)+' Mbps' : p.mbw+' kbps') : '—';
+        const mbw = p.bwLabel != null ? p.bwLabel : (p.mbw != null ? (p.mbw >= 1000 ? (p.mbw/1000).toFixed(0)+' Mbps' : p.mbw+' kbps') : '—');
         return `<tr>
-          <td><span class="onu-if">${esc(p.name)}</span></td>
-          <td>${esc(typeLabel(p.type))}</td>
-          <td>${esc(mbw)}</td>
-          <td style="text-align:right">${isDefault ? '<span class="mut" style="font-size:11px">bawaan</span>' :
+          <td data-label="${esc(cols[0] || 'Nama')}"><span class="onu-if">${esc(p.name)}</span></td>
+          <td data-label="${esc(cols[1] || 'Type')}">${esc(typeLabel(p))}</td>
+          <td data-label="${esc(cols[2] || 'Max BW')}">${esc(String(mbw))}</td>
+          <td data-label="Aksi" style="text-align:right">${(!canDel || isDefault) ? '<span class="mut" style="font-size:11px">baca</span>' :
             `<button class="ra del" title="Hapus" onclick="OltMgmt.deleteProfile('tcont','${esc(p.name)}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>`}</td>
         </tr>`;
       }).join('') + '</tbody></table>';
   },
 
-  _renderTrafficProfiles(detail, names) {
+  _renderTrafficProfiles(detail, names, labels) {
+    labels = labels || {};
     const byName = {}; detail.forEach(p => byName[p.name] = p);
     names.forEach(n => { if (!byName[n]) byName[n] = { name: n }; });
     const rows = Object.values(byName);
-    if (!rows.length) return '<div style="padding:20px;color:var(--faint)">Belum ada profil Traffic.</div>';
+    if (!rows.length) return `<div style="padding:20px;color:var(--faint)">${esc(labels.emptyTraffic || 'Belum ada profil Traffic.')}</div>`;
+    const cols = labels.trafficCols || ['Nama', 'SIR', 'PIR'];
     const fmt = (v) => v == null ? '—' : (typeof v === 'number' ? (v >= 1000 ? (v/1000).toFixed(0)+'M' : v+'k') : v);
-    return `<table class="onu-table"><thead><tr><th>Nama</th><th>SIR</th><th>PIR</th><th style="text-align:right">Aksi</th></tr></thead><tbody>` +
+    const canDel = this._profileWritable !== false;
+    return `<table class="onu-table"><thead><tr><th>${esc(cols[0] || 'Nama')}</th><th>${esc(cols[1] || 'SIR')}</th><th>${esc(cols[2] || 'PIR')}</th><th style="text-align:right">Aksi</th></tr></thead><tbody>` +
       rows.map(p => {
         const isDefault = /^default$/i.test(p.name);
+        const sir = p.bwLabel != null ? p.bwLabel : fmt(p.sir);
+        const pir = p.note != null && p.bwLabel != null ? p.note : fmt(p.pir);
         return `<tr>
-          <td><span class="onu-if">${esc(p.name)}</span></td>
-          <td>${esc(fmt(p.sir))}</td>
-          <td>${esc(fmt(p.pir))}</td>
-          <td style="text-align:right">${isDefault ? '<span class="mut" style="font-size:11px">bawaan</span>' :
+          <td data-label="${esc(cols[0] || 'Nama')}"><span class="onu-if">${esc(p.name)}</span></td>
+          <td data-label="${esc(cols[1] || 'SIR')}">${esc(String(sir))}</td>
+          <td data-label="${esc(cols[2] || 'PIR')}">${esc(String(pir))}</td>
+          <td data-label="Aksi" style="text-align:right">${(!canDel || isDefault) ? '<span class="mut" style="font-size:11px">baca</span>' :
             `<button class="ra del" title="Hapus" onclick="OltMgmt.deleteProfile('traffic','${esc(p.name)}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>`}</td>
         </tr>`;
       }).join('') + '</tbody></table>';

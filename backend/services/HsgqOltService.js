@@ -731,6 +731,115 @@ class HsgqOltService {
     }
   }
 
+  // Satu kolom SNMP: jumlah ONU per PON, tanpa nama pelanggan.
+  async getCards() {
+    const sys = await this.getSystemInfo();
+    let rows = [];
+    let kind = 'GPON';
+    try { rows = await this._walk(G02.ONU_RUN); } catch (e) { rows = []; }
+    const ponMap = new Map();
+    const add = (pon, online) => {
+      if (!pon) return;
+      const cur = ponMap.get(pon) || { total: 0, online: 0 };
+      cur.total++;
+      if (online) cur.online++;
+      ponMap.set(pon, cur);
+    };
+    if (rows.length) {
+      for (const row of rows) {
+        const idx = this._extractIndex(row.oid, G02.ONU_RUN);
+        const { pon } = this._decodeIndex(idx);
+        add(pon, parseInt(row.value, 10) === 1);
+      }
+    } else {
+      kind = 'EPON';
+      let seqRows = [];
+      try { seqRows = await this._walk(OID.ONU_SEQ); } catch (e) { seqRows = []; }
+      for (const row of seqRows) {
+        const idx = this._extractIndex(row.oid, OID.ONU_SEQ);
+        const { pon } = this._decodeIndex(idx);
+        const seq = parseInt(row.value, 10);
+        const online = Number.isFinite(seq) && seq !== 0 && seq !== 65535;
+        add(pon, online);
+      }
+    }
+    this.closeSession();
+    const cards = [{
+      slot: 0,
+      slot_label: '0',
+      status: 'INSERVICE',
+      type: 'control',
+      cfgType: sys.model || this.name || 'HSGQ',
+      realType: kind,
+      port: ponMap.size || null,
+      hw_version: sys.hw_version || null,
+      sw_version: sys.version || null,
+      temperature_c: sys.temperature_c,
+      cpu_percent: sys.cpu_percent,
+      note: sys.uptime ? `uptime ${sys.uptime}` : null,
+    }];
+    [...ponMap.keys()].sort((a, b) => a - b).forEach((pon) => {
+      const s = ponMap.get(pon);
+      cards.push({
+        slot: pon,
+        slot_label: String(pon),
+        status: s.online > 0 ? 'INSERVICE' : 'OFFLINE',
+        type: 'pon',
+        cfgType: kind,
+        realType: kind,
+        port: pon,
+        note: `${s.online} online / ${s.total} ONU`,
+      });
+    });
+    return cards;
+  }
+
+  async getProfiles() {
+    const igc = new HsgqIgcHttpService({
+      host: this.host,
+      username: this.username,
+      password: this.password,
+      name: this.name,
+      timeout: Math.min(this.timeout || 8000, 8000),
+      httpPort: this.httpPort,
+    });
+    const lines = await igc.listProfiles('/lineprofile');
+    const srvs = await igc.listProfiles('/srvprofile');
+    const tcontDetail = lines.map((p) => {
+      const tcont = Array.isArray(p.tcont) ? p.tcont : [];
+      const dba = tcont.map((t) => t && (t.dba_profname || (t.dba_profid != null ? `DBA ${t.dba_profid}` : null))).filter(Boolean);
+      return {
+        name: String(p.profname),
+        typeLabel: dba[0] || (p.type != null ? `Type ${p.type}` : '—'),
+        bwLabel: tcont.length ? `${tcont.length} T-CONT` : '—',
+      };
+    });
+    const trafficDetail = srvs.map((p) => ({
+      name: String(p.profname),
+      bwLabel: p.ont_ethport != null ? String(p.ont_ethport) : '—',
+      note: p.ont_potsport != null ? String(p.ont_potsport) : '—',
+    }));
+    return {
+      tcont: tcontDetail.map((p) => p.name),
+      traffic: trafficDetail.map((p) => p.name),
+      tcontDetail,
+      trafficDetail,
+      onuTypes: [],
+      writable: false,
+      labels: {
+        tcont: 'Line Profile',
+        traffic: 'Service Profile',
+        tcontCols: ['Nama', 'DBA', 'T-CONT'],
+        trafficCols: ['Nama', 'ETH', 'POTS'],
+        tcontSub: 'Line profile GPON HSGQ, berikut profil DBA yang diikat ke T-CONT.',
+        trafficSub: 'Service profile: jumlah port ETH dan POTS pada ONU.',
+        note: 'Dibaca dari IGC line profile dan service profile. Tombol tambah profil tetap untuk OLT ZTE.',
+        emptyTcont: 'Tidak ada line profile pada OLT ini.',
+        emptyTraffic: 'Tidak ada service profile pada OLT ini.',
+      },
+    };
+  }
+
   async testConnection() {
     if (!snmp) return { success: false, error: 'net-snmp tidak terinstall' };
     try {

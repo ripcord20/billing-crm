@@ -150,6 +150,23 @@ class HsgqIgcHttpService {
     return Array.isArray(data) ? data : [];
   }
 
+  // Line profile dan service profile IGC. form=all hanya mengembalikan
+  // profil id 0, jadi id discan sampai tiga id kosong berurutan.
+  async listProfiles(base, max = 48) {
+    const token = await this.login();
+    const list = [];
+    let miss = 0;
+    for (let id = 0; id < max && miss < 3; id++) {
+      const res = await this._request('GET', `${base}?form=get&profid=${id}`, null, { 'X-Token': token });
+      const data = res.json && res.json.code === 1 ? res.json.data : null;
+      const name = data && String(data.profname || '').trim();
+      if (!data || !name) { miss++; continue; }
+      miss = 0;
+      list.push(data);
+    }
+    return list;
+  }
+
   async getAllOptical(ports = [1, 2, 3, 4, 5, 6, 7, 8]) {
     const out = [];
     for (const pon of ports) {

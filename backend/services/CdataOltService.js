@@ -552,6 +552,173 @@ class CdataOltService extends GponCliOltService {
       raw: s.trim().slice(0, 4000),
     };
   }
+
+  // FD1604S: show version / device / cpu / temperature / memory.
+  // Perintah "show card" dan "show system info" tidak dikenal di firmware ini.
+  async _readCdataBoard() {
+    await this._enterConfig();
+    try {
+      const dev = this._cleanCli(await this._safeExec('show device'));
+      const ver = this._cleanCli(await this._safeExec(this.cmd.sysInfo || 'show version'));
+      const cpu = this._cleanCli(await this._safeExec('show cpu'));
+      const temp = this._cleanCli(await this._safeExec('show temperature'));
+      const mem = this._cleanCli(await this._safeExec('show memory'));
+      const vlan = this._cleanCli(await this._safeExec(this.cmd.vlanList || 'show vlan all'));
+      return { dev, ver, cpu, temp, mem, vlan };
+    } finally {
+      await this._exitConfig().catch(() => {});
+    }
+  }
+
+  _parseCdataSystem(board) {
+    const dev = String(board.dev || '');
+    const ver = String(board.ver || '');
+    const cpuTxt = String(board.cpu || '');
+    const tempTxt = String(board.temp || '');
+    const memTxt = String(board.mem || '');
+    const grab = (re, src) => {
+      const m = String(src).match(re);
+      return m ? m[1].trim() : null;
+    };
+    const slot = dev.match(/^\s*(\d+)\s+(\S+)\s+(Normal|Offline|Fault|Abnormal|Online)\b/im);
+    const model = (slot && slot[2]) || grab(/Device type\s*:\s*(.+)/i, dev) || null;
+    const vendor = grab(/Device vendor name\s*:\s*(.+)/i, dev);
+    const version = grab(/Software version\s+(\S+)/i, ver)
+      || grab(/Firmware version\s*:\s*(\S+)/i, ver);
+    const hw = grab(/Hardware version\s*:\s*(\S+)/i, ver);
+    const up = grab(/uptime is\s+(.+)/i, ver) || grab(/uptime\s*[:=]?\s*(.+)/i, ver);
+    const cpuM = cpuTxt.match(/1\s*min\)\s*:\s*(\d+(?:\.\d+)?)\s*%/i)
+      || cpuTxt.match(/(\d+(?:\.\d+)?)\s*%/);
+    const tempM = tempTxt.match(/^\s*\d+\s+(-?\d+(?:\.\d+)?)\s*$/m);
+    const memPct = memTxt.match(/Utilization\s*:\s*(\d+(?:\.\d+)?)\s*%/i);
+    const memMb = memTxt.match(/Total memory\s*:\s*(\d+)\s*MB/i);
+    return {
+      model,
+      system_name: vendor,
+      version,
+      hw_version: hw,
+      uptime: up,
+      cpu_percent: cpuM ? parseFloat(cpuM[1]) : null,
+      temperature_c: tempM ? parseFloat(tempM[1]) : null,
+      mem_percent: memPct ? parseFloat(memPct[1]) : null,
+      mem_mb: memMb ? parseInt(memMb[1], 10) : null,
+      slot_status: slot ? slot[3] : null,
+      raw: ver.trim().slice(0, 1500),
+    };
+  }
+
+  async getSystemInfo() {
+    const board = await this._readCdataBoard();
+    return this._parseCdataSystem(board);
+  }
+
+  async getCards() {
+    const board = await this._readCdataBoard();
+    const sys = this._parseCdataSystem(board);
+    const status = /offline|fault|abnormal/i.test(sys.slot_status || '') ? 'OFFLINE' : 'INSERVICE';
+    const pon = new Set();
+    const ge = new Set();
+    const vlan = String(board.vlan || '');
+    let m;
+    const rePon = /gpon\s+\d+\/\d+\/(\d+)/gi;
+    const reGe = /(?:xge|ge)\s+\d+\/\d+\/(\d+)/gi;
+    while ((m = rePon.exec(vlan))) pon.add(parseInt(m[1], 10));
+    while ((m = reGe.exec(vlan))) ge.add(parseInt(m[1], 10));
+    const cards = [{
+      slot: 0,
+      slot_label: '0',
+      status,
+      type: 'control',
+      cfgType: sys.model || 'GPON OLT',
+      realType: sys.model || 'GPON',
+      port: pon.size || this.defaultPonPorts || null,
+      hw_version: sys.hw_version,
+      sw_version: sys.version,
+      temperature_c: sys.temperature_c,
+      cpu_percent: sys.cpu_percent == null ? null : Math.round(sys.cpu_percent),
+      mem_percent: sys.mem_percent == null ? null : Math.round(sys.mem_percent),
+      mem_mb: sys.mem_mb,
+    }];
+    [...pon].sort((a, b) => a - b).forEach((p) => {
+      cards.push({
+        slot_label: `0/0/${p}`,
+        status: 'INSERVICE',
+        type: 'pon',
+        cfgType: 'GPON',
+        realType: 'GPON',
+        port: p,
+        hw_version: null,
+        sw_version: null,
+      });
+    });
+    [...ge].sort((a, b) => a - b).forEach((p) => {
+      cards.push({
+        slot_label: `GE 0/0/${p}`,
+        status: 'INSERVICE',
+        type: 'uplink',
+        cfgType: 'GE',
+        realType: 'GE',
+        port: p,
+        hw_version: null,
+        sw_version: null,
+      });
+    });
+    return cards;
+  }
+
+  parseDbaProfiles(out) {
+    const list = [];
+    String(out || '').split('\n').forEach((line) => {
+      const m = line.trim().match(/^(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)/);
+      if (!m) return;
+      list.push({
+        name: m[8],
+        type: parseInt(m[2], 10),
+        fbw: parseInt(m[3], 10),
+        abw: parseInt(m[4], 10),
+        mbw: parseInt(m[5], 10),
+      });
+    });
+    return list;
+  }
+
+  async getProfiles() {
+    await this._enterConfig();
+    let dba = '';
+    let traffic = '';
+    try {
+      dba = this._cleanCli(await this._safeExec('show dba-profile all'));
+      traffic = this._cleanCli(await this._safeExec('show traffic-profile all'));
+    } finally {
+      await this._exitConfig().catch(() => {});
+    }
+    const tcontDetail = this.parseDbaProfiles(dba);
+    const trafficDetail = [];
+    if (!/no profile available/i.test(traffic)) {
+      String(traffic).split('\n').forEach((line) => {
+        const m = line.trim().match(/^(\d+)\s+(\S+)\s+(\d+)\s+(\d+)\b/);
+        if (!m || /^(id|type)$/i.test(m[2])) return;
+        trafficDetail.push({ name: m[2], sir: parseInt(m[3], 10), pir: parseInt(m[4], 10) });
+      });
+    }
+    return {
+      tcont: tcontDetail.map((p) => p.name),
+      traffic: trafficDetail.map((p) => p.name),
+      tcontDetail,
+      trafficDetail,
+      onuTypes: [],
+      writable: false,
+      labels: {
+        tcont: 'Profil DBA',
+        traffic: 'Profil Traffic',
+        tcontSub: 'Alokasi bandwidth upstream di OLT C-DATA. Type 1–5 sama seperti T-CONT.',
+        trafficSub: 'Profil traffic perangkat ini. Kosong bila OLT belum punya profil traffic.',
+        note: 'Dibaca dari show dba-profile all dan show traffic-profile all. Tombol tambah profil tetap untuk OLT ZTE.',
+        emptyTcont: 'Tidak ada profil DBA pada OLT ini.',
+        emptyTraffic: 'Tidak ada profil traffic pada OLT ini.',
+      },
+    };
+  }
 }
 
 module.exports = CdataOltService;
