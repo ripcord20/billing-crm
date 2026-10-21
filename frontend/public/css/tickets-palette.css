@@ -1,0 +1,128 @@
+/* Kulit Tiket. Hanya tampilan.
+   Kisi kartu 4 kolom dan dialog buat tiket tidak diubah. */
+
+html:has(body.tk-home) { background: #100c22; color-scheme: dark; }
+body.tk-home {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+body.tk-home .app-layout,
+body.tk-home .main-content,
+body.tk-home .page-content.ot { background: transparent !important; color: #f8fafc; }
+body.tk-home .sidebar { background: rgba(16, 12, 34, 0.96); border-right-color: rgba(34, 211, 238, 0.28); }
+body.tk-home .logo-text,
+body.tk-home .nav-section-title,
+body.tk-home .nav-item { color: #f8fafc; }
+body.tk-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+body.tk-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+body.tk-home .sidebar a.nav-sub:link,
+body.tk-home .sidebar a.nav-sub:visited,
+body.tk-home .sidebar a.nav-sub:hover,
+body.tk-home .sidebar a.nav-sub:focus,
+body.tk-home .sidebar a.nav-sub:active,
+body.tk-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+body.tk-home .sidebar a.nav-sub .nav-sub-dot,
+body.tk-home .sidebar a.nav-sub.active .nav-sub-dot { background: #67e8f9 !important; }
+body.tk-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+body.tk-home .search-box,
+body.tk-home .search-box input,
+body.tk-home .topbar-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.tk-home .ot-hdr-l h1 { color: #ffffff !important; }
+body.tk-home .ot-hdr-l p { color: #e2e8f0 !important; }
+body.tk-home .btn-outline {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.tk-home .btn-blue { background: linear-gradient(135deg, #0891b2, #7c3aed) !important; color: #ffffff !important; border-color: transparent !important; }
+body.tk-home #tc-all { background: linear-gradient(145deg, #0891b2, #1d4ed8 55%, #22d3ee) !important; }
+body.tk-home #tc-open { background: linear-gradient(145deg, #be185d, #e11d48 55%, #ff4ecd) !important; }
+body.tk-home #tc-inprog { background: linear-gradient(145deg, #059669, #0f766e 55%, #34d399) !important; }
+body.tk-home #tc-closed { background: linear-gradient(145deg, #7c3aed, #4c1d95 55%, #c4b5fd) !important; }
+body.tk-home .fin-card .card-lbl,
+body.tk-home .fin-card .card-val,
+body.tk-home .fin-card .card-sub { color: #ffffff !important; }
+body.tk-home .fin-card.tc-active { box-shadow: inset 0 0 0 2px #ffffff !important; }
+body.tk-home .fin-card .sp-line,
+body.tk-home .fin-card.tc-active .sp-line { stroke: #ffffff !important; }
+body.tk-home .fin-card .sp-dot,
+body.tk-home .fin-card.tc-active .sp-dot { fill: #ffffff !important; }
+body.tk-home .fin-card .sp-fill,
+body.tk-home .fin-card.tc-active .sp-fill { fill: rgba(255, 255, 255, 0.2) !important; }
+body.tk-home .fin-card .card-pill.pill-blue { background: #dbeafe !important; color: #1d4ed8 !important; -webkit-text-fill-color: #1d4ed8; }
+body.tk-home .fin-card .card-pill.pill-cyan { background: #cffafe !important; color: #0e7490 !important; -webkit-text-fill-color: #0e7490; }
+body.tk-home .fin-card .card-pill.pill-green { background: #dcfce7 !important; color: #166534 !important; -webkit-text-fill-color: #166534; }
+body.tk-home .fin-card .card-pill.pill-orange { background: #ffedd5 !important; color: #c2410c !important; -webkit-text-fill-color: #c2410c; }
+body.tk-home .ot-filter-wrap,
+body.tk-home .ot-tbl-wrap,
+body.tk-home .modal-box {
+  background: #141028 !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+body.tk-home .filter-title,
+body.tk-home .ot-tbl-title,
+body.tk-home .modal-hdr { color: #ffffff !important; }
+body.tk-home .modal-hdr { background: linear-gradient(135deg, #1e1b4b, #0891b2) !important; }
+body.tk-home .filter-input,
+body.tk-home .filter-select,
+body.tk-home .modal-box input,
+body.tk-home .modal-box select,
+body.tk-home .modal-box textarea {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.tk-home .ot-table thead tr,
+body.tk-home .ot-table th { background: #100c22 !important; color: #e2e8f0 !important; }
+body.tk-home .ot-table tbody tr:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.tk-home .ot-table tbody tr:nth-child(8n+2) { background: #0891b2 !important; }
+body.tk-home .ot-table tbody tr:nth-child(8n+3) { background: #059669 !important; }
+body.tk-home .ot-table tbody tr:nth-child(8n+4) { background: #b45309 !important; }
+body.tk-home .ot-table tbody tr:nth-child(8n+5) { background: #ea580c !important; }
+body.tk-home .ot-table tbody tr:nth-child(8n+6) { background: #e11d48 !important; }
+body.tk-home .ot-table tbody tr:nth-child(8n+7) { background: #db2777 !important; }
+body.tk-home .ot-table tbody tr:nth-child(8n+8) { background: #7c3aed !important; }
+body.tk-home .ot-table td { color: #ffffff !important; }
+body.tk-home .ot-table a:link,
+body.tk-home .ot-table a:visited { color: #ffffff !important; -webkit-text-fill-color: #ffffff; }
+body.tk-home .status-pill.pill-open { background: #fef3c7 !important; color: #92400e !important; -webkit-text-fill-color: #92400e; }
+body.tk-home .status-pill.pill-in_progress { background: #dbeafe !important; color: #1e40af !important; -webkit-text-fill-color: #1e40af; }
+body.tk-home .status-pill.pill-closed { background: #e2e8f0 !important; color: #334155 !important; -webkit-text-fill-color: #334155; }
+body.tk-home .badge-type-gangguan { background: #fee2e2 !important; color: #991b1b !important; -webkit-text-fill-color: #991b1b; }
+body.tk-home .badge-type-request { background: #dbeafe !important; color: #1e40af !important; -webkit-text-fill-color: #1e40af; }
+body.tk-home .badge-type-installation { background: #dcfce7 !important; color: #166534 !important; -webkit-text-fill-color: #166534; }
+body.tk-home .badge-type-maintenance { background: #fef3c7 !important; color: #92400e !important; -webkit-text-fill-color: #92400e; }
+body.tk-home .btn-action-delete { background: #fee2e2 !important; color: #b91c1c !important; border-color: #fecaca !important; -webkit-text-fill-color: #b91c1c; }
+body.tk-home .priority-card { background: #100c22 !important; color: #f8fafc !important; border-color: rgba(255, 255, 255, 0.16) !important; }
+body.tk-home .priority-card.active { box-shadow: inset 0 0 0 2px #22d3ee; }
+body.tk-home .bottom-nav { background: #100c22; border-top: 1px solid rgba(34, 211, 238, 0.28); }
+body.tk-home .bottom-nav a.bn-item:link,
+body.tk-home .bottom-nav a.bn-item:visited,
+body.tk-home .bottom-nav a.bn-item:hover,
+body.tk-home .bottom-nav a.bn-item:focus,
+body.tk-home .bottom-nav a.bn-item:active,
+body.tk-home .bottom-nav a.bn-item.active,
+body.tk-home .bottom-nav button.bn-item,
+body.tk-home .bottom-nav .bn-item span { color: #ffffff !important; -webkit-text-fill-color: #ffffff; }
+body.tk-home .bottom-nav .bn-icon svg,
+body.tk-home .bottom-nav .bn-item.active .bn-icon svg { stroke: #ffffff !important; }
+body.tk-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }
