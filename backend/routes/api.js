@@ -1000,14 +1000,6 @@ router.post('/tools/hotspot/bindings',              authenticate, authorize('sup
 router.delete('/tools/hotspot/bindings/:bindingId', authenticate, authorize('superadmin','admin'), demoGuard, logActivity('delete','hotspot_binding'), (r,s) => ToolsCtrl.deleteBinding(r,s));
 router.post('/tools/hotspot/bindings/:bindingId/toggle', authenticate, authorize('superadmin','admin'), demoGuard, logActivity('toggle','hotspot_binding'), (r,s) => ToolsCtrl.toggleBinding(r,s));
 
-// ── IP Addressing (manajemen /ip/address MikroTik) ──────────
-const IpAddrCtrl = require('../controllers/IpAddressController');
-router.get('/ip-addressing',            authenticate, demoGuard, (r,s) => IpAddrCtrl.list(r,s));
-router.post('/ip-addressing',           authenticate, authorize('superadmin','admin'), demoGuard, logActivity('create','ip_address'), (r,s) => IpAddrCtrl.create(r,s));
-router.put('/ip-addressing/:id',        authenticate, authorize('superadmin','admin'), demoGuard, logActivity('update','ip_address'), (r,s) => IpAddrCtrl.update(r,s));
-router.delete('/ip-addressing/:id',     authenticate, authorize('superadmin','admin'), demoGuard, logActivity('delete','ip_address'), (r,s) => IpAddrCtrl.remove(r,s));
-router.post('/ip-addressing/:id/toggle',authenticate, authorize('superadmin','admin'), demoGuard, logActivity('toggle','ip_address'), (r,s) => IpAddrCtrl.toggle(r,s));
-
 // ── Isolir Management ───────────────────────────────────────
 const IsolirCtrl = require('../controllers/IsolirController');
 router.get('/isolir/stats',             authenticate, demoGuard, (r,s) => IsolirCtrl.stats(r,s));
