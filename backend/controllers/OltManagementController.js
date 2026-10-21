@@ -38,6 +38,7 @@ const ConfigCrypto = require('../utils/ConfigCrypto');
 const oltQueue = require('../services/OltQueue');
 const logger = require('../utils/logger');
 const { logOltAction } = require('../middleware/activityLogger');
+const { applyDownCauseList } = require('../utils/onuDownCause');
 
 // Merek yang memakai pola interface ZTE (frame/slot/port:onu).
 // Merek lain (chipset/EPON) memakai pola port/onu_id.
@@ -379,6 +380,7 @@ class OltManagementController {
       try {
         const snmpSvc = makeSnmp(cfg);
         const result = await snmpSvc.getAllOnus({ withPower: true, ports: explicitPorts, maxPorts });
+        applyDownCauseList(result);
         setCache(cfg.id, result);                                  // simpan snapshot
         return res.json({ success: true, data: { ...result, cachedAt: new Date().toISOString() }, via: 'snmp' });
       } catch (err) {
@@ -397,6 +399,7 @@ class OltManagementController {
       let system = null;
       try { system = await svc.getSystemInfo(); } catch (e) { /* abaikan */ }
       const payload = { ...result, system };
+      applyDownCauseList(payload);
       setCache(cfg.id, payload);                                   // simpan snapshot
       res.json({ success: true, data: { ...payload, cachedAt: new Date().toISOString() } });
     } catch (err) {
@@ -419,6 +422,7 @@ class OltManagementController {
       try {
         const snmpSvc = makeSnmp(cfg);
         const list = await snmpSvc.getOnuState(pon, { withPower: true });
+        applyDownCauseList(list);
         return res.json({ success: true, data: list, via: 'snmp' });
       } catch (err) {
         // Bila SNMP gagal, jatuh ke CLI di bawah
@@ -445,6 +449,7 @@ class OltManagementController {
         list = await svc.getOnuState(pon, { withPower });
       }
 
+      applyDownCauseList(list);
       res.json({ success: true, data: list });
     } catch (err) {
       res.status(500).json({ success: false, message: err.message });

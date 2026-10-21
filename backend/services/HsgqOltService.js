@@ -32,6 +32,7 @@ const logger = require('../utils/logger');
 const { scaleOpticalRaw } = require('../utils/opticalDbm');
 const HsgqIgcHttpService = require('./HsgqIgcHttpService');
 const ConfigCrypto = require('../utils/ConfigCrypto');
+const { canonicalPhase, kindOf } = require('../utils/onuDownCause');
 
 let snmp;
 try {
@@ -463,10 +464,10 @@ class HsgqOltService {
   // Power down = listrik putus, quality tetap unknown supaya tidak masuk LOS.
   // Laser out / LOAi / LOS, dan offline tanpa angka redaman = LOS.
   _mgmtQuality(phase, rx) {
-    const p = String(phase || '');
-    if (/power[\s_-]*down/i.test(p) || /dying[\s_-]*gasp/i.test(p)) return 'unknown';
-    if (/laser[\s_-]*out/i.test(p) || /^loa[i1]$/i.test(p) || /^(losi|los|loss)$/i.test(p)) return 'los';
-    if (/^offline$/i.test(p) && (rx == null || rx === '')) return 'los';
+    const kind = kindOf(phase);
+    if (kind === 'power') return 'unknown';
+    if (kind === 'optical') return 'los';
+    if (/^offline$/i.test(String(phase || '')) && (rx == null || rx === '')) return 'los';
     return null;
   }
 
@@ -568,13 +569,7 @@ class HsgqOltService {
   _hsgqDownPhase(row) {
     const rs = parseInt(row && row.rstate, 10);
     if (rs === 1) return null;
-    const cause = String((row && row.last_d_cause) || '').trim();
-    if (/power[\s_-]*down/i.test(cause)) return 'Power down';
-    if (/laser[\s_-]*out/i.test(cause)) return 'Laser out';
-    if (/^loa[i1]$/i.test(cause)) return 'LOAi';
-    if (/^losi$/i.test(cause)) return 'LOSi';
-    if (/^(los|loss)$/i.test(cause)) return 'LOS';
-    return 'offline';
+    return canonicalPhase(row && row.last_d_cause) || 'offline';
   }
 
   _isSentinelRx(v) {
@@ -621,7 +616,7 @@ class HsgqOltService {
         o.status = 'offline';
         // Power down / Laser out tidak punya redaman hidup. Sentinel -30 pada offline
         // tanpa sebab juga bukan ukuran, jadi ikut dibuang.
-        if (phase === 'Power down' || phase === 'Laser out' || phase === 'LOAi' || phase === 'LOSi' || phase === 'LOS' || this._isSentinelRx(o.signal_strength)) {
+        if (kindOf(phase) || this._isSentinelRx(o.signal_strength)) {
           o.signal_strength = null;
           if (o.tr069_params) o.tr069_params.rx_power = null;
         }

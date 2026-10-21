@@ -1069,26 +1069,29 @@ const OltMgmt = {
     }
   },
 
-  // Listrik putus: ZTE menulis DyingGasp, HSGQ GPON menulis Power down.
-  // Keduanya satu kartu. Laser out / LOAi tetap LOS (sinyal optik hilang).
+  // Listrik putus, semua merek: Dying Gasp (ZTE), Power down (HSGQ), dying-gasp / Power off (C-DATA).
+  // Satu kartu. Laser out, LOS, LOSi, LOAi tetap tidak ada sinyal optik.
   _phaseRaw(o) {
     return String((o && (o.phase_state || o.phase)) || '');
   },
   isDyingGasp(o) {
     const p = this._phaseRaw(o);
-    return /dying[\s_-]*gasp/i.test(p) || /power[\s_-]*down/i.test(p);
+    return /dying[\s_-]*gasp/i.test(p) || /power[\s_-]*(down|off)/i.test(p) || /^dgi$/i.test(p.trim());
   },
   isOpticalDown(o) {
     const p = this._phaseRaw(o).trim();
-    return /laser[\s_-]*out/i.test(p) || /^loa[i1]$/i.test(p) || /^(los|loss|losi)$/i.test(p);
+    return /laser[\s_-]*out/i.test(p) || /^loa[i1]$/i.test(p) || /^(los|loss|losi|lofi|lobi)$/i.test(p);
   },
   _phaseLabel(o) {
     const p = this._phaseRaw(o).trim();
+    if (/power[\s_-]*off/i.test(p)) return 'Power Off';
     if (/power[\s_-]*down/i.test(p)) return 'Power Down';
-    if (/dying[\s_-]*gasp/i.test(p)) return 'Dying Gasp';
+    if (/dying[\s_-]*gasp/i.test(p) || /^dgi$/i.test(p)) return 'Dying Gasp';
     if (/laser[\s_-]*out/i.test(p)) return 'Laser Out';
     if (/^loa[i1]$/i.test(p)) return 'LOAi';
     if (/^losi$/i.test(p)) return 'LOSi';
+    if (/^lofi$/i.test(p)) return 'LOFi';
+    if (/^lobi$/i.test(p)) return 'LOBi';
     if (/^(los|loss)$/i.test(p)) return 'LOS';
     return null;
   },
