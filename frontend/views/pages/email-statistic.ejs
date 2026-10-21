@@ -4,7 +4,9 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#100c22">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/email-palette.css?v=em1">
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
   <style>
     :root{
@@ -101,9 +103,24 @@
     .a-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--a-text);color:#fff;padding:13px 22px;border-radius:13px;font-size:13px;font-weight:600;z-index:10002;transition:all .3s;box-shadow:0 16px 36px rgba(22,32,58,.26);pointer-events:none;max-width:90vw;}
     .a-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
     .a-toast.err{background:#b91c1c;}
+    @media(max-width:760px){
+      .page-content{padding:14px 12px 88px;overflow-x:hidden;}
+      .a-head,.a-head-r,.a-tools{width:100%;}
+      .a-search{min-width:0;flex:1 1 100%;}
+      .a-tcard{overflow:hidden;padding:14px 12px;}
+      .a-tbl thead{display:none;}
+      .a-tbl,.a-tbl tbody,.a-tbl tr,.a-tbl td{display:block;width:100%;}
+      .a-tbl tr{border:1px solid rgba(34,211,238,.35);border-radius:14px;margin:0 0 10px;padding:6px 10px;background:#100c22;}
+      .a-tbl td{border:none;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;white-space:normal;overflow-wrap:anywhere;text-align:right;}
+      .a-tbl td[data-label]::before{content:attr(data-label);font-size:11px;font-weight:700;color:#94a3b8;text-align:left;flex:0 0 34%;}
+      .a-tbl td[colspan]{display:block;text-align:center;}
+      .a-tbl td[colspan]::before{content:none;}
+      .a-bar{width:110px;margin-top:0;}
+      .a-tname{justify-content:flex-end;text-align:right;}
+    }
   </style>
 </head>
-<body>
+<body class="em-home">
 <div class="app-layout">
   <%- include('../partials/sidebar', { active: active }) %>
   <div class="main-content">
@@ -268,12 +285,12 @@
       stroke:{curve:'smooth',width:3},
       fill:{type:'gradient',gradient:{shadeIntensity:1,opacityFrom:.30,opacityTo:.02,stops:[0,95]}},
       dataLabels:{enabled:false},
-      xaxis:{categories:t.labels,labels:{style:{colors:'#aab2c4',fontSize:'11px',fontWeight:600}},axisBorder:{show:false},axisTicks:{show:false}},
-      yaxis:{labels:{style:{colors:'#aab2c4',fontSize:'11px'}}},
-      grid:{borderColor:'#f1f4fa',strokeDashArray:5,padding:{left:6,right:6}},
+      xaxis:{categories:t.labels,labels:{style:{colors:'#e2e8f0',fontSize:'11px',fontWeight:600}},axisBorder:{show:false},axisTicks:{show:false}},
+      yaxis:{labels:{style:{colors:'#e2e8f0',fontSize:'11px'}}},
+      grid:{borderColor:'rgba(255,255,255,.12)',strokeDashArray:5,padding:{left:6,right:6}},
       legend:{show:false},
       markers:{size:0,hover:{size:6}},
-      tooltip:{theme:'light',y:{formatter:v=>v+' email'}}
+      tooltip:{theme:'dark',y:{formatter:v=>v+' email'}}
     };
     if(trendC) trendC.destroy();
     trendC=new ApexCharts(document.getElementById('trendChart'),opts); trendC.render();
@@ -287,7 +304,7 @@
       chart:{type:'donut',height:250,fontFamily:'DM Sans,sans-serif'},
       series:has?series:[1,0,0],
       labels:['Terkirim','Gagal','Retry'], colors:['#2563eb','#0fb6a3','#f59e0b'],
-      stroke:{width:3,colors:['#fff']}, dataLabels:{enabled:has,formatter:(v)=>Math.round(v)+'%',style:{fontSize:'11px',fontWeight:'700'},dropShadow:{enabled:false}},
+      stroke:{width:3,colors:['#141028']}, dataLabels:{enabled:has,formatter:(v)=>Math.round(v)+'%',style:{fontSize:'11px',fontWeight:'700'},dropShadow:{enabled:false}},
       legend:{show:false},
       plotOptions:{pie:{donut:{size:'72%'}}},
       tooltip:{enabled:has,y:{formatter:v=>v+' email'}}
@@ -327,11 +344,11 @@
       const name=TLBL[t.type]||t.type||'(lainnya)'; const pct=Math.round((+t.cnt/tot)*100);
       let pill; if(pct>=40) pill='<span class="a-pill p-ok">Dominan</span>'; else if(pct>=15) pill='<span class="a-pill p-mid">Reguler</span>'; else pill='<span class="a-pill p-low">Sesekali</span>';
       return '<tr>'
-        +'<td><div class="a-tname">'+tIcon(t.type)+esc(name)+'</div></td>'
-        +'<td class="a-rate">'+(+t.cnt)+'</td>'
-        +'<td class="a-rate" style="color:#2563eb;">'+pct+'%</td>'
-        +'<td><div class="a-bar"><i style="width:'+pct+'%;"></i></div></td>'
-        +'<td>'+pill+'</td>'
+        +'<td data-label="Jenis Email"><div class="a-tname">'+tIcon(t.type)+esc(name)+'</div></td>'
+        +'<td data-label="Jumlah" class="a-rate">'+(+t.cnt)+'</td>'
+        +'<td data-label="Porsi" class="a-rate" style="color:#2563eb;">'+pct+'%</td>'
+        +'<td data-label="Distribusi"><div class="a-bar"><i style="width:'+pct+'%;"></i></div></td>'
+        +'<td data-label="Status">'+pill+'</td>'
         +'</tr>';
     }).join('');
   }

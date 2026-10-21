@@ -4,7 +4,9 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#100c22">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/email-palette.css?v=em1">
   <style>
     :root{
       --et-bg:#eef2f9;--et-card:#fff;--et-border:#e0e7f3;
@@ -105,6 +107,8 @@
       .et-grid.m-edit .et-preview-col{display:none;}
       .et-grid.m-prev .et-editor-col,.et-grid.m-prev .et-list-col{display:none;}
       .et-page{padding:12px 12px 90px;}
+      .page-content{overflow-x:hidden;}
+      .et-frame{height:420px;}
     }
     /* ── Modal hasil (sukses/gagal) — animasi smooth ease-in ── */
     .rm-overlay{position:fixed;inset:0;z-index:10001;background:rgba(13,27,62,.5);
@@ -146,7 +150,7 @@
     .rm-actions .et-btn{flex:1;justify-content:center;height:46px;}
   </style>
 </head>
-<body>
+<body class="em-home">
 <div class="app-layout">
   <%- include('../partials/sidebar', { active: active }) %>
   <div class="main-content">
