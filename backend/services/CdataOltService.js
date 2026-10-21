@@ -60,6 +60,7 @@ class CdataOltService extends GponCliOltService {
       .replace(/\x08/g, '')
       .replace(/--More\s*\([^)]*\)--/gi, ' ')
       .replace(/--\s*more\s*--/gi, ' ')
+      .replace(/\x00/g, '')
       .replace(/\r/g, '');
     // Pager C-DATA sering menempel baris berikutnya di ujung baris sebelumnya.
     s = s.replace(/(\S)[ \t]+(?=\d+\/\d+\s+\d+\s+\d+\s+[0-9A-Za-z]{8,})/g, '$1\n');
@@ -107,6 +108,53 @@ class CdataOltService extends GponCliOltService {
       scannedPorts: ports.map((p) => String(p.port)),
       scanned: ports.length,
     };
+  }
+
+  // FD1604S: "show vlan all" berbentuk blok, bukan tabel yang diawali nomor.
+  //   VLAN ID: 100
+  //   VLAN NAME: INTERNET
+  //   VLAN Type: standard vlan
+  //   Tagged Ports:
+  //     gpon 0/0/1
+  async getVlans() {
+    await this._enterConfig();
+    const out = this._cleanCli(await this._safeExec(this.cmd.vlanList || 'show vlan all'));
+    await this._exitConfig();
+    const blocks = this.parseCdataVlanDump(out);
+    if (blocks.length) return blocks;
+    return this.parseVlanList(out);
+  }
+
+  parseCdataVlanDump(out) {
+    const text = this._cleanCli(out);
+    const parts = text.split(/(?=VLAN\s+ID\s*:)/i).filter((b) => /VLAN\s+ID\s*:/i.test(b));
+    const list = [];
+    for (const block of parts) {
+      const vid = parseInt((block.match(/VLAN\s+ID\s*:\s*(\d+)/i) || [])[1], 10);
+      if (!vid || vid < 1 || vid > 4094) continue;
+      const name = ((block.match(/VLAN\s+NAME\s*:[ \t]*([^\r\n]*)/i) || [])[1] || '').trim();
+      const type = ((block.match(/VLAN\s+Type\s*:[ \t]*([^\r\n]*)/i) || [])[1] || '').trim();
+      const section = (label) => {
+        const re = new RegExp(label + '\\s*:\\s*([\\s\\S]*?)(?=\\n\\s*(?:Tagged Ports|Untagged Ports|VLAN\\s+ID)\\s*:|$)', 'i');
+        return (block.match(re) || [])[1] || '';
+      };
+      const ports = [];
+      const pull = (chunk) => {
+        const re = /((?:gpon|epon|ge|xge|eth)\s+\d+\/\d+(?:\/\d+)?)/gi;
+        let m;
+        while ((m = re.exec(chunk))) ports.push(m[1].replace(/\s+/g, ' '));
+      };
+      pull(section('Tagged Ports'));
+      pull(section('Untagged Ports'));
+      list.push({
+        vid,
+        name: name || null,
+        type: type || null,
+        ports: ports.length ? ports.join(', ') : null,
+        sources: ['summary'],
+      });
+    }
+    return list.sort((a, b) => a.vid - b.vid);
   }
 
   // ── Daftar semua ONU: satu perintah global, bukan scan 16 interface ──
