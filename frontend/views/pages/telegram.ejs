@@ -221,7 +221,7 @@
     .tm-h{display:flex;align-items:center;justify-content:space-between;padding:18px 22px 14px;border-bottom:1px solid #e8eaed;}
     .tm-x{background:#f4f8ff;border:1.5px solid #e0e7f3;border-radius:8px;width:30px;height:30px;cursor:pointer;color:#6b7fa8;font-size:16px;}
 
-    /* Ponsel: baris riwayat dan perintah tidak melebar ke samping */
+    /* Ponsel: baris riwayat dan kartu notifikasi muat di lebar layar */
     @media (max-width: 760px) {
       body.tg-home .page-content { overflow-x: hidden; }
       .tg-hist-row { flex-wrap: wrap !important; }
@@ -229,6 +229,11 @@
       .botcmd-item { flex-wrap: wrap; align-items: flex-start; }
       .botcmd-meta { max-width: 100%; justify-content: flex-start; }
       .rm-sc-lbl, .et-item-d, .tg-check-d { white-space: normal; }
+      .tg-notif { flex-wrap: wrap; align-items: flex-start; row-gap: 8px; }
+      .tg-notif-tx { flex: 1 1 calc(100% - 58px); min-width: 0; }
+      .tg-notif-t, .tg-notif-d { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+      .tg-notif .tg-test-btn { margin-left: auto; margin-right: 0; }
+      .tg-notif > .et-switch { margin-left: 8px; }
     }
   </style>
 </head>
