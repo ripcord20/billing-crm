@@ -756,6 +756,7 @@ const OltMgmt = {
       let stTxt;
       if (o.status === 'online') stTxt = 'Online';
       else if (o.status === 'disabled') stTxt = 'Disabled';
+      else if (/dying[\s_-]*gasp/i.test(phase)) stTxt = 'Dying Gasp';
       else if (phase === 'los' || phase === 'loss') stTxt = 'LOS';
       else if (phase === 'ranging' || phase === 'syncmib' || phase === 'logging' || phase === 'initial') stTxt = 'Ranging…';
       else stTxt = 'Offline';
@@ -1065,9 +1066,15 @@ const OltMgmt = {
     }
   },
 
+  // Dying gasp = modem sempat lapor listrik putus ke OLT. Bukan LOS optik.
+  isDyingGasp(o) {
+    return /dying[\s_-]*gasp/i.test(String((o && (o.phase_state || o.phase)) || ''));
+  },
+
   // ════════════════════ Distribusi kualitas redaman (dBm) ════════════════════
   // Hitung ONU per kualitas memakai field `quality` dari backend (sumber tunggal):
-  //   good ≥ -25 dBm · warning -25..-28 · critical < -28 · los · belum diukur.
+  //   good ≥ -25 dBm · warning -25..-28 · critical < -28 · los · dying gasp · belum diukur.
+  // Dying gasp dikeluarkan dari LOS dan Belum diukur supaya tidak terhitung dua kali.
   renderRxQuality() {
     const el = document.getElementById('rxQualityChart');
     const legend = document.getElementById('rxQualityLegend');
@@ -1080,12 +1087,14 @@ const OltMgmt = {
       { key: 'warning',  name: 'Warning',      desc: '-25 s/d -28 dBm · waspada',   color: '#f59e0b' },
       { key: 'critical', name: 'Bad',          desc: '< -28 dBm · sinyal lemah',    color: '#dc2626' },
       { key: 'los',      name: 'LOS',          desc: 'tak ada sinyal optik',        color: '#64748b' },
+      { key: 'dyinggasp', name: 'Dying Gasp',   desc: 'listrik modem putus',         color: '#7c3aed' },
       { key: 'unmeasured', name: 'Belum diukur', desc: 'redaman belum terbaca',     color: '#cbd5e1' },
     ];
 
     // Hitung dari ONU yang sedang dimuat.
-    const counts = { good: 0, warning: 0, critical: 0, los: 0, unmeasured: 0 };
+    const counts = { good: 0, warning: 0, critical: 0, los: 0, dyinggasp: 0, unmeasured: 0 };
     this.onus.forEach(o => {
+      if (this.isDyingGasp(o)) { counts.dyinggasp++; return; }
       const q = o.quality;
       if (q === 'good' || q === 'warning' || q === 'critical' || q === 'los') counts[q]++;
       else counts.unmeasured++;   // unknown / null / belum diambil
@@ -1164,10 +1173,11 @@ const OltMgmt = {
       const denom = measured > 0 ? measured : 1;
       legend.innerHTML = cats.map(c => {
         const n = counts[c.key];
-        const pct = (c.key === 'los' || c.key === 'unmeasured')
+        const fromTotal = c.key === 'los' || c.key === 'dyinggasp' || c.key === 'unmeasured';
+        const pct = fromTotal
           ? (totalAll ? Math.round(n / totalAll * 100) : 0)
           : Math.round(n / denom * 100);
-        const pctLbl = (c.key === 'los' || c.key === 'unmeasured') ? `${pct}% dari total` : `${pct}% terukur`;
+        const pctLbl = fromTotal ? `${pct}% dari total` : `${pct}% terukur`;
         const clickable = n > 0;
         const active = this._rxActiveKey === c.key && clickable;
         return `<div class="rxq-row ${clickable ? '' : 'disabled'} ${active ? 'active' : ''}" ${clickable ? `onclick="OltMgmt.showRxQualityDetail('${c.key}')"` : ''}>
@@ -1207,6 +1217,8 @@ const OltMgmt = {
 
     // Filter ONU sesuai kategori.
     const match = (o) => {
+      if (key === 'dyinggasp') return this.isDyingGasp(o);
+      if (this.isDyingGasp(o)) return false;
       if (key === 'unmeasured') return !['good','warning','critical','los'].includes(o.quality);
       return o.quality === key;
     };
@@ -1219,7 +1231,7 @@ const OltMgmt = {
     } else {
       const rows = list.map(o => {
         const name = o.name || o.description || '(tanpa nama)';
-        const rx = (typeof o.onu_rx_dbm === 'number') ? `${o.onu_rx_dbm.toFixed(1)} dBm` : (o.quality === 'los' ? 'LOS' : '—');
+        const rx = this.isDyingGasp(o) ? 'Dying Gasp' : ((typeof o.onu_rx_dbm === 'number') ? `${o.onu_rx_dbm.toFixed(1)} dBm` : (o.quality === 'los' ? 'LOS' : '—'));
         const idx = (o.onu_if || '').replace('gpon-onu_', '');
         const ifEsc = this._esc(o.onu_if || '');
         return `<tr class="rxq-clickable" onclick="OltMgmt.showDetail('${ifEsc}')" title="Lihat detail ONU">
