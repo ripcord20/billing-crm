@@ -75,6 +75,29 @@ body.tg-home .rp-charcount { color: #e2e8f0 !important; -webkit-text-fill-color:
 body.tg-home .rp-charcount.over { color: #fecdd3 !important; -webkit-text-fill-color: #fecdd3; }
 body.tg-home .et-link-btn { color: #67e8f9 !important; }
 body.tg-home .et-btn-primary { background: linear-gradient(135deg, #0891b2, #7c3aed) !important; color: #ffffff !important; }
+body.tg-home .et-btn:not(.et-btn-primary):not(.et-btn-tg):not(.et-btn-danger) {
+  background: #070814 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+  border: 1.5px solid rgba(34, 211, 238, 0.45) !important;
+}
+body.tg-home .tg-soft {
+  background: #100c22 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+  color: #ffffff !important;
+}
+body.tg-home .tg-soft .et-label,
+body.tg-home .tg-soft .et-hint,
+body.tg-home .tg-soft .tg-notif-t,
+body.tg-home .tg-soft .tg-notif-d,
+body.tg-home .tg-soft b {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+body.tg-home .et-label span {
+  color: #e2e8f0 !important;
+  -webkit-text-fill-color: #e2e8f0;
+}
 body.tg-home .et-btn-ghost,
 body.tg-home .botcmd-dlg-foot .et-btn:not(.et-btn-primary):not(.et-btn-tg) {
   background: #070814 !important;
