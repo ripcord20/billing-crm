@@ -6,6 +6,65 @@
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .um-tabs{display:flex;gap:6px;margin-bottom:18px;border-bottom:1px solid var(--border,#e2e8f0);padding-bottom:0;}
+    .um-tab{background:none;border:none;padding:10px 16px;font-size:13px;font-weight:600;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:inherit;}
+    .um-tab.active{color:var(--primary,#1a6ef5);border-bottom-color:var(--primary,#1a6ef5);}
+    .um-panel{display:none;}
+    .um-panel.show{display:block;}
+    .perm-layout{display:grid;grid-template-columns:240px 1fr;gap:16px;min-height:520px;}
+    @media(max-width:860px){.perm-layout{grid-template-columns:1fr;}}
+    .perm-roles{background:#fff;border:1px solid #e8eef6;border-radius:12px;overflow:hidden;}
+    .perm-role{display:block;width:100%;text-align:left;padding:12px 14px;border:none;background:#fff;border-bottom:1px solid #f1f5f9;cursor:pointer;font-family:inherit;}
+    .perm-role:hover{background:#f8fafc;}
+    .perm-role.active{background:#eff6ff;box-shadow:inset 3px 0 0 var(--primary,#1a6ef5);}
+    .perm-role-name{font-size:13px;font-weight:700;color:#0f172a;}
+    .perm-role-desc{font-size:11px;color:#94a3b8;margin-top:2px;line-height:1.35;}
+    .perm-role-meta{font-size:11px;color:#64748b;margin-top:4px;}
+    .perm-main{background:#fff;border:1px solid #e8eef6;border-radius:12px;display:flex;flex-direction:column;min-height:520px;}
+    .perm-head{padding:16px 18px 12px;border-bottom:1px solid #f1f5f9;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+    .perm-head h2{margin:0;font-size:15px;font-weight:700;color:#0f172a;}
+    .perm-head p{margin:4px 0 0;font-size:12px;color:#64748b;max-width:560px;line-height:1.45;}
+    .perm-body{padding:8px 18px 18px;overflow:auto;flex:1;}
+    .perm-sec{margin-top:14px;}
+    .perm-sec-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+    .perm-sec-h span{font-size:11px;font-weight:800;letter-spacing:.06em;color:#94a3b8;}
+    .perm-sec-h button{background:none;border:none;color:var(--primary,#1a6ef5);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;padding:0;}
+    .perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;}
+    .perm-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid #eef2f7;border-radius:8px;background:#fafbfc;cursor:pointer;}
+    .perm-item:hover{border-color:#dbeafe;background:#f8fbff;}
+    .perm-item input{margin-top:2px;accent-color:var(--primary,#1a6ef5);}
+    .perm-item b{display:block;font-size:12.5px;font-weight:600;color:#0f172a;}
+    .perm-item small{display:block;font-size:10.5px;color:#94a3b8;margin-top:1px;}
+    .perm-empty{padding:48px 20px;text-align:center;color:#94a3b8;font-size:13px;}
+    .perm-foot{padding:12px 18px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:8px;}
+    #userModal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:1000;align-items:flex-end;justify-content:center;}
+    #userModal.open{display:flex;}
+    .ua-sheet{background:#fff;width:100%;max-width:520px;max-height:96vh;border-radius:22px 22px 0 0;display:flex;flex-direction:column;box-shadow:0 -12px 40px rgba(15,23,42,.18);}
+    .ua-head{padding:20px 20px 8px;flex-shrink:0;}
+    .ua-head-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+    .ua-head h3{margin:0;font-size:20px;font-weight:800;color:#0f172a;}
+    .ua-sub{margin:6px 0 0;font-size:13px;color:#94a3b8;line-height:1.45;}
+    .ua-x{width:32px;height:32px;border:none;background:none;font-size:22px;color:#94a3b8;cursor:pointer;line-height:1;}
+    .ua-body{padding:8px 16px 12px;overflow:auto;flex:1;-webkit-overflow-scrolling:touch;}
+    .ua-field{margin-bottom:12px;}
+    .ua-field label{display:block;font-size:12px;font-weight:700;color:#64748b;margin-bottom:6px;}
+    .ua-field input,.ua-field select{width:100%;padding:11px 12px;border:1px solid #e2e8f0;border-radius:12px;font-size:14px;font-family:inherit;box-sizing:border-box;background:#fff;}
+    .amod{background:#f8fafc;border:1px solid #eef2f7;border-radius:16px;padding:14px 14px 12px;margin-bottom:10px;}
+    .amod-h{display:flex;align-items:baseline;gap:6px;margin-bottom:10px;font-size:14.5px;font-weight:800;color:#0f172a;}
+    .amod-h span{font-size:12px;font-weight:600;color:#94a3b8;}
+    .amod-chips{display:flex;flex-wrap:wrap;gap:8px;}
+    .achip{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:100px;background:#fff;font-size:13px;font-weight:600;color:#475569;cursor:pointer;user-select:none;}
+    .achip input{accent-color:#6d5efc;width:15px;height:15px;margin:0;}
+    .achip:has(input:checked),.achip.on{border-color:#c4b5fd;background:#f5f3ff;color:#5b21b6;}
+    .ua-foot{padding:12px 16px calc(14px + env(safe-area-inset-bottom));border-top:1px solid #f1f5f9;flex-shrink:0;display:flex;flex-direction:column;gap:8px;}
+    .ua-save{width:100%;padding:14px;border:none;border-radius:14px;background:#2563eb;color:#fff;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;}
+    .ua-cancel{width:100%;padding:13px;border:1.5px solid #e2e8f0;border-radius:14px;background:#fff;color:#64748b;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;}
+    @media(min-width:640px){
+      #userModal{align-items:center;}
+      .ua-sheet{border-radius:20px;max-height:90vh;}
+    }
+  </style>
 </head>
 <body>
 <div class="app-layout">
@@ -15,24 +74,57 @@
     <main class="page-content">
 
       <div class="page-header">
-        <div class="page-header-left"><h1>User Management</h1></div>
-        <div class="page-header-right">
+        <div class="page-header-left"><h1>Users &amp; Roles</h1></div>
+        <div class="page-header-right" id="userHeaderActions">
           <button class="btn btn-primary" onclick="openAddUser()">+ Tambah User</button>
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-body">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="userTable">
-              <tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8;">Memuat...</td></tr>
-            </tbody>
-          </table>
+      <div class="um-tabs">
+        <button type="button" class="um-tab active" id="tabUsersBtn" onclick="showUmTab('users')">Users</button>
+        <button type="button" class="um-tab" id="tabRolesBtn" onclick="showUmTab('roles')">Hak Akses Role</button>
+      </div>
+
+      <div class="um-panel show" id="panelUsers">
+        <div class="card">
+          <div class="card-body">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="userTable">
+                <tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8;">Memuat...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="um-panel" id="panelRoles">
+        <div class="perm-layout">
+          <div class="perm-roles" id="roleList">
+            <div class="perm-empty">Memuat role...</div>
+          </div>
+          <div class="perm-main">
+            <div class="perm-head">
+              <div>
+                <h2 id="permTitle">Pilih role</h2>
+                <p>Modul sidebar desktop dan menu app mobile tampil di sini. Satu centang berlaku di keduanya. Superadmin tetap melihat semua menu.</p>
+              </div>
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:#334155;cursor:pointer;">
+                <input type="checkbox" id="permSelectAll" onchange="toggleAllModules(this.checked)">
+                Pilih semua
+              </label>
+            </div>
+            <div class="perm-body" id="permBody">
+              <div class="perm-empty">Pilih role di kiri untuk mengatur hak akses modul.</div>
+            </div>
+            <div class="perm-foot">
+              <button type="button" class="btn btn-primary" id="permSaveBtn" onclick="saveRolePermissions()" disabled>Simpan Hak Akses</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -40,39 +132,50 @@
   </div>
 </div>
 
-<!-- Modal -->
-<div id="userModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:12px;padding:28px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-      <h3 id="userModalTitle" style="font-size:16px;font-weight:600;margin:0;">Tambah User</h3>
-      <button onclick="closeUserModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#64748b;">x</button>
+<!-- Edit Akun -->
+<div id="userModal">
+  <div class="ua-sheet">
+    <div class="ua-head">
+      <div class="ua-head-row">
+        <div>
+          <h3 id="userModalTitle">Edit Akun</h3>
+          <p class="ua-sub">Ubah data, hak akses modul, dan wilayah untuk akun ini.</p>
+        </div>
+        <button type="button" class="ua-x" onclick="closeUserModal()" aria-label="Tutup">&times;</button>
+      </div>
     </div>
-    <form id="userForm" onsubmit="event.preventDefault();saveUser();">
-      <div style="margin-bottom:14px;">
-        <label style="display:block;font-size:13px;font-weight:500;margin-bottom:6px;">Nama *</label>
-        <input id="userName" type="text" placeholder="Nama lengkap" required style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;box-sizing:border-box;">
+    <form id="userForm" onsubmit="event.preventDefault();saveUser();" style="display:flex;flex-direction:column;min-height:0;flex:1;">
+      <div class="ua-body">
+        <div class="ua-field">
+          <label>Nama *</label>
+          <input id="userName" type="text" placeholder="Nama lengkap" required>
+        </div>
+        <div class="ua-field">
+          <label>Email *</label>
+          <input id="userEmail" type="email" placeholder="email@domain.com" required>
+        </div>
+        <div class="ua-field">
+          <label>No. HP</label>
+          <input id="userPhone" type="text" placeholder="08xxxxxxxxxx">
+        </div>
+        <div class="ua-field" id="passwordGroup">
+          <label>Password *</label>
+          <input id="passwordField" type="password" placeholder="Minimal 6 karakter">
+        </div>
+        <div class="ua-field">
+          <label>Role *</label>
+          <select id="userRole" required onchange="onUserRoleChange()">
+            <option value="">-- Pilih Role --</option>
+          </select>
+        </div>
+        <div class="ua-field" style="margin-top:8px;">
+          <label>Hak akses modul</label>
+          <div id="accountModules"><div class="perm-empty" style="padding:16px;">Memuat modul…</div></div>
+        </div>
       </div>
-      <div style="margin-bottom:14px;">
-        <label style="display:block;font-size:13px;font-weight:500;margin-bottom:6px;">Email *</label>
-        <input id="userEmail" type="email" placeholder="email@domain.com" required style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;box-sizing:border-box;">
-      </div>
-      <div style="margin-bottom:14px;">
-        <label style="display:block;font-size:13px;font-weight:500;margin-bottom:6px;">No. HP</label>
-        <input id="userPhone" type="text" placeholder="08xxxxxxxxxx" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;box-sizing:border-box;">
-      </div>
-      <div id="passwordGroup" style="margin-bottom:14px;">
-        <label style="display:block;font-size:13px;font-weight:500;margin-bottom:6px;">Password *</label>
-        <input id="passwordField" type="password" placeholder="Minimal 6 karakter" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;box-sizing:border-box;">
-      </div>
-      <div style="margin-bottom:20px;">
-        <label style="display:block;font-size:13px;font-weight:500;margin-bottom:6px;">Role *</label>
-        <select id="userRole" required style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;box-sizing:border-box;">
-          <option value="">-- Pilih Role --</option>
-        </select>
-      </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;">
-        <button type="button" onclick="closeUserModal()" class="btn btn-secondary">Batal</button>
-        <button type="submit" class="btn btn-primary">Simpan</button>
+      <div class="ua-foot">
+        <button type="submit" class="ua-save">+ Simpan Akun</button>
+        <button type="button" class="ua-cancel" onclick="closeUserModal()">Batal</button>
       </div>
     </form>
   </div>
@@ -80,6 +183,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/users.js"></script>
+<script src="/js/users.js?v=account-modules"></script>
 </body>
 </html>

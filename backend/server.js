@@ -416,6 +416,24 @@ const startServer = async () => {
     await db.sequelize.authenticate();
     logger.info('Database connection established');
 
+    // Hak akses modul per akun (Edit Akun). null = ikut role.
+    try {
+      const [macRows] = await db.sequelize.query(
+        `SELECT COUNT(*) AS c FROM information_schema.columns
+          WHERE table_schema = DATABASE()
+            AND table_name = 'users'
+            AND column_name = 'module_access'`
+      );
+      if (!(macRows && macRows[0] && parseInt(macRows[0].c) > 0)) {
+        await db.sequelize.query(
+          `ALTER TABLE users ADD COLUMN module_access TEXT NULL AFTER refresh_token`
+        );
+        logger.info('Migrated: users.module_access column added');
+      }
+    } catch (e) {
+      logger.warn('Failed to migrate users.module_access: ' + (e.message || e));
+    }
+
     if (process.env.APP_ENV === 'development') {
       await db.sequelize.sync({ alter: false });
       logger.info('Database models synced');
@@ -453,6 +471,11 @@ const startServer = async () => {
           is_system: true
         }
       });
+      try {
+        await require('./services/PermissionSeed').seedSidebarPermissions();
+      } catch (seedErr) {
+        logger.warn('Failed to seed sidebar permissions: ' + (seedErr.message || seedErr));
+      }
     } catch (e) {
       logger.warn('Failed to ensure finance role: ' + (e.message || e));
     }
@@ -977,6 +1000,8 @@ const startServer = async () => {
           }
         });
         logger.info('Ensured: role sales');
+        try { await require('./services/PermissionSeed').seedSidebarPermissions(); }
+        catch (seedErr) { logger.warn('Failed to seed sidebar permissions: ' + (seedErr.message || seedErr)); }
       } catch (roleErr) {
         logger.warn('Failed to ensure sales role: ' + (roleErr.message || roleErr));
       }

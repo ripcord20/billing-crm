@@ -26,7 +26,7 @@ const { logActivity } = require('../middleware/activityLogger');
 const { demoGuard } = require('../middleware/demoGuard');
 const { apiBlockFinanceArea } = require('../middleware/financeAccess');
 const { apiBlockNocArea }     = require('../middleware/nocAccess');
-const { apiBlockSalesArea }   = require('../middleware/salesAccess');
+const { apiBlockSalesArea, apiAllowSalesArea } = require('../middleware/salesAccess');
 const { apiBlockTenantOwner } = require('../middleware/tenantAccess');
 const TenantController = require('../controllers/TenantController');
 const demoRoutes = require('./demo');
@@ -242,9 +242,9 @@ router.delete('/users/:id', authenticate, demoGuard, authorize('superadmin'), lo
 // ===== ROLES & PERMISSIONS =====
 router.get('/roles', authenticate, demoGuard, UserController.getRoles);
 router.post('/roles', authenticate, demoGuard, authorize('superadmin'), logActivity('create', 'role'), UserController.createRole);
-router.put('/roles/:id', authenticate, demoGuard, authorize('superadmin'), logActivity('update', 'role'), UserController.updateRole);
+router.put('/roles/:id', authenticate, demoGuard, authorize('superadmin', 'admin'), logActivity('update', 'role'), UserController.updateRole);
 router.delete('/roles/:id', authenticate, demoGuard, authorize('superadmin'), logActivity('delete', 'role'), UserController.deleteRole);
-router.get('/permissions', authenticate, demoGuard, authorize('superadmin'), UserController.getPermissions);
+router.get('/permissions', authenticate, demoGuard, authorize('superadmin', 'admin'), UserController.getPermissions);
 
 // ===== WILAYAH INDONESIA (data sendiri, untuk dropdown alamat) =====
 // Publik: data referensi non-sensitif, dipakai juga oleh halaman registrasi publik.
@@ -2488,10 +2488,11 @@ router.use('/tracking', authenticate, demoGuard, trackingRoutes);
 
 // ═══════════════════════════════════════════════════════════════════
 // SALES MODULE — Sales Dashboard, Registrasi, Survey, Instalasi, Komisi
-// Akses: sales (data sendiri) + admin/superadmin (semua). Finance/NOC tidak.
+// Akses: sales (data sendiri) + admin/superadmin (semua) + role yang punya
+// module.sales (NOC default). Manajemen tim / bayar komisi tetap admin.
 // ═══════════════════════════════════════════════════════════════════
 const SalesCtrl = require('../controllers/SalesController');
-const salesRoles      = authorize('sales', 'admin', 'superadmin');
+const salesRoles      = apiAllowSalesArea;
 const salesAdminRoles = authorize('admin', 'superadmin');
 
 // Profil & link referral milik sales yang login
