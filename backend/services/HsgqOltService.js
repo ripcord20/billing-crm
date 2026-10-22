@@ -814,6 +814,30 @@ class HsgqOltService {
     }));
   }
 
+  // Firmware IGC lama (G02) tidak punya /serviceport. VLAN yang sah
+  // ada di mapping GEM line profile. 65534 dan 0 bukan VLAN.
+  _vlansFromLineProfiles(profiles) {
+    const map = new Map();
+    for (const p of profiles || []) {
+      const name = String(p.profname || '').trim();
+      for (const gem of p.gem || []) {
+        for (const m of gem.mapping || []) {
+          const vid = parseInt(m.vlan_id, 10);
+          if (!vid || vid < 1 || vid > 4094) continue;
+          if (!map.has(vid)) map.set(vid, new Set());
+          if (name) map.get(vid).add(name);
+        }
+      }
+    }
+    return [...map.entries()].sort((a, b) => a[0] - b[0]).map(([vid, names]) => ({
+      vid,
+      name: names.size ? [...names].join(', ') : null,
+      type: 'line-profile',
+      ports: names.size ? `profil ${[...names].join(', ')}` : null,
+      sources: ['summary'],
+    }));
+  }
+
   async getVlans() {
     if (!this.username) return [];
     const igc = new HsgqIgcHttpService({
@@ -826,9 +850,16 @@ class HsgqOltService {
     });
     try {
       const rows = await igc.getServicePorts();
-      return this._vlansFromServicePorts(rows);
+      const vlans = this._vlansFromServicePorts(rows);
+      if (vlans.length) return vlans;
     } catch (e) {
-      logger.warn(`[HsgqOlt:${this.name}] VLAN IGC: ${e.message}`);
+      logger.warn(`[HsgqOlt:${this.name}] VLAN service-port: ${e.message}`);
+    }
+    try {
+      const lines = await igc.listProfiles('/lineprofile');
+      return this._vlansFromLineProfiles(lines);
+    } catch (e) {
+      logger.warn(`[HsgqOlt:${this.name}] VLAN line-profile: ${e.message}`);
       return [];
     }
   }
