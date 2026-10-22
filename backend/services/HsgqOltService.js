@@ -31,8 +31,11 @@ const path = require('path');
 const logger = require('../utils/logger');
 const { scaleOpticalRaw } = require('../utils/opticalDbm');
 const HsgqIgcHttpService = require('./HsgqIgcHttpService');
+const BaseCliOltService = require('./BaseCliOltService');
 const ConfigCrypto = require('../utils/ConfigCrypto');
 const { canonicalPhase, kindOf } = require('../utils/onuDownCause');
+
+const hwCache = new Map();
 
 let snmp;
 try {
@@ -696,10 +699,71 @@ class HsgqOltService {
     return all.ports.filter((p) => want.has(String(p.port)));
   }
 
+  _snmpNum(vb) {
+    if (!vb || vb.value == null) return null;
+    const v = vb.value;
+    if (Buffer.isBuffer(v)) {
+      if (v.length < 1 || v.length > 4) return null;
+      return v.readUIntBE(0, v.length);
+    }
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  // 0 berarti sensor tidak ada (G02 dan E04R). G04 mengisi 40–41.
+  _pickTemp(values) {
+    for (const v of values) {
+      const n = parseInt(v, 10);
+      if (n >= 1 && n <= 125) return n;
+    }
+    return null;
+  }
+
+  _parseHardwareLine(text) {
+    const raw = String(text || '').replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
+    if (/unknown command/i.test(raw)) return null;
+    const compact = raw.replace(/\s+/g, '').toLowerCase();
+    if (!compact || compact === 'showversion' || compact.length < 20) return null;
+    const m = raw.match(/Hardware Version\s*[:=]\s*(\S+)/i);
+    return m ? m[1] : null;
+  }
+
+  async _readCliHardware() {
+    const cached = hwCache.get(this.host);
+    if (cached && cached.until > Date.now()) return cached.value;
+    let value = null;
+    if (this.username && this.password) {
+      const cli = new BaseCliOltService({
+        host: this.host,
+        protocol: 'ssh',
+        port: this.cliPort || 22,
+        username: this.username,
+        password: this.password,
+        timeout: 6000,
+        name: this.name,
+      });
+      try {
+        await cli.connect();
+        await cli._safeExec('enable');
+        value = this._parseHardwareLine(await cli._safeExec('show version'));
+      } catch (e) {
+        logger.warn(`[HsgqOlt:${this.name}] hardware CLI: ${e.message}`);
+      } finally {
+        await cli.disconnect().catch(() => {});
+      }
+    }
+    hwCache.set(this.host, { value, until: Date.now() + 10 * 60 * 1000 });
+    return value;
+  }
+
   async getSystemInfo() {
     if (!snmp) return { error: 'net-snmp tidak terinstall' };
     try {
-      const vbs = await this._get([OID.SYS_DESCR, OID.SYS_NAME, OID.SYS_FW, '1.3.6.1.2.1.1.3.0']);
+      const base = '1.3.6.1.4.1.50224.3.1.1.';
+      const vbs = await this._get([
+        OID.SYS_DESCR, OID.SYS_NAME, OID.SYS_FW, '1.3.6.1.2.1.1.3.0',
+        base + '5.0', base + '17.0', base + '22.0', base + '23.0',
+      ]);
       const asTxt = (vb) => Buffer.isBuffer(vb?.value)
         ? vb.value.toString('utf8').replace(/\x00/g, '').trim()
         : String(vb?.value || '').trim();
@@ -707,6 +771,14 @@ class HsgqOltService {
       const name = asTxt(vbs[1]);
       const fw = asTxt(vbs[2]);
       const ticks = vbs[3] && vbs[3].value != null ? parseInt(vbs[3].value, 10) : NaN;
+      const cpu = this._snmpNum(vbs[5]);
+      const temp = this._pickTemp([this._snmpNum(vbs[6]), this._snmpNum(vbs[7])]);
+      let hw = null;
+      try { hw = await this._readCliHardware(); } catch (e) { hw = null; }
+      if (!hw) {
+        const snmpHw = asTxt(vbs[4]);
+        if (snmpHw && snmpHw.length <= 32 && /\d/.test(snmpHw)) hw = snmpHw;
+      }
       this.closeSession();
       let uptime = null;
       if (Number.isFinite(ticks)) {
@@ -719,10 +791,10 @@ class HsgqOltService {
       return {
         model: desc || name || this.name,
         version: fw || null,
-        hw_version: null,
+        hw_version: hw,
         uptime,
-        cpu_percent: null,
-        temperature_c: null,
+        cpu_percent: cpu != null && cpu >= 0 && cpu <= 100 ? cpu : null,
+        temperature_c: temp,
         raw: desc,
       };
     } catch (err) {
