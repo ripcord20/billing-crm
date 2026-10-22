@@ -761,15 +761,15 @@
 </aside>
 
 <style>
-.sidebar-footer{padding:0;border-top:1px solid #f0f4ff;background:#fff;}
-.sidebar-profile{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff;}
+.sidebar-footer{padding:0;border-top:1px solid #e6b000;background:#f5c400;}
+.sidebar-profile{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f5c400;}
 .profile-avatar-wrap{position:relative;flex-shrink:0;}
 .profile-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1a6ef5,#0047cc);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800;letter-spacing:-.5px;border:2.5px solid rgba(255,255,255,.15);box-shadow:0 0 0 2.5px #1a6ef5,0 3px 10px rgba(26,110,245,.45);transition:box-shadow .2s;}
 .profile-avatar:hover{box-shadow:0 0 0 2.5px #1a6ef5,0 4px 16px rgba(26,110,245,.6);}
 .profile-avatar-wrap::after{content:'';position:absolute;bottom:1px;right:1px;width:9px;height:9px;border-radius:50%;background:#22c55e;border:2px solid #fff;}
 .profile-info{flex:1;min-width:0;}
-.profile-name{font-size:12.5px;font-weight:700;color:#0d1b3e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;}
-.profile-role{font-size:10.5px;color:#94a3b8;text-transform:capitalize;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.profile-name{font-size:12.5px;font-weight:700;color:#1a1408;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;}
+.profile-role{font-size:10.5px;color:#3f3214;text-transform:capitalize;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .profile-logout-btn{margin-left:auto;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:8px;color:#94a3b8;transition:all .15s;flex-shrink:0;text-decoration:none;}
 .profile-logout-btn:hover{background:rgba(245,54,92,.12);color:#f5365c;}
 
@@ -803,6 +803,53 @@
 .nav-sub-dot{
   width:5px;height:5px;border-radius:50%;background:#cbd5e1;
   flex-shrink:0;transition:background .15s,transform .15s;
+}
+/* Kolom putih menelan tulisan. Kuning + teks gelap supaya terbaca di semua modul. */
+.sidebar-footer,
+.sidebar-profile{
+  background:#f5c400 !important;
+  border-top-color:#e6b000 !important;
+}
+.sidebar-footer .profile-name,
+.sidebar-footer .profile-role,
+.sidebar-footer span{
+  color:#1a1408 !important;
+  -webkit-text-fill-color:#1a1408 !important;
+}
+.sidebar .nav-item:hover:not(.active),
+.sidebar .nav-item:focus:not(.active),
+.sidebar button.nav-group-toggle:hover,
+.sidebar button.nav-group-toggle:focus{
+  background:#f5c400 !important;
+  color:#1a1408 !important;
+  -webkit-text-fill-color:#1a1408 !important;
+}
+.sidebar .nav-item:hover:not(.active) .nav-icon,
+.sidebar .nav-item:hover:not(.active) span,
+.sidebar button.nav-group-toggle:hover .nav-icon,
+.sidebar button.nav-group-toggle:hover .nav-chev,
+.sidebar button.nav-group-toggle:hover span,
+.sidebar button.nav-group-toggle:focus .nav-icon,
+.sidebar button.nav-group-toggle:focus .nav-chev,
+.sidebar button.nav-group-toggle:focus span{
+  color:#1a1408 !important;
+  -webkit-text-fill-color:#1a1408 !important;
+}
+.sidebar button.nav-group-toggle{
+  -webkit-appearance:none;
+  appearance:none;
+  background:transparent;
+}
+.sidebar .nav-group.open > .nav-group-toggle{
+  background:#f5c400 !important;
+  color:#1a1408 !important;
+  -webkit-text-fill-color:#1a1408 !important;
+}
+.sidebar .nav-group.open > .nav-group-toggle .nav-icon,
+.sidebar .nav-group.open > .nav-group-toggle .nav-chev,
+.sidebar .nav-group.open > .nav-group-toggle span{
+  color:#1a1408 !important;
+  -webkit-text-fill-color:#1a1408 !important;
 }
 </style>
 
