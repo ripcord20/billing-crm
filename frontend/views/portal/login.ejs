@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#1e40af">
+  <link rel="manifest" href="/portal-manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Pelanggan">
+  <link rel="apple-touch-icon" href="/img/portal/icon-192.png">
   <title>Customer Portal — Login</title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -295,6 +300,13 @@
       line-height:1.55;text-align:center;
     }
     .hint strong{color:#1e3a8a;font-weight:700;}
+    .install-app{margin-top:14px;text-align:center;}
+    .install-btn{
+      width:100%;background:#eff6ff;color:#1e3a8a;
+      border:1.5px solid #bfdbfe;padding:12px 14px;border-radius:14px;
+      font-size:13.5px;font-weight:700;font-family:inherit;cursor:pointer;
+    }
+    .install-hint{margin-top:8px;font-size:11.5px;color:#1e40af;line-height:1.5;}
 
     /* Help footer */
     .help-footer{
@@ -448,6 +460,11 @@
       Gunakan ID Pelanggan dan nomor HP yang terdaftar sebagai password.
     </div>
 
+    <div class="install-app" id="installApp" hidden>
+      <button type="button" class="install-btn" id="btnInstallApp">Pasang aplikasi di layar utama</button>
+      <p class="install-hint" id="installHint" hidden></p>
+    </div>
+
     <div class="help-footer">
       <span class="help-txt">Butuh bantuan?</span>
       <a href="javascript:void(0)" class="help-btn" onclick="contactCS()">
@@ -574,6 +591,39 @@ document.getElementById('inputCID').addEventListener('keydown', function(e){
 document.getElementById('inputPW').addEventListener('keydown', function(e){
   if(e.key === 'Enter') doLogin();
 });
+
+(function initInstallApp(){
+  var box = document.getElementById('installApp');
+  var hint = document.getElementById('installHint');
+  var btn = document.getElementById('btnInstallApp');
+  if (!box || !btn) return;
+  var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  if (standalone) return;
+  box.hidden = false;
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw-portal.js', { scope: '/portal' }).catch(function(){});
+  }
+  var deferred = null;
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferred = e;
+  });
+  btn.addEventListener('click', function(){
+    if (deferred) {
+      deferred.prompt();
+      deferred.userChoice.then(function(choice){
+        deferred = null;
+        if (choice && choice.outcome === 'accepted') box.hidden = true;
+      }).catch(function(){});
+      return;
+    }
+    var ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    hint.hidden = false;
+    hint.textContent = ios
+      ? 'Di Safari: ketuk Bagikan, lalu Tambah ke Layar Utama.'
+      : 'Buka halaman ini di Chrome. Ketuk menu, lalu Pasang aplikasi atau Tambah ke Layar Utama.';
+  });
+})();
 
 async function doLogin(){
   var cid = document.getElementById('inputCID').value.trim();

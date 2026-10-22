@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#2563eb">
+  <link rel="manifest" href="/portal-manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Pelanggan">
+  <link rel="apple-touch-icon" href="/img/portal/icon-192.png">
   <title>Customer Portal</title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
@@ -3263,6 +3268,9 @@ fillProfil = function() {
 };
 
 document.addEventListener('DOMContentLoaded', loadAll);
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw-portal.js', { scope: '/portal' }).catch(function(){});
+}
 </script>
 </body>
 </html>

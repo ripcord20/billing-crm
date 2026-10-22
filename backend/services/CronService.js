@@ -1378,8 +1378,12 @@ class CronService {
             '{link_invoice}':        linkInvoice,
             '{link_bayar_permanen}': linkPermanen,
             '{link_permanen}':       linkPermanen,
+            '{link_aplikasi}':       require('../utils/templateHelper').buildPortalLink(),
+            '{link_apk}':            require('../utils/templateHelper').buildAndroidAppLink(),
           };
-          const msg = Object.keys(vars).reduce((acc, k) => acc.split(k).join(vars[k]), raw);
+          const msg = require('../utils/templateHelper').withPortalAppLink(
+            Object.keys(vars).reduce((acc, k) => acc.split(k).join(vars[k]), raw)
+          );
 
           // ── KANAL 1: WhatsApp (hanya kalau session terhubung & ada nomor) ──
           if (sessionConnected && cust.phone) {

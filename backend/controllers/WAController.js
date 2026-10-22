@@ -1053,12 +1053,18 @@ async function _sendInvoiceReminders(session_id, daysBefore, io) {
         '{status}':           inv.status === 'overdue' ? '⚠️ JATUH TEMPO' : 'segera jatuh tempo',
         '{perusahaan}':       companyName,
         '{nohp}':             c.phone || '',
-        '{phone}':            c.phone || ''   // alias backward-compat
+        '{phone}':            c.phone || '',  // alias backward-compat
+        '{link_aplikasi}':    require('../utils/templateHelper').buildPortalLink(),
+        '{link_apk}':         require('../utils/templateHelper').buildAndroidAppLink()
       };
-      msg = Object.keys(vars).reduce((acc, k) => acc.split(k).join(vars[k]), raw);
+      msg = require('../utils/templateHelper').withPortalAppLink(
+        Object.keys(vars).reduce((acc, k) => acc.split(k).join(vars[k]), raw)
+      );
       tpl.update({ usage_count: (tpl.usage_count || 0) + 1 }).catch(()=>{});
     } else {
-      msg = `Halo *${c.name}*, tagihan internet Anda *${inv.invoice_number}* senilai *${jumlahStr}* ${inv.status === 'overdue' ? 'sudah jatuh tempo' : `jatuh tempo ${jatuhTempoStr}`}. Mohon segera lakukan pembayaran. Terima kasih. — ${companyName}`;
+      msg = require('../utils/templateHelper').withPortalAppLink(
+        `Halo *${c.name}*, tagihan internet Anda *${inv.invoice_number}* senilai *${jumlahStr}* ${inv.status === 'overdue' ? 'sudah jatuh tempo' : `jatuh tempo ${jatuhTempoStr}`}. Mohon segera lakukan pembayaran. Terima kasih. — ${companyName}`
+      );
     }
 
     try {
