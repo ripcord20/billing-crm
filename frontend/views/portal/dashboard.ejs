@@ -1111,7 +1111,7 @@ var currentPanel = 'home';
 
 // Fallback kontak CS — dipakai kalau settings company_* di DB masih kosong.
 // Ganti nilainya sesuai kontak CS operasional Anda.
-var DEFAULT_CS_WA    = '081292266620';
+var DEFAULT_CS_WA    = '6285869306375';
 var DEFAULT_CS_PHONE = '';
 var DEFAULT_CS_EMAIL = '';
 
@@ -2787,7 +2787,7 @@ function normalizeWa(num) {
 
 function openContactModal() {
   // Priority: settings dari DB → fallback hardcoded
-  var rawWa    = (META && META.company_wa)    || DEFAULT_CS_WA;
+  var rawWa    = '6285869306375';
   var rawPhone = (META && META.company_phone) || DEFAULT_CS_PHONE;
   var rawEmail = (META && META.company_email) || DEFAULT_CS_EMAIL;
 
