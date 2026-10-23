@@ -17,7 +17,10 @@ const {
   mergeUsage,
   toApiUser,
   collisionError,
-  normalizeUserPayload
+  normalizeUserPayload,
+  normalizeVoucherCharset,
+  clampVoucherLength,
+  randomVoucherToken
 } = require('../utils/hotspotRadius');
 const HotspotRadiusStore = require('../services/HotspotRadiusStore');
 const HotspotService = require('../services/HotspotService');
@@ -76,6 +79,15 @@ assert.strictEqual(canEnableHotspotRadius([{ service: 'ppp' }]), true);
 assert.strictEqual(canEnableHotspotRadius([{ service: 'login' }]), false);
 assert.strictEqual(canEnableHotspotRadius([{ service: 'ppp', comment: 'BILLINGRADIUS' }]), false);
 assert.strictEqual(canEnableHotspotRadius([]), false);
+
+assert.strictEqual(normalizeVoucherCharset('az'), 'az');
+assert.strictEqual(normalizeVoucherCharset('nope'), 'azAZ09');
+assert.strictEqual(clampVoucherLength(3, 'az'), 6);
+assert.strictEqual(clampVoucherLength(12, 'az'), 10);
+assert.strictEqual(clampVoucherLength(6, '09'), 9);
+assert.strictEqual(randomVoucherToken(6, 'az', () => 0), 'aaaaaa');
+assert.ok(/^[0-9]{9}$/.test(randomVoucherToken(4, '09')));
+assert.ok(/^[A-Z]{6}$/.test(randomVoucherToken(6, 'AZ', () => 0)));
 
 const usage = mergeUsage({ bytesIn: 10, bytesOut: 2, uptimeSec: 30 }, { bytesIn: 50, bytesOut: 1, uptime: '1m' });
 assert.strictEqual(usage.bytesIn, 50);

@@ -5,6 +5,7 @@
 
 const HotspotService  = require('../services/HotspotService');
 const { getMikrotikInstanceByDevice } = require('../services/MikrotikService');
+const { normalizeVoucherCharset, clampVoucherLength } = require('../utils/hotspotRadius');
 const logger          = require('../utils/logger');
 const fs              = require('fs');
 const path            = require('path');
@@ -349,7 +350,7 @@ const HotspotController = {
   // ─── GENERATE VOUCHERS ────────────────────────────────────
   async generateVouchers(req, res) {
     try {
-      const { count, profile, server, prefix, passwordLength,
+      const { count, profile, server, prefix, passwordLength, charset,
               comment, limitUptime, limitBytesTotal, soldTo } = req.body;
 
       if (!count || count < 1 || count > 5000)
@@ -376,13 +377,16 @@ const HotspotController = {
       }
       const t0 = Date.now();
 
+      const charsetCode = normalizeVoucherCharset(charset);
+      const charLen = clampVoucherLength(passwordLength, charsetCode);
       const svc = await getService(req);
       const result = await svc.generateVouchers({
         count: parseInt(count),
         profile: profileName,
         server:  server  || 'all',
         prefix:  prefix  || 'vc',
-        passwordLength: parseInt(passwordLength) || 8,
+        charset: charsetCode,
+        passwordLength: charLen,
         comment,
         limitUptime: finalLimitUptime,
         limitBytesTotal: parseInt(limitBytesTotal) || 0,

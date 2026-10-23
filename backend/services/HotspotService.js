@@ -15,7 +15,9 @@ const {
   shouldAddHotspotToRadiusClient,
   canEnableHotspotRadius,
   mergeUsage,
-  toApiUser
+  toApiUser,
+  normalizeVoucherCharset,
+  randomVoucherToken
 } = require('../utils/hotspotRadius');
 
 const _radiusReadyHosts = new Set();
@@ -510,15 +512,15 @@ class HotspotService {
   async generateVouchers(options) {
     const {
       count = 10, profile = 'default', server = 'all',
-      prefix = 'vc', passwordLength = 8, comment = '',
+      prefix = 'vc', passwordLength = 6, charset = 'azAZ09', comment = '',
       limitUptime = '', limitBytesTotal = 0,
       price = 0, soldTo = '',
     } = options;
 
     await this._prepareRadius();
 
-    const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
-    const genRandom = (len) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    const charsetCode = normalizeVoucherCharset(charset);
+    const genRandom = (len) => randomVoucherToken(len, charsetCode);
 
     const existing = new Set(await this.radiusStore.listUsernames());
     const items = [];
