@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="stylesheet" href="/css/hotspot-palette.css?v=hs1">
+  <link rel="stylesheet" href="/css/hotspot-palette.css?v=hs3">
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/app.js"></script>
@@ -50,7 +50,7 @@
     body { font-family: var(--f); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
 
     /* ══ LAYOUT ════════════════════════════════════════════════ */
-    .hs-page { padding: 24px; max-width: none; }
+    .hs-page { padding: 24px; max-width: 100%; min-width: 0; overflow-x: hidden; }
     @media (max-width: 768px) { .hs-page { padding: 16px; } }
 
     /* ══ HEADER ════════════════════════════════════════════════ */
@@ -276,21 +276,35 @@
     /* ── GENERATE PANEL — refined layout ────────────────────────── */
     .gen-grid {
       display: grid;
-      grid-template-columns: 130px 1.5fr 1fr 100px 1fr;  /* Jumlah | Profile | Server | Prefix | Limit */
+      grid-template-columns: 110px minmax(140px,1.4fr) minmax(140px,1.3fr) minmax(100px,1fr) 90px minmax(150px,1.3fr) 90px;
       gap: 14px; align-items: start; margin-bottom: 16px;
     }
-    @media (max-width: 1200px) {
+    .gf-jumlah  { grid-area: auto; }
+    .gf-profile { grid-area: auto; }
+    .gf-samepw  { grid-area: auto; }
+    .gf-server  { grid-area: auto; }
+    .gf-prefix  { grid-area: auto; }
+    .gf-limit   { grid-area: auto; }
+    .gf-charset { grid-area: auto; }
+    .gf-charlen { grid-area: auto; }
+    .gf-preview { grid-column: 1 / -1; }
+    @media (max-width: 1280px) {
       .gen-grid {
-        grid-template-columns: 110px 1fr 1fr;
+        grid-template-columns: 110px 1fr 1fr 1fr;
         grid-template-areas:
-          "jumlah profile profile"
-          "server prefix  limit";
+          "jumlah  profile profile samepw"
+          "server  prefix  charset length"
+          "limit   preview preview preview";
       }
       .gf-jumlah  { grid-area: jumlah; }
       .gf-profile { grid-area: profile; }
+      .gf-samepw  { grid-area: samepw; }
       .gf-server  { grid-area: server; }
       .gf-prefix  { grid-area: prefix; }
       .gf-limit   { grid-area: limit; }
+      .gf-charset { grid-area: charset; }
+      .gf-charlen { grid-area: length; }
+      .gf-preview { grid-area: preview; }
     }
     @media (max-width: 720px) {
       .gen-grid {
@@ -298,14 +312,34 @@
         grid-template-areas:
           "jumlah  server"
           "profile profile"
-          "prefix  limit";
+          "samepw  samepw"
+          "prefix  charset"
+          "limit   length"
+          "preview preview";
       }
     }
     @media (max-width: 460px) {
       .gen-grid {
         grid-template-columns: 1fr;
-        grid-template-areas: "jumlah" "profile" "server" "prefix" "limit";
+        grid-template-areas: "jumlah" "profile" "samepw" "server" "prefix" "charset" "length" "limit" "preview";
       }
+    }
+    .gen-hint-link {
+      background: none; border: none; padding: 0; margin: 0;
+      color: var(--blue); font-weight: 700; font-size: inherit;
+      font-family: inherit; cursor: pointer; text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .gen-preview-box {
+      background: var(--surface2); border: 1px dashed var(--border);
+      border-radius: var(--rc-sm); padding: 10px 12px;
+      font-size: 12px; line-height: 1.5; color: var(--text2);
+      word-break: break-word;
+    }
+    .gen-preview-box b { color: var(--text); font-family: var(--fm); font-weight: 700; }
+    .price-flash {
+      outline: 2px solid var(--blue) !important;
+      box-shadow: 0 0 0 4px rgba(0,113,227,.25);
     }
 
     .gen-field { display: flex; flex-direction: column; min-width: 0; }
@@ -509,6 +543,15 @@
     tbody tr { transition: background .1s; }
     tbody tr:hover td { background: #fafbff; }
     .td-mono { font-family: var(--fm); font-size: 12px; color: var(--text2); }
+    .u-stack {
+      display: flex; flex-direction: column; align-items: flex-start;
+      gap: 3px; min-width: 0; flex: 1;
+    }
+    .u-name { font-weight: 600; font-size: 13px; word-break: break-word; }
+    .u-meta {
+      font-size: 12px; font-weight: 500; color: var(--text2); margin-top: 0;
+      line-height: 1.4; white-space: normal; word-break: break-word;
+    }
     input[type=checkbox].chk {
       width: 15px; height: 15px; cursor: pointer;
       accent-color: var(--blue); border-radius: 4px;
@@ -868,21 +911,26 @@
     .badge-soft.bs-red    { background: var(--red-l);   color: var(--red); }
     .badge-soft.bs-blue   { background: var(--blue-l);  color: var(--blue); }
 
-    /* ══ MOBILE: tab-list horizontal scroll ════════════════════════ */
-    /* Kita TIDAK pakai bottom nav khusus hotspot karena partial topbar
-     * sudah menyediakan global .bottom-nav (Dashboard/Customers/dll).
-     * Tab-list horizontal sudah scroll-able (overflow-x:auto) di CSS dasar.
-     * Yang perlu ditambah hanya hint visual + ruang scroll. */
+    /* ══ MOBILE: tab wrap + tabel kartu, tanpa geser horizontal ══ */
     @media (max-width: 768px) {
       .tab-list {
         width: 100%;
         max-width: 100%;
         padding: 6px;
-        gap: 4px;
+        gap: 6px;
+        flex-wrap: wrap;
+        overflow-x: hidden;
+        box-sizing: border-box;
       }
       .tab-list .tab-item {
-        padding: 8px 14px;
-        font-size: 12.5px;
+        padding: 8px 10px;
+        font-size: 12px;
+        flex: 1 1 calc(50% - 8px);
+        justify-content: center;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       /* Modal: full-screen sheet style sudah ada */
       .modal-overlay { padding-bottom: env(safe-area-inset-bottom); }
@@ -925,12 +973,70 @@
     }
 
     /* ══ MOBILE TABLE POLISH ════════════════════════════════════ */
-    @media (max-width: 640px) {
-      /* Buat tap target lebih besar di tabel */
-      .tbl-scroll table td,
-      .tbl-scroll table th {
-        padding: 11px 10px;
+    @media (max-width: 768px) {
+      .card, .tbl-scroll { max-width: 100%; }
+      .tbl-scroll { overflow-x: hidden; }
+      .tbl-scroll table,
+      .tbl-scroll thead,
+      .tbl-scroll tbody,
+      .tbl-scroll th,
+      .tbl-scroll td,
+      .tbl-scroll tr { display: block; width: 100%; box-sizing: border-box; }
+      .tbl-scroll thead { display: none; }
+      .tbl-scroll tbody tr {
+        margin: 0 10px 12px;
+        width: calc(100% - 20px);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--surface);
       }
+      .tbl-scroll tbody td {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 9px 12px;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        border-bottom: 1px solid var(--border2);
+      }
+      .tbl-scroll tbody td:last-child { border-bottom: none; }
+      .tbl-scroll tbody td::before {
+        content: attr(data-label);
+        flex: 0 0 38%;
+        max-width: 42%;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .4px;
+        text-transform: uppercase;
+        color: var(--text2);
+        padding-top: 2px;
+      }
+      .tbl-scroll tbody td[data-label=""]::before,
+      .tbl-scroll tbody td:not([data-label])::before { display: none; }
+      .tbl-scroll tbody td > * { min-width: 0; }
+      .tbl-scroll tbody td .td-mono {
+        white-space: normal;
+        word-break: break-word;
+      }
+      .tbl-scroll tbody td[data-label="Aksi"] > div,
+      .tbl-scroll tbody td[data-label="Aksi"] {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .card-hdr { flex-direction: column; align-items: stretch; }
+      .card-hdr-r { width: 100%; }
+      .search-box { flex: 1 1 100%; min-width: 0; }
+      .search-box input { width: 100% !important; min-width: 0 !important; }
+      .filter-select { max-width: 100%; width: 100%; }
+      .gen-actions { width: 100%; }
+      .btn-generate, .btn-print-last { width: 100%; justify-content: center; }
+      .print-dropdown { width: 100%; }
+      .print-dropdown .btn-print-last { width: 100%; }
+    }
+    @media (max-width: 640px) {
       .btn-xs {
         min-height: 32px; padding: 6px 10px; font-size: 11.5px;
       }
@@ -1209,20 +1315,51 @@
           <p class="gen-hint" id="g-profile-info">Pilih paket untuk lihat harga &amp; limit waktu</p>
         </div>
 
+        <div class="gen-field gf-samepw">
+          <label>Username &amp; Password <span style="color:var(--red)">*</span></label>
+          <select id="g-samepw" onchange="updateGenPreview()">
+            <option value="same" selected>Sama (satu kode login)</option>
+            <option value="diff">Beda (user ≠ password)</option>
+          </select>
+        </div>
+
         <div class="gen-field gf-server">
           <label>Server</label>
           <select id="g-server"><option value="all">all</option></select>
         </div>
 
         <div class="gen-field gf-prefix">
-          <label>Prefix</label>
-          <input type="text" id="g-prefix" value="vc" placeholder="vc" maxlength="8">
+          <label>Prefix username</label>
+          <input type="text" id="g-prefix" value="vc" placeholder="kosong = tanpa awalan" maxlength="8" oninput="this.value=this.value.replace(/[^a-zA-Z0-9]/g,'').slice(0,8);updateGenPreview()">
+          <p class="gen-hint">Hanya awalan. Kode unik ditambah di belakang.</p>
         </div>
 
         <div class="gen-field gf-limit">
           <label>Limit Waktu</label>
           <input type="text" id="g-uptime" placeholder="auto / 1d / 8h">
           <p class="gen-hint" id="g-uptime-info">Auto-fill dari profile. Kosong = unlimited</p>
+        </div>
+
+        <div class="gen-field gf-charset">
+          <label>Tipe Karakter <span style="color:var(--red)">*</span></label>
+          <select id="g-charset" onchange="onGenCharsetChange()">
+            <option value="az">a-z (huruf kecil)</option>
+            <option value="az09">a-z0-9 (huruf kecil + angka)</option>
+            <option value="AZ">A-Z (huruf besar)</option>
+            <option value="AZ09">A-Z0-9 (huruf besar + angka)</option>
+            <option value="azAZ09" selected>a-zA-Z0-9 (huruf + angka)</option>
+            <option value="09">0-9 (angka saja - 9 digit)</option>
+          </select>
+        </div>
+
+        <div class="gen-field gf-charlen">
+          <label>Panjang kode <span style="color:var(--red)">*</span></label>
+          <input type="number" id="g-charlen" value="6" min="6" max="10" oninput="onGenCharsetChange()">
+          <p class="gen-hint" id="g-charlen-info">Minimal 6, maksimal 10 (bagian unik)</p>
+        </div>
+
+        <div class="gf-preview">
+          <div class="gen-preview-box" id="g-preview">Contoh voucher akan muncul di sini</div>
         </div>
       </div>
 
@@ -1971,6 +2108,8 @@ let activeTab='users';
    BOOT
 ═══════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
+  onGenCharsetChange();
+  updateGenPreview();
   // Init MikroTik selector — TUNGGU selesai sebelum load data agar
   // pertama kali fetch sudah pakai device_id yang benar.
   // onReady dipanggil setelah list device ter-fetch & activeId di localStorage di-set.
@@ -2307,24 +2446,19 @@ function renderDisabledTable() {
         : `<span style="color:var(--text3)">∞</span>`;
     }
     h += `<tr>
-      <td><input type="checkbox" class="chk chk-dis" value="${x(u.id)}" onchange="updDelDisBtn()"></td>
-      <td>
-        <div style="font-weight:600">${x(u.name)}</div>
-        ${u.comment ? `<div style="font-size:11px;color:var(--text2)">${x(u.comment)}</div>` : ''}
-      </td>
-      <td><span class="badge b-purple">${x(u.profile)}</span></td>
-      <td><span style="font-size:12px;color:var(--text2)">${x(u.server)}</span></td>
-      <td>${limitCell}</td>
-      <td style="font-size:12px;color:var(--text2)">${x(u.comment) || '—'}</td>
-      <td>
-        <div style="display:flex;gap:5px">
+      ${hsTd('', `<input type="checkbox" class="chk chk-dis" value="${x(u.id)}" onchange="updDelDisBtn()">`)}
+      ${hsTd('Username', `<div class="u-stack"><div class="u-name">${x(u.name)}</div>${u.comment ? `<div class="u-meta">${x(u.comment)}</div>` : ''}</div>`)}
+      ${hsTd('Profile', `<span class="badge b-purple">${x(u.profile)}</span>`)}
+      ${hsTd('Server', `<span class="td-mono">${x(u.server)}</span>`)}
+      ${hsTd('Limit Waktu', limitCell)}
+      ${hsTd('Komentar', `<span class="u-meta">${x(u.comment) || '—'}</span>`)}
+      ${hsTd('Aksi', `<div style="display:flex;gap:5px;flex-wrap:wrap">
           <button class="btn btn-success btn-xs" onclick="reactivateUser('${x(u.id)}','${x(u.name)}')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="20,6 9,17 4,12"/></svg>
             Aktifkan
           </button>
           <button class="btn btn-danger btn-xs" onclick="delUser('${x(u.id)}','${x(u.name)}')">Hapus</button>
-        </div>
-      </td>
+        </div>`)}
     </tr>`;
   });
   h += '</tbody></table>';
@@ -2616,15 +2750,12 @@ async function loadServersTab() {
       ? '<span class="badge b-red"><span class="bdot"></span>Disabled</span>'
       : '<span class="badge b-green"><span class="bdot"></span>Running</span>';
     h += `<tr>
-      <td>
-        <div style="font-weight:600;font-size:13px">${x(s.name)}</div>
-        <div style="font-size:11px;color:var(--text2)">${x(s.addressPool) || '—'}</div>
-      </td>
-      <td><span class="td-mono">${x(s.interface)}</span></td>
-      <td><span class="td-mono">${x(s.addressPool) || '—'}</span></td>
-      <td><span class="badge b-blue">${x(s.profile)}</span></td>
-      <td style="font-size:12px;color:var(--text2)">${x(s.idleTimeout) || '—'}</td>
-      <td>${statusBadge}</td>
+      ${hsTd('Nama', `<div class="u-stack"><div class="u-name">${x(s.name)}</div><div class="u-meta">${x(s.addressPool) || '—'}</div></div>`)}
+      ${hsTd('Interface', `<span class="td-mono">${x(s.interface)}</span>`)}
+      ${hsTd('Address Pool', `<span class="td-mono">${x(s.addressPool) || '—'}</span>`)}
+      ${hsTd('Profile', `<span class="badge b-blue">${x(s.profile)}</span>`)}
+      ${hsTd('Idle Timeout', x(s.idleTimeout) || '—')}
+      ${hsTd('Status', statusBadge)}
     </tr>`;
   });
   h += '</tbody></table>';
@@ -2674,7 +2805,7 @@ function renderUsersTable() {
   slice.forEach(u => {
     const used = u.bytesIn + u.bytesOut;
     const limitInfo = u.limitBytesTotal > 0
-      ? `<div style="font-size:10.5px;color:var(--text3);margin-top:2px;font-family:var(--fm)">${fmtB(used)} / ${fmtB(u.limitBytesTotal)}</div>`
+      ? `<div class="u-meta" style="font-family:var(--fm)">${fmtB(used)} / ${fmtB(u.limitBytesTotal)}</div>`
       : '';
     // Limit cell: pakai field user; kalau kosong, fallback ke profile config (pricing)
     let limitCell;
@@ -2687,30 +2818,22 @@ function renderUsersTable() {
         : `<span style="color:var(--text3)">∞</span>`;
     }
     h += `<tr>
-      <td><input type="checkbox" class="chk chk-u" value="${x(u.id)}" onchange="updSelBtn()"></td>
-      <td>
-        <div style="font-weight:600;font-size:13px">${x(u.name)}</div>
-        ${u.comment ? `<div style="font-size:11px;color:var(--text2)">${x(u.comment)}</div>` : ''}
-      </td>
-      <td><span class="badge b-purple">${x(u.profile)}</span></td>
-      <td><span style="font-size:12px;color:var(--text2)">${x(u.server)}</span></td>
-      <td>
-        ${limitCell}
-        ${limitInfo}
-      </td>
-      <td><span class="td-mono">${u.uptime||'0s'}</span></td>
-      <td>${u.disabled
+      ${hsTd('', `<input type="checkbox" class="chk chk-u" value="${x(u.id)}" onchange="updSelBtn()">`)}
+      ${hsTd('Username', `<div class="u-stack"><div class="u-name">${x(u.name)}</div>${u.comment ? `<div class="u-meta">${x(u.comment)}</div>` : ''}</div>`)}
+      ${hsTd('Profile', `<span class="badge b-purple">${x(u.profile)}</span>`)}
+      ${hsTd('Server', `<span class="td-mono">${x(u.server)}</span>`)}
+      ${hsTd('Limit', `<div class="u-stack">${limitCell}${limitInfo}</div>`)}
+      ${hsTd('Uptime', `<span class="td-mono">${u.uptime||'0s'}</span>`)}
+      ${hsTd('Status', u.disabled
         ? '<span class="badge b-red"><span class="bdot"></span>Off</span>'
-        : '<span class="badge b-green"><span class="bdot"></span>On</span>'}</td>
-      <td>
-        <div style="display:flex;gap:5px">
+        : '<span class="badge b-green"><span class="bdot"></span>On</span>')}
+      ${hsTd('Aksi', `<div style="display:flex;gap:5px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-xs" onclick='editUser(${JSON.stringify(u).replace(/'/g,"&#39;")})'>Edit</button>
           ${u.disabled
             ? `<button class="btn btn-success btn-xs" onclick="toggleUser('${u.id}',false)">Aktifkan</button>`
             : `<button class="btn btn-ghost btn-xs" onclick="toggleUser('${u.id}',true)" style="color:var(--amber)">Nonaktifkan</button>`}
           <button class="btn btn-danger btn-xs" onclick="delUser('${u.id}','${x(u.name)}')">Hapus</button>
-        </div>
-      </td>
+        </div>`)}
     </tr>`;
   });
   h += '</tbody></table>';
@@ -2778,7 +2901,7 @@ function onGenProfileChange() {
   if (profInfo) {
     const bits = [];
     if (entry.price > 0) bits.push(`<span style="color:var(--green);font-weight:600">Rp ${entry.price.toLocaleString('id-ID')}</span>`);
-    else                 bits.push('<span style="color:var(--amber);font-weight:600">Harga belum di-set</span> <a href="javascript:void(0)" onclick="switchTab(\'profiles\')" style="color:var(--blue);font-weight:600;text-decoration:none;">Atur harga →</a>');
+    else                 bits.push('<span style="color:var(--amber);font-weight:600">Harga belum di-set</span> <button type="button" class="gen-hint-link" onclick="goSetPrice(event)">Atur harga →</button>');
     if (lim) bits.push(`<span style="color:var(--blue)">⏱ ${x(lim)}</span>`);
     profInfo.innerHTML = bits.join(' · ');
   }
@@ -2802,6 +2925,100 @@ function onGenProfileChange() {
       ? `Profile default: ${x(lim)}`
       : 'Kosong = unlimited (tidak ada batas waktu)';
   }
+}
+
+function onGenCharsetChange() {
+  const sel = document.getElementById('g-charset');
+  const len = document.getElementById('g-charlen');
+  const info = document.getElementById('g-charlen-info');
+  if (!sel || !len) return;
+  const digitsOnly = sel.value === '09';
+  if (digitsOnly) {
+    len.value = 9;
+    len.min = 9;
+    len.max = 9;
+    len.readOnly = true;
+    if (info) info.textContent = 'Angka saja selalu 9 digit';
+    updateGenPreview();
+    return;
+  }
+  len.readOnly = false;
+  len.min = 6;
+  len.max = 10;
+  let n = parseInt(len.value, 10);
+  if (!Number.isFinite(n) || n < 6) n = 6;
+  if (n > 10) n = 10;
+  len.value = n;
+  if (info) info.textContent = 'Minimal 6, maksimal 10 (bagian unik)';
+  updateGenPreview();
+}
+
+const GEN_CHARSETS = {
+  az: 'abcdefghijklmnopqrstuvwxyz',
+  az09: 'abcdefghijklmnopqrstuvwxyz0123456789',
+  AZ: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  AZ09: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+  azAZ09: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+  '09': '0123456789'
+};
+
+function previewVoucherToken(len, charset) {
+  const chars = GEN_CHARSETS[charset] || GEN_CHARSETS.azAZ09;
+  const n = charset === '09' ? 9 : Math.max(6, Math.min(10, parseInt(len, 10) || 6));
+  let s = '';
+  for (let i = 0; i < n; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+function updateGenPreview() {
+  const box = document.getElementById('g-preview');
+  if (!box) return;
+  const rawPrefix = (document.getElementById('g-prefix')?.value || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8);
+  const charset = document.getElementById('g-charset')?.value || 'azAZ09';
+  const len = document.getElementById('g-charlen')?.value;
+  const same = (document.getElementById('g-samepw')?.value || 'same') === 'same';
+  const samples = [0, 1, 2].map(() => rawPrefix + previewVoucherToken(len, charset));
+  const uniq = [...new Set(samples)];
+  if (same) {
+    box.innerHTML = 'Tiap voucher <b>satu kode</b> (username = password): '
+      + uniq.map((u) => `<b>${x(u)}</b>`).join(' · ');
+  } else {
+    const pass = previewVoucherToken(len, charset);
+    box.innerHTML = 'Username unik, password beda. Contoh: user <b>' + x(uniq[0])
+      + '</b> / pass <b>' + x(pass) + '</b> · user <b>' + x(uniq[1] || uniq[0]) + '</b>';
+  }
+}
+
+async function goSetPrice(ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  const name = document.getElementById('g-profile')?.value || 'default';
+  switchTab('reports');
+  const tabBtn = document.querySelector('#tab-list .tab-item.active');
+  if (tabBtn && tabBtn.scrollIntoView) {
+    tabBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }
+  try {
+    if (typeof window.loadReportsTab === 'function') await window.loadReportsTab();
+  } catch (e) { /* editor mungkin belum siap */ }
+  const focusPrice = () => {
+    const list = document.getElementById('pricing-list');
+    const card = list && list.closest('.card');
+    if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const sel = (window.CSS && CSS.escape)
+      ? '#pricing-list input[data-profile="' + CSS.escape(name) + '"][data-field="price"]'
+      : '#pricing-list input[data-field="price"]';
+    const inp = document.querySelector(sel);
+    if (!inp) {
+      toast('Buka tab Laporan → isi Harga per Profile, lalu Simpan Harga', 'info');
+      return;
+    }
+    inp.focus();
+    inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    inp.classList.add('price-flash');
+    setTimeout(() => inp.classList.remove('price-flash'), 1800);
+  };
+  setTimeout(focusPrice, 80);
+  setTimeout(focusPrice, 400);
 }
 
 // Live summary preview di bawah generate form — total voucher, harga/voucher,
@@ -3015,7 +3232,7 @@ async function generateVouchers() {
 
   // Untuk batch besar, info toast supaya user yakin sedang berjalan
   if (count >= 50) {
-    toast(`Membuat ${count} voucher di MikroTik, mohon tunggu${estText}...`, 'info');
+    toast(`Membuat ${count} voucher, mohon tunggu${estText}...`, 'info');
   }
 
   const startTime = Date.now();
@@ -3023,10 +3240,12 @@ async function generateVouchers() {
     count,
     profile:document.getElementById('g-profile').value||'default',
     server:document.getElementById('g-server').value||'all',
-    prefix:document.getElementById('g-prefix').value||'vc',
+    prefix: (document.getElementById('g-prefix')?.value || '').trim(),
     limitUptime:document.getElementById('g-uptime').value,
     soldTo:(document.getElementById('g-soldto')?.value || '').trim(),
-    passwordLength:8,
+    charset: document.getElementById('g-charset')?.value || 'azAZ09',
+    passwordLength: parseInt(document.getElementById('g-charlen')?.value, 10) || 6,
+    samePassword: (document.getElementById('g-samepw')?.value || 'same') === 'same',
   }).catch(e => ({ success: false, message: e?.message || 'Network error' }));
 
   const elapsed = Math.round((Date.now() - startTime) / 1000);
@@ -3852,16 +4071,16 @@ function renderActive() {
       ? `<span class="badge b-purple">${x(s._profile)}</span>`
       : `<span style="color:var(--text3);font-size:11px">—</span>`;
     h+=`<tr>
-      <td><input type="checkbox" class="chk chk-a" value="${x(s.id)}" onchange="updDiscBtn()"></td>
-      <td><strong>${x(s.user)}</strong></td>
-      <td>${profCell}</td>
-      <td><span class="td-mono">${x(s.address)}</span></td>
-      <td><span class="td-mono" style="font-size:11px">${x(s.macAddress)}</span></td>
-      <td><span class="td-mono">${x(s.uptime)}</span></td>
-      <td style="font-size:12px">${fmtB(s.bytesIn)}</td>
-      <td style="font-size:12px">${fmtB(s.bytesOut)}</td>
-      <td style="font-size:12px;color:var(--text2)">${x(s.server)}</td>
-      <td><button class="btn btn-danger btn-xs" onclick="disconnectOne('${s.id}','${x(s.user)}')">Putus</button></td>
+      ${hsTd('', `<input type="checkbox" class="chk chk-a" value="${x(s.id)}" onchange="updDiscBtn()">`)}
+      ${hsTd('User', `<strong>${x(s.user)}</strong>`)}
+      ${hsTd('Profile', profCell)}
+      ${hsTd('IP', `<span class="td-mono">${x(s.address)}</span>`)}
+      ${hsTd('MAC', `<span class="td-mono" style="font-size:11px">${x(s.macAddress)}</span>`)}
+      ${hsTd('Uptime', `<span class="td-mono">${x(s.uptime)}</span>`)}
+      ${hsTd('Download', fmtB(s.bytesIn))}
+      ${hsTd('Upload', fmtB(s.bytesOut))}
+      ${hsTd('Server', `<span class="td-mono">${x(s.server)}</span>`)}
+      ${hsTd('Aksi', `<button class="btn btn-danger btn-xs" onclick="disconnectOne('${s.id}','${x(s.user)}')">Putus</button>`)}
     </tr>`;
   });
   h+='</tbody></table>';
@@ -3961,17 +4180,17 @@ async function loadUserProfiles() {
       ? `<span style="font-family:var(--fm);font-weight:600;color:var(--blue)">${x(entry.limitUptime)}</span>`
       : `<span style="color:var(--text3);font-size:11.5px">∞ unlimited</span>`;
     h+=`<tr>
-      <td><strong>${x(p.name)}</strong></td>
-      <td><span class="td-mono">${x(p.rateLimit)||'—'}</span></td>
-      <td style="text-align:center">${x(p.sharedUsers)}</td>
-      <td style="font-size:12px;color:var(--text2)">${x(p.sessionTimeout)||'<span style="color:var(--text3)">∞</span>'}</td>
-      <td style="font-size:12px;color:var(--text2)">${x(p.idleTimeout)||'<span style="color:var(--text3)">∞</span>'}</td>
-      <td>${limitCell}</td>
-      <td class="num-r">${priceCell}</td>
-      <td><div style="display:flex;gap:5px">
+      ${hsTd('Nama', `<strong>${x(p.name)}</strong>`)}
+      ${hsTd('Rate Limit', `<span class="td-mono">${x(p.rateLimit)||'—'}</span>`)}
+      ${hsTd('Shared', x(p.sharedUsers))}
+      ${hsTd('Session', p.sessionTimeout ? x(p.sessionTimeout) : '<span style="color:var(--text3)">∞</span>')}
+      ${hsTd('Idle', p.idleTimeout ? x(p.idleTimeout) : '<span style="color:var(--text3)">∞</span>')}
+      ${hsTd('Limit Voucher', limitCell)}
+      ${hsTd('Harga', priceCell, 'class="num-r"')}
+      ${hsTd('Aksi', `<div style="display:flex;gap:5px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-xs" onclick='editProfile(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Edit</button>
         <button class="btn btn-danger btn-xs" onclick="delProfile('${p.id}','${x(p.name)}')">Hapus</button>
-      </div></td>
+      </div>`)}
     </tr>`;
   });
   h+='</tbody></table>';
@@ -4107,12 +4326,12 @@ function renderHosts(){
   let h=`<table><thead><tr><th>MAC Address</th><th>IP Address</th><th>Server</th><th>Uptime</th><th>Authorized</th><th>Bypassed</th></tr></thead><tbody>`;
   filtHosts.forEach(h2=>{
     h+=`<tr>
-      <td><span class="td-mono">${x(h2.macAddress)}</span></td>
-      <td><span class="td-mono">${x(h2.address)}</span></td>
-      <td style="font-size:12px;color:var(--text2)">${x(h2.server)}</td>
-      <td><span class="td-mono">${x(h2.uptime)}</span></td>
-      <td>${h2.authorized?'<span class="badge b-green">Ya</span>':'<span class="badge b-gray">Tidak</span>'}</td>
-      <td>${h2.bypassed?'<span class="badge b-amber">Ya</span>':'<span class="badge b-gray">Tidak</span>'}</td>
+      ${hsTd('MAC', `<span class="td-mono">${x(h2.macAddress)}</span>`)}
+      ${hsTd('IP', `<span class="td-mono">${x(h2.address)}</span>`)}
+      ${hsTd('Server', `<span class="td-mono">${x(h2.server)}</span>`)}
+      ${hsTd('Uptime', `<span class="td-mono">${x(h2.uptime)}</span>`)}
+      ${hsTd('Authorized', h2.authorized?'<span class="badge b-green">Ya</span>':'<span class="badge b-gray">Tidak</span>')}
+      ${hsTd('Bypassed', h2.bypassed?'<span class="badge b-amber">Ya</span>':'<span class="badge b-gray">Tidak</span>')}
     </tr>`;
   });
   h+='</tbody></table>';
@@ -4136,12 +4355,12 @@ async function loadCookies(){
   let h=`<table><thead><tr><th>User</th><th>Domain</th><th>IP Address</th><th>MAC</th><th>Expires</th><th>Aksi</th></tr></thead><tbody>`;
   cookies.forEach(c=>{
     h+=`<tr>
-      <td><strong>${x(c.user)}</strong></td>
-      <td style="font-size:12px">${x(c.domain)||'—'}</td>
-      <td><span class="td-mono">${x(c.address)}</span></td>
-      <td><span class="td-mono" style="font-size:11px">${x(c.macAddress)}</span></td>
-      <td style="font-size:12px;color:var(--text2)">${x(c.expiresAt)}</td>
-      <td><button class="btn btn-danger btn-xs" onclick="delCookie('${c.id}')">Hapus</button></td>
+      ${hsTd('User', `<strong>${x(c.user)}</strong>`)}
+      ${hsTd('Domain', x(c.domain)||'—')}
+      ${hsTd('IP', `<span class="td-mono">${x(c.address)}</span>`)}
+      ${hsTd('MAC', `<span class="td-mono" style="font-size:11px">${x(c.macAddress)}</span>`)}
+      ${hsTd('Expires', `<span class="u-meta">${x(c.expiresAt)}</span>`)}
+      ${hsTd('Aksi', `<button class="btn btn-danger btn-xs" onclick="delCookie('${c.id}')">Hapus</button>`)}
     </tr>`;
   });
   h+='</tbody></table>';
@@ -4166,13 +4385,13 @@ async function loadBindings(){
   let h=`<table><thead><tr><th>MAC Address</th><th>IP</th><th>To Address</th><th>Server</th><th>Type</th><th>Komentar</th><th>Aksi</th></tr></thead><tbody>`;
   bindings.forEach(b=>{
     h+=`<tr>
-      <td><span class="td-mono">${x(b.macAddress)}</span></td>
-      <td><span class="td-mono">${x(b.address)||'—'}</span></td>
-      <td><span class="td-mono">${x(b.toAddress)||'—'}</span></td>
-      <td style="font-size:12px;color:var(--text2)">${x(b.server)}</td>
-      <td><span class="badge ${tb[b.type]||'b-gray'}">${x(b.type)}</span></td>
-      <td style="font-size:12px;color:var(--text2)">${x(b.comment)||'—'}</td>
-      <td><button class="btn btn-danger btn-xs" onclick="delBinding('${b.id}')">Hapus</button></td>
+      ${hsTd('MAC', `<span class="td-mono">${x(b.macAddress)}</span>`)}
+      ${hsTd('IP', `<span class="td-mono">${x(b.address)||'—'}</span>`)}
+      ${hsTd('To Address', `<span class="td-mono">${x(b.toAddress)||'—'}</span>`)}
+      ${hsTd('Server', `<span class="td-mono">${x(b.server)}</span>`)}
+      ${hsTd('Type', `<span class="badge ${tb[b.type]||'b-gray'}">${x(b.type)}</span>`)}
+      ${hsTd('Komentar', `<span class="u-meta">${x(b.comment)||'—'}</span>`)}
+      ${hsTd('Aksi', `<button class="btn btn-danger btn-xs" onclick="delBinding('${b.id}')">Hapus</button>`)}
     </tr>`;
   });
   h+='</tbody></table>';
@@ -4196,6 +4415,9 @@ async function delBinding(id){
    UTILS
 ═══════════════════════════════════════════════════════════════ */
 function x(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function hsTd(label, inner, extra){
+  return `<td data-label="${x(label)}"${extra ? ' ' + extra : ''}>${inner}</td>`;
+}
 function fmtB(b){
   if (!b) return '0 B';
   if (b<1024) return b+' B';
@@ -5203,16 +5425,16 @@ document.addEventListener('keydown', e => {
             ? '<span style="font-family:var(--fm);font-size:11.5px;color:var(--text)">' + esc(r.soldTo) + '</span>'
             : '<span style="color:var(--text3);font-size:11px">—</span>';
           return '<tr>' +
-            '<td style="color:var(--text3);font-size:12px">' + (i+1) + '</td>' +
-            '<td style="font-weight:600">' + esc(r.name) + '</td>' +
-            '<td><span class="badge-soft bs-blue">' + esc(r.profile) + '</span></td>' +
-            '<td style="font-family:var(--fm);font-size:12px">' + (r.generatedAt || '<span style="color:var(--text3)">—</span>') + '</td>' +
-            '<td>' + soldToCell + '</td>' +
-            '<td style="font-family:var(--fm);font-size:12px">' + esc(r.uptime || '—') + '</td>' +
-            '<td class="num-r">' + fmtBytes(r.bytesTotal) + '</td>' +
-            '<td class="num-r">' + priceCell + '</td>' +
-            '<td>' + status + '</td>' +
-            '<td style="font-family:var(--fm);font-size:11px;color:var(--text2)">' + esc(r.macAddress || '—') + '</td>' +
+            hsTd('#', String(i+1), 'style="color:var(--text3);font-size:12px"') +
+            hsTd('Username', '<span style="font-weight:600">' + esc(r.name) + '</span>') +
+            hsTd('Profile', '<span class="badge-soft bs-blue">' + esc(r.profile) + '</span>') +
+            hsTd('Generated', '<span style="font-family:var(--fm);font-size:12px">' + (r.generatedAt || '<span style="color:var(--text3)">—</span>') + '</span>') +
+            hsTd('Sold-to', soldToCell) +
+            hsTd('Uptime', '<span style="font-family:var(--fm);font-size:12px">' + esc(r.uptime || '—') + '</span>') +
+            hsTd('Bytes', fmtBytes(r.bytesTotal), 'class="num-r"') +
+            hsTd('Harga', priceCell, 'class="num-r"') +
+            hsTd('Status', status) +
+            hsTd('MAC', '<span class="u-meta" style="font-family:var(--fm)">' + esc(r.macAddress || '—') + '</span>') +
           '</tr>';
         }).join('') +
         '</tbody>' +

@@ -232,6 +232,76 @@ function rowFromPayload(payload) {
   };
 }
 
+/** Pilihan tipe karakter generate voucher — sama seperti form batch di app mitra. */
+const VOUCHER_CHARSETS = {
+  az: {
+    chars: 'abcdefghijklmnopqrstuvwxyz',
+    label: 'a-z (huruf kecil)'
+  },
+  az09: {
+    chars: 'abcdefghijklmnopqrstuvwxyz0123456789',
+    label: 'a-z0-9 (huruf kecil + angka)'
+  },
+  AZ: {
+    chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+    label: 'A-Z (huruf besar)'
+  },
+  AZ09: {
+    chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+    label: 'A-Z0-9 (huruf besar + angka)'
+  },
+  azAZ09: {
+    chars: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+    label: 'a-zA-Z0-9 (huruf + angka)'
+  },
+  '09': {
+    chars: '0123456789',
+    label: '0-9 (angka saja - 9 digit)',
+    fixedLength: 9
+  }
+};
+
+function normalizeVoucherCharset(code) {
+  const key = String(code || '').trim();
+  return VOUCHER_CHARSETS[key] ? key : 'azAZ09';
+}
+
+function clampVoucherLength(len, charsetCode) {
+  const spec = VOUCHER_CHARSETS[normalizeVoucherCharset(charsetCode)];
+  if (spec.fixedLength) return spec.fixedLength;
+  const n = parseInt(len, 10);
+  if (!Number.isFinite(n)) return 6;
+  return Math.min(10, Math.max(6, n));
+}
+
+function randomVoucherToken(length, charsetCode, rng) {
+  const code = normalizeVoucherCharset(charsetCode);
+  const spec = VOUCHER_CHARSETS[code];
+  const n = spec.fixedLength || Math.max(1, parseInt(length, 10) || 6);
+  const chars = spec.chars;
+  const pick = typeof rng === 'function' ? rng : Math.random;
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    out += chars[Math.floor(pick() * chars.length)];
+  }
+  return out;
+}
+
+function normalizeVoucherPrefix(prefix) {
+  return String(prefix || '').trim().replace(/[^a-zA-Z0-9]/g, '').slice(0, 8);
+}
+
+function parseSamePassword(value) {
+  if (value === true || value === 1) return true;
+  const s = String(value || '').trim().toLowerCase();
+  return s === 'same' || s === '1' || s === 'true' || s === 'ya';
+}
+
+/** Username = prefix + kode unik (tanpa tanda hubung, supaya tiap voucher kelihatan beda). */
+function buildVoucherUsername(prefix, token) {
+  return normalizeVoucherPrefix(prefix) + String(token || '');
+}
+
 module.exports = {
   ISOLIR,
   isIsolirHotspotUser,
@@ -247,5 +317,12 @@ module.exports = {
   toApiUser,
   collisionError,
   normalizeUserPayload,
-  rowFromPayload
+  rowFromPayload,
+  VOUCHER_CHARSETS,
+  normalizeVoucherCharset,
+  clampVoucherLength,
+  randomVoucherToken,
+  normalizeVoucherPrefix,
+  parseSamePassword,
+  buildVoucherUsername
 };

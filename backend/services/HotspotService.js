@@ -15,7 +15,12 @@ const {
   shouldAddHotspotToRadiusClient,
   canEnableHotspotRadius,
   mergeUsage,
-  toApiUser
+  toApiUser,
+  normalizeVoucherCharset,
+  randomVoucherToken,
+  normalizeVoucherPrefix,
+  parseSamePassword,
+  buildVoucherUsername
 } = require('../utils/hotspotRadius');
 
 const _radiusReadyHosts = new Set();
@@ -510,15 +515,17 @@ class HotspotService {
   async generateVouchers(options) {
     const {
       count = 10, profile = 'default', server = 'all',
-      prefix = 'vc', passwordLength = 8, comment = '',
+      prefix = 'vc', passwordLength = 6, charset = 'azAZ09', comment = '',
       limitUptime = '', limitBytesTotal = 0,
-      price = 0, soldTo = '',
+      price = 0, soldTo = '', samePassword = false,
     } = options;
 
     await this._prepareRadius();
 
-    const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
-    const genRandom = (len) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    const charsetCode = normalizeVoucherCharset(charset);
+    const prefixNorm = normalizeVoucherPrefix(prefix);
+    const userPassSame = parseSamePassword(samePassword);
+    const genRandom = (len) => randomVoucherToken(len, charsetCode);
 
     const existing = new Set(await this.radiusStore.listUsernames());
     const items = [];
@@ -526,10 +533,12 @@ class HotspotService {
     let guard = 0;
     while (items.length < count && guard < count * 20) {
       guard++;
-      const username = `${prefix}-${genRandom(passwordLength)}`;
-      if (seen.has(username) || existing.has(username)) continue;
+      const token = genRandom(passwordLength);
+      const username = buildVoucherUsername(prefixNorm, token);
+      if (!username || seen.has(username) || existing.has(username)) continue;
       seen.add(username);
-      items.push({ username, password: genRandom(passwordLength) });
+      const password = userPassSame ? username : genRandom(passwordLength);
+      items.push({ username, password });
     }
 
     const buildComment = () => {

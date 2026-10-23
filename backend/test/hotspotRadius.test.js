@@ -17,7 +17,13 @@ const {
   mergeUsage,
   toApiUser,
   collisionError,
-  normalizeUserPayload
+  normalizeUserPayload,
+  normalizeVoucherCharset,
+  clampVoucherLength,
+  randomVoucherToken,
+  normalizeVoucherPrefix,
+  parseSamePassword,
+  buildVoucherUsername
 } = require('../utils/hotspotRadius');
 const HotspotRadiusStore = require('../services/HotspotRadiusStore');
 const HotspotService = require('../services/HotspotService');
@@ -76,6 +82,22 @@ assert.strictEqual(canEnableHotspotRadius([{ service: 'ppp' }]), true);
 assert.strictEqual(canEnableHotspotRadius([{ service: 'login' }]), false);
 assert.strictEqual(canEnableHotspotRadius([{ service: 'ppp', comment: 'BILLINGRADIUS' }]), false);
 assert.strictEqual(canEnableHotspotRadius([]), false);
+
+assert.strictEqual(normalizeVoucherCharset('az'), 'az');
+assert.strictEqual(normalizeVoucherCharset('nope'), 'azAZ09');
+assert.strictEqual(clampVoucherLength(3, 'az'), 6);
+assert.strictEqual(clampVoucherLength(12, 'az'), 10);
+assert.strictEqual(clampVoucherLength(6, '09'), 9);
+assert.strictEqual(randomVoucherToken(6, 'az', () => 0), 'aaaaaa');
+assert.ok(/^[0-9]{9}$/.test(randomVoucherToken(4, '09')));
+assert.ok(/^[A-Z]{6}$/.test(randomVoucherToken(6, 'AZ', () => 0)));
+assert.strictEqual(normalizeVoucherPrefix(' vc-1 '), 'vc1');
+assert.strictEqual(normalizeVoucherPrefix(''), '');
+assert.strictEqual(buildVoucherUsername('vc', 'a8k2p1'), 'vca8k2p1');
+assert.strictEqual(buildVoucherUsername('', 'a8k2p1'), 'a8k2p1');
+assert.strictEqual(parseSamePassword('same'), true);
+assert.strictEqual(parseSamePassword('diff'), false);
+assert.strictEqual(parseSamePassword(true), true);
 
 const usage = mergeUsage({ bytesIn: 10, bytesOut: 2, uptimeSec: 30 }, { bytesIn: 50, bytesOut: 1, uptime: '1m' });
 assert.strictEqual(usage.bytesIn, 50);
@@ -284,7 +306,17 @@ async function testHotspotServiceNoDualWrite() {
 
   const gen = await svc.generateVouchers({ count: 2, profile: '1hari', prefix: 'vc', passwordLength: 4 });
   assert.strictEqual(gen.success, 2);
+  assert.notStrictEqual(gen.vouchers[0].username, gen.vouchers[1].username, 'tiap voucher username unik');
+  assert.ok(gen.vouchers[0].username.startsWith('vc'));
+  assert.notStrictEqual(gen.vouchers[0].username, gen.vouchers[0].password, 'default username ≠ password');
   assert.strictEqual(calls.filter((c) => c[0] === 'PUT' && String(c[1]).startsWith('/ip/hotspot/user')).length, 0);
+
+  const genSame = await svc.generateVouchers({
+    count: 2, profile: '1hari', prefix: 'ab', passwordLength: 6, samePassword: true
+  });
+  assert.strictEqual(genSame.success, 2);
+  assert.ok(genSame.vouchers.every((v) => v.username === v.password), 'username = password');
+  assert.notStrictEqual(genSame.vouchers[0].username, genSame.vouchers[1].username);
 
   await assert.rejects(
     () => svc.createUser({ name: 'andi-pppoe', password: 'x', profile: '1hari' }),

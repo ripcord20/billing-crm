@@ -5,6 +5,8 @@
 html:has(body.hs-home) {
   background: #100c22;
   color-scheme: dark;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 body.hs-home {
@@ -282,6 +284,23 @@ body.hs-home .gen-summary-item .gs-val.gs-empty { color: #94a3b8 !important; }
 body.hs-home .gen-hint b,
 body.hs-home .pricing-row .pr-prefix { color: #f8fafc !important; }
 
+body.hs-home .gen-hint-link {
+  color: #67e8f9 !important;
+  -webkit-text-fill-color: #67e8f9;
+}
+
+body.hs-home .gen-preview-box {
+  background: #070814 !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+  color: #e2e8f0 !important;
+}
+body.hs-home .gen-preview-box b { color: #ffffff !important; }
+
+body.hs-home .price-flash {
+  outline-color: #22d3ee !important;
+  box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.35) !important;
+}
+
 body.hs-home .rep-strip { background: transparent !important; border-color: transparent !important; }
 body.hs-home .rep-strip .rep-cell:nth-child(1) {
   background: linear-gradient(145deg, #0891b2, #1d4ed8) !important;
@@ -356,6 +375,33 @@ body.hs-home .tbl-scroll .td-mono,
 body.hs-home .modal-sheet tbody td {
   color: #ffffff !important;
   border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+body.hs-home .u-name { color: #ffffff !important; -webkit-text-fill-color: #ffffff; }
+body.hs-home .u-meta,
+body.hs-home .tbl-scroll tbody td .u-meta,
+body.hs-home .tbl-scroll tbody td [style*="color:var(--text2)"],
+body.hs-home .tbl-scroll tbody td [style*="color:var(--text3)"] {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+body.hs-home .tbl-scroll tbody td::before {
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+
+@media (max-width: 768px) {
+  body.hs-home .hs-page,
+  body.hs-home .main-content,
+  body.hs-home .tbl-scroll {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  body.hs-home .tbl-scroll tbody tr {
+    border-color: rgba(255, 255, 255, 0.22) !important;
+  }
 }
 
 body.hs-home .tbl-scroll a:not(.btn):link,
