@@ -105,6 +105,21 @@ body.paym-home #custDropdown {
   color: #f8fafc !important;
   border-color: rgba(34, 211, 238, 0.35) !important;
 }
+/* Nama di daftar cari pelanggan: tulisan gelap di kartu gelap jadi putih. */
+body.paym-home #custDropdown .cust-item,
+body.paym-home #custDropdown .ci-name,
+body.paym-home #custDropdown .ci-sub,
+body.paym-home #custDropdown .ci-name * {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+body.paym-home #custDropdown .cust-item {
+  border-bottom-color: rgba(255, 255, 255, 0.12) !important;
+  background: transparent !important;
+}
+body.paym-home #custDropdown .cust-item:hover {
+  background: rgba(34, 211, 238, 0.16) !important;
+}
 body.paym-home .mpill.active {
   background: linear-gradient(135deg, #0891b2, #1d4ed8) !important;
   color: #ffffff !important;
