@@ -574,3 +574,18 @@ body.dash-home .bn-menu-item .bn-mi-icon svg {
   stroke: #ffffff;
   color: #ffffff;
 }
+
+/* Kartu dalam yang masih terang: tulisan gelap supaya terbaca.
+   Angka biru, persentase berwarna, dan chip CID tidak diubah. */
+body.dash-home .ticket-stat .stat-value,
+body.dash-home .ticket-stat .stat-label,
+body.dash-home .uptime-summary .stat-label,
+body.dash-home .uptime-device-item .device-name-uptime,
+body.dash-home .uptime-device-item .device-ip-uptime,
+body.dash-home .uptime-device-item .uptime-incidents,
+body.dash-home .customer-bandwidth-item .customer-name,
+body.dash-home .customer-bandwidth-item .customer-package,
+body.dash-home .customer-bandwidth-item .usage-gb {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
