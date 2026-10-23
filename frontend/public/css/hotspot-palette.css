@@ -132,6 +132,10 @@ body.hs-home .btn-danger {
   -webkit-text-fill-color: #b91c1c;
 }
 
+body.hs-home .user-bulk-bar .btn-danger {
+  font-weight: 700;
+}
+
 body.hs-home .btn-success {
   background: #dcfce7 !important;
   color: #15803d !important;

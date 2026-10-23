@@ -292,11 +292,37 @@ class HotspotRadiusStore {
     const row = await this.get(idOrName);
     if (!row) throw new Error('User hotspot tidak ditemukan');
     const username = row.username;
-    await this.query('DELETE FROM radcheck WHERE username = ?', [username]);
-    await this.query('DELETE FROM radreply WHERE username = ?', [username]);
-    await this.query('DELETE FROM radusergroup WHERE username = ?', [username]);
-    await row.destroy();
+    const out = await this.removeManyByUsernames([username]);
+    if (!out.deleted) throw new Error('User hotspot tidak ditemukan');
     return { deleted: 1, username };
+  }
+
+  /**
+   * Hapus banyak voucher/user hotspot sekaligus.
+   * Hanya username yang ada di hotspot_radius_users — radcheck PPPoE tidak disentuh.
+   */
+  async removeManyByUsernames(usernames) {
+    await this.ensureSchema();
+    const want = [...new Set((usernames || []).map((u) => String(u || '').trim()).filter(Boolean))];
+    if (!want.length) return { deleted: 0, usernames: [] };
+    const Model = this._getModel();
+    const all = await Model.findAll();
+    const owned = new Set(want);
+    const rows = (all || []).filter((r) => r && owned.has(r.username));
+    const names = rows.map((r) => r.username);
+    if (!names.length) return { deleted: 0, usernames: [] };
+    const CHUNK = 80;
+    for (let i = 0; i < names.length; i += CHUNK) {
+      const chunk = names.slice(i, i + CHUNK);
+      const ph = chunk.map(() => '?').join(',');
+      await this.query(`DELETE FROM radcheck WHERE username IN (${ph})`, chunk);
+      await this.query(`DELETE FROM radreply WHERE username IN (${ph})`, chunk);
+      await this.query(`DELETE FROM radusergroup WHERE username IN (${ph})`, chunk);
+    }
+    for (const row of rows) {
+      await row.destroy();
+    }
+    return { deleted: names.length, usernames: names };
   }
 
   async setDisabled(idOrName, disabled) {

@@ -111,6 +111,7 @@ router.post('/hotspot/users',                         authenticate, authorize('s
 router.put('/hotspot/users/:id',                      authenticate, authorize('superadmin','admin'), logActivity('update','hotspot_user'), HotspotController.updateUser);
 router.delete('/hotspot/users/:id',                   authenticate, authorize('superadmin','admin'), logActivity('delete','hotspot_user'), HotspotController.deleteUser);
 router.post('/hotspot/users/delete-batch',            authenticate, authorize('superadmin','admin'), logActivity('delete_batch','hotspot_user'), HotspotController.deleteBatch);
+router.post('/hotspot/users/delete-all',              authenticate, authorize('superadmin','admin'), logActivity('delete_all','hotspot_user'), HotspotController.deleteAll);
 router.post('/hotspot/users/:id/enable',              authenticate, authorize('superadmin','admin'), HotspotController.enableUser);
 router.post('/hotspot/users/:id/disable',             authenticate, authorize('superadmin','admin'), HotspotController.disableUser);
  

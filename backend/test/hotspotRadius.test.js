@@ -174,15 +174,18 @@ function memoryRadius(extraCheckUsers = []) {
       return [tables.radcheck.filter((r) => r.username === params[0]).slice(0, 1)];
     }
     if (s.startsWith('DELETE FROM radcheck')) {
-      tables.radcheck = tables.radcheck.filter((r) => r.username !== params[0]);
+      const names = new Set(params);
+      tables.radcheck = tables.radcheck.filter((r) => !names.has(r.username));
       return [[]];
     }
     if (s.startsWith('DELETE FROM radreply')) {
-      tables.radreply = tables.radreply.filter((r) => r.username !== params[0]);
+      const names = new Set(params);
+      tables.radreply = tables.radreply.filter((r) => !names.has(r.username));
       return [[]];
     }
     if (s.startsWith('DELETE FROM radusergroup')) {
-      tables.radusergroup = tables.radusergroup.filter((r) => r.username !== params[0]);
+      const names = new Set(params);
+      tables.radusergroup = tables.radusergroup.filter((r) => !names.has(r.username));
       return [[]];
     }
     if (s.startsWith('INSERT INTO radcheck')) {
@@ -243,6 +246,17 @@ async function testStoreCollisionAndProvision() {
   assert.ok(!rad.tables.radcheck.some((r) => r.username === 'vc-ok'));
   assert.ok(!rad.tables.radreply.some((r) => r.username === 'vc-ok'));
   assert.strictEqual(rad.tables.radcheck.filter((r) => r.username === 'andi-pppoe').length, 1);
+
+  const a = await store.create({ name: 'vc-a', password: 'a', profile: '1hari', comment: 'Generated 01/01/2026' });
+  const b = await store.create({ name: 'vc-b', password: 'b', profile: '1hari', comment: 'Generated 01/01/2026' });
+  await store.create({ name: 'staff-hs', password: 's', profile: 'default', comment: 'manual' });
+  const bulk = await store.removeManyByUsernames(['vc-a', 'andi-pppoe', 'vc-b', 'ghost']);
+  assert.strictEqual(bulk.deleted, 2);
+  assert.ok(!rad.tables.radcheck.some((r) => r.username === 'vc-a'));
+  assert.ok(!rad.tables.radcheck.some((r) => r.username === 'vc-b'));
+  assert.ok(rad.tables.radcheck.some((r) => r.username === 'staff-hs'));
+  assert.strictEqual(rad.tables.radcheck.filter((r) => r.username === 'andi-pppoe').length, 1, 'PPPoE tidak ikut terhapus');
+  assert.ok(a.id && b.id);
 }
 
 async function testHotspotServiceNoDualWrite() {
@@ -322,6 +336,22 @@ async function testHotspotServiceNoDualWrite() {
     () => svc.createUser({ name: 'andi-pppoe', password: 'x', profile: '1hari' }),
     /PPPoE|bukan user hotspot/
   );
+  assert.strictEqual(rad.tables.radcheck.find((r) => r.username === 'andi-pppoe').value, 'pppoe-secret');
+
+  await svc.createUser({ name: 'staff-hs', password: 'stay', profile: 'default', comment: 'akun tetap' });
+  const wiped = await svc.deleteMatchingUsers({ generatedOnly: true });
+  assert.ok(wiped.deleted >= 3, 'voucher Generated terhapus');
+  const afterGen = (await svc.getUsers()).map((u) => u.name);
+  assert.ok(afterGen.includes('staff-hs'), 'user manual tidak ikut terhapus');
+  assert.ok(afterGen.includes('vc-new'), 'user tanpa comment Generated tetap ada');
+  assert.ok(!afterGen.includes('vc-old'));
+  assert.strictEqual(rad.tables.radcheck.find((r) => r.username === 'andi-pppoe').value, 'pppoe-secret');
+
+  const wipedAll = await svc.deleteMatchingUsers({});
+  assert.ok(wipedAll.deleted >= 2);
+  const leftover = (await svc.getUsers()).map((u) => u.name);
+  assert.ok(!leftover.includes('staff-hs'));
+  assert.ok(!leftover.includes('vc-new'));
   assert.strictEqual(rad.tables.radcheck.find((r) => r.username === 'andi-pppoe').value, 'pppoe-secret');
 }
 

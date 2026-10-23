@@ -327,6 +327,31 @@ const HotspotController = {
     }
   },
 
+  async deleteAll(req, res) {
+    try {
+      const token = String(req.body?.confirm || '').trim().toUpperCase();
+      if (token !== 'HAPUS') {
+        return res.status(400).json({ success: false, message: 'Konfirmasi HAPUS diperlukan' });
+      }
+      const flag = (v) => v === true || v === 1 || v === '1' || String(v || '').toLowerCase() === 'true';
+      const svc = await getService(req);
+      const result = await svc.deleteMatchingUsers({
+        profile: req.body?.profile,
+        search: req.body?.search,
+        generatedOnly: flag(req.body?.generatedOnly),
+        disabledOnly: flag(req.body?.disabledOnly)
+      });
+      res.json({
+        success: true,
+        ...result,
+        message: `${result.deleted} user hotspot dihapus`
+      });
+    } catch (err) {
+      logger.error('Hotspot deleteAll error:', err.message);
+      res.status(500).json({ success: false, message: err.message });
+    }
+  },
+
   async enableUser(req, res) {
     try {
       const svc = await getService(req);
