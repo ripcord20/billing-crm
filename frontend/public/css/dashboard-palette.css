@@ -586,7 +586,16 @@ body.dash-home .uptime-device-item .device-ip-uptime,
 body.dash-home .uptime-device-item .uptime-incidents,
 body.dash-home .customer-bandwidth-item .customer-name,
 body.dash-home .customer-bandwidth-item .customer-package,
-body.dash-home .customer-bandwidth-item .usage-gb {
+body.dash-home .customer-bandwidth-item .usage-gb,
+body.dash-home .customer-bandwidth-item .usage-gb-split {
   color: #0f172a !important;
   -webkit-text-fill-color: #0f172a !important;
+}
+body.dash-home .customer-bandwidth-item .usage-gb-split .dl {
+  color: #1d4ed8 !important;
+  -webkit-text-fill-color: #1d4ed8 !important;
+}
+body.dash-home .customer-bandwidth-item .usage-gb-split .ul {
+  color: #c2410c !important;
+  -webkit-text-fill-color: #c2410c !important;
 }

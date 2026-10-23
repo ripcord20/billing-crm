@@ -467,15 +467,39 @@ input, select, textarea { font-family: inherit; }
 
 .chart-stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px 10px;
   margin-bottom: 16px;
 }
-.chart-stat { }
-.stat-label { font-size: 10.5px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; display: block; }
-.stat-value { font-size: 17px; font-weight: 700; }
-.stat-value.blue { color: var(--primary); }
-.stat-value.orange { color: var(--orange); }
+.chart-stat { min-width: 0; }
+.chart-stats .stat-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  display: block;
+  margin: 0 0 2px;
+  white-space: nowrap;
+}
+.chart-stats .stat-value {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  display: block;
+  color: inherit;
+}
+.chart-stats .stat-value.blue { color: var(--primary); }
+.chart-stats .stat-value.orange { color: var(--orange); }
+.chart-live-iface {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .chart-container { position: relative; height: 200px; }
 
@@ -791,6 +815,27 @@ input, select, textarea { font-family: inherit; }
   color: var(--text-secondary);
 }
 
+.customer-source {
+  padding: 2px 6px;
+  background: #ecfeff;
+  color: #0e7490;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+[data-theme="dark"] .customer-source {
+  background: #164e63;
+  color: #a5f3fc;
+}
+
+.customer-source-unmatched {
+  background: #f1f5f9;
+  color: #64748b;
+  text-transform: none;
+}
+
 .customer-usage {
   display: flex;
   flex-direction: column;
@@ -803,6 +848,19 @@ input, select, textarea { font-family: inherit; }
   font-size: 14px;
   color: var(--text);
 }
+
+.usage-gb-split {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.usage-gb-split .dl { color: #3b82f6; }
+.usage-gb-split .ul { color: #f97316; }
 
 .usage-speed {
   display: flex;
