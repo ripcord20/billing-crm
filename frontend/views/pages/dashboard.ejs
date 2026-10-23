@@ -1,17 +1,21 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="light" class="page-dashboard">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#100c22">
+  <meta name="color-scheme" content="dark">
   <title><%= title %> - <%= appName %></title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/app.css?v=kpihp1">
+  <link rel="stylesheet" href="/css/dashboard-palette.css?v=palette14">
+  <link rel="stylesheet" href="/css/rainbow-tables.css?v=rb1">
   <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 </head>
-<body>
+<body class="page-dashboard dash-home">
   <div class="app-layout">
     <%- include('../partials/sidebar') %>
     <div class="main-content">
@@ -45,40 +49,141 @@
         </div>
 
         <!-- Dashboard styles live in app.css (token + dark mode) -->
+        <style>
+          #alertsList{max-height:none;}
+          .ont-off-wrap{margin-top:8px;border:1px solid var(--border,#e4ecf7);border-radius:12px;overflow:hidden;background:var(--bg-card,#fff);}
+          .ont-off-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;padding:10px 14px;font-size:13px;font-weight:700;color:#0f172a;background:#fff7ed;border-bottom:1px solid #fed7aa;}
+          .ont-off-head b{color:#c2410c;}
+          .ont-off-sub{font-size:11px;font-weight:600;color:#9a3412;}
+          .ont-off-scroll{max-height:420px;overflow:auto;}
+          .ont-off-table{width:100%;border-collapse:collapse;font-size:12px;}
+          .ont-off-table th{text-align:left;padding:8px 10px;font-size:10.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;background:#f8fafc;position:sticky;top:0;z-index:1;}
+          .ont-off-table td{padding:8px 10px;border-top:1px solid #f1f5f9;color:#334155;vertical-align:top;}
+          .ont-off-table tr:hover td{background:#fff7ed;}
+          .ont-off-table .oo-name{font-weight:700;color:#0f172a;text-decoration:none;}
+          .ont-off-table .oo-name:hover{color:#c2410c;}
+          .ont-off-table .oo-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;}
+          .ont-off-table .oo-olt{display:inline-block;padding:2px 7px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-weight:700;font-size:10.5px;}
+          .ont-off-table .oo-cid{color:#64748b;font-size:10.5px;}
+          .ont-off-table .oo-time{color:#94a3b8;white-space:nowrap;font-size:11px;}
+          /* Ponsel: tujuh kolom jadi kartu. Nama, SN, OLT, PON, RX, pelanggan, dan waktu terbaca tanpa geser ke kanan. */
+          @media(max-width:760px){
+            body.dash-home .page-content{overflow-x:hidden;}
+            body.dash-home .ont-off-wrap{max-width:100%;overflow:hidden;}
+            body.dash-home .ont-off-head,
+            body.dash-home .ont-off-sub{white-space:normal;overflow-wrap:anywhere;text-align:center;}
+            body.dash-home .ont-off-head{justify-content:center;}
+            body.dash-home .ont-off-scroll{
+              display:block;width:100%;max-width:100%;
+              overflow-x:hidden !important;overflow-y:auto;
+              touch-action:pan-y;overscroll-behavior-x:none;
+            }
+            body.dash-home .ont-off-table{
+              width:100% !important;min-width:0 !important;max-width:100%;
+            }
+            body.dash-home .ont-off-table thead{display:none;}
+            body.dash-home .ont-off-table,
+            body.dash-home .ont-off-table tbody,
+            body.dash-home .ont-off-table tr,
+            body.dash-home .ont-off-table td{
+              display:block;width:100% !important;min-width:0 !important;max-width:100%;box-sizing:border-box;
+            }
+            body.dash-home .ont-off-table tr{margin:0 0 10px;padding:6px 10px;border-radius:14px;overflow:hidden;}
+            body.dash-home .ont-off-table th,
+            body.dash-home .ont-off-table td{
+              white-space:normal !important;overflow-wrap:anywhere;text-align:center !important;
+            }
+            body.dash-home .ont-off-table td{border:none;border-bottom:1px solid rgba(255,255,255,.18);padding:8px 0;}
+            body.dash-home .ont-off-table td:last-child{border-bottom:none;}
+            body.dash-home .ont-off-table td[data-label]::before{
+              content:attr(data-label);display:block;font-size:11px;font-weight:700;
+              letter-spacing:.04em;text-transform:uppercase;color:#ffffff;margin-bottom:3px;text-align:center;
+            }
+            body.dash-home .ont-off-table .oo-olt,
+            body.dash-home .ont-off-table .oo-mono,
+            body.dash-home .ont-off-table .oo-time,
+            body.dash-home .ont-off-table a.oo-name{
+              white-space:normal !important;overflow-wrap:anywhere;max-width:100%;text-align:center;
+            }
+          }
+          .summary-card.is-click{cursor:pointer;}
+          .sc-ico{position:absolute;top:16px;right:14px;width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;color:#fff;}
+          .sc-ico svg{width:18px;height:18px;}
+          .sc-ico-warn{color:#f472b6;background:rgba(244,114,182,.22);}.sc-ico.is-beat{animation:scBeat .65s ease-out;}
+          @keyframes scBeat{0%{transform:scale(1);box-shadow:0 0 0 0 rgba(255,255,255,.55);}45%{transform:scale(var(--sc-beat,1.14));box-shadow:0 0 0 8px rgba(255,255,255,0);}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(255,255,255,0);}}
+        </style>
 
-        <!-- Summary Cards -->
-        <div class="summary-cards ui-enter">
-          <div class="summary-card gradient-blue">
-            <div class="sc-label">Total Number<br>PPPoE Active</div>
-            <div class="sc-value" id="pppoeActiveCount">0</div>
-            <div class="sc-sub">Sessions online</div>
-          </div>
-          <div class="summary-card gradient-blue">
-            <div class="sc-label">Total Bandwidth<br>Download</div>
-            <div class="sc-value" id="totalBandwidth">0</div>
-            <div class="sc-sub">Mbps aggregate</div>
-          </div>
-          <div class="summary-card gradient-blue">
-            <div class="sc-label">ONT Online<br>To Date</div>
-            <div class="sc-value" id="ontOnlineCount">0</div>
-            <div class="sc-sub">Active ONTs</div>
-          </div>
-          <div class="summary-card gradient-blue">
-            <div class="sc-label">Total Number<br>ONT Offline</div>
-            <div class="sc-value" id="ontOfflineCount">0</div>
-            <div class="sc-sub">Need attention</div>
-          </div>
-          <div class="summary-card gradient-blue">
-            <div class="sc-label">CPU Load<br>Average</div>
-            <div class="sc-value" id="cpuLoadAvg">0%</div>
-            <div class="sc-sub" id="cpuDeviceName">Router</div>
-          </div>
+        <!-- Summary cards: angka netral/cyan, hijau-kuning-merah hanya untuk status -->
+        <div class="kpi-grid ui-enter">
+          <article class="kpi-card kpi-neutral">
+            <div class="kpi-top">
+              <div class="kpi-label">Total Number<br>PPPoE Active</div>
+              <span class="kpi-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </span>
+            </div>
+            <div>
+              <div class="kpi-value" id="pppoeActiveCount">0</div>
+              <div class="kpi-sub">Sessions online</div>
+            </div>
+          </article>
+          <article class="kpi-card kpi-data">
+            <div class="kpi-top">
+              <div class="kpi-label">Total Bandwidth<br>Download</div>
+              <span class="kpi-icon kpi-icon-live" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M5 21h14"/></svg>
+              </span>
+            </div>
+            <div>
+              <div class="kpi-value-row">
+                <span class="kpi-value" id="totalBandwidth">0</span>
+                <span class="kpi-unit">Mbps</span>
+              </div>
+              <div class="kpi-sub">Aggregate download</div>
+            </div>
+          </article>
+          <article class="kpi-card kpi-ok">
+            <div class="kpi-top">
+              <div class="kpi-label">ONT Online<br>To Date</div>
+              <span class="kpi-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></svg>
+              </span>
+            </div>
+            <div>
+              <div class="kpi-value" id="ontOnlineCount">0</div>
+              <div class="kpi-sub">Active ONTs</div>
+            </div>
+          </article>
+          <article class="kpi-card kpi-bad is-click" id="ontOfflineCard" title="Lihat ONT offline di Needs Attention">
+            <div class="kpi-top">
+              <div class="kpi-label">Total Number<br>ONT Offline</div>
+              <span class="kpi-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></svg>
+              </span>
+            </div>
+            <div>
+              <div class="kpi-value" id="ontOfflineCount">0</div>
+              <div class="kpi-sub">Need attention</div>
+            </div>
+          </article>
+          <article class="kpi-card kpi-load is-ok" id="cpuKpi">
+            <div class="kpi-top">
+              <div class="kpi-label">CPU Load<br>Average</div>
+              <span class="kpi-icon kpi-icon-live" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg>
+              </span>
+            </div>
+            <div>
+              <div class="kpi-value" id="cpuLoadAvg">0%</div>
+              <div class="kpi-sub" id="cpuDeviceName">Router</div>
+            </div>
+          </article>
         </div>
 
         <!-- ── Panel "Perlu Perhatian" / Needs Attention ── -->
         <div class="dashboard-grid" style="grid-template-columns:1fr">
           <div class="card" id="alertsCard">
-            <div class="card-header">
+            <div class="card-header alerts-card-header">
               <div class="card-title-group">
                 <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
@@ -87,13 +192,14 @@
                 <h3>Needs Attention</h3>
                 <span id="alertsBadge" class="alerts-badge" style="display:none"></span>
               </div>
-              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap" id="alertsFilters">
+              <div class="alerts-filters" id="alertsFilters">
                 <button class="alert-chip on" data-f="all">All</button>
                 <button class="alert-chip" data-f="device_offline">Device</button>
                 <button class="alert-chip" data-f="ont_offline">ONT</button>
                 <button class="alert-chip" data-f="customer_isolated">Isolir</button>
                 <button class="alert-chip" data-f="ticket_urgent">Tiket</button>
                 <button class="alert-chip" data-f="uplink_down">Uplink</button>
+                <button class="alert-chip" data-f="ont_attenuation">Redaman</button>
                 <button id="alertsRefresh" class="period-select" style="cursor:pointer" title="Refresh">↻</button>
               </div>
             </div>
@@ -134,8 +240,9 @@
               </div>
               <div class="chart-legend">
                 <select id="activityChartIface" class="iface-select" title="Pilih interface untuk dipantau">
-                  <option value="__all__">All Interfaces</option>
+                  <option value="__all__">Auto (uplink)</option>
                 </select>
+                <span id="activityChartLiveIface" class="chart-live-iface"></span>
                 <span class="legend-item"><span class="legend-line blue"></span> RX</span>
                 <span class="legend-item"><span class="legend-line orange"></span> TX</span>
                 <div class="chart-range-btns">
@@ -185,7 +292,7 @@
                 <h3>Top Customers by Bandwidth</h3>
               </div>
               <select id="topCustomersPeriod" class="period-select">
-                <option value="total" selected>Total (Simple Queue)</option>
+                <option value="total" selected>Total (Queue + PPPoE)</option>
                 <option value="24h">Last 24h</option>
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
@@ -481,7 +588,8 @@
   <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
   <script src="/js/app.js"></script>
   <script src="/js/mikrotik-selector.js"></script>
-  <script src="/js/dashboard.js"></script>
-  <script src="/js/dashboard-analytics.js"></script>
+  <script src="/js/dashboard.js?v=palette1"></script>
+  <script src="/js/mapTiles.js?v=gmap1"></script>
+  <script src="/js/dashboard-analytics.js?v=ontoffhp1"></script>
 </body>
 </html>

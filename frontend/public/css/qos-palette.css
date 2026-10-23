@@ -1,0 +1,240 @@
+/* Kulit Keamanan & QoS / SLA. Hanya tampilan.
+   Grid kartu, filter, probe, dan data tidak diubah. */
+
+html:has(body.qos-home) {
+  background: #100c22;
+  color-scheme: dark;
+}
+
+body.qos-home {
+  --bg: #070814;
+  --bg-card: #141028;
+  --bg-input: #070814;
+  --border: rgba(34, 211, 238, 0.35);
+  --text: #f8fafc;
+  --text-primary: #f8fafc;
+  --text-secondary: #e2e8f0;
+  --text-muted: #e2e8f0;
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+
+body.qos-home .main-content,
+body.qos-home .page-content {
+  background: transparent !important;
+  color: #f8fafc;
+}
+
+body.qos-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+
+body.qos-home .logo-text,
+body.qos-home .nav-section-title,
+body.qos-home .nav-item { color: #f8fafc; }
+
+body.qos-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+
+body.qos-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+
+body.qos-home .sidebar a.nav-sub:link,
+body.qos-home .sidebar a.nav-sub:visited,
+body.qos-home .sidebar a.nav-sub:hover,
+body.qos-home .sidebar a.nav-sub:focus,
+body.qos-home .sidebar a.nav-sub:active,
+body.qos-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.qos-home .sidebar a.nav-sub .nav-sub-dot,
+body.qos-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #67e8f9 !important;
+}
+
+body.qos-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+
+body.qos-home .search-box,
+body.qos-home .search-box input,
+body.qos-home .topbar-btn {
+  background: #100c22;
+  color: #f8fafc;
+  border-color: rgba(34, 211, 238, 0.35);
+}
+
+body.qos-home .page-header h1,
+body.qos-home .qos-sub {
+  color: #f8fafc !important;
+}
+
+/* Kartu dan tabel mengisi lebar halaman. Baris pelangi sampai tepi kanan kartu. */
+body.qos-home .qos-page {
+  max-width: none;
+  width: 100%;
+}
+
+body.qos-home .qos-card-block {
+  min-width: 0;
+}
+
+body.qos-home #qosAlerts,
+body.qos-home #qosDns,
+body.qos-home #qosUpsell,
+body.qos-home #qosAuth {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+body.qos-home .qos-table {
+  width: 100% !important;
+  min-width: 100%;
+}
+
+body.qos-home .btn-primary {
+  background: linear-gradient(135deg, #0891b2, #4f46e5 58%, #ff4ecd) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+body.qos-home .btn-secondary {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.qos-home .qos-sla span {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+  color: #e2e8f0 !important;
+}
+
+body.qos-home .qos-sla b { color: #67e8f9 !important; }
+
+body.qos-home .qos-card[data-card="latency"] {
+  background: linear-gradient(145deg, #0891b2 0%, #1d4ed8 58%, #22d3ee 100%) !important;
+  border-color: transparent !important;
+}
+body.qos-home .qos-card[data-card="loss"] {
+  background: linear-gradient(145deg, #e11d48 0%, #be185d 55%, #ff4ecd 100%) !important;
+  border-color: transparent !important;
+}
+body.qos-home .qos-card[data-card="jitter"] {
+  background: linear-gradient(145deg, #b45309 0%, #ea580c 55%, #fde047 100%) !important;
+  border-color: transparent !important;
+}
+body.qos-home .qos-card[data-card="bw"] {
+  background: linear-gradient(145deg, #4f46e5 0%, #7c3aed 55%, #ff4ecd 100%) !important;
+  border-color: transparent !important;
+}
+body.qos-home .qos-card[data-card="auth"] {
+  background: linear-gradient(145deg, #059669 0%, #0f766e 55%, #22d3ee 100%) !important;
+  border-color: transparent !important;
+}
+body.qos-home .qos-card[data-card="dns"] {
+  background: linear-gradient(145deg, #0e7490 0%, #0891b2 50%, #818cf8 100%) !important;
+  border-color: transparent !important;
+}
+
+body.qos-home .qos-card .lbl,
+body.qos-home .qos-card .val,
+body.qos-home .qos-card .hint {
+  color: #ffffff !important;
+}
+
+body.qos-home .qos-card .val { white-space: nowrap; }
+
+body.qos-home .qos-card.ok { box-shadow: inset 0 0 0 3px #4ade80 !important; }
+body.qos-home .qos-card.warn { box-shadow: inset 0 0 0 3px #fde047 !important; }
+body.qos-home .qos-card.critical { box-shadow: inset 0 0 0 3px #ff4ecd !important; }
+
+body.qos-home .qos-card-block,
+body.qos-home .qos-settings {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.28) !important;
+  color: #f8fafc;
+}
+
+body.qos-home .qos-card-block h3,
+body.qos-home .qos-card-block .sub,
+body.qos-home .qos-empty,
+body.qos-home .qos-form label {
+  color: #f8fafc !important;
+}
+
+body.qos-home .qos-form input {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.qos-home .qos-chip {
+  background: rgba(7, 8, 20, 0.72) !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+  color: #e2e8f0 !important;
+}
+
+body.qos-home .qos-chip.active {
+  background: linear-gradient(135deg, #0891b2, #4f46e5) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+body.qos-home .qos-table thead {
+  background: linear-gradient(90deg, #0891b2, #4f46e5 55%, #db2777);
+}
+
+body.qos-home .qos-table th {
+  color: #ffffff !important;
+  border-bottom-color: transparent;
+}
+
+body.qos-home .qos-table tbody tr:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.qos-home .qos-table tbody tr:nth-child(8n+2) { background: #0891b2 !important; }
+body.qos-home .qos-table tbody tr:nth-child(8n+3) { background: #059669 !important; }
+body.qos-home .qos-table tbody tr:nth-child(8n+4) { background: #b45309 !important; }
+body.qos-home .qos-table tbody tr:nth-child(8n+5) { background: #ea580c !important; }
+body.qos-home .qos-table tbody tr:nth-child(8n+6) { background: #e11d48 !important; }
+body.qos-home .qos-table tbody tr:nth-child(8n+7) { background: #db2777 !important; }
+body.qos-home .qos-table tbody tr:nth-child(8n+8) { background: #7c3aed !important; }
+
+body.qos-home .qos-table td,
+body.qos-home .qos-table td strong,
+body.qos-home .qos-table .qos-when-date,
+body.qos-home .qos-table .qos-when-time,
+body.qos-home .qos-table .qos-when-hit {
+  color: #ffffff !important;
+  border-bottom-color: transparent;
+}
+
+body.qos-home .bottom-nav {
+  background: #100c22;
+  border-top: 1px solid rgba(34, 211, 238, 0.28);
+  box-shadow: none;
+}
+
+body.qos-home .bottom-nav a.bn-item:link,
+body.qos-home .bottom-nav a.bn-item:visited,
+body.qos-home .bottom-nav a.bn-item:hover,
+body.qos-home .bottom-nav a.bn-item:focus,
+body.qos-home .bottom-nav a.bn-item:active,
+body.qos-home .bottom-nav a.bn-item.active,
+body.qos-home .bottom-nav button.bn-item,
+body.qos-home .bottom-nav .bn-item span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+
+body.qos-home .bottom-nav .bn-icon svg { stroke: #ffffff; }

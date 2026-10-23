@@ -192,7 +192,10 @@ const templates = {
         // ── Link (contoh; URL nyata dibangun saat pengiriman sebenarnya) ──
         link_invoice:        ((process.env.APP_URL || process.env.BASE_URL || 'https://domain.com').replace(/\/+$/,'')) + '/pub/invoice/42.contoh',
         link_bayar_permanen: ((process.env.APP_URL || process.env.BASE_URL || 'https://domain.com').replace(/\/+$/,'')) + '/pub/cust/contohtokenpermanen',
-        link_permanen:       ((process.env.APP_URL || process.env.BASE_URL || 'https://domain.com').replace(/\/+$/,'')) + '/pub/cust/contohtokenpermanen'
+        link_permanen:       ((process.env.APP_URL || process.env.BASE_URL || 'https://domain.com').replace(/\/+$/,'')) + '/pub/cust/contohtokenpermanen',
+        link_aplikasi:       require('../utils/templateHelper').buildPortalLink(),
+        aplikasi:            require('../utils/templateHelper').buildPortalLink(),
+        link_apk:            require('../utils/templateHelper').buildAndroidAppLink()
       };
       let preview = content;
       Object.keys(dummy).forEach(k => { preview = preview.split(`{${k}}`).join(dummy[k]); });
@@ -382,12 +385,14 @@ const reminder = {
             '{duedate}':          moment(cust.due_date).format('DD/MM/YYYY'),
             '{link_invoice}':         _linkInv,
             '{link_bayar_permanen}':  _linkPerm,
-            '{link_permanen}':        _linkPerm
+            '{link_permanen}':        _linkPerm,
+            '{link_aplikasi}':        require('../utils/templateHelper').buildPortalLink(),
+            '{link_apk}':             require('../utils/templateHelper').buildAndroidAppLink()
           };
-          const msg = Object.keys(vars).reduce(
+          const msg = require('../utils/templateHelper').withPortalAppLink(Object.keys(vars).reduce(
             (acc, k) => acc.split(k).join(vars[k]),
             raw
-          );
+          ));
           try {
             await GatewayService.sendMessage(session.session_id, cust.phone, msg, null);
             sent++;
@@ -589,9 +594,13 @@ const reminder = {
         vars['{link_permanen}']       = vars['{link_bayar_permanen}'];
       }
 
+      vars['{link_aplikasi}'] = require('../utils/templateHelper').buildPortalLink();
+      vars['{link_apk}'] = require('../utils/templateHelper').buildAndroidAppLink();
       const raw = tpl.content || tpl.message;
-      const msg = '🧪 *[TEST]* — pesan ini dikirim untuk uji template\n\n' +
-        Object.keys(vars).reduce((acc, k) => acc.split(k).join(vars[k]), raw);
+      const msg = require('../utils/templateHelper').withPortalAppLink(
+        '🧪 *[TEST]* — pesan ini dikirim untuk uji template\n\n' +
+        Object.keys(vars).reduce((acc, k) => acc.split(k).join(vars[k]), raw)
+      );
 
       try {
         await GatewayService.sendMessage(session.session_id, cleanPhone, msg, null);

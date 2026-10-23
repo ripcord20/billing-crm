@@ -1,0 +1,93 @@
+/* Baris tabel berganti warna pelangi. Hanya tampilan.
+   Lebar kolom, scroll, dan angka tidak diubah. */
+
+body.dash-home table thead th,
+body.fin-home table thead th,
+body.tf-home table thead th,
+body.noc-home table thead th,
+body.sales-home table thead th {
+  background: linear-gradient(90deg, #0891b2 0%, #4f46e5 48%, #ff4ecd 100%) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+body.dash-home table tbody td,
+body.fin-home table tbody td,
+body.tf-home table tbody td,
+body.noc-home table tbody td,
+body.sales-home table tbody td {
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+body.dash-home table tbody tr:nth-child(8n+1) td,
+body.fin-home table tbody tr:nth-child(8n+1) td,
+body.tf-home table tbody tr:nth-child(8n+1) td,
+body.noc-home table tbody tr:nth-child(8n+1) td,
+body.sales-home table tbody tr:nth-child(8n+1) td {
+  background: #1d4ed8 !important;
+}
+
+body.dash-home table tbody tr:nth-child(8n+2) td,
+body.fin-home table tbody tr:nth-child(8n+2) td,
+body.tf-home table tbody tr:nth-child(8n+2) td,
+body.noc-home table tbody tr:nth-child(8n+2) td,
+body.sales-home table tbody tr:nth-child(8n+2) td {
+  background: #0891b2 !important;
+}
+
+body.dash-home table tbody tr:nth-child(8n+3) td,
+body.fin-home table tbody tr:nth-child(8n+3) td,
+body.tf-home table tbody tr:nth-child(8n+3) td,
+body.noc-home table tbody tr:nth-child(8n+3) td,
+body.sales-home table tbody tr:nth-child(8n+3) td {
+  background: #059669 !important;
+}
+
+body.dash-home table tbody tr:nth-child(8n+4) td,
+body.fin-home table tbody tr:nth-child(8n+4) td,
+body.tf-home table tbody tr:nth-child(8n+4) td,
+body.noc-home table tbody tr:nth-child(8n+4) td,
+body.sales-home table tbody tr:nth-child(8n+4) td {
+  background: #b45309 !important;
+}
+
+body.dash-home table tbody tr:nth-child(8n+5) td,
+body.fin-home table tbody tr:nth-child(8n+5) td,
+body.tf-home table tbody tr:nth-child(8n+5) td,
+body.noc-home table tbody tr:nth-child(8n+5) td,
+body.sales-home table tbody tr:nth-child(8n+5) td {
+  background: #ea580c !important;
+}
+
+body.dash-home table tbody tr:nth-child(8n+6) td,
+body.fin-home table tbody tr:nth-child(8n+6) td,
+body.tf-home table tbody tr:nth-child(8n+6) td,
+body.noc-home table tbody tr:nth-child(8n+6) td,
+body.sales-home table tbody tr:nth-child(8n+6) td {
+  background: #e11d48 !important;
+}
+
+body.dash-home table tbody tr:nth-child(8n+7) td,
+body.fin-home table tbody tr:nth-child(8n+7) td,
+body.tf-home table tbody tr:nth-child(8n+7) td,
+body.noc-home table tbody tr:nth-child(8n+7) td,
+body.sales-home table tbody tr:nth-child(8n+7) td {
+  background: #db2777 !important;
+}
+
+body.dash-home table tbody tr:nth-child(8n+8) td,
+body.fin-home table tbody tr:nth-child(8n+8) td,
+body.tf-home table tbody tr:nth-child(8n+8) td,
+body.noc-home table tbody tr:nth-child(8n+8) td,
+body.sales-home table tbody tr:nth-child(8n+8) td {
+  background: #7c3aed !important;
+}
+
+body.dash-home table tbody td a,
+body.fin-home table tbody td a,
+body.tf-home table tbody td a,
+body.noc-home table tbody td a,
+body.sales-home table tbody td a {
+  color: #ffffff !important;
+}

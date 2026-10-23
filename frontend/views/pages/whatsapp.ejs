@@ -2,11 +2,13 @@
 <html lang="id" data-theme="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title><%= title %> - <%= appName %></title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#100c22">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/wa-palette.css?v=wa1">
   <style>
     /* ── Layout ── */
     body, .app-layout, .main-content { height: 100vh; overflow: hidden; }
@@ -25,9 +27,26 @@
 
     /* ── MOBILE ≤768px: WA fullscreen seperti app WA asli ── */
     @media (max-width: 768px) {
-      /* Sembunyikan sidebar NETOPS dan topbar agar WA fullscreen */
+      /* Sidebar kiri tersembunyi sampai tombol Menu (class .open) */
       .sidebar { display: none !important; }
+      .sidebar.open {
+        display: flex !important;
+        z-index: 1400 !important;
+        height: 100dvh;
+      }
+      .sidebar.open .sidebar-header {
+        padding-top: max(48px, calc(env(safe-area-inset-top) + 16px));
+      }
+      .sidebar.open .sidebar-nav { padding-bottom: 88px; }
       .topbar  { display: none !important; }
+      /* Judul jangan tertutup status bar */
+      .wa-sidebar-header {
+        padding-top: max(48px, calc(env(safe-area-inset-top) + 16px)) !important;
+      }
+      .wa-chat-header,
+      .wa-qr-mobile-header {
+        padding-top: max(48px, calc(env(safe-area-inset-top) + 12px)) !important;
+      }
       .main-content { margin-left: 0 !important; padding-bottom: 0 !important; }
       .page-content { height: 100vh !important; height: 100dvh !important; padding-bottom: 0 !important; }
 
@@ -1066,9 +1085,14 @@
       padding: 5px 9px; margin-bottom: 5px; font-size: 12px; color: #54656f;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
     .wa-bubble.out .wa-quote { background: rgba(0,0,0,.06); }
+    @media (max-width:760px){
+      .wa-shell,.wa-sidebar,.wa-chat-panel,.wa-profile-panel{max-width:100vw;overflow-x:hidden;}
+      .wa-contact-name,.wa-contact-preview,.wa-chat-header-name,.wa-autorule-reply{overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+      .wa-qr-card{max-width:100%;}
+    }
 </style>
 </head>
-<body>
+<body class="wa-home">
 <div class="app-layout">
   <%- include('../partials/sidebar') %>
   <div class="main-content">

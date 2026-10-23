@@ -3,10 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#100c22">
+  <meta name="color-scheme" content="dark">
   <title><%= title %> - <%= appName %></title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/devices-palette.css?v=dev1">
   <style>
     :root {
       --dm-blue:#2563eb; --dm-blue-d:#1d4ed8; --dm-blue-l:#eff6ff;
@@ -494,7 +497,7 @@
     .dm-sheet-cancel:active { background:#e2e8f0; }
   </style>
 </head>
-<body>
+<body class="devm-home">
 <div class="app-layout">
   <%- include('../partials/sidebar') %>
   <div class="main-content">

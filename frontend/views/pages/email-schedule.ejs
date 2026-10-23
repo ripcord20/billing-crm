@@ -4,7 +4,9 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#100c22">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/email-palette.css?v=em1">
   <style>
     :root{ --es-bg:#eef2f9;--es-card:#fff;--es-border:#e0e7f3;--es-text:#0d1b3e;--es-muted:#6b7fa8;
       --es-blue:#1f8bff;--es-blue-deep:#1565e0;--es-green:#16a34a; }
@@ -14,7 +16,12 @@
     .es-sub{font-size:13px;color:var(--es-muted);margin-top:3px;}
 
     .es-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;}
-    @media(max-width:600px){.es-grid{grid-template-columns:1fr;}}
+    @media(max-width:760px){
+      .page-content{overflow-x:hidden;padding-bottom:88px;}
+      .es-grid{grid-template-columns:1fr;}
+      .es-row2{flex-direction:column;}
+      .es-card-title{flex-wrap:wrap;}
+    }
 
     .es-card{background:var(--es-card);border:1px solid var(--es-border);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;}
     .es-card-h{display:flex;align-items:flex-start;gap:13px;padding:18px 18px 14px;}
@@ -68,7 +75,7 @@
     .es-mok{width:100%;height:46px;margin-top:20px;border:none;border-radius:11px;background:linear-gradient(135deg,var(--es-blue),var(--es-blue-deep));color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;}
   </style>
 </head>
-<body>
+<body class="em-home">
 <div class="app-layout">
   <%- include('../partials/sidebar', { active: active }) %>
   <div class="main-content">

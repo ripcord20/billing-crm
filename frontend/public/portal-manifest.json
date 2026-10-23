@@ -1,0 +1,18 @@
+{
+  "id": "/portal/login",
+  "name": "Portal Pelanggan",
+  "short_name": "Pelanggan",
+  "description": "Cek tagihan, bayar, dan pantau layanan internet.",
+  "start_url": "/portal/login",
+  "scope": "/portal",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1e4f",
+  "theme_color": "#1e40af",
+  "lang": "id",
+  "icons": [
+    { "src": "/img/portal/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/img/portal/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/img/portal/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,103 @@
+/* Kulit Topology. Hanya tampilan.
+   Kanvas, ikon node, dan panel tambah tidak diubah ukurannya. */
+
+html:has(body.topo-home) { background: #100c22; color-scheme: dark; }
+body.topo-home {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.16), transparent 55%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+body.topo-home .app-layout,
+body.topo-home .main-content,
+body.topo-home .page-content { background: transparent !important; color: #f8fafc; }
+body.topo-home .sidebar { background: rgba(16, 12, 34, 0.96); border-right-color: rgba(34, 211, 238, 0.28); }
+body.topo-home .logo-text,
+body.topo-home .nav-section-title,
+body.topo-home .nav-item { color: #f8fafc; }
+body.topo-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+body.topo-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+body.topo-home .sidebar a.nav-sub:link,
+body.topo-home .sidebar a.nav-sub:visited,
+body.topo-home .sidebar a.nav-sub:hover,
+body.topo-home .sidebar a.nav-sub:focus,
+body.topo-home .sidebar a.nav-sub:active,
+body.topo-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+body.topo-home .sidebar a.nav-sub .nav-sub-dot,
+body.topo-home .sidebar a.nav-sub.active .nav-sub-dot { background: #67e8f9 !important; }
+body.topo-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+body.topo-home .search-box,
+body.topo-home .search-box input,
+body.topo-home .topbar-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.topo-home .topo-hdr h1,
+body.topo-home .nname { color: #ffffff !important; }
+body.topo-home .breadcrumb,
+body.topo-home .breadcrumb span,
+body.topo-home .nip { color: #e2e8f0 !important; }
+body.topo-home .tbar,
+body.topo-home .addpanel,
+body.topo-home #dtt,
+body.topo-home #mmap {
+  background: #141028 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.topo-home .cwrap { background: #070814 !important; border-color: rgba(34, 211, 238, 0.28) !important; }
+body.topo-home .mode-pills,
+body.topo-home .tbtn,
+body.topo-home .zoom-strip,
+body.topo-home .ftool,
+body.topo-home .dgi {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.topo-home .mpill.active,
+body.topo-home .tbtn.pri,
+body.topo-home .ftool.active,
+body.topo-home .ftool:hover {
+  background: linear-gradient(135deg, #0891b2, #7c3aed) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+body.topo-home .zbtn,
+body.topo-home .zval,
+body.topo-home .phtitle,
+body.topo-home .ttnm,
+body.topo-home .ttval { color: #f8fafc !important; }
+body.topo-home .ttval.hi { color: #67e8f9 !important; -webkit-text-fill-color: #67e8f9; }
+body.topo-home .ttval.ok,
+body.topo-home .rbar-v.low { color: #34d399 !important; -webkit-text-fill-color: #34d399; }
+body.topo-home .ttval.up { color: #c4b5fd !important; -webkit-text-fill-color: #c4b5fd; }
+body.topo-home .rbar-v.medium { color: #fbbf24 !important; -webkit-text-fill-color: #fbbf24; }
+body.topo-home .rbar-v.high { color: #fb7185 !important; -webkit-text-fill-color: #fb7185; }
+body.topo-home .ncard.online .ndot { background: #22c55e !important; }
+body.topo-home .ttbadge.on { background: #dcfce7 !important; color: #166534 !important; -webkit-text-fill-color: #166534; }
+body.topo-home .ttbadge.off { background: #fee2e2 !important; color: #991b1b !important; -webkit-text-fill-color: #991b1b; }
+body.topo-home .bottom-nav { background: #100c22; border-top: 1px solid rgba(34, 211, 238, 0.28); }
+body.topo-home .bottom-nav a.bn-item:link,
+body.topo-home .bottom-nav a.bn-item:visited,
+body.topo-home .bottom-nav a.bn-item:hover,
+body.topo-home .bottom-nav a.bn-item:focus,
+body.topo-home .bottom-nav a.bn-item:active,
+body.topo-home .bottom-nav a.bn-item.active,
+body.topo-home .bottom-nav button.bn-item,
+body.topo-home .bottom-nav .bn-item span { color: #ffffff !important; -webkit-text-fill-color: #ffffff; }
+body.topo-home .bottom-nav .bn-icon svg,
+body.topo-home .bottom-nav .bn-item.active .bn-icon svg { stroke: #ffffff !important; }
+body.topo-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }

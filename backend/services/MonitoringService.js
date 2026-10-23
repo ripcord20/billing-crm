@@ -480,6 +480,12 @@ async function runChecks() {
       logger.error('[Monitoring] ThresholdAlert error: ' + (e.message || e));
     }
 
+    try {
+      await require('./AcsHealthService').runCheck(cfg);
+    } catch (e) {
+      logger.error('[Monitoring] AcsHealth error: ' + (e.message || e));
+    }
+
     logger.info('[Monitoring] runChecks selesai');
   } catch (e) {
     logger.error('[Monitoring] runChecks error: ' + (e.stack || e.message));

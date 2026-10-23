@@ -250,6 +250,14 @@
 @media (max-width: 600px) {
   .global-search-dropdown { max-height:360px; }
 }
+/* Ikon lonceng dan matahari tidak boleh masuk ke status bar ponsel */
+@media (max-width: 768px) {
+  .topbar {
+    box-sizing: border-box;
+    padding-top: max(36px, env(safe-area-inset-top)) !important;
+    height: calc(64px + max(36px, env(safe-area-inset-top))) !important;
+  }
+}
 </style>
 
 <div class="notification-dropdown" id="notifDropdown" style="display:none"></div>
@@ -451,8 +459,11 @@ async function updateNotifCount() {
 
 // Init + socket listener
 document.addEventListener('DOMContentLoaded', () => {
-  updateNotifCount();
-  setInterval(updateNotifCount, 30000); // refresh tiap 30 detik
+  const later = window.requestIdleCallback || ((fn) => setTimeout(fn, 700));
+  later(() => {
+    updateNotifCount();
+    setInterval(updateNotifCount, 30000);
+  });
   // Socket real-time ditangani oleh App.initSocket() (satu koneksi saja) agar
   // tidak ada toast/notif dobel. App akan memanggil window.updateNotifCount &
   // window.loadNotifPanel saat ada notifikasi baru.
@@ -636,17 +647,23 @@ document.addEventListener('DOMContentLoaded', () => {
 <!-- ═══════════════════════════════════════════════════════════ -->
 <!-- BOTTOM NAVBAR — Mobile only                               -->
 <!-- ═══════════════════════════════════════════════════════════ -->
+<style id="bn-fouc-guard">
+.bottom-nav{display:none}
+.bn-icon{width:24px;height:24px}
+.bn-icon svg,.bn-item svg{width:22px;height:22px;max-width:24px;max-height:24px;flex-shrink:0}
+@media (max-width:768px){.bottom-nav{display:flex}}
+</style>
 <% if (useSalesBottomNav) { %>
 <nav class="bottom-nav" id="bottomNav">
   <a href="#overview" class="bn-item active" data-sales-bn="overview" onclick="salesBnGo(event,'overview')">
     <div class="bn-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
     </div>
     <span>Dashboard</span>
   </a>
   <a href="#pipeline" class="bn-item" data-sales-bn="pipeline" onclick="salesBnGo(event,'pipeline')">
     <div class="bn-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
     </div>
     <span>Pipeline</span>
   </a>
@@ -658,14 +675,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   <a href="#coverage" class="bn-item" data-sales-bn="coverage" onclick="salesBnGo(event,'coverage')">
     <div class="bn-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
     </div>
     <span>Coverage</span>
   </a>
 
   <button class="bn-item bn-more" onclick="toggleSidebar()">
     <div class="bn-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </div>
     <span>Menu</span>
   </button>
@@ -700,31 +717,31 @@ document.addEventListener('DOMContentLoaded', () => {
 <nav class="bottom-nav" id="bottomNav">
   <a href="/finance" class="bn-item" data-page="finance-dashboard">
     <div class="bn-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
     </div>
     <span>Dashboard</span>
   </a>
-  <a href="/customers" class="bn-item" data-page="customers">
+  <a href="/customers?c=1" class="bn-item" data-page="customers">
     <div class="bn-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
     </div>
     <span>Customers</span>
   </a>
   <a href="/billing" class="bn-item" data-page="billing">
     <div class="bn-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
     </div>
     <span>Billing</span>
   </a>
-  <a href="/payments" class="bn-item" data-page="payments">
+  <a href="/payments?m=8" class="bn-item" data-page="payments">
     <div class="bn-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
     </div>
     <span>Bayar</span>
   </a>
   <button class="bn-item bn-more" onclick="toggleSidebar()">
     <div class="bn-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </div>
     <span>Menu</span>
   </button>
@@ -733,14 +750,14 @@ document.addEventListener('DOMContentLoaded', () => {
 <nav class="bottom-nav" id="bottomNav">
   <a href="/dashboard" class="bn-item" data-page="dashboard">
     <div class="bn-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
     </div>
     <span>Dashboard</span>
   </a>
 
-  <a href="/customers" class="bn-item" data-page="customers">
+  <a href="/customers?c=1" class="bn-item" data-page="customers">
     <div class="bn-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
     </div>
     <span>Customers</span>
   </a>
@@ -752,14 +769,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   <a href="/billing" class="bn-item" data-page="billing">
     <div class="bn-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
     </div>
     <span>Billing</span>
   </a>
 
   <button class="bn-item bn-more" onclick="toggleSidebar()">
     <div class="bn-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </div>
     <span>Menu</span>
   </button>
@@ -814,7 +831,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
       <span>Infra</span>
     </a>
-    <a href="/payments" class="bn-menu-item">
+    <a href="/payments?m=8" class="bn-menu-item">
       <div class="bn-mi-icon" style="background:#f0fdf4;color:#16a34a;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
       </div>
@@ -842,6 +859,7 @@ document.addEventListener('DOMContentLoaded', () => {
 </div>
 <% } %>
 
+<link rel="stylesheet" href="/css/quick-actions.css?v=qa1">
 <style>
 /* ── Bottom Nav ─────────────────────────────────────────────── */
 .bottom-nav {

@@ -1,0 +1,133 @@
+/* Kulit Infrastructure. Hanya tampilan.
+   Petak peta, chip filter, panah popup, dan kisi formulir tidak diubah. */
+
+html:has(body.infra-home) { background: #100c22; color-scheme: dark; }
+body.infra-home {
+  background: #070814 !important;
+  color: #f8fafc !important;
+}
+body.infra-home .app-layout,
+body.infra-home .main-content,
+body.infra-home .page-content { background: transparent !important; color: #f8fafc; }
+body.infra-home .sidebar { background: rgba(16, 12, 34, 0.96); border-right-color: rgba(34, 211, 238, 0.28); }
+body.infra-home .logo-text,
+body.infra-home .nav-section-title,
+body.infra-home .nav-item { color: #f8fafc; }
+body.infra-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+body.infra-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+body.infra-home .sidebar a.nav-sub:link,
+body.infra-home .sidebar a.nav-sub:visited,
+body.infra-home .sidebar a.nav-sub:hover,
+body.infra-home .sidebar a.nav-sub:focus,
+body.infra-home .sidebar a.nav-sub:active,
+body.infra-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+body.infra-home .sidebar a.nav-sub .nav-sub-dot,
+body.infra-home .sidebar a.nav-sub.active .nav-sub-dot { background: #67e8f9 !important; }
+body.infra-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+body.infra-home .search-box,
+body.infra-home .search-box input,
+body.infra-home .topbar-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.infra-home .map-stats,
+body.infra-home .tile-switcher,
+body.infra-home .filter-chips,
+body.infra-home .odp-occ-panel,
+body.infra-home .core-panel {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.infra-home .stat-lbl,
+body.infra-home .odp-occ-hdr,
+body.infra-home .odp-occ-hdr small,
+body.infra-home .odp-occ-empty,
+body.infra-home .tile-btn:not(.active) { color: #e2e8f0 !important; }
+body.infra-home .tile-btn.active { background: linear-gradient(135deg, #0891b2, #7c3aed) !important; color: #ffffff !important; }
+body.infra-home .map-add-btn { background: linear-gradient(135deg, #0891b2, #7c3aed) !important; color: #ffffff !important; }
+body.infra-home #mapSearchInput,
+body.infra-home .map-search input {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.infra-home .core-panel-hd,
+body.infra-home .core-body { color: #f8fafc !important; }
+body.infra-home .core-tab { color: #e2e8f0 !important; }
+body.infra-home .core-tab.on { background: #1d4ed8 !important; color: #ffffff !important; -webkit-text-fill-color: #ffffff; }
+
+body.infra-home .cm-table th { background: #100c22 !important; color: #e2e8f0 !important; border-bottom-color: rgba(255, 255, 255, 0.12) !important; }
+body.infra-home .cm-table tbody tr:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.infra-home .cm-table tbody tr:nth-child(8n+2) { background: #0891b2 !important; }
+body.infra-home .cm-table tbody tr:nth-child(8n+3) { background: #059669 !important; }
+body.infra-home .cm-table tbody tr:nth-child(8n+4) { background: #b45309 !important; }
+body.infra-home .cm-table tbody tr:nth-child(8n+5) { background: #ea580c !important; }
+body.infra-home .cm-table tbody tr:nth-child(8n+6) { background: #e11d48 !important; }
+body.infra-home .cm-table tbody tr:nth-child(8n+7) { background: #db2777 !important; }
+body.infra-home .cm-table tbody tr:nth-child(8n+8) { background: #7c3aed !important; }
+body.infra-home .cm-table td { color: #ffffff; background: transparent !important; }
+body.infra-home .cm-table tr.on { box-shadow: inset 0 0 0 2px #ffffff; }
+body.infra-home .odp-occ-row:nth-child(8n+1) { background: #1d4ed8 !important; color: #ffffff; }
+body.infra-home .odp-occ-row:nth-child(8n+2) { background: #0891b2 !important; color: #ffffff; }
+body.infra-home .odp-occ-row:nth-child(8n+3) { background: #059669 !important; color: #ffffff; }
+body.infra-home .odp-occ-row:nth-child(8n+4) { background: #b45309 !important; color: #ffffff; }
+body.infra-home .odp-occ-row:nth-child(8n+5) { background: #ea580c !important; color: #ffffff; }
+body.infra-home .odp-occ-row:nth-child(8n+6) { background: #e11d48 !important; color: #ffffff; }
+body.infra-home .odp-occ-row:nth-child(8n+7) { background: #db2777 !important; color: #ffffff; }
+body.infra-home .odp-occ-row:nth-child(8n+8) { background: #7c3aed !important; color: #ffffff; }
+
+body.infra-home .modal-overlay .modal,
+body.infra-home .modal-overlay .modal-header,
+body.infra-home .modal-overlay .modal-body,
+body.infra-home .modal-overlay .modal-footer {
+  background: #141028 !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+body.infra-home .modal-overlay .modal-header h2,
+body.infra-home .modal-overlay .form-label,
+body.infra-home .modal-overlay .form-group label { color: #f8fafc !important; }
+body.infra-home .modal-overlay .form-control,
+body.infra-home .modal-overlay input[type="text"],
+body.infra-home .modal-overlay input[type="number"],
+body.infra-home .modal-overlay input[type="email"],
+body.infra-home .modal-overlay input[type="tel"],
+body.infra-home .modal-overlay select,
+body.infra-home .modal-overlay textarea {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.infra-home .modal-overlay .modal-tab { color: #e2e8f0 !important; }
+body.infra-home .modal-overlay .modal-tab.active { color: #22d3ee !important; }
+
+body.infra-home .cp-popup-wrap .leaflet-popup-content-wrapper,
+body.infra-home .cp-popup-wrap .leaflet-popup-content { background: #ffffff !important; color: #0f172a !important; }
+body.infra-home .leaflet-popup-tip { background: #ffffff !important; }
+
+body.infra-home .bottom-nav { background: #100c22; border-top: 1px solid rgba(34, 211, 238, 0.28); }
+body.infra-home .bottom-nav a.bn-item:link,
+body.infra-home .bottom-nav a.bn-item:visited,
+body.infra-home .bottom-nav a.bn-item:hover,
+body.infra-home .bottom-nav a.bn-item:focus,
+body.infra-home .bottom-nav a.bn-item:active,
+body.infra-home .bottom-nav a.bn-item.active,
+body.infra-home .bottom-nav button.bn-item,
+body.infra-home .bottom-nav .bn-item span { color: #ffffff !important; -webkit-text-fill-color: #ffffff; }
+body.infra-home .bottom-nav .bn-icon svg,
+body.infra-home .bottom-nav .bn-item.active .bn-icon svg { stroke: #ffffff !important; }
+body.infra-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }

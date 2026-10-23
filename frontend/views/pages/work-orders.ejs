@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#100c22">
+  <meta name="color-scheme" content="dark">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/work-orders-palette.css?v=wo1">
   <style>
     :root {
       --d-bg:#eef2f9; --d-card:#fff; --d-border:#e0e7f3;
@@ -255,9 +258,59 @@
     .a5{animation:fadeUp .45s .28s ease both}
     @media(max-width:1100px) { .fin-grid-4{grid-template-columns:repeat(2,1fr)!important;} }
     @keyframes spin{to{transform:translateY(-50%) rotate(360deg)}}
+
+    /* Teks di baris pelangi: gaya inline tidak boleh menggelapkan judul */
+    body.wo-home .wo-page-title { color:#ffffff !important; -webkit-text-fill-color:#ffffff; }
+    body.wo-home .wo-page-sub { color:#e2e8f0 !important; -webkit-text-fill-color:#e2e8f0; }
+    body.wo-home .wo-title { color:#ffffff !important; -webkit-text-fill-color:#ffffff; }
+    body.wo-home .wo-sub { color:#e2e8f0 !important; -webkit-text-fill-color:#e2e8f0; }
+    body.wo-home .wo-ticket { color:#e0f2fe !important; -webkit-text-fill-color:#e0f2fe; }
+    body.wo-home .due-ok { color:#e2e8f0 !important; -webkit-text-fill-color:#e2e8f0; }
+
+    /* Ponsel: satu kartu per work order, tanpa geser ke samping */
+    @media (max-width: 760px) {
+      .wo-filters { flex-direction:column; align-items:stretch !important; }
+      .wo-filters .search-wrap { max-width:none !important; width:100%; flex:none; }
+      .wo-filters .filter-select { width:100%; }
+      .wo-filters #woCountLbl { margin-left:0 !important; }
+      .wo-table-wrap { overflow-x:hidden !important; max-width:100%; }
+      .wo-table { width:100%; min-width:0; border-collapse:separate; border-spacing:0; }
+      .wo-table thead { display:none; }
+      .wo-table tbody tr {
+        display:block;
+        margin:10px 12px;
+        padding:10px 12px 8px;
+        border-radius:14px;
+        border-bottom:none;
+      }
+      .wo-table tbody td {
+        display:block;
+        width:auto;
+        padding:6px 0;
+        border-bottom:none;
+        white-space:normal;
+        overflow-wrap:anywhere;
+        text-align:left !important;
+      }
+      .wo-table tbody td[data-label]::before {
+        content:attr(data-label);
+        display:block;
+        font-size:10px;
+        font-weight:700;
+        letter-spacing:.05em;
+        text-transform:uppercase;
+        color:rgba(255,255,255,.78);
+        margin-bottom:2px;
+      }
+      .wo-table tbody td[colspan] { text-align:center !important; }
+      .wo-table tbody td[colspan]::before { content:none; }
+      .wo-table .wo-actions { justify-content:flex-start !important; flex-wrap:wrap; }
+      .wo-num, .type-badge, .sb { white-space:normal; }
+      body.wo-home .page-content { overflow-x:hidden; }
+    }
   </style>
 </head>
-<body>
+<body class="wo-home">
 <div class="app-layout wo-page">
   <%- include('../partials/sidebar') %>
   <div class="main-content">
@@ -271,8 +324,8 @@
       <!-- PAGE HEADER -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px" class="a1">
         <div>
-          <div style="font-size:22px;font-weight:800;color:var(--d-text)">Work Order</div>
-          <div style="font-size:13px;color:var(--d-muted);margin-top:2px" id="woHeaderSub">Manajemen pekerjaan lapangan teknisi</div>
+          <div class="wo-page-title" style="font-size:22px;font-weight:800;color:var(--d-text)">Work Order</div>
+          <div class="wo-page-sub" style="font-size:13px;color:var(--d-muted);margin-top:2px" id="woHeaderSub">Manajemen pekerjaan lapangan teknisi</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button onclick="openAdd()" class="btn-fin btn-primary-fin">
@@ -364,7 +417,7 @@
 
       <!-- TABLE CARD -->
       <div class="w-card a5">
-        <div style="display:flex;align-items:center;gap:10px;padding:18px 20px 16px;flex-wrap:wrap;border-bottom:1px solid var(--d-border)">
+        <div class="wo-filters" style="display:flex;align-items:center;gap:10px;padding:18px 20px 16px;flex-wrap:wrap;border-bottom:1px solid var(--d-border)">
           <div class="search-wrap" style="flex:1;max-width:280px">
             <svg class="si" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             <input type="text" id="woSearch" placeholder="Cari nomor, judul, teknisi…">
@@ -395,7 +448,7 @@
           </select>
           <div style="font-size:12.5px;color:var(--d-muted);margin-left:auto;font-weight:600" id="woCountLbl">—</div>
         </div>
-        <div style="overflow-x:auto">
+        <div class="wo-table-wrap" style="overflow-x:auto">
           <table class="wo-table">
             <thead>
               <tr>
@@ -595,7 +648,7 @@
 </div>
 
 <script src="/js/app.js"></script>
-<script src="/js/work-orders.js"></script>
+<script src="/js/work-orders.js?v=wo2"></script>
 
 <script>
 (function(){
