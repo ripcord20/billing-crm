@@ -140,6 +140,12 @@ body.nas-home #nasVpnHint {
   border-color: #fdba74 !important;
 }
 
+/* Web: daftar NAS memenuhi kartu. Di bawah 1100px tabel tetap bisa digeser. */
+body.nas-home #nasTableScroll .data-table {
+  width: 100%;
+  min-width: max(100%, 1100px);
+}
+
 body.nas-home .data-table thead th {
   background: linear-gradient(90deg, #0891b2, #4f46e5 55%, #db2777) !important;
   color: #ffffff !important;
