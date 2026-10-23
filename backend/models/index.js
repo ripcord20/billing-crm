@@ -141,6 +141,7 @@ const ResellerVoucherLog      = require('./ResellerVoucherLog')(sequelize);
 const ResellerPromo           = require('./ResellerPromo')(sequelize);
 const ResellerPromoRedemption = require('./ResellerPromoRedemption')(sequelize);
 const PublicVoucherOrder      = require('./PublicVoucherOrder')(sequelize);
+const HotspotRadiusUser       = require('./HotspotRadiusUser')(sequelize);
  
 
 // ===== ASSOCIATIONS =====
@@ -344,7 +345,8 @@ const db = {
   ResellerVoucherLog,
   ResellerPromo,
   ResellerPromoRedemption,
-  PublicVoucherOrder
+  PublicVoucherOrder,
+  HotspotRadiusUser
 };
 
 // ── Todo associations
@@ -461,6 +463,9 @@ Device.hasMany(Reseller,   { foreignKey: 'device_id', as: 'resellers' });
 
 ResellerVoucherPackage.belongsTo(Device, { foreignKey: 'device_id', as: 'device' });
 Device.hasMany(ResellerVoucherPackage,   { foreignKey: 'device_id', as: 'reseller_packages' });
+
+HotspotRadiusUser.belongsTo(Device, { foreignKey: 'device_id', as: 'device' });
+Device.hasMany(HotspotRadiusUser,   { foreignKey: 'device_id', as: 'hotspot_radius_users' });
 
 // ── Public voucher orders (landing page /beli) ──
 PublicVoucherOrder.belongsTo(ResellerVoucherPackage, { foreignKey: 'package_id', as: 'package' });
