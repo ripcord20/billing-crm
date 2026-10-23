@@ -1114,6 +1114,7 @@ async function getMikrotikInstanceByDevice(deviceId = null) {
   const inst = new MikrotikService(cfg);
   // Tag biar cache invalidation bisa cek perubahan api_protocol
   inst._apiProtocol = device.api_protocol || null;
+  inst.deviceId = Number(device.id);
   _deviceInstances.set(Number(device.id), inst);
   return inst;
 }
