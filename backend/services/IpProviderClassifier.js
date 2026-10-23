@@ -262,7 +262,7 @@ function summarize(connItems) {
   };
 }
 
-module.exports = { classifyIp, summarize, PROVIDERS, aggregateByDomain };
+module.exports = { classifyIp, summarize, PROVIDERS, aggregateByDomain, registrableDomain };
 
 /**
  * Ekstrak "registrable domain" dari hostname penuh.

@@ -1111,6 +1111,25 @@ async function getProfilePicture(sessionId, number) {
   }
 }
 
+async function listGroups(sessionId) {
+  const sock = sessions.get(sessionId);
+  if (!sock) throw new Error('Session ' + sessionId + ' not connected');
+  if (typeof sock.groupFetchAllParticipating !== 'function') return [];
+  const map = await sock.groupFetchAllParticipating();
+  const out = [];
+  for (const jid of Object.keys(map || {})) {
+    const g = map[jid] || {};
+    const id = g.id || jid;
+    if (!id || !String(id).endsWith('@g.us')) continue;
+    out.push({
+      jid: id,
+      name: g.subject || g.name || id,
+    });
+  }
+  out.sort((a, b) => String(a.name).localeCompare(String(b.name), 'id'));
+  return out;
+}
+
 // Hapus pesan "untuk semua" (delete for everyone) — hanya pesan keluar kita.
 async function deleteMessage(sessionId, chatTarget, messageId) {
   const sock = sessions.get(sessionId);
@@ -1127,4 +1146,4 @@ async function deleteMessage(sessionId, chatTarget, messageId) {
   return true;
 }
 
-module.exports = { createSession, sendMessage, sendMedia, sendBroadcast, disconnectSession, getSessionStatus, isConnected, getSessions, restoreAllSessions, qrStore, getProfilePicture, flushMsgStoreSync, deleteMessage };
+module.exports = { createSession, sendMessage, sendMedia, sendBroadcast, disconnectSession, getSessionStatus, isConnected, getSessions, restoreAllSessions, qrStore, getProfilePicture, flushMsgStoreSync, deleteMessage, listGroups };

@@ -162,6 +162,27 @@ class NocController {
         created_at: ev.timestamp,
       }));
 
+      try {
+        const Uplink = require('../services/UplinkMonitorService');
+        const downs = (Uplink.getSnapshot() || []).filter(u => u.isDown && u.state !== 'unknown');
+        for (const u of downs) {
+          items.unshift({
+            id: 'uplink-' + u.ref_id,
+            type: 'uplink_down',
+            severity: 'danger',
+            title: `Uplink down · ${u.router_name}`,
+            detail: `${u.iface}${u.comment ? ' — ' + u.comment : ''}`,
+            description: u.label || 'Link down',
+            action: 'uplink_down',
+            module: 'noc',
+            target_type: 'router',
+            target_id: u.device_id,
+            router_name: u.router_name,
+            created_at: u.polled_at,
+          });
+        }
+      } catch (_) {}
+
       res.json({ success: true, data: items });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
@@ -487,19 +508,40 @@ class NocController {
       const summary = summarize(allAgg);
 
       // "Web" tab: petakan IP → domain via DNS cache router, lalu agregasi
-      // per registrable-domain. Hanya terisi jika router jadi DNS resolver klien.
+      // per registrable-domain. Kalau cache kosong, fallback reverse DNS (PTR)
+      // untuk top IP supaya tab Web tetap terisi.
       let webDomains = [];
+      let webSource = 'none';
       try {
         const dnsCache = await mt.getDnsCache();
         const web = aggregateByDomain(allAgg, dnsCache);
-        webDomains = web.domains.slice(0, 15); // top 15 domain
-      } catch (_) { /* DNS cache tidak tersedia → web kosong */ }
+        webDomains = web.domains.slice(0, 15);
+        if (webDomains.length) webSource = 'dns-cache';
+      } catch (_) { /* DNS cache tidak tersedia → coba reverse DNS */ }
+
+      if (!webDomains.length && allAgg.length) {
+        const topIps = allAgg
+          .slice()
+          .sort((a, b) => (b.bytes || 0) - (a.bytes || 0))
+          .slice(0, 40);
+        const ptrCache = [];
+        await Promise.all(topIps.map(async (item) => {
+          const host = await _reverseDnsCached(item.dst);
+          if (host) ptrCache.push({ name: host, address: item.dst });
+        }));
+        if (ptrCache.length) {
+          const web = aggregateByDomain(allAgg, ptrCache);
+          webDomains = web.domains.slice(0, 15);
+          if (webDomains.length) webSource = 'reverse-dns';
+        }
+      }
 
       res.json({
         success: true, available: true,
         totalConnections: result.totalConnections,
         ...summary,
         web: webDomains,
+        webSource,
       });
     } catch (e) {
       logger.error('[NocController.routerTrafficSummary]', e.message);

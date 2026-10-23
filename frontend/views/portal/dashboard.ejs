@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#2563eb">
+  <link rel="manifest" href="/portal-manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Pelanggan">
+  <link rel="apple-touch-icon" href="/img/portal/icon-192.png">
   <title>Customer Portal</title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
@@ -1106,7 +1111,7 @@ var currentPanel = 'home';
 
 // Fallback kontak CS — dipakai kalau settings company_* di DB masih kosong.
 // Ganti nilainya sesuai kontak CS operasional Anda.
-var DEFAULT_CS_WA    = '081292266620';
+var DEFAULT_CS_WA    = '6285869306375';
 var DEFAULT_CS_PHONE = '';
 var DEFAULT_CS_EMAIL = '';
 
@@ -2782,7 +2787,7 @@ function normalizeWa(num) {
 
 function openContactModal() {
   // Priority: settings dari DB → fallback hardcoded
-  var rawWa    = (META && META.company_wa)    || DEFAULT_CS_WA;
+  var rawWa    = '6285869306375';
   var rawPhone = (META && META.company_phone) || DEFAULT_CS_PHONE;
   var rawEmail = (META && META.company_email) || DEFAULT_CS_EMAIL;
 
@@ -3263,6 +3268,9 @@ fillProfil = function() {
 };
 
 document.addEventListener('DOMContentLoaded', loadAll);
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw-portal.js', { scope: '/portal' }).catch(function(){});
+}
 </script>
 </body>
 </html>

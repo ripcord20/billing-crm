@@ -3,31 +3,39 @@
 /**
  * HsgqOltService.js
  * ─────────────────────────────────────────────────────────────────────
- * Service SNMP untuk OLT HSGQ E04I
+ * Service SNMP untuk OLT HSGQ (EPON E04I/E08I + GPON G02ID).
  * Vendor Enterprise OID: 1.3.6.1.4.1.50224
  *
- * OID verified via snmpwalk langsung ke device 10.2.2.250
+ * Dua MIB dalam satu vendor:
  *
- * Struktur tabel ONU (1.3.6.1.4.1.50224.3.3.2.1):
- *   Kolom 2  = Nama/deskripsi ONU (nama pelanggan)
- *   Kolom 3  = Status registrasi (selalu 1, BUKAN online/offline)
- *   Kolom 4  = IP Address ONU
- *   Kolom 7  = MAC Address (6 byte)
- *   Kolom 12 = Hardware version (V3.1, V2.0)
- *   Kolom 14 = Firmware version (V1.0.0P1T6)
- *   Kolom 15 = RX Power (uint8: >=128 → (val-256)/10 dBm, <128 → -(val/10) dBm)
- *   Kolom 16 = ONU Sequence Index (STATUS SEBENARNYA):
- *              0     = OFFLINE
- *              65535 = REMOVED/ERROR (offline)
- *              1-127 = ONLINE (urutan slot aktif di PON)
- *   Kolom 25 = Chipset vendor (ZTE, MTK, ZICG)
+ * 1) E04I / E04R EPON — 1.3.6.1.4.1.50224.3.3.2.1  (onuInfoTable)
+ *    E04I (10.2.2.250): kolom 2=nama, 4=IP, 7=MAC, 12=HW, 14=FW, 15=RX uint8, 16=seq.
+ *    E04R (192.168.94.10): kolom 15 = jarak (bukan dBm). Redaman di
+ *    3.3.3.1.4.{idx}.0.0 (RX 0.01 dBm) dan 3.3.3.1.5.{idx}.0.0 (TX 0.01 dBm).
  *
- * Format index: 4-byte [1][0][PON][ONU]
- *   16777473 = PON1/ONU1, 16778261 = PON4/ONU21
+ * 2) G02ID GPON — 1.3.6.1.4.1.50224.3.12.2.1  (ONT Table di web IGC)
+ *    Diverifikasi ke 192.168.94.2 firmware IGC_V1.0.11C_Rel (51 ONT).
+ *    Kolom 2=nama, 5=run-state (1 online / 0 offline), 8=vendor, 9=model,
+ *    11=HW, 13=SW, 15=SN GPON (HWTC8c531cad), 16=LOID, 20=last-reg, 21=ticks.
+ *    Optical SNMP: 3.12.3.1.4.{idx}.0.0 = RX 0.01 dBm, .5 = TX 0.01 dBm.
+ *    RX SNMP G02/G04 hanya kelipatan 1 dBm (-2300 → -23.0). Presisi 4
+ *    desimal diambil dari web IGC /gponmgmt?form=optical_onu (contoh
+ *    contoh: OLT -22.6780, SNMP -23.0).
+ *    Indeks sama: 0x01000100 + ONU  → 16777472 = PON1/ONU0, 16777476 = PON1/ONU4.
+ *
+ * mibMode: auto (deteksi 3.12 dulu, fallback 3.3) | g02id | hsgq
  * ─────────────────────────────────────────────────────────────────────
  */
 
+const path = require('path');
 const logger = require('../utils/logger');
+const { scaleOpticalRaw } = require('../utils/opticalDbm');
+const HsgqIgcHttpService = require('./HsgqIgcHttpService');
+const BaseCliOltService = require('./BaseCliOltService');
+const ConfigCrypto = require('../utils/ConfigCrypto');
+const { canonicalPhase, kindOf } = require('../utils/onuDownCause');
+
+const hwCache = new Map();
 
 let snmp;
 try {
@@ -39,13 +47,32 @@ try {
 const OID = {
   SYS_DESCR:    '1.3.6.1.2.1.1.1.0',
   SYS_NAME:     '1.3.6.1.2.1.1.5.0',
-  ONU_NAME:     '1.3.6.1.4.1.50224.3.3.2.1.2',   // nama pelanggan
+  SYS_FW:       '1.3.6.1.4.1.50224.3.1.1.6.0',
+  ONU_NAME:     '1.3.6.1.4.1.50224.3.3.2.1.2',   // nama pelanggan (E04I)
   ONU_IP:       '1.3.6.1.4.1.50224.3.3.2.1.4',   // IP address
   ONU_MAC:      '1.3.6.1.4.1.50224.3.3.2.1.7',   // MAC (6 byte)
   ONU_HW_VER:   '1.3.6.1.4.1.50224.3.3.2.1.12',  // HW version
   ONU_FW_VER:   '1.3.6.1.4.1.50224.3.3.2.1.14',  // FW version
-  ONU_RX_POWER: '1.3.6.1.4.1.50224.3.3.2.1.15',  // RX Power (uint8)
+  ONU_RX_POWER: '1.3.6.1.4.1.50224.3.3.2.1.15',  // E04I RX uint8; E04R = jarak
   ONU_SEQ:      '1.3.6.1.4.1.50224.3.3.2.1.16',  // Sequence → 0/65535=offline
+  ONU_RX_OPT:   '1.3.6.1.4.1.50224.3.3.3.1.4',   // E04R RX 0.01 dBm
+  ONU_TX_OPT:   '1.3.6.1.4.1.50224.3.3.3.1.5',   // E04R TX 0.01 dBm
+};
+
+// G02ID GPON — isi ONT Table di web IGC (bukan eponONU 3.3)
+const G02 = {
+  ONU_NAME:   '1.3.6.1.4.1.50224.3.12.2.1.2',
+  ONU_RUN:    '1.3.6.1.4.1.50224.3.12.2.1.5',
+  ONU_VENDOR: '1.3.6.1.4.1.50224.3.12.2.1.8',
+  ONU_MODEL:  '1.3.6.1.4.1.50224.3.12.2.1.9',
+  ONU_HW:     '1.3.6.1.4.1.50224.3.12.2.1.11',
+  ONU_SW:     '1.3.6.1.4.1.50224.3.12.2.1.13',
+  ONU_SN:     '1.3.6.1.4.1.50224.3.12.2.1.15',
+  ONU_LOID:   '1.3.6.1.4.1.50224.3.12.2.1.16',
+  ONU_REG:    '1.3.6.1.4.1.50224.3.12.2.1.20',
+  ONU_TICKS:  '1.3.6.1.4.1.50224.3.12.2.1.21',
+  ONU_RX:     '1.3.6.1.4.1.50224.3.12.3.1.4',
+  ONU_TX:     '1.3.6.1.4.1.50224.3.12.3.1.5',
 };
 
 class HsgqOltService {
@@ -55,7 +82,12 @@ class HsgqOltService {
     this.port      = config.port      || 161;
     this.timeout   = config.timeout   || 10000;
     this.name      = config.name      || config.host;
+    this.mibMode   = String(config.mibMode || 'auto').toLowerCase();
+    this.username  = config.username  || config.cliUser || '';
+    this.password  = config.password  || config.cliPassword || '';
+    this.httpPort  = config.httpPort  || 80;
     this._session  = null;
+    this._resolvedMib = null;
   }
 
   _getSession() {
@@ -106,8 +138,18 @@ class HsgqOltService {
   }
 
   _parseMac(raw) {
-    if (!raw || !Buffer.isBuffer(raw) || raw.length !== 6) return null;
-    return [...raw].map(b => b.toString(16).padStart(2,'0')).join(':').toUpperCase();
+    if (!raw) return null;
+    if (Buffer.isBuffer(raw) && raw.length === 6) {
+      return [...raw].map(b => b.toString(16).padStart(2, '0')).join(':').toUpperCase();
+    }
+    const s = String(raw).trim();
+    const colon = s.match(/^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i);
+    if (colon) return s.toUpperCase();
+    const hex = s.replace(/[^0-9a-f]/gi, '');
+    if (hex.length === 12) {
+      return hex.match(/.{2}/g).join(':').toUpperCase();
+    }
+    return null;
   }
 
   _parseIp(raw) {
@@ -117,17 +159,23 @@ class HsgqOltService {
 
   _parseVersion(raw) {
     if (!raw) return null;
-    return Buffer.isBuffer(raw)
-      ? raw.toString('ascii').trim().replace(/\x00/g,'') || null
-      : String(raw).trim() || null;
+    const s = Buffer.isBuffer(raw)
+      ? raw.toString('ascii').trim().replace(/\x00/g, '')
+      : String(raw).trim();
+    if (!s || /[^\x20-\x7e]/.test(s)) return null;
+    // E04R kadang isi HW dengan byte sampah ("323.E"). Terima pola versi saja.
+    if (!/^v\d/i.test(s) && !/^[a-z]{1,8}-v\d/i.test(s)) return null;
+    return s;
   }
 
   _parseRxPower(raw) {
     if (raw === null || raw === undefined) return null;
-    // uint8: >=128 → (val-256)/10 dBm  |  <128 → -(val/10) dBm
-    // val=0 → no signal (offline)
-    const val = Buffer.isBuffer(raw) ? raw.readUInt8(0) : parseInt(raw);
-    if (isNaN(val) || val === 0) return null;
+    // uint8 E04I: >=128 → (val-256)/10 dBm  |  <128 → -(val/10) dBm
+    // val=0 → no signal. Nilai >255 (E04R col 15) bukan dBm — abaikan.
+    const val = Buffer.isBuffer(raw)
+      ? (raw.length === 1 ? raw.readUInt8(0) : parseInt(raw.toString(), 10))
+      : parseInt(raw, 10);
+    if (isNaN(val) || val === 0 || val > 255 || val < 0) return null;
     const dbm = val >= 128 ? (val - 256) / 10 : -(val / 10);
     return parseFloat(dbm.toFixed(1));
   }
@@ -141,10 +189,76 @@ class HsgqOltService {
     return 'online';
   }
 
+  _parseG02Rx(raw) {
+    if (raw === null || raw === undefined || raw === '') return null;
+    const val = Buffer.isBuffer(raw)
+      ? (raw.length ? raw.readIntBE(0, Math.min(raw.length, 4)) : NaN)
+      : (typeof raw === 'number' ? raw : parseInt(raw, 10));
+    return scaleOpticalRaw(val);
+  }
+
+  _parseG02Status(runRaw, rxPower) {
+    const run = parseInt(runRaw, 10);
+    if (run !== 1) return 'offline';
+    if (rxPower !== null && rxPower < -27) return 'warning';
+    return 'online';
+  }
+
+  _formatTicks(raw) {
+    const ticks = parseInt(raw, 10);
+    if (!Number.isFinite(ticks) || ticks <= 0) return null;
+    const sec = Math.floor(ticks / 100);
+    const d = Math.floor(sec / 86400);
+    const h = Math.floor((sec % 86400) / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    if (d) return `${d}d ${h}j ${m}m`;
+    if (h) return `${h}j ${m}m`;
+    return `${m}m`;
+  }
+
+  // Optical G02: OID berakhir .{onuIdx}.0 (ONU) atau .{onuIdx}.65535 (PON)
+  _indexG02Optical(fullOid, baseOid) {
+    const rest = this._extractIndex(fullOid, baseOid);
+    const parts = String(rest).split('.');
+    if (parts.length >= 2 && parts[1] === '65535') return null;
+    return parts[0];
+  }
+
+  async _resolveMib() {
+    if (this._resolvedMib) return this._resolvedMib;
+    if (this.mibMode === 'g02id' || this.mibMode === 'g02') {
+      this._resolvedMib = 'g02id';
+      return this._resolvedMib;
+    }
+    if (this.mibMode === 'hsgq' || this.mibMode === 'e04i') {
+      this._resolvedMib = 'hsgq';
+      return this._resolvedMib;
+    }
+    // auto: G02ID dulu (tabel E04I kosong di firmware IGC), fallback E04I
+    try {
+      const rows = await this._walk(G02.ONU_NAME);
+      if (rows.length) {
+        this._resolvedMib = 'g02id';
+        return this._resolvedMib;
+      }
+    } catch (e) {
+      logger.warn(`[HsgqOlt:${this.name}] Deteksi G02ID gagal: ${e.message}`);
+    }
+    this._resolvedMib = 'hsgq';
+    return this._resolvedMib;
+  }
+
   async getAllONTs() {
     if (!snmp) throw new Error('net-snmp tidak terinstall. Jalankan: npm install net-snmp');
-    logger.info(`[HsgqOlt:${this.name}] Fetching ONTs via SNMP...`);
+    const mib = await this._resolveMib();
+    logger.info(`[HsgqOlt:${this.name}] Fetching ONTs via SNMP (${mib})...`);
+    const onts = mib === 'g02id' ? await this._getG02ONTs() : await this._getE04ONTs();
+    await this._overlayIgcOptical(onts);
+    await this._overlayIgcRunState(onts);
+    return onts;
+  }
 
+  async _getE04ONTs() {
     const fields = [
       { key: 'name',     oid: OID.ONU_NAME     },
       { key: 'ip',       oid: OID.ONU_IP       },
@@ -170,8 +284,126 @@ class HsgqOltService {
       }
     }
 
-    logger.info(`[HsgqOlt:${this.name}] ${onuMap.size} ONU entries found`);
+    const [rxRows, txRows] = await Promise.all([
+      this._walk(OID.ONU_RX_OPT).catch(() => []),
+      this._walk(OID.ONU_TX_OPT).catch(() => []),
+    ]);
+    for (const row of rxRows) {
+      const idx = this._indexG02Optical(row.oid, OID.ONU_RX_OPT);
+      if (!idx) continue;
+      if (!onuMap.has(idx)) onuMap.set(idx, { _index: idx });
+      onuMap.get(idx).rx_opt = row.value;
+    }
+    for (const row of txRows) {
+      const idx = this._indexG02Optical(row.oid, OID.ONU_TX_OPT);
+      if (!idx || !onuMap.has(idx)) continue;
+      onuMap.get(idx).tx_opt = row.value;
+    }
+
+    logger.info(`[HsgqOlt:${this.name}] ${onuMap.size} ONU entries found (E04)`);
     return this._normalizeONTs(onuMap);
+  }
+
+  async _getG02ONTs() {
+    const fields = [
+      { key: 'name',   oid: G02.ONU_NAME },
+      { key: 'run',    oid: G02.ONU_RUN },
+      { key: 'vendor', oid: G02.ONU_VENDOR },
+      { key: 'model',  oid: G02.ONU_MODEL },
+      { key: 'hw_ver', oid: G02.ONU_HW },
+      { key: 'fw_ver', oid: G02.ONU_SW },
+      { key: 'sn',     oid: G02.ONU_SN },
+      { key: 'loid',   oid: G02.ONU_LOID },
+      { key: 'reg',    oid: G02.ONU_REG },
+      { key: 'ticks',  oid: G02.ONU_TICKS },
+    ];
+    const walkResults = await Promise.allSettled(
+      fields.map(f => this._walk(f.oid).then(rows => ({ key: f.key, oid: f.oid, rows })))
+    );
+    const onuMap = new Map();
+    for (const result of walkResults) {
+      if (result.status !== 'fulfilled') continue;
+      const { key, oid, rows } = result.value;
+      for (const row of rows) {
+        const idx = this._extractIndex(row.oid, oid);
+        if (!idx) continue;
+        if (!onuMap.has(idx)) onuMap.set(idx, { _index: idx });
+        onuMap.get(idx)[key] = row.value;
+      }
+    }
+
+    const [rxRows, txRows] = await Promise.all([
+      this._walk(G02.ONU_RX).catch(() => []),
+      this._walk(G02.ONU_TX).catch(() => []),
+    ]);
+    for (const row of rxRows) {
+      const idx = this._indexG02Optical(row.oid, G02.ONU_RX);
+      if (!idx) continue;
+      if (!onuMap.has(idx)) onuMap.set(idx, { _index: idx });
+      onuMap.get(idx).rx_power = row.value;
+    }
+    for (const row of txRows) {
+      const idx = this._indexG02Optical(row.oid, G02.ONU_TX);
+      if (!idx || !onuMap.has(idx)) continue;
+      onuMap.get(idx).tx_power = row.value;
+    }
+
+    logger.info(`[HsgqOlt:${this.name}] ${onuMap.size} ONU entries found (G02ID)`);
+    return this._normalizeG02ONTs(onuMap);
+  }
+
+  _normalizeG02ONTs(onuMap) {
+    const results = [];
+    for (const [idx, raw] of onuMap) {
+      const { pon, onu } = this._decodeIndex(idx);
+      const name    = this._parseName(raw.name);
+      const sn      = this._parseName(raw.sn);
+      const vendor  = this._parseName(raw.vendor);
+      const model   = this._parseName(raw.model);
+      const hwVer   = this._parseVersion(raw.hw_ver);
+      const fwVer   = this._parseVersion(raw.fw_ver);
+      const loid    = this._parseName(raw.loid);
+      const rxPower = this._parseG02Rx(raw.rx_power);
+      const txPower = this._parseG02Rx(raw.tx_power);
+      const status  = this._parseG02Status(raw.run, rxPower);
+      const serial  = sn || `HSGQ-P${pon}O${String(onu).padStart(3, '0')}`;
+
+      results.push({
+        serial_number:   serial,
+        olt_index:       idx,
+        pon_port:        pon,
+        onu_id:          onu,
+        manufacturer:    vendor || 'HSGQ',
+        model:           name || model || `ONU-P${pon}/${onu}`,
+        firmware:        fwVer || hwVer || null,
+        description:     name || null,
+        ip_address:      null,
+        mac_address:     null,
+        status,
+        signal_strength: rxPower,
+        uptime:          this._formatTicks(raw.ticks),
+        tr069_params: {
+          rx_power:     rxPower,
+          tx_power:     txPower,
+          olt_rx_power: null,
+          hw_version:   hwVer,
+          fw_version:   fwVer,
+          ont_model:    model,
+          loid,
+          last_reg:     this._parseName(raw.reg),
+          vendor,
+        },
+        source:      'snmp_hsgq_g02id',
+        last_inform: new Date(),
+        last_synced: new Date(),
+      });
+    }
+
+    const online  = results.filter(r => r.status === 'online').length;
+    const offline = results.filter(r => r.status === 'offline').length;
+    const warning = results.filter(r => r.status === 'warning').length;
+    logger.info(`[HsgqOlt:${this.name}] ${results.length} total | ${online} online | ${offline} offline | ${warning} warning (G02ID)`);
+    return results;
   }
 
   _normalizeONTs(onuMap) {
@@ -180,7 +412,9 @@ class HsgqOltService {
       const { pon, onu } = this._decodeIndex(idx);
       const name    = this._parseName(raw.name);
       const mac     = this._parseMac(raw.mac);
-      const rxPower = this._parseRxPower(raw.rx_power);
+      const rxOpt   = this._parseG02Rx(raw.rx_opt);
+      const txOpt   = this._parseG02Rx(raw.tx_opt);
+      const rxPower = rxOpt !== null ? rxOpt : this._parseRxPower(raw.rx_power);
       const ip      = this._parseIp(raw.ip);
       const hwVer   = this._parseVersion(raw.hw_ver);
       const fwVer   = this._parseVersion(raw.fw_ver);
@@ -205,7 +439,7 @@ class HsgqOltService {
         uptime:          null,
         tr069_params: {
           rx_power:    rxPower,
-          tx_power:    null,
+          tx_power:    txOpt,
           olt_rx_power:null,
           hw_version:  hwVer,
           fw_version:  fwVer,
@@ -223,14 +457,550 @@ class HsgqOltService {
     return results;
   }
 
+  _quality(rx) {
+    if (rx === null || rx === undefined) return 'unknown';
+    if (rx >= -25) return 'good';
+    if (rx >= -28) return 'warning';
+    return 'critical';
+  }
+
+  // Power down = listrik putus, quality tetap unknown supaya tidak masuk LOS.
+  // Laser out / LOAi / LOS, dan offline tanpa angka redaman = LOS.
+  _mgmtQuality(phase, rx) {
+    const kind = kindOf(phase);
+    if (kind === 'power') return 'unknown';
+    if (kind === 'optical') return 'los';
+    if (/^offline$/i.test(String(phase || '')) && (rx == null || rx === '')) return 'los';
+    return null;
+  }
+
+  _toMgmtOnu(o) {
+    const rx = o.signal_strength;
+    const online = o.status === 'online' || o.status === 'warning';
+    const p = o.tr069_params || {};
+    const name = o.description || null;
+    const type = p.ont_model || p.hw_version || null;
+    const phase = o.phase_state || (online ? 'working' : 'offline');
+    return {
+      onu_id: o.onu_id,
+      board: 1,
+      pon: o.pon_port,
+      onu_if: `${o.pon_port}/${o.onu_id}`,
+      gpon_olt: `PON${String(o.pon_port).padStart(2, '0')}`,
+      name,
+      sn: o.mac_address || o.serial_number || null,
+      type,
+      status: (phase && phase !== 'working') ? 'offline' : (online ? 'online' : 'offline'),
+      phase_state: phase,
+      onu_rx_dbm: rx,
+      onu_tx_dbm: p.tx_power || null,
+      olt_rx_dbm: p.olt_rx_power || null,
+      quality: this._mgmtQuality(phase, rx) || this._quality(rx),
+    };
+  }
+
+  _snKey(sn) {
+    return String(sn || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+  }
+
+  _resolveIgcCredentials() {
+    if (this.username && this.password) {
+      return { username: this.username, password: this.password };
+    }
+    const files = [
+      path.join(__dirname, '../../uploads/olt_mgmt_config.json'),
+      path.join(__dirname, '../../uploads/olt_config.json'),
+    ];
+    for (const file of files) {
+      try {
+        const list = ConfigCrypto.load(file, []);
+        const hit = (list || []).find((c) => c && c.host === this.host && c.password);
+        if (hit) return { username: hit.username || 'root', password: hit.password };
+      } catch (e) { /* file belum ada / kunci salah */ }
+    }
+    return null;
+  }
+
+  async _overlayIgcOptical(onts) {
+    if (!Array.isArray(onts) || !onts.length) return onts;
+    const creds = this._resolveIgcCredentials();
+    if (!creds) return onts;
+    try {
+      const igc = new HsgqIgcHttpService({
+        host: this.host,
+        username: creds.username,
+        password: creds.password,
+        httpPort: this.httpPort,
+        timeout: Math.min(this.timeout || 10000, 12000),
+        name: this.name,
+      });
+      const pons = [...new Set(onts.map((o) => Number(o.pon_port)).filter((n) => Number.isFinite(n) && n > 0))];
+      const rows = await igc.getAllOptical(pons.length ? pons : [1, 2, 3, 4]);
+      if (!rows.length) return onts;
+
+      const bySn = new Map();
+      const byPonOnu = new Map();
+      for (const r of rows) {
+        if (r.ont_sn) bySn.set(this._snKey(r.ont_sn), r);
+        if (r.port_id != null && r.ont_id != null) {
+          byPonOnu.set(`${r.port_id}/${r.ont_id}`, r);
+        }
+      }
+
+      let hit = 0;
+      for (const o of onts) {
+        const r = bySn.get(this._snKey(o.serial_number))
+          || byPonOnu.get(`${o.pon_port}/${o.onu_id}`);
+        if (!r || r.onu_rx_dbm == null) continue;
+        o.signal_strength = r.onu_rx_dbm;
+        o.tr069_params = o.tr069_params || {};
+        o.tr069_params.rx_power = r.onu_rx_dbm;
+        if (r.onu_tx_dbm != null) o.tr069_params.tx_power = r.onu_tx_dbm;
+        if (r.olt_rx_dbm != null) o.tr069_params.olt_rx_power = r.olt_rx_dbm;
+        if (o.status === 'online' && r.onu_rx_dbm < -27) o.status = 'warning';
+        hit += 1;
+      }
+      logger.info(`[HsgqOlt:${this.name}] IGC overlay redaman ${hit}/${onts.length} ONU (presisi 4 desimal)`);
+    } catch (e) {
+      logger.warn(`[HsgqOlt:${this.name}] IGC overlay dilewati: ${e.message}`);
+    }
+    return onts;
+  }
+
+  // rstate selain 1 = ONU tidak berjalan. Sebab terakhir hanya dipakai
+  // pada kondisi itu, supaya "Power down" lama tidak mengotori ONU yang sudah online.
+  _hsgqDownPhase(row) {
+    const rs = parseInt(row && row.rstate, 10);
+    if (rs === 1) return null;
+    return canonicalPhase(row && row.last_d_cause) || 'offline';
+  }
+
+  _isSentinelRx(v) {
+    if (v == null || v === '') return false;
+    const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/[^\d.+-]/g, ''));
+    return Number.isFinite(n) && n <= -29.5;
+  }
+
+  async _overlayIgcRunState(onts) {
+    if (!Array.isArray(onts) || !onts.length) return onts;
+    const creds = this._resolveIgcCredentials();
+    if (!creds) return onts;
+    try {
+      const igc = new HsgqIgcHttpService({
+        host: this.host,
+        username: creds.username,
+        password: creds.password,
+        httpPort: this.httpPort,
+        timeout: Math.min(this.timeout || 10000, 12000),
+        name: this.name,
+      });
+      const pons = [...new Set(onts.map((o) => Number(o.pon_port)).filter((n) => Number.isFinite(n) && n > 0))];
+      const bySn = new Map();
+      for (const pon of (pons.length ? pons : [1, 2])) {
+        let rows = [];
+        try { rows = await igc.getPonAuth(pon); } catch (e) {
+          logger.warn(`[HsgqOlt:${this.name}] auth PON ${pon}: ${e.message}`);
+          continue;
+        }
+        for (const row of rows) {
+          const phase = this._hsgqDownPhase(row);
+          if (!phase) continue;
+          const sn = this._snKey(row.ont_sn);
+          if (sn) bySn.set(sn, phase);
+          if (row.identifier != null) bySn.set(`${pon}/${row.identifier}`, phase);
+        }
+      }
+      let hit = 0;
+      for (const o of onts) {
+        const phase = bySn.get(this._snKey(o.serial_number))
+          || bySn.get(`${o.pon_port}/${o.onu_id}`);
+        if (!phase) continue;
+        o.phase_state = phase;
+        o.status = 'offline';
+        // Power down / Laser out tidak punya redaman hidup. Sentinel -30 pada offline
+        // tanpa sebab juga bukan ukuran, jadi ikut dibuang.
+        if (kindOf(phase) || this._isSentinelRx(o.signal_strength)) {
+          o.signal_strength = null;
+          if (o.tr069_params) o.tr069_params.rx_power = null;
+        }
+        hit += 1;
+      }
+      logger.info(`[HsgqOlt:${this.name}] IGC status mati ${hit} ONU (Power down / Laser out / LOAi)`);
+    } catch (e) {
+      logger.warn(`[HsgqOlt:${this.name}] IGC status dilewati: ${e.message}`);
+    }
+    return onts;
+  }
+
+  // Format yang dipakai dashboard OLT Management (discover / tabel ONU)
+  async getAllOnus() {
+    const onts = await this.getAllONTs();
+    const onus = onts.map((o) => this._toMgmtOnu(o));
+    const byPon = {};
+    for (const o of onus) {
+      const key = String(o.pon);
+      if (!byPon[key]) byPon[key] = { port: key, total: 0, online: 0, offline: 0 };
+      byPon[key].total++;
+      if (o.status === 'online') byPon[key].online++;
+      else byPon[key].offline++;
+    }
+    let system = null;
+    try { system = await this.getSystemInfo(); } catch (e) { system = null; }
+    return {
+      onus,
+      ports: Object.values(byPon),
+      scanned: Object.keys(byPon).length,
+      system: (system && !system.error) ? system : null,
+    };
+  }
+
+  async getOnuState(ref) {
+    const all = await this.getAllOnus();
+    const pon = parseInt(String(ref || '').split(/[\/:]/).filter(Boolean)[0], 10);
+    if (!Number.isFinite(pon)) return all.onus;
+    return all.onus.filter((o) => Number(o.pon) === pon);
+  }
+
+  async getOnuDetail(pon, id) {
+    if (id == null && typeof pon === 'string' && /\/\d+/.test(pon)) {
+      const m = String(pon).match(/(\d+)\s*\/\s*(\d+)/);
+      if (m) { pon = parseInt(m[1], 10); id = parseInt(m[2], 10); }
+    }
+    const all = await this.getAllOnus();
+    const o = all.onus.find((x) => Number(x.pon) === Number(pon) && Number(x.onu_id) === Number(id));
+    if (!o) return { error: 'ONU tidak ditemukan' };
+    return {
+      onu_if: o.onu_if,
+      serial_number: o.sn,
+      name: o.name,
+      type: o.type,
+      state: o.status,
+      phase_state: o.phase_state,
+      power: {
+        onu_rx_dbm: o.onu_rx_dbm,
+        onu_tx_dbm: o.onu_tx_dbm,
+        olt_rx_dbm: null,
+        olt_tx_dbm: null,
+        no_signal: o.onu_rx_dbm == null,
+        quality: o.quality,
+      },
+    };
+  }
+
+  async getOnuPower(pon, id) {
+    const d = await this.getOnuDetail(pon, id);
+    return d.power || { onu_rx_dbm: null, no_signal: true, quality: 'unknown' };
+  }
+
+  async getPortSummary(ports = []) {
+    const all = await this.getAllOnus();
+    if (!ports.length) return all.ports;
+    const want = new Set(ports.map((p) => String(parseInt(String(p).replace(/.*\//, ''), 10))));
+    return all.ports.filter((p) => want.has(String(p.port)));
+  }
+
+  _snmpNum(vb) {
+    if (!vb || vb.value == null) return null;
+    const v = vb.value;
+    if (Buffer.isBuffer(v)) {
+      if (v.length < 1 || v.length > 4) return null;
+      return v.readUIntBE(0, v.length);
+    }
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  // 0 berarti sensor tidak ada (G02 dan E04R). G04 mengisi 40–41.
+  _pickTemp(values) {
+    for (const v of values) {
+      const n = parseInt(v, 10);
+      if (n >= 1 && n <= 125) return n;
+    }
+    return null;
+  }
+
+  _parseHardwareLine(text) {
+    const raw = String(text || '').replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
+    if (/unknown command/i.test(raw)) return null;
+    const compact = raw.replace(/\s+/g, '').toLowerCase();
+    if (!compact || compact === 'showversion' || compact.length < 20) return null;
+    const m = raw.match(/Hardware Version\s*[:=]\s*(\S+)/i);
+    return m ? m[1] : null;
+  }
+
+  async _readCliHardware() {
+    const cached = hwCache.get(this.host);
+    if (cached && cached.until > Date.now()) return cached.value;
+    let value = null;
+    if (this.username && this.password) {
+      const cli = new BaseCliOltService({
+        host: this.host,
+        protocol: 'ssh',
+        port: this.cliPort || 22,
+        username: this.username,
+        password: this.password,
+        timeout: 6000,
+        name: this.name,
+      });
+      try {
+        await cli.connect();
+        await cli._safeExec('enable');
+        value = this._parseHardwareLine(await cli._safeExec('show version'));
+      } catch (e) {
+        logger.warn(`[HsgqOlt:${this.name}] hardware CLI: ${e.message}`);
+      } finally {
+        await cli.disconnect().catch(() => {});
+      }
+    }
+    hwCache.set(this.host, { value, until: Date.now() + 10 * 60 * 1000 });
+    return value;
+  }
+
+  async getSystemInfo() {
+    if (!snmp) return { error: 'net-snmp tidak terinstall' };
+    try {
+      const base = '1.3.6.1.4.1.50224.3.1.1.';
+      const vbs = await this._get([
+        OID.SYS_DESCR, OID.SYS_NAME, OID.SYS_FW, '1.3.6.1.2.1.1.3.0',
+        base + '5.0', base + '17.0', base + '22.0', base + '23.0',
+      ]);
+      const asTxt = (vb) => Buffer.isBuffer(vb?.value)
+        ? vb.value.toString('utf8').replace(/\x00/g, '').trim()
+        : String(vb?.value || '').trim();
+      const desc = asTxt(vbs[0]);
+      const name = asTxt(vbs[1]);
+      const fw = asTxt(vbs[2]);
+      const ticks = vbs[3] && vbs[3].value != null ? parseInt(vbs[3].value, 10) : NaN;
+      const cpu = this._snmpNum(vbs[5]);
+      const temp = this._pickTemp([this._snmpNum(vbs[6]), this._snmpNum(vbs[7])]);
+      let hw = null;
+      try { hw = await this._readCliHardware(); } catch (e) { hw = null; }
+      if (!hw) {
+        const snmpHw = asTxt(vbs[4]);
+        if (snmpHw && snmpHw.length <= 32 && /\d/.test(snmpHw)) hw = snmpHw;
+      }
+      this.closeSession();
+      let uptime = null;
+      if (Number.isFinite(ticks)) {
+        let s = Math.floor(ticks / 100);
+        const d = Math.floor(s / 86400); s %= 86400;
+        const h = Math.floor(s / 3600); s %= 3600;
+        const m = Math.floor(s / 60);
+        uptime = `${d}d ${h}h ${m}m`;
+      }
+      return {
+        model: desc || name || this.name,
+        version: fw || null,
+        hw_version: hw,
+        uptime,
+        cpu_percent: cpu != null && cpu >= 0 && cpu <= 100 ? cpu : null,
+        temperature_c: temp,
+        raw: desc,
+      };
+    } catch (err) {
+      this.closeSession();
+      return { error: err.message };
+    }
+  }
+
+  // Satu kolom SNMP: jumlah ONU per PON, tanpa nama pelanggan.
+  async getCards() {
+    const sys = await this.getSystemInfo();
+    let rows = [];
+    let kind = 'GPON';
+    try { rows = await this._walk(G02.ONU_RUN); } catch (e) { rows = []; }
+    const ponMap = new Map();
+    const add = (pon, online) => {
+      if (!pon) return;
+      const cur = ponMap.get(pon) || { total: 0, online: 0 };
+      cur.total++;
+      if (online) cur.online++;
+      ponMap.set(pon, cur);
+    };
+    if (rows.length) {
+      for (const row of rows) {
+        const idx = this._extractIndex(row.oid, G02.ONU_RUN);
+        const { pon } = this._decodeIndex(idx);
+        add(pon, parseInt(row.value, 10) === 1);
+      }
+    } else {
+      kind = 'EPON';
+      let seqRows = [];
+      try { seqRows = await this._walk(OID.ONU_SEQ); } catch (e) { seqRows = []; }
+      for (const row of seqRows) {
+        const idx = this._extractIndex(row.oid, OID.ONU_SEQ);
+        const { pon } = this._decodeIndex(idx);
+        const seq = parseInt(row.value, 10);
+        const online = Number.isFinite(seq) && seq !== 0 && seq !== 65535;
+        add(pon, online);
+      }
+    }
+    this.closeSession();
+    const cards = [{
+      slot: 0,
+      slot_label: '0',
+      status: 'INSERVICE',
+      type: 'control',
+      cfgType: sys.model || this.name || 'HSGQ',
+      realType: kind,
+      port: ponMap.size || null,
+      hw_version: sys.hw_version || null,
+      sw_version: sys.version || null,
+      temperature_c: sys.temperature_c,
+      cpu_percent: sys.cpu_percent,
+      note: sys.uptime ? `uptime ${sys.uptime}` : null,
+    }];
+    [...ponMap.keys()].sort((a, b) => a - b).forEach((pon) => {
+      const s = ponMap.get(pon);
+      cards.push({
+        slot: pon,
+        slot_label: String(pon),
+        status: s.online > 0 ? 'INSERVICE' : 'OFFLINE',
+        type: 'pon',
+        cfgType: kind,
+        realType: kind,
+        port: pon,
+        note: `${s.online} online / ${s.total} ONU`,
+      });
+    });
+    return cards;
+  }
+
+  _vlansFromServicePorts(rows) {
+    const map = new Map();
+    for (const row of rows || []) {
+      const vid = parseInt(row.user_vlan, 10);
+      if (!vid || vid < 1 || vid > 4094) continue;
+      if (!map.has(vid)) map.set(vid, { ports: new Set(), count: 0 });
+      const item = map.get(vid);
+      const pon = parseInt(row.port_id, 10);
+      if (pon) item.ports.add('PON' + pon);
+      item.count++;
+    }
+    return [...map.entries()].sort((a, b) => a[0] - b[0]).map(([vid, item]) => ({
+      vid,
+      name: null,
+      type: 'service-port',
+      ports: [...item.ports].sort().join(', ') + (item.count ? ` · ${item.count} ONU` : ''),
+      sources: ['summary'],
+    }));
+  }
+
+  // Firmware IGC lama (G02) tidak punya /serviceport. VLAN yang sah
+  // ada di mapping GEM line profile. 65534 dan 0 bukan VLAN.
+  _vlansFromLineProfiles(profiles) {
+    const map = new Map();
+    for (const p of profiles || []) {
+      const name = String(p.profname || '').trim();
+      for (const gem of p.gem || []) {
+        for (const m of gem.mapping || []) {
+          const vid = parseInt(m.vlan_id, 10);
+          if (!vid || vid < 1 || vid > 4094) continue;
+          if (!map.has(vid)) map.set(vid, new Set());
+          if (name) map.get(vid).add(name);
+        }
+      }
+    }
+    return [...map.entries()].sort((a, b) => a[0] - b[0]).map(([vid, names]) => ({
+      vid,
+      name: names.size ? [...names].join(', ') : null,
+      type: 'line-profile',
+      ports: names.size ? `profil ${[...names].join(', ')}` : null,
+      sources: ['summary'],
+    }));
+  }
+
+  async getVlans() {
+    if (!this.username) return [];
+    const igc = new HsgqIgcHttpService({
+      host: this.host,
+      username: this.username,
+      password: this.password,
+      name: this.name,
+      timeout: Math.min(this.timeout || 8000, 15000),
+      httpPort: this.httpPort,
+    });
+    try {
+      const rows = await igc.getServicePorts();
+      const vlans = this._vlansFromServicePorts(rows);
+      if (vlans.length) return vlans;
+    } catch (e) {
+      logger.warn(`[HsgqOlt:${this.name}] VLAN service-port: ${e.message}`);
+    }
+    try {
+      const lines = await igc.listProfiles('/lineprofile');
+      return this._vlansFromLineProfiles(lines);
+    } catch (e) {
+      logger.warn(`[HsgqOlt:${this.name}] VLAN line-profile: ${e.message}`);
+      return [];
+    }
+  }
+
+  async getProfiles() {
+    const igc = new HsgqIgcHttpService({
+      host: this.host,
+      username: this.username,
+      password: this.password,
+      name: this.name,
+      timeout: Math.min(this.timeout || 8000, 8000),
+      httpPort: this.httpPort,
+    });
+    const lines = await igc.listProfiles('/lineprofile');
+    const srvs = await igc.listProfiles('/srvprofile');
+    const tcontDetail = lines.map((p) => {
+      const tcont = Array.isArray(p.tcont) ? p.tcont : [];
+      const dba = tcont.map((t) => t && (t.dba_profname || (t.dba_profid != null ? `DBA ${t.dba_profid}` : null))).filter(Boolean);
+      return {
+        name: String(p.profname),
+        typeLabel: dba[0] || (p.type != null ? `Type ${p.type}` : '—'),
+        bwLabel: tcont.length ? `${tcont.length} T-CONT` : '—',
+      };
+    });
+    const trafficDetail = srvs.map((p) => ({
+      name: String(p.profname),
+      bwLabel: p.ont_ethport != null ? String(p.ont_ethport) : '—',
+      note: p.ont_potsport != null ? String(p.ont_potsport) : '—',
+    }));
+    return {
+      tcont: tcontDetail.map((p) => p.name),
+      traffic: trafficDetail.map((p) => p.name),
+      tcontDetail,
+      trafficDetail,
+      onuTypes: [],
+      writable: false,
+      labels: {
+        tcont: 'Line Profile',
+        traffic: 'Service Profile',
+        tcontCols: ['Nama', 'DBA', 'T-CONT'],
+        trafficCols: ['Nama', 'ETH', 'POTS'],
+        tcontSub: 'Line profile GPON HSGQ, berikut profil DBA yang diikat ke T-CONT.',
+        trafficSub: 'Service profile: jumlah port ETH dan POTS pada ONU.',
+        note: 'Dibaca dari IGC line profile dan service profile. Tombol tambah profil tetap untuk OLT ZTE.',
+        emptyTcont: 'Tidak ada line profile pada OLT ini.',
+        emptyTraffic: 'Tidak ada service profile pada OLT ini.',
+      },
+    };
+  }
+
   async testConnection() {
     if (!snmp) return { success: false, error: 'net-snmp tidak terinstall' };
     try {
-      const vbs  = await this._get([OID.SYS_DESCR, OID.SYS_NAME]);
-      const desc = Buffer.isBuffer(vbs[0]?.value) ? vbs[0].value.toString('ascii') : String(vbs[0]?.value || '');
-      const name = Buffer.isBuffer(vbs[1]?.value) ? vbs[1].value.toString('ascii') : String(vbs[1]?.value || '');
+      const vbs  = await this._get([OID.SYS_DESCR, OID.SYS_NAME, OID.SYS_FW]);
+      const asTxt = (vb) => Buffer.isBuffer(vb?.value)
+        ? vb.value.toString('utf8').replace(/\x00/g, '').trim()
+        : String(vb?.value || '').trim();
+      const desc = asTxt(vbs[0]);
+      const name = asTxt(vbs[1]);
+      const fw   = asTxt(vbs[2]);
       this.closeSession();
-      return { success: true, sysDescr: desc.trim(), sysName: name.trim(), message: `Terhubung ke: ${name.trim()} — ${desc.trim()}` };
+      const extra = fw ? ` · ${fw}` : '';
+      return {
+        success: true,
+        sysDescr: desc,
+        sysName: name,
+        firmware: fw || null,
+        message: `Terhubung ke: ${name} — ${desc}${extra}`,
+      };
     } catch (err) {
       this.closeSession();
       return { success: false, error: err.message };

@@ -1,0 +1,601 @@
+/* Dashboard Monitoring Overview: kulit gelap SKYNET dipadu neon cyberpunk.
+   Hanya tampilan. Menu, data, dan modul lain tidak diubah. */
+
+body.dash-home {
+  --bg: #070814;
+  --bg-card: #141028;
+  --bg-sidebar: #100c22;
+  --bg-hover: rgba(255, 78, 205, 0.12);
+  --bg-input: #070814;
+  --border: rgba(34, 211, 238, 0.35);
+  --text: #f8fafc;
+  --text-primary: #f8fafc;
+  --text-secondary: #f1f5f9;
+  --text-muted: #e2e8f0;
+  --text-tertiary: #e2e8f0;
+  --shadow-sm: 0 0 0 1px rgba(34, 211, 238, 0.12);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 12px 32px rgba(255, 78, 205, 0.12);
+
+  --kpi-card: #141028;
+  --kpi-border: rgba(34, 211, 238, 0.35);
+  --kpi-label: #e2e8f0;
+  --kpi-sub: #c4b5fd;
+  --kpi-metric: #ffffff;
+  --kpi-data: #22d3ee;
+  --kpi-ok: #4ade80;
+  --kpi-bad: #ff4ecd;
+  --kpi-warn: #fde047;
+  --kpi-neutral-ink: #22d3ee;
+  --kpi-neutral-bg: rgba(34, 211, 238, 0.12);
+  --kpi-neutral-line: rgba(34, 211, 238, 0.4);
+  --kpi-data-ink: #22d3ee;
+  --kpi-data-bg: rgba(34, 211, 238, 0.12);
+  --kpi-data-line: rgba(34, 211, 238, 0.4);
+  --kpi-ok-ink: #4ade80;
+  --kpi-ok-bg: rgba(74, 222, 128, 0.12);
+  --kpi-ok-line: rgba(74, 222, 128, 0.4);
+  --kpi-bad-ink: #ff4ecd;
+  --kpi-bad-bg: rgba(255, 78, 205, 0.12);
+  --kpi-bad-line: rgba(255, 78, 205, 0.45);
+  --kpi-warn-ink: #fde047;
+  --kpi-warn-bg: rgba(253, 224, 71, 0.12);
+  --kpi-warn-line: rgba(253, 224, 71, 0.45);
+
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814;
+  color: #f8fafc;
+}
+
+body.dash-home .main-content,
+body.dash-home .page-content {
+  background: transparent;
+  color: #f8fafc;
+}
+
+body.dash-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+
+body.dash-home .sidebar-header,
+body.dash-home .sidebar-footer {
+  border-color: rgba(255, 78, 205, 0.28);
+}
+
+body.dash-home .logo-text,
+body.dash-home .page-header h1,
+body.dash-home .card-header h3 {
+  color: #f8fafc;
+}
+
+body.dash-home .logo-icon {
+  background: linear-gradient(135deg, #ff4ecd, #22d3ee);
+  border-radius: 12px;
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.45);
+}
+
+body.dash-home .nav-section-title {
+  color: #e2e8f0;
+  letter-spacing: 0.06em;
+}
+
+body.dash-home .nav-item {
+  color: #f8fafc;
+  border-radius: 8px;
+}
+
+body.dash-home .nav-item:hover,
+body.dash-home .topbar-btn:hover,
+body.dash-home .sidebar-toggle:hover {
+  background: rgba(255, 78, 205, 0.12);
+  color: #ffffff;
+}
+
+body.dash-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+
+body.dash-home .nav-item.active .nav-icon {
+  color: #22d3ee !important;
+}
+
+/* Submenu (Dashboard, NMS, Traffic, ...) diwarnai biru brand oleh white-label.
+   Di sidebar gelap warna itu tenggelam, jadi pakai putih. */
+body.dash-home .sidebar a.nav-sub:link,
+body.dash-home .sidebar a.nav-sub:visited,
+body.dash-home .sidebar a.nav-sub:hover,
+body.dash-home .sidebar a.nav-sub:focus,
+body.dash-home .sidebar a.nav-sub:active,
+body.dash-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.dash-home .sidebar a.nav-sub:hover,
+body.dash-home .sidebar a.nav-sub.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+}
+
+body.dash-home .sidebar a.nav-sub .nav-sub-dot,
+body.dash-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #67e8f9 !important;
+}
+
+body.dash-home .sidebar a.nav-sub .nav-badge {
+  -webkit-text-fill-color: currentColor;
+}
+
+body.dash-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+
+body.dash-home .search-box,
+body.dash-home .search-box:focus-within {
+  background: rgba(7, 8, 20, 0.85);
+  border-color: rgba(34, 211, 238, 0.35);
+  box-shadow: none;
+}
+
+body.dash-home .search-box:focus-within {
+  border-color: #ff4ecd;
+  box-shadow: 0 0 0 3px rgba(255, 78, 205, 0.18);
+}
+
+body.dash-home .search-box input,
+body.dash-home .search-box input::placeholder {
+  color: #e2e8f0;
+}
+
+body.dash-home .search-box input::placeholder,
+body.dash-home .search-box svg {
+  color: #e2e8f0;
+}
+
+body.dash-home .sidebar-header span,
+body.dash-home .sidebar-footer,
+body.dash-home .sidebar-footer span {
+  color: #e2e8f0 !important;
+}
+
+body.dash-home .topbar-btn svg,
+body.dash-home .sidebar-toggle svg {
+  color: #cbd5e1;
+}
+
+body.dash-home .btn-secondary,
+body.dash-home .mt-selector-wrap,
+body.dash-home .mt-selector,
+body.dash-home .iface-select,
+body.dash-home .period-select,
+body.dash-home .icon-btn-sm {
+  background: #070814;
+  color: #f8fafc;
+  border-color: rgba(34, 211, 238, 0.4);
+}
+
+body.dash-home .card {
+  background: #141028;
+  border-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px rgba(255, 78, 205, 0.08);
+}
+
+body.dash-home .card-header,
+body.dash-home .interface-item {
+  border-color: rgba(255, 78, 205, 0.22);
+}
+
+body.dash-home .card-icon,
+body.dash-home .card-link {
+  color: #22d3ee;
+}
+
+body.dash-home .bandwidth-widget {
+  background: #070814;
+}
+
+body.dash-home .bw-bar {
+  background: #2a2150;
+}
+
+/* Kartu angka — sama dengan stat card referensi */
+body.dash-home .kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1200px) {
+  body.dash-home .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 768px) {
+  body.dash-home .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}
+
+body.dash-home .kpi-card {
+  background: #141028;
+  border: 1px solid rgba(34, 211, 238, 0.32);
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 118px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.08);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+body.dash-home .kpi-card:hover {
+  border-color: #ff4ecd;
+  box-shadow: 0 0 22px rgba(255, 78, 205, 0.22);
+}
+
+body.dash-home .kpi-card.is-click { cursor: pointer; }
+
+body.dash-home .kpi-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+body.dash-home .kpi-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #f8fafc;
+  line-height: 1.35;
+  min-height: 0;
+}
+
+body.dash-home .kpi-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+body.dash-home .kpi-icon svg { width: 20px; height: 20px; }
+
+body.dash-home .kpi-icon-live.is-beat { animation: kpiBeat .65s ease-out; }
+@keyframes kpiBeat {
+  0% { transform: scale(1); }
+  45% { transform: scale(var(--sc-beat, 1.12)); }
+  100% { transform: scale(1); }
+}
+
+body.dash-home .kpi-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+body.dash-home .kpi-value {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-top: 4px;
+}
+
+body.dash-home .kpi-value-row .kpi-value { margin-top: 0; font-size: 24px; }
+
+body.dash-home .kpi-unit {
+  font-size: 18px;
+  font-weight: 700;
+  color: #22d3ee;
+}
+
+body.dash-home .stat-label,
+body.dash-home .ds-label,
+body.dash-home .bs-label,
+body.dash-home .legend-item,
+body.dash-home .growth-label,
+body.dash-home .revenue-label,
+body.dash-home .revenue-label-new,
+body.dash-home .revenue-detail-new,
+body.dash-home .outstanding-label,
+body.dash-home .outstanding-detail,
+body.dash-home .map-legend,
+body.dash-home .bw-label,
+body.dash-home .bw-time,
+body.dash-home .bw-labels,
+body.dash-home .iface-name,
+body.dash-home .dev-ip,
+body.dash-home .dev-cpu {
+  color: #f1f5f9;
+}
+
+body.dash-home .apexcharts-xaxis text,
+body.dash-home .apexcharts-yaxis text,
+body.dash-home .apexcharts-legend-text,
+body.dash-home .apexcharts-datalabel,
+body.dash-home .apexcharts-xaxis-label,
+body.dash-home .apexcharts-yaxis-label {
+  fill: #f8fafc !important;
+  color: #f8fafc !important;
+}
+
+body.dash-home .apexcharts-gridline {
+  stroke: rgba(255, 78, 205, 0.35);
+}
+
+body.dash-home .kpi-sub {
+  display: none;
+}
+
+body.dash-home .kpi-card .kpi-label,
+body.dash-home .kpi-card .kpi-value,
+body.dash-home .kpi-card .kpi-unit {
+  color: #ffffff !important;
+  text-shadow: none;
+}
+
+body.dash-home .kpi-card .kpi-icon {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+body.dash-home .kpi-card.kpi-neutral {
+  background: linear-gradient(135deg, #0891b2 0%, #1d4ed8 58%, #818cf8 100%) !important;
+  border-color: transparent !important;
+}
+
+body.dash-home .kpi-card.kpi-data {
+  background: linear-gradient(135deg, #0891b2 0%, #4f46e5 58%, #22d3ee 100%) !important;
+  border-color: transparent !important;
+}
+
+body.dash-home .kpi-card.kpi-ok {
+  background: linear-gradient(135deg, #059669 0%, #0f766e 52%, #22d3ee 100%) !important;
+  border-color: transparent !important;
+}
+
+body.dash-home .kpi-card.kpi-bad {
+  background: linear-gradient(135deg, #e11d48 0%, #be185d 50%, #ff4ecd 100%) !important;
+  border-color: transparent !important;
+}
+
+body.dash-home .kpi-card.kpi-load.is-ok,
+body.dash-home .kpi-card.kpi-load.is-warn {
+  background: linear-gradient(135deg, #d97706 0%, #c2410c 52%, #f59e0b 100%) !important;
+  border-color: transparent !important;
+}
+
+body.dash-home .kpi-card.kpi-load.is-hot {
+  background: linear-gradient(135deg, #e11d48 0%, #db2777 52%, #ff4ecd 100%) !important;
+  border-color: transparent !important;
+}
+
+/* Tabel ONT Offline: teks terang, kolom tidak dikunci ke lebar HP.
+   Geser ke kanan di dalam kartu. */
+body.dash-home .page-content,
+body.dash-home .dashboard-grid,
+body.dash-home .dashboard-grid > .card,
+body.dash-home .card-body,
+body.dash-home #alertsList {
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.dash-home .ont-off-wrap {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: #141028;
+  border-color: rgba(34, 211, 238, 0.35);
+}
+
+body.dash-home .ont-off-scroll {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  max-height: 420px;
+  overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+}
+
+/* Web: baris memenuhi lebar kartu. Di bawah 760px, dashboard.ejs menimpa ini. */
+body.dash-home .ont-off-table {
+  width: 100%;
+  min-width: max(100%, 920px);
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+body.dash-home .ont-off-table th,
+body.dash-home .ont-off-table td {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+body.dash-home .ont-off-table th {
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #22d3ee;
+  background: #100c22;
+}
+
+body.dash-home .ont-off-table td {
+  padding: 10px 14px;
+  color: #f8fafc;
+  background: #141028;
+  border-top: 1px solid rgba(255, 78, 205, 0.22);
+  font-size: 13px;
+}
+
+body.dash-home .ont-off-table tr:hover td {
+  background: #24183f;
+  color: #ffffff;
+}
+
+body.dash-home .ont-off-table th:nth-child(1),
+body.dash-home .ont-off-table td:nth-child(1) { min-width: 140px; }
+body.dash-home .ont-off-table th:nth-child(2),
+body.dash-home .ont-off-table td:nth-child(2) { min-width: 176px; }
+body.dash-home .ont-off-table th:nth-child(3),
+body.dash-home .ont-off-table td:nth-child(3) { min-width: 128px; }
+body.dash-home .ont-off-table th:nth-child(4),
+body.dash-home .ont-off-table td:nth-child(4) { min-width: 108px; }
+body.dash-home .ont-off-table th:nth-child(5),
+body.dash-home .ont-off-table td:nth-child(5) { min-width: 96px; }
+body.dash-home .ont-off-table th:nth-child(6),
+body.dash-home .ont-off-table td:nth-child(6) { min-width: 168px; }
+body.dash-home .ont-off-table th:nth-child(7),
+body.dash-home .ont-off-table td:nth-child(7) { min-width: 96px; }
+
+/* Menang atas a:not(.btn) di sidebar (warna merek biru). */
+body.dash-home .ont-off-table a.oo-name,
+body.dash-home .ont-off-table a.oo-name:link,
+body.dash-home .ont-off-table a.oo-name:visited,
+body.dash-home .ont-off-table a.oo-name:hover,
+body.dash-home .ont-off-table a.oo-name:active {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+  font-weight: 800;
+  font-size: 13.5px;
+  text-decoration: none;
+}
+
+body.dash-home .ont-off-table .oo-mono {
+  color: #f8fafc;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
+body.dash-home .ont-off-table .oo-olt {
+  display: inline-block;
+  white-space: nowrap;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.14);
+  color: #67e8f9;
+  border: 1px solid rgba(34, 211, 238, 0.45);
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+body.dash-home .ont-off-table .oo-cid,
+body.dash-home .ont-off-table .oo-time {
+  color: #e2e8f0;
+  font-size: 12.5px;
+}
+
+/* Status bar Android dan navigasi bawah menyatu dengan header gelap.
+   Hanya warna chrome. Kartu, teks, ukuran, dan posisi menu tidak diubah. */
+html:has(body.dash-home) {
+  background: #100c22;
+  color-scheme: dark;
+}
+
+body.dash-home .bottom-nav {
+  background: #100c22;
+  border-top: 1px solid rgba(34, 211, 238, 0.28);
+  box-shadow: none;
+}
+
+body.dash-home .bottom-nav a.bn-item:link,
+body.dash-home .bottom-nav a.bn-item:visited,
+body.dash-home .bottom-nav a.bn-item:hover,
+body.dash-home .bottom-nav a.bn-item:focus,
+body.dash-home .bottom-nav a.bn-item:active,
+body.dash-home .bottom-nav a.bn-item.active,
+body.dash-home .bottom-nav button.bn-item,
+body.dash-home .bottom-nav button.bn-item:hover,
+body.dash-home .bottom-nav .bn-item span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+
+body.dash-home .bn-icon svg,
+body.dash-home .bn-more .bn-icon svg,
+body.dash-home .bn-item.active .bn-icon svg,
+body.dash-home .bn-item:hover .bn-icon svg,
+body.dash-home .bn-more:hover .bn-icon svg,
+body.dash-home .bn-more.active .bn-icon svg {
+  stroke: #ffffff;
+}
+
+body.dash-home .bn-item.active::after {
+  background: #ffffff;
+}
+
+body.dash-home .bn-menu-grid .bn-menu-item:nth-child(8n+1) { background: linear-gradient(145deg, #0891b2 0%, #1d4ed8 100%) !important; }
+body.dash-home .bn-menu-grid .bn-menu-item:nth-child(8n+2) { background: linear-gradient(145deg, #059669 0%, #0f766e 100%) !important; }
+body.dash-home .bn-menu-grid .bn-menu-item:nth-child(8n+3) { background: linear-gradient(145deg, #4f46e5 0%, #7c3aed 100%) !important; }
+body.dash-home .bn-menu-grid .bn-menu-item:nth-child(8n+4) { background: linear-gradient(145deg, #db2777 0%, #e11d48 100%) !important; }
+body.dash-home .bn-menu-grid .bn-menu-item:nth-child(8n+5) { background: linear-gradient(145deg, #ea580c 0%, #b45309 100%) !important; }
+body.dash-home .bn-menu-grid .bn-menu-item:nth-child(8n+6) { background: linear-gradient(145deg, #7c3aed 0%, #4f46e5 100%) !important; }
+body.dash-home .bn-menu-grid .bn-menu-item:nth-child(8n+7) { background: linear-gradient(145deg, #0891b2 0%, #22d3ee 100%) !important; }
+body.dash-home .bn-menu-grid .bn-menu-item:nth-child(8n+8) { background: linear-gradient(145deg, #e11d48 0%, #be185d 100%) !important; }
+
+body.dash-home a.bn-menu-item,
+body.dash-home a.bn-menu-item:link,
+body.dash-home a.bn-menu-item:visited,
+body.dash-home a.bn-menu-item:hover,
+body.dash-home a.bn-menu-item:focus,
+body.dash-home a.bn-menu-item:active,
+body.dash-home a.bn-menu-item span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+  border-color: transparent !important;
+}
+
+body.dash-home .bn-menu-item .bn-mi-icon {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+
+body.dash-home .bn-menu-item .bn-mi-icon svg {
+  stroke: #ffffff;
+  color: #ffffff;
+}
+
+/* Kartu dalam yang masih terang: tulisan gelap supaya terbaca.
+   Angka biru, persentase berwarna, dan chip CID tidak diubah. */
+body.dash-home .ticket-stat .stat-value,
+body.dash-home .ticket-stat .stat-label,
+body.dash-home .uptime-summary .stat-label,
+body.dash-home .uptime-device-item .device-name-uptime,
+body.dash-home .uptime-device-item .device-ip-uptime,
+body.dash-home .uptime-device-item .uptime-incidents,
+body.dash-home .customer-bandwidth-item .customer-name,
+body.dash-home .customer-bandwidth-item .customer-package,
+body.dash-home .customer-bandwidth-item .usage-gb,
+body.dash-home .customer-bandwidth-item .usage-gb-split {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+body.dash-home .customer-bandwidth-item .usage-gb-split .dl {
+  color: #1d4ed8 !important;
+  -webkit-text-fill-color: #1d4ed8 !important;
+}
+body.dash-home .customer-bandwidth-item .usage-gb-split .ul {
+  color: #c2410c !important;
+  -webkit-text-fill-color: #c2410c !important;
+}

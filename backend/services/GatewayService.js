@@ -459,6 +459,18 @@ async function getProfilePictureImage(sessionId, number) {
   return null;
 }
 
+async function listGroups(sessionId) {
+  const { provider, row } = await _providerOf(sessionId);
+  if (provider === 'fonnte') {
+    return []; // Fonnte tidak expose daftar grup; tempel JID manual
+  }
+  if (provider === 'waha') {
+    if (!row) return [];
+    return WahaService.listGroups(row);
+  }
+  return WAService.listGroups(sessionId);
+}
+
 module.exports = {
   sendMessage,
   sendMedia,
@@ -476,4 +488,5 @@ module.exports = {
   getVerifiedSendingSession,
   ensureSendable,
   getDefaultSendingSessionId,
+  listGroups,
 };

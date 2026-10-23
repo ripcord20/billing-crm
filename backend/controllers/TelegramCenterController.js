@@ -24,12 +24,12 @@ const TG_KEYS = [
   'telegram_enabled', 'telegram_bot_token', 'telegram_chat_id',
   'telegram_notif_device', 'telegram_notif_ont', 'telegram_notif_ip', 'telegram_notif_pppoe',
   // Network health (infrastruktur inti)
-  'telegram_notif_router', 'telegram_notif_resource', 'telegram_notif_iface',
+  'telegram_notif_router', 'telegram_notif_resource', 'telegram_notif_iface', 'telegram_notif_uplink',
   'telegram_cpu_threshold', 'telegram_mem_threshold',
   'telegram_alert_offline', 'telegram_alert_offline_threshold', 'telegram_chat_alert',
   'telegram_tpl_alert_offline', 'telegram_tpl_alert_offline_ok',
   'telegram_iface_keywords', 'telegram_iface_all',
-  'telegram_chat_router', 'telegram_chat_resource', 'telegram_chat_iface',
+  'telegram_chat_router', 'telegram_chat_resource', 'telegram_chat_iface', 'telegram_chat_uplink',
   // Feed PPPoE connect/disconnect (gaya kartu)
   'telegram_pppoe_feed', 'telegram_pppoe_feed_connect', 'telegram_pppoe_feed_logout',
   'telegram_pppoe_feed_max', 'telegram_chat_pppoe_feed',
@@ -48,6 +48,7 @@ const TG_KEYS = [
   'telegram_tpl_router_down', 'telegram_tpl_router_recover',
   'telegram_tpl_resource_down', 'telegram_tpl_resource_recover',
   'telegram_tpl_iface_down', 'telegram_tpl_iface_recover',
+  'telegram_tpl_uplink_down', 'telegram_tpl_uplink_recover',
   'telegram_tpl_pppoe_connect', 'telegram_tpl_pppoe_disconnect',
 ];
 
@@ -289,6 +290,8 @@ module.exports = {
       let out;
       if (['router', 'resource', 'iface'].includes(kind)) {
         out = await require('../services/NetworkHealthService').sendTestNotif(kind);
+      } else if (kind === 'uplink') {
+        out = await require('../services/UplinkMonitorService').sendTestNotif();
       } else if (kind === 'pppoe_feed' || kind === 'pppoe_feed_connect') {
         out = await require('../services/PppoeFeedService').sendTestNotif('connect');
       } else if (kind === 'pppoe_feed_disconnect') {
@@ -313,6 +316,7 @@ module.exports = {
       const { TPL_DEFAULTS } = require('../services/MonitoringService');
       let extra = {};
       try { extra = require('../services/NetworkHealthService').TPL_DEFAULTS || {}; } catch (_) {}
+      try { extra = { ...extra, ...(require('../services/UplinkMonitorService').TPL_DEFAULTS || {}) }; } catch (_) {}
       let feed = {};
       try { feed = require('../services/PppoeFeedService').FEED_TPL_DEFAULTS || {}; } catch (_) {}
       let alert = {};

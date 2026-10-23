@@ -1322,7 +1322,7 @@ class BillingController {
         if (usedCategory && usedCategory.startsWith('reminder_')) {
           tplData.status = isOverdue ? '⚠️ JATUH TEMPO' : 'segera jatuh tempo';
         }
-        msg = replaceVariables(raw, tplData);
+        msg = require('../utils/templateHelper').withPortalAppLink(replaceVariables(raw, tplData));
         // Increment usage counter (best-effort)
         tpl.update({ usage_count: (tpl.usage_count || 0) + 1 }).catch(()=>{});
       } else {
@@ -1331,7 +1331,7 @@ class BillingController {
         const fallbackRaw = isPaid
           ? getDefaultInvoicePaidTemplate()
           : getDefaultInvoiceUnpaidTemplate();
-        msg = replaceVariables(fallbackRaw, tplData);
+        msg = require('../utils/templateHelper').withPortalAppLink(replaceVariables(fallbackRaw, tplData));
       }
 
       await GatewayService.sendMessage(session.session_id, c.phone, msg, null);
@@ -1601,11 +1601,12 @@ class BillingController {
           tplData.phone_cs = process.env.COMPANY_PHONE || process.env.SUPPORT_PHONE || '-';
 
           let msg;
+          const { withPortalAppLink } = require('../utils/templateHelper');
           if (tpl) {
-            msg = replaceVariables(tpl.content || tpl.message, tplData);
+            msg = withPortalAppLink(replaceVariables(tpl.content || tpl.message, tplData));
           } else {
             // Fallback ke default invoice_unpaid (sudah include {link_invoice})
-            msg = replaceVariables(getDefaultInvoiceUnpaidTemplate(), tplData);
+            msg = withPortalAppLink(replaceVariables(getDefaultInvoiceUnpaidTemplate(), tplData));
           }
 
           await GatewayService.sendMessage(session.session_id, c.phone, msg, null);
@@ -1760,7 +1761,7 @@ class BillingController {
                 notes: notes || null, companyName,
                 permanentLink: await getOrCreateCustomerLink(cust)
               });
-              const msg = replaceVariables(tplContent, data);
+              const msg = require('../utils/templateHelper').withPortalAppLink(replaceVariables(tplContent, data));
               await GatewayService.sendMessage(session.session_id, cust.phone, msg, null);
               waStatus = 'sent';
               if (tplRow) await tplRow.increment('usage_count').catch(() => {});

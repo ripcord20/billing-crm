@@ -4,7 +4,9 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#100c22">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/wa-palette.css?v=wa1">
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
   <style>
     :root{
@@ -101,6 +103,10 @@
     .a-tbl tbody tr:last-child td{border-bottom:none;}
     .a-tbl tbody tr:hover{background:#fafcff;cursor:pointer;}
     .a-phone{font-family:'DM Mono',monospace;font-size:12.5px;color:#374151;font-weight:500;}
+    .a-sub{font-size:10px;margin-top:1px;}
+    .a-idx{font-size:11px;}
+    .a-session{font-size:11px;font-family:'DM Mono',monospace;}
+    .a-name{font-size:12.5px;font-weight:700;}
     .a-msg{font-family:'DM Mono',monospace;font-size:11.5px;color:#475569;line-height:1.5;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .a-st{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;}
     .a-st::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
@@ -136,9 +142,26 @@
     .a-modal-b{padding:18px;overflow-y:auto;}
     .a-modal-msg{font-family:'DM Mono',monospace;font-size:12.5px;white-space:pre-wrap;line-height:1.8;background:#f7f9fd;border-radius:12px;padding:14px;border:1px solid var(--a-border);color:#1a1a1a;word-break:break-word;}
     .a-lbl{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--a-muted);margin-bottom:6px;}
+
+    @media (max-width:760px){
+      .page-content{padding:14px 12px 88px;overflow-x:hidden;}
+      .a-head,.a-head-r,.a-tools{width:100%;}
+      .a-search{min-width:0;flex:1 1 100%;}
+      .a-fi,.a-search,.a-btn{max-width:100%;}
+      .a-log-wrap{overflow-x:hidden !important;}
+      .a-tbl thead{display:none;}
+      .a-tbl,.a-tbl tbody,.a-tbl tr,.a-tbl td{display:block;width:100%;}
+      .a-tbl tr{border:1px solid rgba(34,211,238,.35);border-radius:14px;margin:0 0 10px;padding:6px 10px;background:#100c22;}
+      .a-tbl td{border:none;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:6px 0;white-space:normal;overflow-wrap:anywhere;text-align:right;}
+      .a-tbl td[data-label]::before{content:attr(data-label);font-size:11px;font-weight:700;color:#94a3b8;text-align:left;flex:0 0 34%;}
+      .a-tbl td[colspan]{display:block;text-align:center;}
+      .a-tbl td[colspan]::before{content:none;}
+      .a-msg{white-space:normal;max-width:none;overflow:visible;text-overflow:clip;}
+      .a-when{white-space:normal;}
+    }
   </style>
 </head>
-<body>
+<body class="wa-home">
 <div class="app-layout">
   <%- include('../partials/sidebar', { active: active }) %>
   <div class="main-content">
@@ -231,7 +254,7 @@
             <button class="a-btn" onclick="resetFilters()">Reset</button>
           </div>
         </div>
-        <div style="overflow-x:auto;">
+        <div class="a-log-wrap" style="overflow-x:auto;">
           <table class="a-tbl" id="logTable">
             <thead id="logTableHead"></thead>
             <tbody id="logTableBody"><tr><td colspan="7"><div class="a-skel">Memuat…</div></td></tr></tbody>
@@ -272,6 +295,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/message-logs.js"></script>
+<script src="/js/message-logs.js?v=wa1"></script>
 </body>
 </html>

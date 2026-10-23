@@ -4,7 +4,7 @@ const { sequelize } = require('../models');
 // Map module → table name + columns yang relevan untuk snapshot
 // Pakai raw query supaya tidak harus require model satu-satu (avoid circular deps).
 const MODULE_TABLES = {
-  customer:         { table: 'customers',          nameCol: 'name',          extraCols: ['customer_id', 'pppoe_username', 'phone'] },
+  customer:         { table: 'customers',          nameCol: 'name',          extraCols: ['customer_id', 'pppoe_username', 'phone', 'package_id'] },
   device:           { table: 'devices',            nameCol: 'name',          extraCols: ['ip_address', 'device_type'] },
   infrastructure:   { table: 'infrastructure_points', nameCol: 'name',       extraCols: ['type', 'address'] },
   package:          { table: 'packages',           nameCol: 'name',          extraCols: ['speed_down', 'speed_up', 'price'] },
@@ -126,6 +126,10 @@ const logActivity = (action, module) => {
         }
 
         descPromise.then(description => {
+          if (module === 'customer' && oldSnapshot && newSnapshot
+              && String(oldSnapshot.package_id || '') !== String(newSnapshot.package_id || '')) {
+            description += ` — ganti paket ${oldSnapshot.package_id || '-'} menjadi ${newSnapshot.package_id || '-'}`;
+          }
           ActivityLog.create({
             user_id:     req.user?.id || null,
             action,

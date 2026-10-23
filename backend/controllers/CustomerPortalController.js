@@ -791,6 +791,18 @@ exports.ticketCreate = async (req, res) => {
         description: ticket.description,
         createdAt: ticket.created_at || ticket.createdAt,
       }).catch(() => {});
+      require('../services/OpsNotifyService').notifyTicket({
+        event: 'created',
+        type: ticket.type,
+        ticketNo: ticket.ticket_number,
+        subject: ticket.title,
+        priority: ticket.priority,
+        customerName: c?.name || null,
+        customerCode: c?.customer_id || null,
+        createdBy: (c?.name ? `${c.name} (Pelanggan via Portal)` : 'Pelanggan via Portal'),
+        description: ticket.description,
+        createdAt: ticket.created_at || ticket.createdAt,
+      }).catch(() => {});
     } catch (_) {}
 
     res.status(201).json({
@@ -2362,7 +2374,15 @@ exports.wifiSet = async (req, res) => {
     if (!parameters.length)
       return res.status(400).json({ success: false, message: 'Tidak ada perubahan' });
 
-    await genieacs.setParameterValues(deviceId, parameters);
+    const wifiResult = await genieacs.setParameterValues(deviceId, parameters);
+    if (wifiResult && wifiResult.pendingOffline) {
+      return res.json({
+        success: true,
+        pending: true,
+        status: 'Pending - Device Offline',
+        message: 'Pending - Device Offline. Perubahan WiFi ditunda sampai modem Inform kembali ke ACS.',
+      });
+    }
 
     res.json({ success: true, message: 'Pengaturan WiFi berhasil disimpan. Modem akan update dalam beberapa detik.' });
     invalidateDeviceCache(customer.ont_sn);

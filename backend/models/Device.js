@@ -117,6 +117,12 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       allowNull: true,
       references: { model: 'infrastructure_points', key: 'id' }
+    },
+    // Port MikroTik yang DI-PIN sebagai uplink. Hanya ini yang dipantau
+    // khusus (dashboard / NOC / notif). Bukan tebakan dari nama/komentar.
+    uplink_iface: {
+      type: DataTypes.STRING(80),
+      allowNull: true
     }
   }, {
     tableName: 'devices',

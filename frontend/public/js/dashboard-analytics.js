@@ -1,5 +1,5 @@
 // ============================================
-// FLAYNET.Com - Dashboard Analytics
+// Skynet - Dashboard Analytics
 // New Features: Top Customers, Network Uptime, 
 // Ticket Stats, Bandwidth Trends, Customer Growth, Revenue Forecast
 // ============================================
@@ -112,6 +112,8 @@ function initAnalyticsControls() {
       loadBwInterfaceList().then(() => loadBandwidthTrends());
       loadCustomerGrowth();
       loadRevenueForecast();
+      if (typeof loadUplinkStrip === 'function') loadUplinkStrip();
+      if (typeof loadAlerts === 'function') loadAlerts();
     });
   }
 }
@@ -702,9 +704,9 @@ async function loadDashCustomerMap(){
   }
   if (!_dashMap){
     _dashMap = L.map(host,{scrollWheelZoom:true}).setView([-2.5,118],5);
-    const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'});
-    const sat = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',{maxZoom:21,subdomains:'0123',attribution:'&copy; Google'});
-    const labels = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:19});
+    const street = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '&copy; Google Maps' });
+    const sat = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '&copy; Google Maps' });
+    const labels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:19});
     const hybrid = L.layerGroup([sat,labels]);
     street.addTo(_dashMap);
     const layers={street,hybrid}; _dashMap._activeBase='street';
@@ -831,9 +833,11 @@ const _ALERT_ICONS = {
   ont:     {bg:'#fff5e9',fg:'#fb8c00',svg:'<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>'},
   isolir:  {bg:'#fff5e9',fg:'#fb8c00',svg:'<circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>'},
   ticket:  {bg:'#eef4ff',fg:'#1d4ed8',svg:'<path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1a2 2 0 0 0 0 4v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 0 0-4z"/>'},
+  uplink:  {bg:'#fdecef',fg:'#dc2626',svg:'<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>'},
+  atten:   {bg:'#fff5e9',fg:'#b45309',svg:'<path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/>'},
 };
 function _alertIcon(kind){
-  const map={device_offline:'device',ont_offline:'ont',customer_isolated:'isolir',ticket_urgent:'ticket'};
+  const map={device_offline:'device',ont_offline:'ont',customer_isolated:'isolir',ticket_urgent:'ticket',uplink_down:'uplink',ont_attenuation:'atten'};
   return _ALERT_ICONS[map[kind]] || _ALERT_ICONS.device;
 }
 function _alertTimeAgo(t){
@@ -862,25 +866,70 @@ async function loadAlerts(){
     list.innerHTML='<div class="alerts-empty">Gagal memuat alert.</div>';
   }
 }
+function _fmtRx(v){
+  if(v==null||v==='') return '—';
+  const n=Number(v);
+  return Number.isFinite(n) ? n.toFixed(2)+' dBm' : String(v);
+}
+function renderOntOfflineTable(items){
+  if(!items.length) return '';
+  const byOlt={};
+  items.forEach(a=>{
+    const k=(a.ont&&a.ont.olt_name)||'OLT';
+    byOlt[k]=(byOlt[k]||0)+1;
+  });
+  const sub=Object.keys(byOlt).sort().map(k=>escHtml(k)+' '+byOlt[k]).join(' · ');
+  const rows=items.map(a=>{
+    const o=a.ont||{};
+    const pon=(o.pon!=null||o.onu_id!=null)?escHtml(String(o.pon||'-'))+' / '+escHtml(String(o.onu_id??'-')):escHtml(o.onu_if||'—');
+    const href=a.link||'/monitoring/olt-management';
+    const cust=o.customer_name
+      ? escHtml(o.customer_name)+(o.customer_cid?' <span class="oo-cid">'+escHtml(o.customer_cid)+'</span>':'')
+      : '—';
+    return `<tr>
+      <td data-label="Nama"><a class="oo-name" href="${href}">${escHtml(o.name||a.title||'ONT')}</a></td>
+      <td data-label="SN" class="oo-mono">${escHtml(o.serial_number||'—')}</td>
+      <td data-label="OLT"><span class="oo-olt">${escHtml(o.olt_name||'—')}</span></td>
+      <td data-label="PON / ONU" class="oo-mono">${pon}</td>
+      <td data-label="RX" class="oo-mono">${escHtml(_fmtRx(o.rx_dbm))}</td>
+      <td data-label="Pelanggan">${cust}</td>
+      <td data-label="Update" class="oo-time">${escHtml(_alertTimeAgo(a.time||o.cached_at))}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="ont-off-wrap">
+    <div class="ont-off-head">ONT Offline <b>${items.length}</b><span class="ont-off-sub">${sub}</span></div>
+    <div class="ont-off-scroll"><table class="ont-off-table">
+      <thead><tr><th>Nama</th><th>SN</th><th>OLT</th><th>PON / ONU</th><th>RX</th><th>Pelanggan</th><th>Update</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </div>`;
+}
 function renderAlerts(){
   const list=document.getElementById('alertsList');
   if(!list) return;
   const items=_alertsFilter==='all'?_alertsData:_alertsData.filter(a=>a.kind===_alertsFilter);
+  const ontItems=items.filter(a=>a.kind==='ont_offline');
+  const otherItems=items.filter(a=>a.kind!=='ont_offline');
   if(!items.length){
     list.innerHTML='<div class="alerts-empty"><span class="ok">✓ Semua aman</span><br>Tidak ada kejadian yang perlu perhatian.</div>';
     return;
   }
-  list.innerHTML=items.map(a=>{
-    const ic=_alertIcon(a.kind);
-    return `<a class="alert-item sev-${a.severity}" href="${a.link||'#'}">
-      <span class="ai-ic" style="background:${ic.bg};color:${ic.fg}"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">${ic.svg}</svg></span>
-      <span class="ai-body">
-        <span class="ai-title">${escHtml(a.title||'-')}</span>
-        <span class="ai-detail">${escHtml(a.detail||'')}</span>
-      </span>
-      <span class="ai-time">${_alertTimeAgo(a.time)}</span>
-    </a>`;
-  }).join('');
+  let html='';
+  if(otherItems.length){
+    html+=otherItems.map(a=>{
+      const ic=_alertIcon(a.kind);
+      return `<a class="alert-item sev-${a.severity}" href="${a.link||'#'}">
+        <span class="ai-ic" style="background:${ic.bg};color:${ic.fg}"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">${ic.svg}</svg></span>
+        <span class="ai-body">
+          <span class="ai-title">${escHtml(a.title||'-')}</span>
+          <span class="ai-detail">${escHtml(a.detail||'')}</span>
+        </span>
+        <span class="ai-time">${_alertTimeAgo(a.time)}</span>
+      </a>`;
+    }).join('');
+  }
+  if(ontItems.length) html+=renderOntOfflineTable(ontItems);
+  list.innerHTML=html||'<div class="alerts-empty"><span class="ok">✓ Semua aman</span><br>Tidak ada kejadian yang perlu perhatian.</div>';
 }
 // Filter chips + refresh + auto-refresh 60s
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -897,7 +946,76 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
   const rf=document.getElementById('alertsRefresh');
   if(rf) rf.addEventListener('click', ()=>loadAlerts());
+  const ontCard=document.getElementById('ontOfflineCard');
+  if(ontCard){
+    ontCard.addEventListener('click', ()=>{
+      const chip=document.querySelector('#alertsFilters .alert-chip[data-f="ont_offline"]');
+      if(chip) chip.click();
+      const box=document.getElementById('alertsCard');
+      if(box) box.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  }
   setInterval(()=>{ if(typeof loadAlerts==='function') loadAlerts(); }, 60000);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// STRIP UPLINK TERPIN — poll /api/uplinks/status (pin-only)
+// ═══════════════════════════════════════════════════════════════
+function _ulLedClass(row){
+  if (!row) return 'unknown';
+  if (row.state === 'unknown' || row.state === 'missing' || row.state === 'disabled') return row.state;
+  if (row.isDown) return 'down';
+  return 'up';
+}
+function _ulLabel(row){
+  if (row.label) return row.label;
+  if (row.isDown) return 'Down';
+  if (row.state === 'unknown') return 'Router tidak terjangkau';
+  return 'Up';
+}
+async function loadUplinkStrip(){
+  const body = document.getElementById('uplinkStripBody');
+  if (!body) return;
+  try{
+    const j = await App.api('/uplinks/status');
+    const rows = (j && j.success && Array.isArray(j.data)) ? j.data : [];
+    const down = j && typeof j.down === 'number' ? j.down : rows.filter(r => r.isDown && r.state !== 'unknown').length;
+    const badge = document.getElementById('uplinkStripBadge');
+    if (badge){
+      const unknown = rows.filter(r => r.state === 'unknown').length;
+      if (down){ badge.style.display='inline-block'; badge.textContent=down+' down'; badge.style.background='#f5365c'; }
+      else if (unknown && unknown === rows.length){ badge.style.display='inline-block'; badge.textContent=rows.length+' dipantau'; badge.style.background='#f59e0b'; }
+      else if (rows.length){ badge.style.display='inline-block'; badge.textContent=rows.length+' up'; badge.style.background='#16a34a'; }
+      else badge.style.display='none';
+    }
+    if (!rows.length){
+      body.innerHTML='<div class="uplink-empty">Belum ada uplink yang di-pin. <a href="/devices">Pin uplink di Device Management</a>.</div>';
+      return;
+    }
+    body.innerHTML=rows.map(r=>{
+      const led=_ulLedClass(r);
+      const cls='ul-card'+(r.isDown && r.state!=='unknown'?' is-down':'')+(r.state==='unknown'?' is-unknown':'');
+      const rate=(!r.isDown && r.state!=='unknown')
+        ? (`RX ${Number(r.rx_mbps||0).toFixed(1)} / TX ${Number(r.tx_mbps||0).toFixed(1)} Mbps`)
+        : _ulLabel(r);
+      return `<a class="${cls}" href="/noc">
+        <span class="ul-led ${led}"></span>
+        <span class="ul-body">
+          <span class="ul-name">${escHtml(r.router_name||'Router')}</span>
+          <span class="ul-port">${escHtml(r.iface||'')}${r.comment? ' · '+escHtml(r.comment):''}</span>
+          <span class="ul-meta">${escHtml(rate)}</span>
+        </span>
+      </a>`;
+    }).join('');
+  }catch(e){
+    body.innerHTML='<div class="uplink-empty">Gagal memuat status uplink.</div>';
+  }
+}
+window.loadUplinkStrip = loadUplinkStrip;
+window.loadAlerts = loadAlerts;
+document.addEventListener('DOMContentLoaded', ()=>{
+  loadUplinkStrip();
+  setInterval(()=>{ if(typeof loadUplinkStrip==='function') loadUplinkStrip(); }, 15000);
 });
 
 window.addEventListener('themechange', () => {

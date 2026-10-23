@@ -6,6 +6,8 @@
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/noc-palette.css?v=noc2">
+  <link rel="stylesheet" href="/css/rainbow-tables.css?v=rb1">
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
   <style>
     :root {
@@ -789,7 +791,7 @@
     }
   </style>
 </head>
-<body>
+<body class="noc-home">
 <div class="app-layout">
   <%- include('../partials/sidebar') %>
   <div class="main-content">
@@ -2508,6 +2510,7 @@
       // Legacy aliases (untuk backward compat dengan event lama yang masih di buffer)
       pppoe_drop:        'PPPoE',
       pppoe_up:          'PPPoE',
+      uplink_down:       'Uplink',
     };
 
     wrap.innerHTML = list.map(a => {
@@ -2632,7 +2635,7 @@
         // history TANPA ifaces filter → untuk CPU/Mem/PPPoE timeline (bukan
         // bandwidth). Bandwidth per-monitor di-refresh terpisah di bawah.
         tasks.push(loadHistory(selectedRouterId));
-        // Traffic summary per provider (connection tracking) — index 7
+        // Traffic summary per provider (connection tracking)
         tasks.push(loadTrafficSummary(selectedRouterId));
       }
       const results = await Promise.all(tasks);

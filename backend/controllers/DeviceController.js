@@ -102,7 +102,11 @@ class DeviceController {
 
   async create(req, res) {
     try {
-      const device = await Device.create(req.body);
+      const payload = { ...req.body };
+      if (payload.uplink_iface !== undefined) {
+        payload.uplink_iface = String(payload.uplink_iface || '').trim() || null;
+      }
+      const device = await Device.create(payload);
       res.status(201).json({ success: true, data: device });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
@@ -130,7 +134,12 @@ class DeviceController {
     try {
       const device = await Device.findByPk(req.params.id);
       if (!device) return res.status(404).json({ success: false, message: 'Device not found' });
-      await device.update(req.body);
+      await device.update({
+        ...req.body,
+        uplink_iface: (req.body.uplink_iface === undefined)
+          ? undefined
+          : (String(req.body.uplink_iface || '').trim() || null)
+      });
       res.json({ success: true, data: device });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });

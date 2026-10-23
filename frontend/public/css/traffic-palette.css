@@ -1,0 +1,280 @@
+/* Kulit halaman Traffic Interface, selaras dengan dashboard utama.
+   Hanya tampilan. Data, filter, dan aksi tidak diubah. */
+
+body.tf-home {
+  --bg: #0f172a;
+  --bg-card: #1e293b;
+  --bg-sidebar: #1e293b;
+  --bg-hover: rgba(51, 65, 85, 0.55);
+  --bg-input: #0f172a;
+  --border: #334155;
+  --text: #f8fafc;
+  --text-primary: #f8fafc;
+  --text-secondary: #f1f5f9;
+  --text-muted: #e2e8f0;
+  --muted: #e2e8f0;
+  --faint: #cbd5e1;
+  background: #0f172a;
+  color: #f1f5f9;
+}
+
+body.tf-home .main-content,
+body.tf-home .page-content {
+  background: #0f172a;
+  color: #f1f5f9;
+}
+
+body.tf-home .sidebar {
+  background: rgba(30, 41, 59, 0.96);
+  border-right-color: #334155;
+}
+
+body.tf-home .sidebar-header,
+body.tf-home .sidebar-footer {
+  border-color: #334155;
+}
+
+body.tf-home .logo-text {
+  color: #f8fafc;
+}
+
+body.tf-home .nav-section-title,
+body.tf-home .sidebar-header span,
+body.tf-home .sidebar-footer,
+body.tf-home .sidebar-footer span {
+  color: #e2e8f0 !important;
+}
+
+body.tf-home .nav-item { color: #f8fafc; }
+
+body.tf-home .nav-item:hover,
+body.tf-home .topbar-btn:hover,
+body.tf-home .sidebar-toggle:hover {
+  background: rgba(51, 65, 85, 0.55);
+  color: #ffffff;
+}
+
+body.tf-home .nav-item.active,
+body.tf-home .nav-item.active .nav-icon {
+  background: rgba(99, 102, 241, 0.15) !important;
+  color: #818cf8 !important;
+  box-shadow: inset -3px 0 0 #6366f1;
+}
+
+body.tf-home .sidebar a.nav-sub:link,
+body.tf-home .sidebar a.nav-sub:visited,
+body.tf-home .sidebar a.nav-sub:hover,
+body.tf-home .sidebar a.nav-sub:focus,
+body.tf-home .sidebar a.nav-sub:active,
+body.tf-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.tf-home .sidebar a.nav-sub:hover,
+body.tf-home .sidebar a.nav-sub.active {
+  background: rgba(129, 140, 248, 0.16) !important;
+}
+
+body.tf-home .sidebar a.nav-sub .nav-sub-dot,
+body.tf-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #c4b5fd !important;
+}
+
+body.tf-home .sidebar a.nav-sub .nav-badge {
+  -webkit-text-fill-color: currentColor;
+}
+
+body.tf-home .topbar {
+  background: #1e293b;
+  border-bottom-color: #334155;
+  color: #f1f5f9;
+}
+
+body.tf-home .search-box,
+body.tf-home .search-box input,
+body.tf-home .topbar-btn,
+body.tf-home .icon-btn-sm,
+body.tf-home .mt-selector,
+body.tf-home .mt-selector-wrap {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+body.tf-home .tf-hdr-l h1,
+body.tf-home .card-val,
+body.tf-home .iface-name,
+body.tf-home .chart-stat-val,
+body.tf-home .tf-ctrl-label {
+  color: #f8fafc;
+}
+
+body.tf-home .tf-hdr-l p,
+body.tf-home .card-lbl,
+body.tf-home .card-sub,
+body.tf-home .rate-lbl,
+body.tf-home .rate-unit,
+body.tf-home .iface-comment,
+body.tf-home .iface-mac,
+body.tf-home .sel-count,
+body.tf-home .interval-wrap,
+body.tf-home .chart-hdr-l h3,
+body.tf-home .chart-stat-lbl,
+body.tf-home .empty-chart,
+body.tf-home .loading-state {
+  color: #e2e8f0;
+}
+
+body.tf-home .tf-cards,
+body.tf-home .tf-ctrl,
+body.tf-home .iface-card,
+body.tf-home .chart-section {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+body.tf-home .tf-card {
+  border-color: #334155;
+}
+
+body.tf-home .tf-card:hover,
+body.tf-home .iface-card:hover,
+body.tf-home .chart-section:hover {
+  background: #243044;
+  border-color: #64748b;
+  box-shadow: none;
+}
+
+body.tf-home .tf-card.tc-active,
+body.tf-home .tf-card.tc-active:hover {
+  background: #4f46e5;
+  border-color: #4f46e5;
+}
+
+body.tf-home .card-val,
+body.tf-home .rate-val {
+  white-space: nowrap;
+}
+
+body.tf-home .rate-val.rx,
+body.tf-home .chart-stat-val.rx-color { color: #22d3ee; }
+body.tf-home .rate-val.tx,
+body.tf-home .chart-stat-val.tx-color { color: #fdba74; }
+
+body.tf-home .rate-arrow.arrow-rx { background: rgba(34, 211, 238, 0.16); color: #22d3ee; }
+body.tf-home .rate-arrow.arrow-tx { background: rgba(251, 146, 60, 0.16); color: #fdba74; }
+
+body.tf-home .pill-green,
+body.tf-home .pill-running { background: rgba(16, 185, 129, 0.16); color: #34d399; }
+body.tf-home .pill-red { background: rgba(244, 63, 94, 0.16); color: #fb7185; }
+body.tf-home .pill-blue { background: rgba(34, 211, 238, 0.16); color: #67e8f9; }
+body.tf-home .pill-orange { background: rgba(251, 146, 60, 0.16); color: #fdba74; }
+body.tf-home .pill-neu,
+body.tf-home .pill-down,
+body.tf-home .iface-type-badge,
+body.tf-home .track-tag {
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+body.tf-home .dot-up { box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25); }
+body.tf-home .iface-footer,
+body.tf-home .chart-hdr,
+body.tf-home .per-if-legend {
+  border-color: #334155;
+}
+
+body.tf-home .btn-outline,
+body.tf-home .interval-wrap select,
+body.tf-home .tc-time-btns,
+body.tf-home .tc-mode-btns,
+body.tf-home .per-if-chip {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+body.tf-home .tc-time-btn,
+body.tf-home .tc-mode-btn { color: #e2e8f0; }
+
+body.tf-home .tc-time-btn.active { background: #4f46e5; color: #ffffff; }
+body.tf-home .tc-mode-btn.active { background: #334155; color: #ffffff; }
+
+body.tf-home .btn-blue {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #ffffff;
+}
+
+body.tf-home .live-chip {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(52, 211, 153, 0.4);
+  color: #34d399;
+}
+
+body.tf-home .chart-live {
+  background: rgba(244, 63, 94, 0.16);
+  border-color: rgba(251, 113, 133, 0.4);
+  color: #fb7185;
+}
+
+body.tf-home .apexcharts-xaxis text,
+body.tf-home .apexcharts-yaxis text,
+body.tf-home .apexcharts-legend-text,
+body.tf-home .apexcharts-datalabel {
+  fill: #f8fafc !important;
+  color: #f8fafc !important;
+}
+
+body.tf-home .apexcharts-gridline { stroke: #475569; }
+
+/* Kartu ringkasan Interface Traffic. Grid tidak diubah. */
+body.tf-home #tc-running {
+  background: linear-gradient(135deg, #059669, #0f766e 55%, #22d3ee) !important;
+}
+body.tf-home #tc-down {
+  background: linear-gradient(135deg, #e11d48, #be185d 55%, #ff4ecd) !important;
+}
+body.tf-home #tc-rx {
+  background: linear-gradient(135deg, #0891b2, #1d4ed8 58%, #22d3ee) !important;
+}
+body.tf-home #tc-tx {
+  background: linear-gradient(135deg, #d97706, #c2410c 55%, #fbbf24) !important;
+}
+body.tf-home .tf-card .card-lbl,
+body.tf-home .tf-card .card-val,
+body.tf-home .tf-card .card-sub {
+  color: #ffffff !important;
+}
+body.tf-home .tf-card .card-pill {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+body.tf-home .tf-card .sp-line { stroke: #ffffff !important; }
+body.tf-home .tf-card .sp-fill { fill: rgba(255, 255, 255, 0.2) !important; }
+body.tf-home .tf-card .sp-dot { fill: #ffffff !important; }
+body.tf-home .tf-card.tc-active {
+  box-shadow: inset 0 0 0 2px #ffffff, 0 0 0 3px #ff4ecd !important;
+}
+
+body.tf-home .iface-grid .iface-card:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.tf-home .iface-grid .iface-card:nth-child(8n+2) { background: #0891b2 !important; }
+body.tf-home .iface-grid .iface-card:nth-child(8n+3) { background: #059669 !important; }
+body.tf-home .iface-grid .iface-card:nth-child(8n+4) { background: #b45309 !important; }
+body.tf-home .iface-grid .iface-card:nth-child(8n+5) { background: #ea580c !important; }
+body.tf-home .iface-grid .iface-card:nth-child(8n+6) { background: #e11d48 !important; }
+body.tf-home .iface-grid .iface-card:nth-child(8n+7) { background: #db2777 !important; }
+body.tf-home .iface-grid .iface-card:nth-child(8n+8) { background: #7c3aed !important; }
+body.tf-home .iface-card .iface-name,
+body.tf-home .iface-card .iface-comment,
+body.tf-home .iface-card .rate-lbl,
+body.tf-home .iface-card .rate-val,
+body.tf-home .iface-card .rate-val.rx,
+body.tf-home .iface-card .rate-val.tx {
+  color: #ffffff !important;
+}
+body.tf-home .iface-card.selected {
+  box-shadow: inset 0 0 0 2px #ffffff !important;
+}

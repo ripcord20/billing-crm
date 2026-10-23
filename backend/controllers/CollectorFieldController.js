@@ -598,7 +598,8 @@ class CollectorFieldController {
       ``,
       `Terima kasih atas pembayaran Anda.`
     ].filter(Boolean);
-    await GatewayService.sendMessage(session.session_id, ctx.phone, lines.join('\n'), null);
+    const { withPortalAppLink } = require('../utils/templateHelper');
+    await GatewayService.sendMessage(session.session_id, ctx.phone, withPortalAppLink(lines.join('\n')), null);
   }
 
   // ── Kirim payment link permanen via WA ────────────────────────────

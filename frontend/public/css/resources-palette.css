@@ -1,0 +1,95 @@
+/* Kulit System Resource. Hanya tampilan.
+   Kisi kartu dan warna meter tidak diubah. */
+
+html:has(body.res-home) { background: #100c22; color-scheme: dark; }
+body.res-home {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+body.res-home .app-layout,
+body.res-home .main-content,
+body.res-home .page-content,
+body.res-home .resources-container { background: transparent !important; color: #f8fafc; }
+body.res-home .sidebar { background: rgba(16, 12, 34, 0.96); border-right-color: rgba(34, 211, 238, 0.28); }
+body.res-home .logo-text,
+body.res-home .nav-section-title,
+body.res-home .nav-item { color: #f8fafc; }
+body.res-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+body.res-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+body.res-home .sidebar a.nav-sub:link,
+body.res-home .sidebar a.nav-sub:visited,
+body.res-home .sidebar a.nav-sub:hover,
+body.res-home .sidebar a.nav-sub:focus,
+body.res-home .sidebar a.nav-sub:active,
+body.res-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+body.res-home .sidebar a.nav-sub .nav-sub-dot,
+body.res-home .sidebar a.nav-sub.active .nav-sub-dot { background: #67e8f9 !important; }
+body.res-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+body.res-home .search-box,
+body.res-home .search-box input,
+body.res-home .topbar-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.res-home .page-title-modern {
+  background: none !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+body.res-home .page-subtitle,
+body.res-home .refresh-indicator { color: #e2e8f0 !important; }
+body.res-home .refresh-indicator { background: #141028 !important; }
+body.res-home .resource-card:nth-child(1) { background: linear-gradient(145deg, #0891b2, #1d4ed8 58%, #22d3ee) !important; }
+body.res-home .resource-card:nth-child(2) { background: linear-gradient(145deg, #059669, #0f766e 55%, #34d399) !important; }
+body.res-home .card-header-modern { background: transparent !important; border-bottom-color: rgba(255, 255, 255, 0.16) !important; }
+body.res-home .card-title-modern,
+body.res-home .card-subtitle,
+body.res-home .info-label,
+body.res-home .info-value,
+body.res-home .progress-label,
+body.res-home .progress-percent,
+body.res-home .progress-detail,
+body.res-home .loading-text { color: #ffffff !important; }
+body.res-home .info-row,
+body.res-home .progress-card {
+  background: rgba(7, 8, 20, 0.28) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+body.res-home .progress-bar-container { background: rgba(255, 255, 255, 0.28) !important; }
+body.res-home .progress-bar-fill.low { background: linear-gradient(90deg, #34d399, #059669) !important; }
+body.res-home .progress-bar-fill.medium { background: linear-gradient(90deg, #fde047, #d97706) !important; }
+body.res-home .progress-bar-fill.high { background: linear-gradient(90deg, #fb7185, #e11d48) !important; }
+body.res-home .text-green { color: #bbf7d0 !important; -webkit-text-fill-color: #bbf7d0; }
+body.res-home .text-orange { color: #fde68a !important; -webkit-text-fill-color: #fde68a; }
+body.res-home .text-red { color: #fecdd3 !important; -webkit-text-fill-color: #fecdd3; }
+body.res-home .status-badge.online { background: #dcfce7 !important; color: #166534 !important; -webkit-text-fill-color: #166534; }
+body.res-home .status-badge.offline { background: #fee2e2 !important; color: #991b1b !important; -webkit-text-fill-color: #991b1b; }
+body.res-home .status-badge.loading { background: #fef3c7 !important; color: #92400e !important; -webkit-text-fill-color: #92400e; }
+body.res-home .bottom-nav { background: #100c22; border-top: 1px solid rgba(34, 211, 238, 0.28); }
+body.res-home .bottom-nav a.bn-item:link,
+body.res-home .bottom-nav a.bn-item:visited,
+body.res-home .bottom-nav a.bn-item:hover,
+body.res-home .bottom-nav a.bn-item:focus,
+body.res-home .bottom-nav a.bn-item:active,
+body.res-home .bottom-nav a.bn-item.active,
+body.res-home .bottom-nav button.bn-item,
+body.res-home .bottom-nav .bn-item span { color: #ffffff !important; -webkit-text-fill-color: #ffffff; }
+body.res-home .bottom-nav .bn-icon svg,
+body.res-home .bottom-nav .bn-item.active .bn-icon svg { stroke: #ffffff !important; }
+body.res-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }

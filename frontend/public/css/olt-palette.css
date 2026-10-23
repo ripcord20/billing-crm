@@ -1,0 +1,421 @@
+/* Kulit OLT Management. Hanya tampilan.
+   Grid kartu, tab, filter, dan aksi tidak diubah. */
+
+body.olt-home {
+  --bg: #070814;
+  --text: #f8fafc;
+  --muted: #e2e8f0;
+  --faint: #e2e8f0;
+  --text-primary: #f8fafc;
+  --text-muted: #e2e8f0;
+  --border: rgba(34, 211, 238, 0.35);
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+
+body.olt-home .main-content,
+body.olt-home .page-content {
+  background: transparent !important;
+  color: #f8fafc;
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.olt-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+body.olt-home .logo-text,
+body.olt-home .nav-item { color: #f8fafc; }
+
+body.olt-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+body.olt-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+
+body.olt-home .sidebar a.nav-sub:link,
+body.olt-home .sidebar a.nav-sub:visited,
+body.olt-home .sidebar a.nav-sub:hover,
+body.olt-home .sidebar a.nav-sub:focus,
+body.olt-home .sidebar a.nav-sub:active,
+body.olt-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+body.olt-home .sidebar a.nav-sub .nav-sub-dot,
+body.olt-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #67e8f9 !important;
+}
+
+body.olt-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+body.olt-home .search-box,
+body.olt-home .search-box input,
+body.olt-home .topbar-btn {
+  background: #100c22;
+  color: #f8fafc;
+  border-color: rgba(34, 211, 238, 0.35);
+}
+
+body.olt-home .ot-hdr-l h1,
+body.olt-home .ot-hdr-l p,
+body.olt-home .ot-toggle-lbl {
+  color: #f8fafc !important;
+}
+
+body.olt-home .btn-outline {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.olt-home .btn-blue {
+  background: linear-gradient(135deg, #0891b2, #4f46e5 58%, #ff4ecd) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+body.olt-home .btn-red-outline {
+  background: rgba(225, 29, 72, 0.16) !important;
+  color: #fecdd3 !important;
+  border-color: rgba(251, 113, 133, 0.55) !important;
+}
+
+body.olt-home .ot-cards {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+body.olt-home #cardOnline {
+  background: linear-gradient(135deg, #059669, #0f766e 55%, #22d3ee) !important;
+}
+body.olt-home #cardOffline {
+  background: linear-gradient(135deg, #e11d48, #be185d 55%, #ff4ecd) !important;
+}
+body.olt-home #cardTotal {
+  background: linear-gradient(135deg, #0891b2, #1d4ed8 58%, #22d3ee) !important;
+}
+body.olt-home #cardBad {
+  background: linear-gradient(135deg, #d97706, #c2410c 55%, #fbbf24) !important;
+}
+body.olt-home .ot-card .card-lbl,
+body.olt-home .ot-card .card-val,
+body.olt-home .ot-card .card-sub {
+  color: #ffffff !important;
+}
+body.olt-home .ot-card .card-val { white-space: nowrap; }
+body.olt-home .ot-card .card-pill {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+body.olt-home .ot-card.active {
+  box-shadow: inset 0 0 0 3px #ffffff !important;
+}
+
+body.olt-home .ot-panel,
+body.olt-home .ot-modal-box,
+body.olt-home .ot-modal-foot {
+  background: #141028 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.olt-home .ot-panel-hdr,
+body.olt-home .ot-modal-hdr {
+  background: #100c22 !important;
+  border-color: rgba(34, 211, 238, 0.28) !important;
+}
+body.olt-home .ot-panel-hdr-l h2,
+body.olt-home .ot-modal-hdr h3,
+body.olt-home .ot-panel-count,
+body.olt-home .card-sub {
+  color: #f8fafc !important;
+}
+body.olt-home .ot-panel-hdr-l h2 svg { color: #67e8f9 !important; }
+
+body.olt-home .ot-tabs {
+  background: #100c22 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.olt-home .ot-tab { color: #e2e8f0 !important; }
+body.olt-home .ot-tab.active {
+  background: linear-gradient(135deg, #0891b2, #4f46e5 58%, #ff4ecd) !important;
+  color: #ffffff !important;
+}
+
+body.olt-home .search-wrap input,
+body.olt-home .form-control,
+body.olt-home .pon-input,
+body.olt-home .pager-select,
+body.olt-home .pager-btn,
+body.olt-home .ot-modal-close {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.olt-home .pager-btn.active {
+  background: linear-gradient(135deg, #0891b2, #4f46e5) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+body.olt-home .pager-left,
+body.olt-home .pager-info { color: #e2e8f0 !important; }
+body.olt-home .onu-pager { border-top-color: rgba(34, 211, 238, 0.28) !important; }
+
+body.olt-home .olt-chip:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.olt-home .olt-chip:nth-child(8n+2) { background: #0891b2 !important; }
+body.olt-home .olt-chip:nth-child(8n+3) { background: #059669 !important; }
+body.olt-home .olt-chip:nth-child(8n+4) { background: #b45309 !important; }
+body.olt-home .olt-chip:nth-child(8n+5) { background: #ea580c !important; }
+body.olt-home .olt-chip:nth-child(8n+6) { background: #e11d48 !important; }
+body.olt-home .olt-chip:nth-child(8n+7) { background: #db2777 !important; }
+body.olt-home .olt-chip:nth-child(8n+8) { background: #7c3aed !important; }
+body.olt-home .olt-chip {
+  border-color: transparent !important;
+}
+body.olt-home .olt-chip-name,
+body.olt-home .olt-chip-host { color: #ffffff !important; }
+body.olt-home .olt-chip-ic {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+body.olt-home .olt-chip.active {
+  box-shadow: inset 0 0 0 2px #ffffff !important;
+}
+
+body.olt-home .pon-pill,
+body.olt-home .pon-chip {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.olt-home .pon-pill.active,
+body.olt-home .pon-chip.active {
+  background: linear-gradient(135deg, #0891b2, #4f46e5) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+body.olt-home .pon-lbl { color: #e2e8f0 !important; }
+
+body.olt-home .trend-stat:nth-child(1) {
+  background: linear-gradient(135deg, #0891b2, #1d4ed8 58%, #22d3ee) !important;
+  border-color: transparent !important;
+}
+body.olt-home .trend-stat:nth-child(2) {
+  background: linear-gradient(135deg, #d97706, #c2410c 55%, #fbbf24) !important;
+  border-color: transparent !important;
+}
+body.olt-home .ts-label,
+body.olt-home .ts-value,
+body.olt-home .ts-unit,
+body.olt-home .ts-sub,
+body.olt-home .ts-value.rx-ok,
+body.olt-home .ts-value.rx-warn,
+body.olt-home .ts-value.rx-bad {
+  color: #ffffff !important;
+}
+
+body.olt-home .rxq-row:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.olt-home .rxq-row:nth-child(8n+2) { background: #0891b2 !important; }
+body.olt-home .rxq-row:nth-child(8n+3) { background: #059669 !important; }
+body.olt-home .rxq-row:nth-child(8n+4) { background: #b45309 !important; }
+body.olt-home .rxq-row:nth-child(8n+5) { background: #ea580c !important; }
+body.olt-home .rxq-row:nth-child(8n+6) { background: #e11d48 !important; }
+body.olt-home .rxq-row:nth-child(8n+7) { background: #db2777 !important; }
+body.olt-home .rxq-row:nth-child(8n+8) { background: #7c3aed !important; }
+body.olt-home .rxq-name,
+body.olt-home .rxq-desc,
+body.olt-home .rxq-count,
+body.olt-home .rxq-pct,
+body.olt-home .rxq-detail-title {
+  color: #ffffff !important;
+}
+body.olt-home .rxq-row.active {
+  box-shadow: inset 0 0 0 2px #ffffff !important;
+}
+body.olt-home .rxq-ic { box-shadow: 0 0 0 2px #ffffff; }
+
+body.olt-home .ot-portsum-card:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.olt-home .ot-portsum-card:nth-child(8n+2) { background: #0891b2 !important; }
+body.olt-home .ot-portsum-card:nth-child(8n+3) { background: #059669 !important; }
+body.olt-home .ot-portsum-card:nth-child(8n+4) { background: #b45309 !important; }
+body.olt-home .ot-portsum-card:nth-child(8n+5) { background: #ea580c !important; }
+body.olt-home .ot-portsum-card:nth-child(8n+6) { background: #e11d48 !important; }
+body.olt-home .ot-portsum-card:nth-child(8n+7) { background: #db2777 !important; }
+body.olt-home .ot-portsum-card:nth-child(8n+8) { background: #7c3aed !important; }
+body.olt-home .ot-portsum-card,
+body.olt-home .ot-portsum-card .ps-port,
+body.olt-home .ot-portsum-card .ps-total,
+body.olt-home .ot-portsum-card .ps-on,
+body.olt-home .ot-portsum-card .ps-off {
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+body.olt-home .ot-sys-card:nth-child(1) {
+  background: linear-gradient(135deg, #0891b2, #1d4ed8 58%, #22d3ee) !important;
+}
+body.olt-home .ot-sys-card:nth-child(2) {
+  background: linear-gradient(135deg, #d97706, #c2410c 55%, #fbbf24) !important;
+}
+body.olt-home .ot-sys-card:nth-child(3) {
+  background: linear-gradient(135deg, #059669, #0f766e 55%, #22d3ee) !important;
+}
+body.olt-home .ot-sys-card:nth-child(4) {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5 55%, #ff4ecd) !important;
+}
+body.olt-home .ot-sys-card,
+body.olt-home .ot-sys-card .sys-k,
+body.olt-home .ot-sys-card .sys-v,
+body.olt-home .ot-sys-card .sys-sub {
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+body.olt-home .gpon-card:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.olt-home .gpon-card:nth-child(8n+2) { background: #0891b2 !important; }
+body.olt-home .gpon-card:nth-child(8n+3) { background: #059669 !important; }
+body.olt-home .gpon-card:nth-child(8n+4) { background: #b45309 !important; }
+body.olt-home .gpon-card:nth-child(8n+5) { background: #ea580c !important; }
+body.olt-home .gpon-card:nth-child(8n+6) { background: #e11d48 !important; }
+body.olt-home .gpon-card:nth-child(8n+7) { background: #db2777 !important; }
+body.olt-home .gpon-card:nth-child(8n+8) { background: #7c3aed !important; }
+body.olt-home .gpon-card,
+body.olt-home .gpon-card-name,
+body.olt-home .gpon-card-sub,
+body.olt-home .gc-k,
+body.olt-home .gc-v,
+body.olt-home .gc-gauge-num,
+body.olt-home .gc-gauge-lbl,
+body.olt-home .gc-mi-k,
+body.olt-home .gc-mi-v,
+body.olt-home .gc-bar-lbl,
+body.olt-home .gc-bar-val {
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+body.olt-home .gpon-card-ic {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+body.olt-home .gpon-card-body { border-top-color: rgba(255, 255, 255, 0.2) !important; }
+
+body.olt-home .onu-table-wrap,
+body.olt-home .rxq-table-wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+body.olt-home .onu-table thead th,
+body.olt-home .rxq-table thead th {
+  background: linear-gradient(90deg, #0891b2 0%, #4f46e5 48%, #ff4ecd 100%) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+body.olt-home .onu-table tbody td,
+body.olt-home .onu-table .onu-if,
+body.olt-home .onu-table .onu-sn,
+body.olt-home .onu-table .onu-name,
+body.olt-home .onu-table .mut,
+body.olt-home .onu-table td::before,
+body.olt-home .rxq-table tbody td,
+body.olt-home .rxq-td-name,
+body.olt-home .rxq-td-idx,
+body.olt-home .rxq-td-sn,
+body.olt-home .rxq-td-rx {
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+body.olt-home .onu-table tbody tr:nth-child(8n+1) td,
+body.olt-home .rxq-table tbody tr:nth-child(8n+1) td { background: #1d4ed8 !important; }
+body.olt-home .onu-table tbody tr:nth-child(8n+2) td,
+body.olt-home .rxq-table tbody tr:nth-child(8n+2) td { background: #0891b2 !important; }
+body.olt-home .onu-table tbody tr:nth-child(8n+3) td,
+body.olt-home .rxq-table tbody tr:nth-child(8n+3) td { background: #059669 !important; }
+body.olt-home .onu-table tbody tr:nth-child(8n+4) td,
+body.olt-home .rxq-table tbody tr:nth-child(8n+4) td { background: #b45309 !important; }
+body.olt-home .onu-table tbody tr:nth-child(8n+5) td,
+body.olt-home .rxq-table tbody tr:nth-child(8n+5) td { background: #ea580c !important; }
+body.olt-home .onu-table tbody tr:nth-child(8n+6) td,
+body.olt-home .rxq-table tbody tr:nth-child(8n+6) td { background: #e11d48 !important; }
+body.olt-home .onu-table tbody tr:nth-child(8n+7) td,
+body.olt-home .rxq-table tbody tr:nth-child(8n+7) td { background: #db2777 !important; }
+body.olt-home .onu-table tbody tr:nth-child(8n+8) td,
+body.olt-home .rxq-table tbody tr:nth-child(8n+8) td { background: #7c3aed !important; }
+
+body.olt-home .ot-empty,
+body.olt-home .ot-empty h3,
+body.olt-home .ot-empty p { color: #ffffff !important; }
+
+body.olt-home .tc-down {
+  background: linear-gradient(135deg, #0891b2, #1d4ed8 58%, #22d3ee) !important;
+  border-color: transparent !important;
+}
+body.olt-home .tc-up {
+  background: linear-gradient(135deg, #059669, #0f766e 55%, #22d3ee) !important;
+  border-color: transparent !important;
+}
+body.olt-home .tc-lbl,
+body.olt-home .tc-val,
+body.olt-home .tc-sub,
+body.olt-home .tc-down .tc-val,
+body.olt-home .tc-up .tc-val,
+body.olt-home .tc-down .tc-lbl,
+body.olt-home .tc-up .tc-lbl { color: #ffffff !important; }
+
+body.olt-home .det-cell,
+body.olt-home .power-box,
+body.olt-home .vd-row {
+  background: #100c22 !important;
+  border-color: rgba(34, 211, 238, 0.28) !important;
+}
+body.olt-home .det-k,
+body.olt-home .det-v,
+body.olt-home .power-box .pk,
+body.olt-home .power-box .pv,
+body.olt-home .vd-k,
+body.olt-home .vd-v,
+body.olt-home .form-label,
+body.olt-home .form-hint,
+body.olt-home .wiz-review-row .rk,
+body.olt-home .wiz-review-row .rv,
+body.olt-home .wiz-uncfg-item .ui-sn {
+  color: #f8fafc !important;
+}
+body.olt-home .det-grid { background: transparent !important; border-color: transparent !important; }
+body.olt-home .wiz-uncfg-item {
+  background: #100c22 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.olt-home .wiz-step { color: #e2e8f0 !important; }
+body.olt-home .wiz-step.active { color: #67e8f9 !important; }
+body.olt-home .info-note {
+  background: rgba(217, 119, 6, 0.18) !important;
+  border-color: rgba(251, 191, 36, 0.45) !important;
+  color: #fde68a !important;
+}
+/* Tabel event redaman di server: warna saja. Lebar dan nowrap tidak diubah. */
+body.olt-home .att-event-scroll thead th {
+  background: linear-gradient(90deg, #0891b2 0%, #4f46e5 48%, #ff4ecd 100%) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+body.olt-home .att-event-scroll tbody td { color: #ffffff !important; }
+body.olt-home .att-event-scroll tbody tr:nth-child(8n+1) td { background: #1d4ed8 !important; }
+body.olt-home .att-event-scroll tbody tr:nth-child(8n+2) td { background: #0891b2 !important; }
+body.olt-home .att-event-scroll tbody tr:nth-child(8n+3) td { background: #059669 !important; }
+body.olt-home .att-event-scroll tbody tr:nth-child(8n+4) td { background: #b45309 !important; }
+body.olt-home .att-event-scroll tbody tr:nth-child(8n+5) td { background: #ea580c !important; }
+body.olt-home .att-event-scroll tbody tr:nth-child(8n+6) td { background: #e11d48 !important; }
+body.olt-home .att-event-scroll tbody tr:nth-child(8n+7) td { background: #db2777 !important; }
+body.olt-home .att-event-scroll tbody tr:nth-child(8n+8) td { background: #7c3aed !important; }
+
+body.olt-home .apexcharts-text,
+body.olt-home .apexcharts-legend-text,
+body.olt-home .apexcharts-datalabel {
+  fill: #ffffff !important;
+  color: #ffffff !important;
+}

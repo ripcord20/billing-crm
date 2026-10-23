@@ -1289,7 +1289,9 @@ async function sendWelcomeWA(customer) {
     pppoe_user:     customer.pppoe_username || '-',
     static_ip:      customer.static_ip || '-',
     phone_cs:       process.env.COMPANY_PHONE || process.env.SUPPORT_PHONE || '-',
-    perusahaan:     await getCompanyName()
+    perusahaan:     await getCompanyName(),
+    link_aplikasi:  require('../utils/templateHelper').buildPortalLink(),
+    link_apk:       require('../utils/templateHelper').buildAndroidAppLink()
   };
 
   // Load template welcome aktif
@@ -1305,7 +1307,7 @@ async function sendWelcomeWA(customer) {
   } catch(_) {}
 
   if (!tplContent) tplContent = DEFAULT_WELCOME_TPL;
-  const msg = _renderWelcomeTemplate(tplContent, ctx);
+  const msg = require('../utils/templateHelper').withPortalAppLink(_renderWelcomeTemplate(tplContent, ctx));
 
   // Send via Gateway (provider-aware)
   try {
@@ -1363,7 +1365,7 @@ async function ensureWelcomeTemplate() {
         { type: sequelize.QueryTypes.SELECT }
       );
       if (existing.length === 0) {
-        const variables = ['nama','cid','phone','email','alamat','paket','harga_paket','tgl_install','pppoe_user','static_ip','perusahaan','phone_cs'];
+        const variables = ['nama','cid','phone','email','alamat','paket','harga_paket','tgl_install','pppoe_user','static_ip','perusahaan','phone_cs','link_aplikasi','link_apk'];
         await sequelize.query(
           `INSERT INTO wa_templates (name, category, content, message, variables, is_active, created_at, updated_at)
            VALUES (?, 'welcome', ?, ?, ?, 1, NOW(), NOW())`,

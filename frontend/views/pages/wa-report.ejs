@@ -4,7 +4,9 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#100c22">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/wa-palette.css?v=wa1">
   <style>
     :root{
       --a-bg:#f6f8fc; --a-card:#ffffff; --a-border:#eaeef6; --a-line:#f1f4fa;
@@ -194,9 +196,18 @@
     .a-toast .a-toast-msg{line-height:1.4;color:#1e293b;}
     .a-toast.err{border-left-color:#dc2626;}
     .a-toast.err .a-toast-ic{background:#fee2e2;color:#dc2626;}
+    @media (max-width:760px){
+      .page-content{overflow-x:hidden;padding:14px 12px 88px;}
+      .a-h1,.a-h1-sub,.a-ctitle{overflow-wrap:anywhere;}
+      .a-head-r{width:100%;}
+      .a-head-r .a-btn{flex:1 1 auto;justify-content:center;}
+      .a-chips{width:100%;}
+      .sch-grid2{grid-template-columns:1fr;}
+      .wa-text{overflow-wrap:anywhere;}
+    }
   </style>
 </head>
-<body>
+<body class="wa-home">
 <div class="app-layout">
   <%- include('../partials/sidebar', { active: active }) %>
   <div class="main-content">

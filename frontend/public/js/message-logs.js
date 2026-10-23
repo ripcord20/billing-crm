@@ -151,12 +151,12 @@ async function loadChart(days) {
     stroke:{ curve:'smooth', width:[3,3,2] },
     fill:{ type:'gradient', gradient:{ shadeIntensity:1, opacityFrom:.28, opacityTo:.02, stops:[0,95] } },
     dataLabels:{ enabled:false },
-    xaxis:{ categories:labels, labels:{ style:{ colors:'#aab2c4', fontSize:'11px', fontWeight:600 } }, axisBorder:{show:false}, axisTicks:{show:false} },
-    yaxis:{ labels:{ style:{ colors:'#aab2c4', fontSize:'11px' } }, min:0, forceNiceScale:true },
-    grid:{ borderColor:'#f1f4fa', strokeDashArray:5, padding:{ left:6, right:6 } },
+    xaxis:{ categories:labels, labels:{ style:{ colors:'#e2e8f0', fontSize:'11px', fontWeight:600 } }, axisBorder:{show:false}, axisTicks:{show:false} },
+    yaxis:{ labels:{ style:{ colors:'#e2e8f0', fontSize:'11px' } }, min:0, forceNiceScale:true },
+    grid:{ borderColor:'rgba(255,255,255,.12)', strokeDashArray:5, padding:{ left:6, right:6 } },
     legend:{ show:false },
     markers:{ size:0, hover:{ size:5 } },
-    tooltip:{ theme:'light', y:{ formatter:v=>v+' pesan' } }
+    tooltip:{ theme:'dark', y:{ formatter:v=>v+' pesan' } }
   };
   if (_trendC) _trendC.destroy();
   _trendC = new ApexCharts(document.getElementById('trendChart'), opts);
@@ -193,7 +193,7 @@ async function loadBreakdown() {
     chart:{ type:'donut', height:250, fontFamily:'DM Sans,sans-serif' },
     series: has?series:[1,0,0],
     labels:['Terkirim','Gagal','Pending'], colors:['#2563eb','#ef4444','#f59e0b'],
-    stroke:{ width:3, colors:['#fff'] },
+    stroke:{ width:3, colors:['#141028'] },
     dataLabels:{ enabled:has, formatter:v=>Math.round(v)+'%', style:{ fontSize:'11px', fontWeight:'700' }, dropShadow:{enabled:false} },
     legend:{ show:false },
     plotOptions:{ pie:{ donut:{ size:'72%' } } },
@@ -273,15 +273,15 @@ async function loadLogs() {
       const idx = (_page-1)*_limit + i + 1;
       const msg = (r.message||'').replace(/\n/g,' ').substring(0,90) + ((r.message||'').length>90?'…':'');
       const stCls = STATUS_CLASS[r.status]||'st-sent', stLbl = STATUS_LABEL[r.status]||r.status;
-      const cust = r.customer_name ? '<div style="font-size:10px;color:#aab2c4;margin-top:1px;">'+esc(r.customer_name)+(r.cid?' · '+esc(r.cid):'')+'</div>' : '';
+      const cust = r.customer_name ? '<div class="a-sub">'+esc(r.customer_name)+(r.cid?' · '+esc(r.cid):'')+'</div>' : '';
       return '<tr onclick="openDetail('+r.id+')">'
-        + '<td style="color:#aab2c4;font-size:11px;">'+idx+'</td>'
-        + '<td><span class="a-phone">'+esc(r.phone||'')+'</span>'+cust+'</td>'
-        + '<td><div class="a-msg">'+esc(msg)+'</div></td>'
-        + '<td><span class="a-tc '+(TYPE_CLASS[r.type]||'tc-text')+'">'+(TYPE_LABEL[r.type]||r.type||'Teks')+'</span></td>'
-        + '<td><span class="a-st '+stCls+'">'+stLbl+'</span></td>'
-        + '<td style="font-size:11px;color:#aab2c4;font-family:\'DM Mono\',monospace;">'+esc(r.session_id||'–')+'</td>'
-        + '<td><span class="a-when">'+fmtDt(r.sent_at)+'</span></td>'
+        + '<td data-label="#" class="a-idx">'+idx+'</td>'
+        + '<td data-label="Nomor"><span class="a-phone">'+esc(r.phone||'')+'</span>'+cust+'</td>'
+        + '<td data-label="Pesan"><div class="a-msg">'+esc(msg)+'</div></td>'
+        + '<td data-label="Tipe"><span class="a-tc '+(TYPE_CLASS[r.type]||'tc-text')+'">'+(TYPE_LABEL[r.type]||r.type||'Teks')+'</span></td>'
+        + '<td data-label="Status"><span class="a-st '+stCls+'">'+stLbl+'</span></td>'
+        + '<td data-label="Session" class="a-session">'+esc(r.session_id||'–')+'</td>'
+        + '<td data-label="Waktu"><span class="a-when">'+fmtDt(r.sent_at)+'</span></td>'
       + '</tr>';
     }).join('');
   } else {
@@ -292,12 +292,12 @@ async function loadLogs() {
       const name  = r.display_name  || '–';
       const isLid = (r.from_number||'').length>13 && phone!==r.from_number;
       return '<tr onclick=\'openIncomingDetail('+JSON.stringify(r.message||'')+',"'+esc(phone)+'","'+esc(name)+'","'+esc(r.received_at||'')+'")\'>'
-        + '<td style="color:#aab2c4;font-size:11px;">'+idx+'</td>'
-        + '<td><span class="a-phone">'+esc(phone)+'</span>'+(isLid?'<div style="font-size:10px;color:#f59e0b;margin-top:1px;">ID: '+esc(r.from_number||'')+'</div>':'')+'</td>'
-        + '<td><span style="font-size:12.5px;color:#374151;font-weight:'+(name!=='–'?'700':'400')+';">'+esc(name)+'</span>'+(r.cid?'<div style="font-size:10px;color:#aab2c4;">'+esc(r.cid)+'</div>':'')+'</td>'
-        + '<td><div class="a-msg">'+esc(msg)+'</div></td>'
-        + '<td><span class="a-st st-in">Masuk</span></td>'
-        + '<td><span class="a-when">'+fmtDt(r.received_at)+'</span></td>'
+        + '<td data-label="#" class="a-idx">'+idx+'</td>'
+        + '<td data-label="Dari"><span class="a-phone">'+esc(phone)+'</span>'+(isLid?'<div class="a-sub">ID: '+esc(r.from_number||'')+'</div>':'')+'</td>'
+        + '<td data-label="Nama"><span class="a-name">'+esc(name)+'</span>'+(r.cid?'<div class="a-sub">'+esc(r.cid)+'</div>':'')+'</td>'
+        + '<td data-label="Pesan"><div class="a-msg">'+esc(msg)+'</div></td>'
+        + '<td data-label="Status"><span class="a-st st-in">Masuk</span></td>'
+        + '<td data-label="Waktu"><span class="a-when">'+fmtDt(r.received_at)+'</span></td>'
       + '</tr>';
     }).join('');
   }

@@ -1,0 +1,235 @@
+/* Kulit Modul NAS. Hanya tampilan.
+   Gulir tabel, lebar kolom, dan lampu status tidak diubah. */
+
+html:has(body.nas-home) {
+  background: #100c22;
+  color-scheme: dark;
+}
+
+body.nas-home {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+
+body.nas-home .main-content,
+body.nas-home .page-content {
+  background: transparent !important;
+  color: #f8fafc;
+}
+
+body.nas-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+
+body.nas-home .logo-text,
+body.nas-home .nav-section-title,
+body.nas-home .nav-item { color: #f8fafc; }
+
+body.nas-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+
+body.nas-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+
+body.nas-home .sidebar a.nav-sub:link,
+body.nas-home .sidebar a.nav-sub:visited,
+body.nas-home .sidebar a.nav-sub:hover,
+body.nas-home .sidebar a.nav-sub:focus,
+body.nas-home .sidebar a.nav-sub:active,
+body.nas-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.nas-home .sidebar a.nav-sub .nav-sub-dot,
+body.nas-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #67e8f9 !important;
+}
+
+body.nas-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+
+body.nas-home .search-box,
+body.nas-home .search-box input,
+body.nas-home .topbar-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.nas-home .page-header h1,
+body.nas-home .page-header-left h1,
+body.nas-home .nas-detail-card h2 {
+  color: #ffffff !important;
+}
+
+body.nas-home .page-header-left p,
+body.nas-home .nas-detail-card .sub,
+body.nas-home .nas-detail-card label,
+body.nas-home .nas-legend-note,
+body.nas-home .nas-swipe-hint,
+body.nas-home .nas-usage {
+  color: #e2e8f0 !important;
+}
+
+body.nas-home .btn-primary {
+  background: linear-gradient(135deg, #0891b2, #4f46e5) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+body.nas-home .btn-secondary {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.nas-home .page-header-right .btn[style*="fff7ed"] {
+  background: #ffedd5 !important;
+  color: #9a3412 !important;
+  border-color: #fdba74 !important;
+  -webkit-text-fill-color: #9a3412;
+}
+
+body.nas-home .nas-easy {
+  background: linear-gradient(145deg, #059669, #0f766e 60%, #22d3ee) !important;
+  border-color: transparent !important;
+}
+body.nas-home .nas-easy h2,
+body.nas-home .nas-easy ol,
+body.nas-home .nas-easy .nas-easy-note { color: #ffffff !important; }
+
+body.nas-home .nas-remote {
+  background: linear-gradient(145deg, #b45309, #ea580c 60%, #fde047) !important;
+  border-color: transparent !important;
+}
+body.nas-home .nas-remote h2,
+body.nas-home .nas-remote ol,
+body.nas-home .nas-remote .nas-easy-note { color: #ffffff !important; }
+
+body.nas-home .card,
+body.nas-home .card-body,
+body.nas-home .nas-detail-card,
+body.nas-home .nas-usage {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.28) !important;
+  color: #f8fafc;
+}
+
+body.nas-home .nas-detail-card input,
+body.nas-home .nas-detail-card select {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.nas-home #nasLanHint { color: #bbf7d0 !important; }
+
+body.nas-home #nasVpnHint {
+  background: #431407 !important;
+  color: #ffedd5 !important;
+  border-color: #fdba74 !important;
+}
+
+/* Web: daftar NAS memenuhi kartu. Di bawah 1100px tabel tetap bisa digeser. */
+body.nas-home #nasTableScroll .data-table {
+  width: 100%;
+  min-width: max(100%, 1100px);
+}
+
+body.nas-home .data-table thead th {
+  background: linear-gradient(90deg, #0891b2, #4f46e5 55%, #db2777) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+body.nas-home .data-table tbody tr:nth-child(8n+1) td { background: #1d4ed8 !important; }
+body.nas-home .data-table tbody tr:nth-child(8n+2) td { background: #0891b2 !important; }
+body.nas-home .data-table tbody tr:nth-child(8n+3) td { background: #059669 !important; }
+body.nas-home .data-table tbody tr:nth-child(8n+4) td { background: #b45309 !important; }
+body.nas-home .data-table tbody tr:nth-child(8n+5) td { background: #ea580c !important; }
+body.nas-home .data-table tbody tr:nth-child(8n+6) td { background: #e11d48 !important; }
+body.nas-home .data-table tbody tr:nth-child(8n+7) td { background: #db2777 !important; }
+body.nas-home .data-table tbody tr:nth-child(8n+8) td { background: #7c3aed !important; }
+
+body.nas-home .data-table tbody td { color: #ffffff !important; }
+
+body.nas-home .data-table a:not(.btn):link,
+body.nas-home .data-table a:not(.btn):visited {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+
+body.nas-home .nas-link.up {
+  color: #065f46 !important;
+  background: linear-gradient(180deg, #ecfdf5, #d1fae5) !important;
+  -webkit-text-fill-color: #065f46;
+}
+body.nas-home .nas-link.pending {
+  color: #92400e !important;
+  background: linear-gradient(180deg, #fffbeb, #fef3c7) !important;
+  -webkit-text-fill-color: #92400e;
+}
+body.nas-home .nas-link.down {
+  color: #334155 !important;
+  background: linear-gradient(180deg, #f8fafc, #e2e8f0) !important;
+  -webkit-text-fill-color: #334155;
+}
+body.nas-home .nas-link.up .nas-led { background: #22c55e !important; }
+body.nas-home .nas-link.pending .nas-led { background: #f59e0b !important; }
+body.nas-home .nas-link.down .nas-led { background: #94a3b8 !important; }
+body.nas-home .nas-mode-kind { color: #e2e8f0 !important; }
+
+body.nas-home #wgServerModal > div[style*="background:#fff;"],
+body.nas-home #wgConfigModal > div[style*="background:#fff;"],
+body.nas-home #remoteWgModal > div[style*="background:#fff;"] {
+  background: #141028 !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+}
+
+body.nas-home #wgServerModal h3,
+body.nas-home #wgConfigModal h3,
+body.nas-home #remoteWgModal h3 { color: #ffffff !important; }
+
+body.nas-home #wgServerModal input,
+body.nas-home #wgServerModal select,
+body.nas-home #remoteWgModal input,
+body.nas-home #remoteWgModal select {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.nas-home .bottom-nav {
+  background: #100c22;
+  border-top: 1px solid rgba(34, 211, 238, 0.28);
+  box-shadow: none;
+}
+
+body.nas-home .bottom-nav a.bn-item:link,
+body.nas-home .bottom-nav a.bn-item:visited,
+body.nas-home .bottom-nav a.bn-item:hover,
+body.nas-home .bottom-nav a.bn-item:focus,
+body.nas-home .bottom-nav a.bn-item:active,
+body.nas-home .bottom-nav a.bn-item.active,
+body.nas-home .bottom-nav button.bn-item,
+body.nas-home .bottom-nav .bn-item span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+
+body.nas-home .bottom-nav .bn-icon svg,
+body.nas-home .bottom-nav .bn-item.active .bn-icon svg,
+body.nas-home .bottom-nav .bn-item:hover .bn-icon svg { stroke: #ffffff !important; }
+
+body.nas-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }
