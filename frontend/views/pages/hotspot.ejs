@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="stylesheet" href="/css/hotspot-palette.css?v=hs3">
+  <link rel="stylesheet" href="/css/hotspot-palette.css?v=hs4">
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/app.js"></script>
@@ -555,6 +555,12 @@
     input[type=checkbox].chk {
       width: 15px; height: 15px; cursor: pointer;
       accent-color: var(--blue); border-radius: 4px;
+    }
+    .user-bulk-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    @media (max-width: 768px) {
+      input[type=checkbox].chk { width: 22px; height: 22px; }
+      .user-bulk-bar { width: 100%; }
+      .user-bulk-bar .btn { flex: 1 1 calc(50% - 8px); justify-content: center; min-height: 40px; }
     }
 
     /* ══ BADGES ════════════════════════════════════════════════ */
@@ -1484,10 +1490,19 @@
             <select class="filter-select" id="fp-users" onchange="filterUsers()">
               <option value="">Semua Profile</option>
             </select>
-            <button class="btn btn-danger btn-sm" id="btn-del-sel" style="display:none" onclick="deleteSelected()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
-              Hapus Terpilih
-            </button>
+            <div class="user-bulk-bar">
+              <button class="btn btn-ghost btn-sm" id="btn-sel-all" style="display:none" onclick="toggleSelectAllFiltered()" title="Pilih semua user di filter, semua halaman">
+                <span id="btn-sel-all-lbl">Pilih semua</span>
+              </button>
+              <button class="btn btn-danger btn-sm" id="btn-del-sel" style="display:none" onclick="deleteSelected()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                Hapus Terpilih (<span id="btn-del-sel-n">0</span>)
+              </button>
+              <button class="btn btn-danger btn-sm" id="btn-del-all" style="display:none" onclick="deleteAllFiltered()" title="Hapus semua user yang tampil di filter">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                Hapus Semua (<span id="btn-del-all-n">0</span>)
+              </button>
+            </div>
           </div>
         </div>
         <div class="tbl-scroll" id="tbl-users"><div class="loader"><svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>Memuat...</div></div>
@@ -1609,10 +1624,19 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
               Print Semua
             </button>
-            <button class="btn btn-danger btn-sm" id="btn-del-dis" style="display:none" onclick="deleteSelectedDisabled()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
-              Hapus Terpilih
-            </button>
+            <div class="user-bulk-bar">
+              <button class="btn btn-ghost btn-sm" id="btn-sel-all-dis" style="display:none" onclick="toggleSelectAllDisabled()">
+                <span id="btn-sel-all-dis-lbl">Pilih semua</span>
+              </button>
+              <button class="btn btn-danger btn-sm" id="btn-del-dis" style="display:none" onclick="deleteSelectedDisabled()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                Hapus Terpilih (<span id="btn-del-dis-n">0</span>)
+              </button>
+              <button class="btn btn-danger btn-sm" id="btn-del-all-dis" style="display:none" onclick="deleteAllDisabled()" title="Hapus semua user nonaktif yang tampil">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                Hapus Semua (<span id="btn-del-all-dis-n">0</span>)
+              </button>
+            </div>
           </div>
         </div>
         <div class="tbl-scroll" id="tbl-disabled"><div class="loader"><svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>Memuat...</div></div>
@@ -2098,6 +2122,8 @@
    STATE
 ═══════════════════════════════════════════════════════════════ */
 let allUsers=[], filtUsers=[], pgNum=1, pgSize=25;
+const _userSel = new Set();
+const _disSel = new Set();
 let allActive=[], filtActive=[];
 let allHosts=[],  filtHosts=[];
 let allProfiles=[], allServers=[];
@@ -2428,6 +2454,7 @@ function renderDisabledTable() {
   if (!slice.length) {
     setEl('tbl-disabled', emptyHtml('Tidak ada user nonaktif'));
     document.getElementById('pg-disabled').style.display = 'none';
+    syncBulkDisBtns();
     return;
   }
   let h = `<table><thead><tr>
@@ -2446,7 +2473,7 @@ function renderDisabledTable() {
         : `<span style="color:var(--text3)">∞</span>`;
     }
     h += `<tr>
-      ${hsTd('', `<input type="checkbox" class="chk chk-dis" value="${x(u.id)}" onchange="updDelDisBtn()">`)}
+      ${hsTd('Pilih', `<input type="checkbox" class="chk chk-dis" value="${x(u.id)}" ${ _disSel.has(String(u.id)) ? 'checked' : '' } onchange="onDisChk(this)">`)}
       ${hsTd('Username', `<div class="u-stack"><div class="u-name">${x(u.name)}</div>${u.comment ? `<div class="u-meta">${x(u.comment)}</div>` : ''}</div>`)}
       ${hsTd('Profile', `<span class="badge b-purple">${x(u.profile)}</span>`)}
       ${hsTd('Server', `<span class="td-mono">${x(u.server)}</span>`)}
@@ -2464,6 +2491,7 @@ function renderDisabledTable() {
   h += '</tbody></table>';
   setEl('tbl-disabled', h);
   renderDisabledPg();
+  syncBulkDisBtns();
 }
 
 function renderDisabledPg() {
@@ -2483,26 +2511,87 @@ function goDisPage(p) { pgDisNum=p; renderDisabledTable(); }
 
 function filterDisabled() {
   const q = document.getElementById('q-disabled').value.toLowerCase();
-  filtDisabled = allDisabled.filter(u => !q || u.name.toLowerCase().includes(q) || u.comment.toLowerCase().includes(q));
-  pgDisNum = 1; renderDisabledTable();
+  filtDisabled = allDisabled.filter(u => !q || u.name.toLowerCase().includes(q) || (u.comment||'').toLowerCase().includes(q));
+  pgDisNum = 1;
+  pruneDisSel();
+  renderDisabledTable();
 }
 
+function pruneDisSel() {
+  const keep = new Set(filtDisabled.map(u => String(u.id)));
+  for (const id of [..._disSel]) if (!keep.has(id)) _disSel.delete(id);
+}
+function onDisChk(el) {
+  if (el.checked) _disSel.add(el.value);
+  else _disSel.delete(el.value);
+  syncBulkDisBtns();
+}
 function checkAllDis() {
   const m = document.getElementById('chk-all-dis');
-  document.querySelectorAll('.chk-dis').forEach(c => c.checked = m.checked);
-  updDelDisBtn();
+  const ids = filtDisabled.map(u => String(u.id));
+  if (m && m.checked) ids.forEach(id => _disSel.add(id));
+  else ids.forEach(id => _disSel.delete(id));
+  document.querySelectorAll('.chk-dis').forEach(c => { c.checked = _disSel.has(c.value); });
+  syncBulkDisBtns();
 }
-function updDelDisBtn() {
-  const n = [...document.querySelectorAll('.chk-dis:checked')].length;
-  document.getElementById('btn-del-dis').style.display = n > 0 ? 'inline-flex' : 'none';
+function toggleSelectAllDisabled() {
+  const ids = filtDisabled.map(u => String(u.id));
+  const allOn = ids.length && ids.every(id => _disSel.has(id));
+  if (allOn) ids.forEach(id => _disSel.delete(id));
+  else ids.forEach(id => _disSel.add(id));
+  renderDisabledTable();
 }
+function syncBulkDisBtns() {
+  pruneDisSel();
+  const nAll = filtDisabled.length;
+  const nSel = _disSel.size;
+  const delSel = document.getElementById('btn-del-dis');
+  const delAll = document.getElementById('btn-del-all-dis');
+  const selAll = document.getElementById('btn-sel-all-dis');
+  const nSelEl = document.getElementById('btn-del-dis-n');
+  const nAllEl = document.getElementById('btn-del-all-dis-n');
+  const selLbl = document.getElementById('btn-sel-all-dis-lbl');
+  if (nSelEl) nSelEl.textContent = nSel;
+  if (nAllEl) nAllEl.textContent = nAll;
+  if (delSel) delSel.style.display = nSel > 0 ? 'inline-flex' : 'none';
+  if (delAll) delAll.style.display = nAll > 0 ? 'inline-flex' : 'none';
+  if (selAll) selAll.style.display = nAll > 0 ? 'inline-flex' : 'none';
+  const ids = filtDisabled.map(u => String(u.id));
+  const allOn = nAll > 0 && ids.every(id => _disSel.has(id));
+  if (selLbl) selLbl.textContent = allOn ? 'Batal pilih' : 'Pilih semua';
+  const hdr = document.getElementById('chk-all-dis');
+  if (hdr) hdr.checked = allOn;
+}
+function updDelDisBtn() { syncBulkDisBtns(); }
 async function deleteSelectedDisabled() {
-  const ids = [...document.querySelectorAll('.chk-dis:checked')].map(c => c.value);
+  const ids = [..._disSel];
   if (!ids.length) return;
-  if (!confirm(`Hapus ${ids.length} user nonaktif?`)) return;
+  if (!confirm(`Hapus ${ids.length} user nonaktif terpilih?`)) return;
   const r = await api('POST', '/api/mikrotik/hotspot/users/delete-batch', { ids });
-  if (r.success) { toast(r.message, 'success'); loadDisabledUsers(); loadSummary(); }
+  if (r.success) { _disSel.clear(); toast(r.message, 'success'); loadDisabledUsers(); loadUsers(); loadSummary(); }
   else toast(r.message, 'error');
+}
+async function deleteAllDisabled() {
+  const n = filtDisabled.length;
+  if (!n) return toast('Tidak ada user nonaktif di daftar', 'error');
+  const q = (document.getElementById('q-disabled')?.value || '').trim();
+  const hint = q ? `\nFilter cari: "${q}"` : '\nSemua user nonaktif di daftar ini.';
+  if (!confirm(`Hapus SEMUA ${n} user nonaktif?${hint}\n\nPPPoE dan isolir tidak terpengaruh.`)) return;
+  if (!confirm('Yakin? Tindakan ini tidak bisa dibatalkan.')) return;
+  const btn = document.getElementById('btn-del-all-dis');
+  if (btn) { btn.disabled = true; }
+  const r = await api('POST', '/api/mikrotik/hotspot/users/delete-all', {
+    confirm: 'HAPUS',
+    search: q,
+    disabledOnly: true,
+    generatedOnly: false
+  });
+  if (btn) btn.disabled = false;
+  if (r.success) {
+    _disSel.clear();
+    toast(r.message, 'success');
+    loadDisabledUsers(); loadUsers(); loadSummary();
+  } else toast(r?.message || 'Gagal hapus', 'error');
 }
 async function reactivateUser(id, name) {
   if (!confirm(`Aktifkan kembali user "${name}"?`)) return;
@@ -2794,7 +2883,7 @@ async function loadUsers() {
 function renderUsersTable() {
   const start = (pgNum-1)*pgSize;
   const slice = filtUsers.slice(start, start+pgSize);
-  if (!slice.length) { setEl('tbl-users', emptyHtml('Tidak ada user')); setEl('pg-users', ''); document.getElementById('pg-users').style.display='none'; return; }
+  if (!slice.length) { setEl('tbl-users', emptyHtml('Tidak ada user')); setEl('pg-users', ''); document.getElementById('pg-users').style.display='none'; syncBulkUserBtns(); return; }
 
   let h = `<table>
     <thead><tr>
@@ -2818,7 +2907,7 @@ function renderUsersTable() {
         : `<span style="color:var(--text3)">∞</span>`;
     }
     h += `<tr>
-      ${hsTd('', `<input type="checkbox" class="chk chk-u" value="${x(u.id)}" onchange="updSelBtn()">`)}
+      ${hsTd('Pilih', `<input type="checkbox" class="chk chk-u" value="${x(u.id)}" ${ _userSel.has(String(u.id)) ? 'checked' : '' } onchange="onUserChk(this)">`)}
       ${hsTd('Username', `<div class="u-stack"><div class="u-name">${x(u.name)}</div>${u.comment ? `<div class="u-meta">${x(u.comment)}</div>` : ''}</div>`)}
       ${hsTd('Profile', `<span class="badge b-purple">${x(u.profile)}</span>`)}
       ${hsTd('Server', `<span class="td-mono">${x(u.server)}</span>`)}
@@ -2839,6 +2928,7 @@ function renderUsersTable() {
   h += '</tbody></table>';
   setEl('tbl-users', h);
   renderPg();
+  syncBulkUserBtns();
 }
 
 function renderPg() {
@@ -3104,20 +3194,59 @@ function filterUsers() {
   const q = document.getElementById('q-users').value.toLowerCase();
   const fp = document.getElementById('fp-users').value;
   filtUsers = allUsers.filter(u =>
-    (!q || u.name.toLowerCase().includes(q) || u.comment.toLowerCase().includes(q)) &&
+    (!q || u.name.toLowerCase().includes(q) || (u.comment||'').toLowerCase().includes(q)) &&
     (!fp || u.profile===fp));
-  pgNum=1; renderUsersTable();
+  pgNum=1;
+  pruneUserSel();
+  renderUsersTable();
 }
 
+function pruneUserSel() {
+  const keep = new Set(filtUsers.map(u => String(u.id)));
+  for (const id of [..._userSel]) if (!keep.has(id)) _userSel.delete(id);
+}
+function onUserChk(el) {
+  if (el.checked) _userSel.add(el.value);
+  else _userSel.delete(el.value);
+  syncBulkUserBtns();
+}
 function checkAll() {
   const m = document.getElementById('chk-all');
-  document.querySelectorAll('.chk-u').forEach(c => c.checked=m.checked);
-  updSelBtn();
+  const ids = filtUsers.map(u => String(u.id));
+  if (m && m.checked) ids.forEach(id => _userSel.add(id));
+  else ids.forEach(id => _userSel.delete(id));
+  document.querySelectorAll('.chk-u').forEach(c => { c.checked = _userSel.has(c.value); });
+  syncBulkUserBtns();
 }
-function updSelBtn() {
-  const n = [...document.querySelectorAll('.chk-u:checked')].length;
-  document.getElementById('btn-del-sel').style.display = n>0?'inline-flex':'none';
+function toggleSelectAllFiltered() {
+  const ids = filtUsers.map(u => String(u.id));
+  const allOn = ids.length && ids.every(id => _userSel.has(id));
+  if (allOn) ids.forEach(id => _userSel.delete(id));
+  else ids.forEach(id => _userSel.add(id));
+  renderUsersTable();
 }
+function syncBulkUserBtns() {
+  pruneUserSel();
+  const nAll = filtUsers.length;
+  const nSel = _userSel.size;
+  const delSel = document.getElementById('btn-del-sel');
+  const delAll = document.getElementById('btn-del-all');
+  const selAll = document.getElementById('btn-sel-all');
+  const nSelEl = document.getElementById('btn-del-sel-n');
+  const nAllEl = document.getElementById('btn-del-all-n');
+  const selLbl = document.getElementById('btn-sel-all-lbl');
+  if (nSelEl) nSelEl.textContent = nSel;
+  if (nAllEl) nAllEl.textContent = nAll;
+  if (delSel) delSel.style.display = nSel > 0 ? 'inline-flex' : 'none';
+  if (delAll) delAll.style.display = nAll > 0 ? 'inline-flex' : 'none';
+  if (selAll) selAll.style.display = nAll > 0 ? 'inline-flex' : 'none';
+  const ids = filtUsers.map(u => String(u.id));
+  const allOn = nAll > 0 && ids.every(id => _userSel.has(id));
+  if (selLbl) selLbl.textContent = allOn ? 'Batal pilih' : 'Pilih semua';
+  const hdr = document.getElementById('chk-all');
+  if (hdr) hdr.checked = allOn;
+}
+function updSelBtn() { syncBulkUserBtns(); }
 
 function openAddUser() {
   // Reset semua field user
@@ -3203,12 +3332,41 @@ async function delUser(id,name) {
 }
 
 async function deleteSelected() {
-  const ids=[...document.querySelectorAll('.chk-u:checked')].map(c=>c.value);
+  const ids=[..._userSel];
   if (!ids.length) return;
   if (!confirm(`Hapus ${ids.length} user terpilih?`)) return;
   const r = await api('POST','/api/mikrotik/hotspot/users/delete-batch',{ids});
-  if (r.success){ toast(r.message,'success'); loadUsers(); loadSummary(); }
+  if (r.success){ _userSel.clear(); toast(r.message,'success'); loadUsers(); loadSummary(); }
   else toast(r.message,'error');
+}
+
+async function deleteAllFiltered() {
+  const n = filtUsers.length;
+  if (!n) return toast('Tidak ada user di daftar', 'error');
+  const fp = (document.getElementById('fp-users')?.value || '').trim();
+  const q = (document.getElementById('q-users')?.value || '').trim();
+  const bits = [];
+  if (fp) bits.push('profile ' + fp);
+  if (q) bits.push('cari "' + q + '"');
+  const hint = bits.length
+    ? '\nFilter aktif: ' + bits.join(', ')
+    : '\nSemua user hotspot di daftar ini.';
+  if (!confirm(`Hapus SEMUA ${n} user hotspot?${hint}\n\nPPPoE dan isolir tidak terpengaruh.`)) return;
+  if (!confirm('Yakin? Tindakan ini tidak bisa dibatalkan.')) return;
+  const btn = document.getElementById('btn-del-all');
+  if (btn) btn.disabled = true;
+  const r = await api('POST','/api/mikrotik/hotspot/users/delete-all',{
+    confirm: 'HAPUS',
+    profile: fp,
+    search: q,
+    generatedOnly: false
+  });
+  if (btn) btn.disabled = false;
+  if (r.success) {
+    _userSel.clear();
+    toast(r.message, 'success');
+    loadUsers(); loadDisabledUsers(); loadSummary();
+  } else toast(r?.message || 'Gagal hapus', 'error');
 }
 
 /* ═══════════════════════════════════════════════════════════════

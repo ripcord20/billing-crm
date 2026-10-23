@@ -168,13 +168,17 @@ class HotspotService {
   }
 
   async _kickUsername(username) {
-    const name = String(username || '').trim();
-    if (!name) return 0;
+    return this._kickUsernames([username]);
+  }
+
+  async _kickUsernames(usernames) {
+    const want = new Set((usernames || []).map((u) => String(u || '').trim()).filter(Boolean));
+    if (!want.size) return 0;
     let kicked = 0;
     try {
       const active = await this.getActiveSessions();
       for (const s of active) {
-        if ((s.user || '') === name && s.id) {
+        if (want.has(s.user || '') && s.id) {
           try { await this.disconnectSession(s.id); kicked++; } catch (_) {}
         }
       }
@@ -492,10 +496,43 @@ class HotspotService {
   }
 
   async deleteUserBatch(ids) {
-    const results = await Promise.allSettled(ids.map((id) => this.deleteUser(id)));
-    const ok = results.filter((r) => r.status === 'fulfilled').length;
-    const err = results.filter((r) => r.status === 'rejected').length;
-    return { deleted: ok, failed: err };
+    await this._prepareRadius();
+    const want = new Set((ids || []).map((id) => String(id == null ? '' : id).trim()).filter(Boolean));
+    if (!want.size) return { deleted: 0, failed: 0 };
+    const rows = await this.radiusStore.list();
+    const names = (rows || [])
+      .filter((r) => want.has(String(r.id)) || want.has(String(r.username || '')))
+      .map((r) => r.username)
+      .filter(Boolean);
+    await this._kickUsernames(names);
+    const out = await this.radiusStore.removeManyByUsernames(names);
+    return { deleted: out.deleted || 0, failed: Math.max(0, want.size - (out.deleted || 0)) };
+  }
+
+  /**
+   * Hapus semua user hotspot yang cocok filter.
+   * Sumber: hotspot_radius_users saja — PPPoE / isolir tidak ikut.
+   */
+  async deleteMatchingUsers(opts = {}) {
+    await this._prepareRadius();
+    const profile = String(opts.profile || '').trim();
+    const search = String(opts.search || '').trim().toLowerCase();
+    const generatedOnly = !!opts.generatedOnly;
+    const disabledOnly = !!opts.disabledOnly;
+    const users = await this.getUsers(profile ? { profile } : {});
+    const match = (users || []).filter((u) => {
+      if (disabledOnly && !u.disabled) return false;
+      if (generatedOnly && !/Generated/i.test(String(u.comment || ''))) return false;
+      if (search) {
+        const hay = `${u.name || ''} ${u.comment || ''}`.toLowerCase();
+        if (!hay.includes(search)) return false;
+      }
+      return true;
+    });
+    const names = match.map((u) => u.name).filter(Boolean);
+    await this._kickUsernames(names);
+    const out = await this.radiusStore.removeManyByUsernames(names);
+    return { deleted: out.deleted || 0, matched: names.length, usernames: out.usernames || names };
   }
 
   async enableUser(id) {
