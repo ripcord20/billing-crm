@@ -1602,23 +1602,12 @@ exports.midtransNotif = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Invoice not found' });
     }
 
-    // 4. Idempotent: kalau sudah paid, langsung balas 200 (Midtrans bisa retry)
-    if (invoice.status === 'paid') {
-      logger.info(`Midtrans webhook: invoice #${invoiceId} sudah paid, skip`);
-      return res.json({ success: true, message: 'Already paid' });
-    }
-
     // 5. Handle status
     const isSuccess = transaction_status === 'settlement' ||
       (transaction_status === 'capture' && fraud_status === 'accept');
     const isFailed  = ['cancel','deny','expire','failure'].includes(transaction_status);
 
     if (isSuccess) {
-      await Invoice.update(
-        { status: 'paid', paid_date: new Date() },
-        { where: { id: invoiceId } }
-      );
-      // Map payment_type Midtrans → enum Payment.payment_method
       const methodMap = {
         bank_transfer:'transfer', echannel:'transfer', permata_va:'transfer',
         bca_va:'transfer', bni_va:'transfer', bri_va:'transfer', mandiri_va:'transfer',
@@ -1626,29 +1615,21 @@ exports.midtransNotif = async (req, res) => {
         credit_card:'gateway', cstore:'other', akulaku:'other'
       };
       const payMethod = methodMap[payment_type] || 'gateway';
-
-      const newPayment = await Payment.create({
-        invoice_id: invoiceId,
-        amount: parseFloat(gross_amount) || parseFloat(invoice.total),
-        payment_method: payMethod,
-        payment_date: new Date().toISOString().slice(0, 10),
-        reference_number: order_id,
+      const { settleGatewayPayment } = require('../utils/settleGatewayPayment');
+      const settled = await settleGatewayPayment({
+        invoiceId,
+        paidAmount: parseFloat(gross_amount) || parseFloat(invoice.total),
+        matchCandidates: parseFloat(gross_amount),
+        paymentMethod: payMethod,
+        referenceNumber: order_id,
+        notes: `Auto: Midtrans ${payment_type || ''} (${transaction_id || ''})`,
         gateway: 'midtrans',
-        notes: `Auto: Midtrans ${payment_type || ''} (${transaction_id || ''})`
+        channel: 'midtrans'
       });
-      logger.info(`Portal: Invoice #${invoiceId} PAID via Midtrans (${order_id}, ${payment_type})`);
-
-      // ── Auto: aktifkan customer, sync Keuangan, restore isolir, kirim WA ──
-      try {
-        const { finalizePaidInvoice } = require('../utils/paymentFinalizer');
-        const fin = await finalizePaidInvoice({
-          invoiceId, paymentId: newPayment.id, channel: 'midtrans', referenceNo: order_id
-        });
-        logger.info(`Midtrans webhook finalize: invoice #${invoiceId} → ${JSON.stringify(fin)}`);
-      } catch (finErr) {
-        logger.error(`Midtrans webhook finalize error invoice #${invoiceId}: ${finErr.message}`);
-        // Tidak fatal — payment & invoice sudah persist.
+      if (!settled.ok) {
+        return res.status(settled.httpStatus).json({ success: false, message: settled.message });
       }
+      logger.info(`Portal: Invoice #${invoiceId} PAID via Midtrans (${order_id}, ${payment_type}) alreadyPaid=${!!settled.alreadyPaid}`);
     } else if (isFailed) {
       logger.info(`Midtrans webhook: invoice #${invoiceId} ${transaction_status} (${order_id})`);
       // Tidak update status invoice — tetap unpaid, biarkan customer bisa coba lagi
@@ -1695,18 +1676,7 @@ exports.xenditNotif = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Invoice not found' });
     }
 
-    // Idempotent
-    if (invoice.status === 'paid') {
-      logger.info(`Xendit webhook: invoice #${invoiceId} sudah paid, skip`);
-      return res.json({ success: true, message: 'Already paid' });
-    }
-
     if (status === 'PAID' || status === 'SETTLED') {
-      await Invoice.update(
-        { status: 'paid', paid_date: new Date() },
-        { where: { id: invoiceId } }
-      );
-
       const methodLower = (payment_method || '').toLowerCase();
       let payMethod = 'gateway';
       if (methodLower.includes('bank') || methodLower.includes('va'))      payMethod = 'transfer';
@@ -1714,27 +1684,21 @@ exports.xenditNotif = async (req, res) => {
       else if (methodLower.includes('ewallet') || methodLower.includes('wallet')) payMethod = 'ewallet';
       else if (methodLower.includes('credit'))                              payMethod = 'gateway';
 
-      const newPayment = await Payment.create({
-        invoice_id: invoiceId,
-        amount: parseFloat(paid_amount) || parseFloat(invoice.total),
-        payment_method: payMethod,
-        payment_date: new Date().toISOString().slice(0, 10),
-        reference_number: external_id,
+      const { settleGatewayPayment } = require('../utils/settleGatewayPayment');
+      const settled = await settleGatewayPayment({
+        invoiceId,
+        paidAmount: parseFloat(paid_amount) || parseFloat(invoice.total),
+        matchCandidates: parseFloat(paid_amount),
+        paymentMethod: payMethod,
+        referenceNumber: external_id,
         notes: `Auto: Xendit ${payment_method || ''} ${payment_channel || ''} (${xenInvoiceId || ''})`,
-        gateway: 'xendit'
+        gateway: 'xendit',
+        channel: 'xendit'
       });
-      logger.info(`Portal: Invoice #${invoiceId} PAID via Xendit (${external_id}, ${payment_method})`);
-
-      // ── Auto: aktifkan customer, sync Keuangan, restore isolir, kirim WA ──
-      try {
-        const { finalizePaidInvoice } = require('../utils/paymentFinalizer');
-        const fin = await finalizePaidInvoice({
-          invoiceId, paymentId: newPayment.id, channel: 'xendit', referenceNo: external_id
-        });
-        logger.info(`Xendit webhook finalize: invoice #${invoiceId} → ${JSON.stringify(fin)}`);
-      } catch (finErr) {
-        logger.error(`Xendit webhook finalize error invoice #${invoiceId}: ${finErr.message}`);
+      if (!settled.ok) {
+        return res.status(settled.httpStatus).json({ success: false, message: settled.message });
       }
+      logger.info(`Portal: Invoice #${invoiceId} PAID via Xendit (${external_id}, ${payment_method}) alreadyPaid=${!!settled.alreadyPaid}`);
     } else if (status === 'EXPIRED' || status === 'FAILED') {
       logger.info(`Xendit webhook: invoice #${invoiceId} ${status} (${external_id})`);
     } else {
@@ -1815,38 +1779,10 @@ exports.duitkuNotif = async (req, res) => {
       return res.status(404).send('Invoice not found');
     }
 
-    // 5. Idempotent — Duitku bisa retry kalau merchant tidak balas 200
-    if (invoice.status === 'paid') {
-      logger.info(`Duitku webhook: invoice #${invoiceId} sudah paid, skip (resultCode=${resultCode})`);
-      return res.status(200).send('Already paid');
-    }
-
-    // 6. Handle berdasarkan resultCode
+    // 5. Handle berdasarkan resultCode
     // '00' = SUCCESS, '01' = FAILED/PENDING (Duitku tidak kirim callback untuk pending,
     // jadi kalau '01' biasanya artinya transaksi expired/failed)
     if (String(resultCode) === '00') {
-      // Verifikasi nominal amount sesuai invoice (anti-tampered)
-      const expectedAmount = Math.round(parseFloat(invoice.total));
-      const callbackAmount = Math.round(parseFloat(amount));
-      if (callbackAmount !== expectedAmount) {
-        logger.error(`Duitku webhook: amount mismatch invoice #${invoiceId} (callback=${callbackAmount}, expected=${expectedAmount})`);
-        return res.status(400).send('Amount mismatch');
-      }
-
-      await Invoice.update(
-        { status: 'paid', paid_date: new Date() },
-        { where: { id: invoiceId } }
-      );
-
-      // Map paymentCode Duitku → enum Payment.payment_method.
-      // Ref kode Duitku (paymentCode): VC=Credit Card, BC=BCA VA, M2=Mandiri VA,
-      // VA=Maybank VA, I1=BNI VA, B1=CIMB VA, BT=Permata VA, A1=ATM Bersama,
-      // AG=BRI VA, NC=BNC, BR=BRIVA, S1=Bank Sahabat Sampoerna,
-      // DA=DANA, OV=OVO, SP=ShopeePay, LA=LinkAja, LF=LinkAja App, LQ=LinkAja QRIS,
-      // SA=Shopee Linked, OL=OVO Linked, NQ=Nobu QRIS, DQ=DANA QRIS, GQ=Gudang Voucher QRIS,
-      // SL=ShopeePay Linked, FT=Pegadaian/ALFA Indomaret, IR=Indomaret, AL=ALFAMART,
-      // AO=ALFAMART (offline), Q1/Q2/SQ=QRIS variant, KP=KREDIVO, AT=ATOME,
-      // IN=Indodana, T0=Indomart, etc.
       const code = String(paymentCode || '').toUpperCase();
       let payMethod = 'gateway';
       if (['VC'].includes(code)) {
@@ -1856,36 +1792,29 @@ exports.duitkuNotif = async (req, res) => {
       } else if (code.startsWith('Q') || code === 'SQ' || code === 'NQ' || code === 'DQ' || code === 'GQ' || code === 'LQ') {
         payMethod = 'qris';
       } else if (['DA','OV','SP','LA','LF','SA','OL','SL'].includes(code)) {
-        // E-wallet detail: DANA → dana, OVO → ovo, GoPay (jika ada) → gopay,
-        // ShopeePay/LinkAja/lainnya → ewallet (enum di DB tidak punya semua)
         if (code === 'DA') payMethod = 'dana';
         else if (code === 'OV' || code === 'OL') payMethod = 'ovo';
         else payMethod = 'ewallet';
       } else if (['FT','IR','AL','AO','T0','PI'].includes(code)) {
-        payMethod = 'other'; // retail offline
+        payMethod = 'other';
       }
 
-      const newPayment = await Payment.create({
-        invoice_id: invoiceId,
-        amount: callbackAmount,
-        payment_method: payMethod,
-        payment_date: new Date().toISOString().slice(0, 10),
-        reference_number: reference || merchantOrderId,
+      const callbackAmount = Math.round(parseFloat(amount));
+      const { settleGatewayPayment } = require('../utils/settleGatewayPayment');
+      const settled = await settleGatewayPayment({
+        invoiceId,
+        paidAmount: callbackAmount,
+        matchCandidates: callbackAmount,
+        paymentMethod: payMethod,
+        referenceNumber: reference || merchantOrderId,
         notes: `Auto: Duitku ${paymentCode || ''} (ref: ${reference || ''}${publisherOrderId ? ', pub: ' + publisherOrderId : ''}${settlementDate ? ', settle: ' + settlementDate : ''})`,
-        gateway: 'duitku'
+        gateway: 'duitku',
+        channel: 'duitku'
       });
-      logger.info(`Portal: Invoice #${invoiceId} PAID via Duitku (${merchantOrderId}, paymentCode=${paymentCode}, ref=${reference})`);
-
-      // ── Auto: aktifkan customer, sync Keuangan, restore isolir, kirim WA ──
-      try {
-        const { finalizePaidInvoice } = require('../utils/paymentFinalizer');
-        const fin = await finalizePaidInvoice({
-          invoiceId, paymentId: newPayment.id, channel: 'duitku', referenceNo: reference || merchantOrderId
-        });
-        logger.info(`Duitku webhook finalize: invoice #${invoiceId} → ${JSON.stringify(fin)}`);
-      } catch (finErr) {
-        logger.error(`Duitku webhook finalize error invoice #${invoiceId}: ${finErr.message}`);
+      if (!settled.ok) {
+        return res.status(settled.httpStatus).send(settled.message);
       }
+      logger.info(`Portal: Invoice #${invoiceId} PAID via Duitku (${merchantOrderId}, paymentCode=${paymentCode}, ref=${reference}) alreadyPaid=${!!settled.alreadyPaid}`);
     } else {
       // resultCode '01' atau lainnya = failed/expired. Tidak update invoice — biarkan
       // customer bisa coba lagi.
@@ -1964,42 +1893,13 @@ exports.tripayNotif = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Invoice not found' });
     }
 
-    // 4. Idempotent
-    if (invoice.status === 'paid') {
-      logger.info(`Tripay webhook: invoice #${invoiceId} sudah paid, skip (status=${status})`);
-      return res.status(200).json({ success: true });
-    }
-
-    // 5. Hanya proses PAID
     if (status === 'PAID') {
       const expectedAmount = Math.round(parseFloat(invoice.total));
-      // PENTING soal nominal Tripay:
-      //   • b.amount         = nominal transaksi yg KITA kirim saat create (= invoice.total). Ini yg tepat utk validasi.
-      //   • b.total_amount   = amount + fee yg DIBEBANKAN KE CUSTOMER (mis. Alfamart/VA fee tetap). SELALU ≥ amount,
-      //                        jadi JANGAN dipakai utk cek kecocokan (pasti mismatch utk channel berfee-customer).
-      //   • b.amount_received= nominal yg diterima merchant setelah potong fee merchant (bisa < amount).
-      // Prioritaskan b.amount; fallback ke amount_received; total_amount hanya cadangan terakhir.
       const cbAmount   = Math.round(parseFloat(b.amount || 0));
       const cbReceived = Math.round(parseFloat(b.amount_received || 0));
       const cbTotal    = Math.round(parseFloat(b.total_amount || 0));
-      // Nominal untuk dicatat sebagai pembayaran = nilai tagihan yg kita kirim (bukan termasuk fee customer).
       const callbackAmount = cbAmount || cbReceived || expectedAmount;
-      // Validasi: cocok bila SALAH SATU dari (amount / amount_received / total_amount) == expected.
-      // Ini toleran terhadap fee customer (total_amount > expected) maupun fee merchant (amount_received < expected).
-      const anyMatch = [cbAmount, cbReceived, cbTotal].some(v => v && v === expectedAmount);
-      const anyPresent = cbAmount || cbReceived || cbTotal;
-      if (anyPresent && !anyMatch) {
-        logger.error(`Tripay webhook: amount mismatch invoice #${invoiceId} ` +
-          `(amount=${cbAmount}, amount_received=${cbReceived}, total_amount=${cbTotal}, expected=${expectedAmount})`);
-        return res.status(400).json({ success: false, message: 'Amount mismatch' });
-      }
 
-      await Invoice.update(
-        { status: 'paid', paid_date: new Date() },
-        { where: { id: invoiceId } }
-      );
-
-      // Map payment_method Tripay → enum Payment.payment_method
       const pm = String(b.payment_method || '').toUpperCase();
       let payMethod = 'gateway';
       if (pm.includes('QRIS')) payMethod = 'qris';
@@ -2009,26 +1909,21 @@ exports.tripayNotif = async (req, res) => {
       else if (pm.includes('ALFA') || pm.includes('INDOMARET') || pm.includes('RETAIL')) payMethod = 'other';
       else if (pm.includes('SHOPEE') || pm.includes('LINKAJA') || pm.includes('WALLET')) payMethod = 'ewallet';
 
-      const newPayment = await Payment.create({
-        invoice_id: invoiceId,
-        amount: callbackAmount || expectedAmount,
-        payment_method: payMethod,
-        payment_date: new Date().toISOString().slice(0, 10),
-        reference_number: reference || merchantRef,
+      const { settleGatewayPayment } = require('../utils/settleGatewayPayment');
+      const settled = await settleGatewayPayment({
+        invoiceId,
+        paidAmount: callbackAmount || expectedAmount,
+        matchCandidates: [cbAmount, cbReceived, cbTotal],
+        paymentMethod: payMethod,
+        referenceNumber: reference || merchantRef,
+        notes: `Auto: Tripay ${b.payment_method || ''} (ref: ${reference || ''})`,
         gateway: 'tripay',
-        notes: `Auto: Tripay ${b.payment_method || ''} (ref: ${reference || ''})`
+        channel: 'tripay'
       });
-      logger.info(`Portal: Invoice #${invoiceId} PAID via Tripay (${merchantRef}, method=${b.payment_method}, ref=${reference})`);
-
-      try {
-        const { finalizePaidInvoice } = require('../utils/paymentFinalizer');
-        const fin = await finalizePaidInvoice({
-          invoiceId, paymentId: newPayment.id, channel: 'tripay', referenceNo: reference || merchantRef
-        });
-        logger.info(`Tripay webhook finalize: invoice #${invoiceId} → ${JSON.stringify(fin)}`);
-      } catch (finErr) {
-        logger.error(`Tripay webhook finalize error invoice #${invoiceId}: ${finErr.message}`);
+      if (!settled.ok) {
+        return res.status(settled.httpStatus).json({ success: false, message: settled.message });
       }
+      logger.info(`Portal: Invoice #${invoiceId} PAID via Tripay (${merchantRef}, method=${b.payment_method}, ref=${reference}) alreadyPaid=${!!settled.alreadyPaid}`);
     } else {
       // EXPIRED / FAILED / UNPAID / REFUND — tidak ubah invoice, biar bisa coba lagi
       logger.info(`Tripay webhook: invoice #${invoiceId} status=${status} ref=${reference}`);

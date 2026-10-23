@@ -553,10 +553,13 @@ class IsolirController {
         'isolir_page_help_text',    // teks bantuan setelah daftar tagihan
         'isolir_page_show_invoices' // '1'/'0' tampilkan rincian tagihan atau tidak
       ];
+      const { parseGraceDays } = require('../utils/billingGuards');
       for (const key of allowed) {
         if (req.body[key] !== undefined) {
           const { AppSetting } = require('../models');
-          await AppSetting.upsert({ key, value: String(req.body[key]), type: 'string' });
+          let value = String(req.body[key]);
+          if (key === 'isolir_grace_days') value = String(parseGraceDays(value));
+          await AppSetting.upsert({ key, value, type: 'string' });
         }
       }
       res.json({ success:true, message:'Settings disimpan' });
