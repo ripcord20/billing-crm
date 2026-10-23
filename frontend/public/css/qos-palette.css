@@ -79,6 +79,30 @@ body.qos-home .qos-sub {
   color: #f8fafc !important;
 }
 
+/* Kartu dan tabel mengisi lebar halaman. Baris pelangi sampai tepi kanan kartu. */
+body.qos-home .qos-page {
+  max-width: none;
+  width: 100%;
+}
+
+body.qos-home .qos-card-block {
+  min-width: 0;
+}
+
+body.qos-home #qosAlerts,
+body.qos-home #qosDns,
+body.qos-home #qosUpsell,
+body.qos-home #qosAuth {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+body.qos-home .qos-table {
+  width: 100% !important;
+  min-width: 100%;
+}
+
 body.qos-home .btn-primary {
   background: linear-gradient(135deg, #0891b2, #4f46e5 58%, #ff4ecd) !important;
   border-color: transparent !important;
