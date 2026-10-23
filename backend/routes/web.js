@@ -240,9 +240,11 @@ router.get('/monitoring/qos', authenticate, blockFinanceArea, (req, res) => {
   res.render('pages/qos-monitor', { title: 'QoS & SLA', user: req.user, active: 'qos-monitor' });
 });
 
-router.get('/monitoring/hotspot', authenticate, blockFinanceArea, (req, res) => {
-  res.render('pages/hotspot', { title: 'Hotspot Management', user: req.user, active: 'hotspot' });
-});
+function renderVoucherHotspot(req, res) {
+  res.render('pages/hotspot', { title: 'Voucher Hotspot', user: req.user, active: 'hotspot' });
+}
+router.get('/hotspot', authenticate, blockFinanceArea, renderVoucherHotspot);
+router.get('/monitoring/hotspot', authenticate, blockFinanceArea, renderVoucherHotspot);
 
 // ─── RESELLER VOUCHER (admin management) ────────────────────
 // Kelola akun reseller, saldo deposit, paket voucher. Hanya admin/superadmin.
@@ -347,7 +349,7 @@ router.get('/mobile/hotspot',    authenticate, renderMobile('hotspot',    'Hotsp
 router.get('/mobile/voucher',    authenticate, renderMobile('voucher',    'Voucher',          'm-voucher'));
 router.get('/mobile/reminder',   authenticate, renderMobile('reminder',   'Reminder Tagihan', 'm-reminder'));
 router.get('/mobile/ticket',     authenticate, renderMobile('ticket',     'Tiket',            'm-ticket'));
-router.get('/mobile/hotspot-binding', authenticate, renderMobile('hotspot-binding', 'Hotspot Binding', 'm-hotspot-binding'));
+router.get('/mobile/hotspot-binding', authenticate, renderMobile('hotspot-binding', 'Server Hotspot', 'm-hotspot-binding'));
 router.get('/mobile/host',        authenticate, renderMobile('host',        'Host Terdeteksi',  'm-host'));
 router.get('/mobile/infrastructure', authenticate, renderMobile('infrastructure', 'Infrastruktur', 'm-infrastructure'));
 router.get('/mobile/invoice',        authenticate, renderMobile('invoice',        'Invoice',       'm-invoice'));
@@ -608,7 +610,7 @@ router.get('/isolir', authenticate, blockFinanceArea, (req, res) =>
   res.render('pages/isolir', { title: 'Isolir Management', user: req.user, active: 'isolir' }));
 
 router.get('/hotspot-binding', authenticate, blockFinanceArea, (req, res) =>
-  res.render('pages/hotspot-binding', { title: 'Hotspot Binding Management', user: req.user, active: 'hotspot-binding' }));
+  res.render('pages/hotspot-binding', { title: 'Server Hotspot', user: req.user, active: 'hotspot-binding' }));
 
 // Redirect lama → halaman baru
 router.get('/tools', authenticate, (req, res) => res.redirect('/hotspot-binding'));

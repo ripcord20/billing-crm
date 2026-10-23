@@ -1089,8 +1089,8 @@
       <div class="page-hdr-l">
         
         <div>
-          <h1>Hotspot Management</h1>
-          <p>Kelola user, voucher, dan sesi aktif MikroTik Hotspot</p>
+          <h1>Voucher Hotspot</h1>
+          <p>Generate, daftar user, harga paket, dan laporan penjualan voucher</p>
         </div>
       </div>
       <div class="page-hdr-r">
@@ -1562,6 +1562,25 @@
         </div>
         <div class="tbl-scroll" id="tbl-profiles"><div class="loader"><svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>Memuat...</div></div>
       </div>
+
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-hdr-l">
+            <span class="card-title">Harga per Profile</span>
+            <span class="badge-soft bs-amber" id="rep-pricing-warn" style="display:none">Profile tanpa harga: <b id="rep-pricing-warn-n">0</b></span>
+          </div>
+          <div class="card-hdr-r">
+            <span style="font-size:11.5px;color:var(--text2)">Satu tempat untuk harga voucher. Simpan lalu laporan ikut terhitung ulang.</span>
+            <button class="btn btn-primary btn-sm" id="btn-save-pricing" onclick="savePricing()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Simpan Harga
+            </button>
+          </div>
+        </div>
+        <div class="pricing-list" id="pricing-list">
+          <div class="loader" style="padding:20px">Memuat user profile…</div>
+        </div>
+      </div>
     </div>
 
     <!-- ── TAB: HOSTS ── -->
@@ -1592,14 +1611,14 @@
     <div class="tab-panel" id="tp-binding">
       <div class="card">
         <div class="card-hdr">
-          <div class="card-hdr-l"><span class="card-title">IP Binding</span></div>
+          <div class="card-hdr-l"><span class="card-title">IP Binding (ringkas)</span></div>
           <div class="card-hdr-r">
-            <button class="btn btn-primary btn-sm" onclick="openModal('m-add-binding')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Tambah Binding
-            </button>
+            <a class="btn btn-primary btn-sm" href="/hotspot-binding">Kelola di Server Hotspot →</a>
           </div>
         </div>
+        <p style="font-size:12.5px;color:var(--text2);margin:0;padding:12px 16px 0;line-height:1.5">
+          Tambah, isolir, dan setup binding ada di menu <b>Server Hotspot</b> — satu tempat. Tabel di bawah hanya daftar ringkas.
+        </p>
         <div class="tbl-scroll" id="tbl-binding"><div class="loader"><svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>Memuat...</div></div>
       </div>
     </div>
@@ -1652,7 +1671,13 @@
       <div class="card">
         <div class="card-hdr">
           <div class="card-hdr-l"><span class="card-title">Daftar Hotspot Server</span></div>
+          <div class="card-hdr-r">
+            <a class="btn btn-primary btn-sm" href="/hotspot-binding">Kelola di Server Hotspot →</a>
+          </div>
         </div>
+        <p style="font-size:12.5px;color:var(--text2);margin:0;padding:12px 16px 0;line-height:1.5">
+          Setup server, IP pool, IP binding, dan isolir pelanggan ada di menu <b>Server Hotspot</b> — satu tempat, bukan di Monitoring.
+        </p>
         <div class="tbl-scroll" id="tbl-servers-tab"><div class="loader"><svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>Memuat...</div></div>
       </div>
     </div>
@@ -1691,6 +1716,9 @@
           Export CSV
         </button>
       </div>
+      <p style="font-size:12.5px;color:var(--text2);margin:0 0 12px;line-height:1.5">
+        Harga voucher diatur di tab <b>User Profile</b> (satu tabel). Tab ini hanya laporan penjualan.
+      </p>
 
       <!-- Stat strip -->
       <div class="rep-strip">
@@ -1748,26 +1776,6 @@
           <div class="rep-prof-list" id="rep-prof-list">
             <div class="loader" style="padding:20px">Memuat…</div>
           </div>
-        </div>
-      </div>
-
-      <!-- Pricing editor -->
-      <div class="card">
-        <div class="card-hdr">
-          <div class="card-hdr-l">
-            <span class="card-title">Harga per Profile</span>
-            <span class="badge-soft bs-amber" id="rep-pricing-warn" style="display:none">Profile tanpa harga: <b id="rep-pricing-warn-n">0</b></span>
-          </div>
-          <div class="card-hdr-r">
-            <span style="font-size:11.5px;color:var(--text2)">Set harga lalu klik Simpan — laporan otomatis di-recalc.</span>
-            <button class="btn btn-primary btn-sm" id="btn-save-pricing" onclick="savePricing()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-              Simpan Harga
-            </button>
-          </div>
-        </div>
-        <div class="pricing-list" id="pricing-list">
-          <div class="loader" style="padding:20px">Memuat user profile…</div>
         </div>
       </div>
 
@@ -3082,13 +3090,13 @@ function updateGenPreview() {
 async function goSetPrice(ev) {
   if (ev) { ev.preventDefault(); ev.stopPropagation(); }
   const name = document.getElementById('g-profile')?.value || 'default';
-  switchTab('reports');
+  switchTab('profiles');
   const tabBtn = document.querySelector('#tab-list .tab-item.active');
   if (tabBtn && tabBtn.scrollIntoView) {
     tabBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   }
   try {
-    if (typeof window.loadReportsTab === 'function') await window.loadReportsTab();
+    if (typeof loadUserProfiles === 'function') await loadUserProfiles();
   } catch (e) { /* editor mungkin belum siap */ }
   const focusPrice = () => {
     const list = document.getElementById('pricing-list');
@@ -3099,7 +3107,7 @@ async function goSetPrice(ev) {
       : '#pricing-list input[data-field="price"]';
     const inp = document.querySelector(sel);
     if (!inp) {
-      toast('Buka tab Laporan → isi Harga per Profile, lalu Simpan Harga', 'info');
+      toast('Buka tab User Profile → isi Harga per Profile, lalu Simpan Harga', 'info');
       return;
     }
     inp.focus();
@@ -4325,6 +4333,7 @@ async function loadUserProfiles() {
   ]);
   allProfiles=r.success?r.data:[];
   syncProfileDropdowns();
+  try { if (typeof window.setRepProfiles === 'function') window.setRepProfiles(allProfiles); } catch(e){}
   if (!allProfiles.length){ setEl('tbl-profiles',emptyHtml('Belum ada user profile')); return; }
   let h=`<table><thead><tr>
     <th>Nama</th><th>Rate Limit</th><th>Shared</th><th>Session Timeout</th><th>Idle Timeout</th><th>Limit Voucher</th><th class="num-r">Harga</th><th>Aksi</th>
@@ -5253,6 +5262,11 @@ document.addEventListener('keydown', e => {
   }
 
   // ── Pricing editor ──────────────────────────────────────────────
+  window.setRepProfiles = function(list) {
+    _repProfiles = Array.isArray(list) ? list : [];
+    renderPricingEditor();
+  };
+  window.renderPricingEditor = renderPricingEditor;
   function renderPricingEditor() {
     const list = document.getElementById('pricing-list');
     if (!list) return;
