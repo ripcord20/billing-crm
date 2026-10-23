@@ -417,9 +417,10 @@ body.dash-home .ont-off-scroll {
   touch-action: pan-x pan-y;
 }
 
+/* Web: baris memenuhi lebar kartu. Di bawah 760px, dashboard.ejs menimpa ini. */
 body.dash-home .ont-off-table {
-  width: max-content;
-  min-width: 920px;
+  width: 100%;
+  min-width: max(100%, 920px);
   border-collapse: collapse;
   font-size: 13px;
 }
