@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="stylesheet" href="/css/hotspot-palette.css?v=hs2">
+  <link rel="stylesheet" href="/css/hotspot-palette.css?v=hs3">
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/app.js"></script>
@@ -276,30 +276,35 @@
     /* ── GENERATE PANEL — refined layout ────────────────────────── */
     .gen-grid {
       display: grid;
-      grid-template-columns: 110px minmax(140px,1.4fr) minmax(100px,1fr) 90px minmax(100px,1fr) minmax(170px,1.5fr) 90px;
+      grid-template-columns: 110px minmax(140px,1.4fr) minmax(140px,1.3fr) minmax(100px,1fr) 90px minmax(150px,1.3fr) 90px;
       gap: 14px; align-items: start; margin-bottom: 16px;
     }
     .gf-jumlah  { grid-area: auto; }
     .gf-profile { grid-area: auto; }
+    .gf-samepw  { grid-area: auto; }
     .gf-server  { grid-area: auto; }
     .gf-prefix  { grid-area: auto; }
     .gf-limit   { grid-area: auto; }
     .gf-charset { grid-area: auto; }
     .gf-charlen { grid-area: auto; }
+    .gf-preview { grid-column: 1 / -1; }
     @media (max-width: 1280px) {
       .gen-grid {
         grid-template-columns: 110px 1fr 1fr 1fr;
         grid-template-areas:
-          "jumlah profile profile charset"
-          "server prefix  limit   length";
+          "jumlah  profile profile samepw"
+          "server  prefix  charset length"
+          "limit   preview preview preview";
       }
       .gf-jumlah  { grid-area: jumlah; }
       .gf-profile { grid-area: profile; }
+      .gf-samepw  { grid-area: samepw; }
       .gf-server  { grid-area: server; }
       .gf-prefix  { grid-area: prefix; }
       .gf-limit   { grid-area: limit; }
       .gf-charset { grid-area: charset; }
       .gf-charlen { grid-area: length; }
+      .gf-preview { grid-area: preview; }
     }
     @media (max-width: 720px) {
       .gen-grid {
@@ -307,15 +312,34 @@
         grid-template-areas:
           "jumlah  server"
           "profile profile"
-          "prefix  limit"
-          "charset length";
+          "samepw  samepw"
+          "prefix  charset"
+          "limit   length"
+          "preview preview";
       }
     }
     @media (max-width: 460px) {
       .gen-grid {
         grid-template-columns: 1fr;
-        grid-template-areas: "jumlah" "profile" "server" "prefix" "limit" "charset" "length";
+        grid-template-areas: "jumlah" "profile" "samepw" "server" "prefix" "charset" "length" "limit" "preview";
       }
+    }
+    .gen-hint-link {
+      background: none; border: none; padding: 0; margin: 0;
+      color: var(--blue); font-weight: 700; font-size: inherit;
+      font-family: inherit; cursor: pointer; text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .gen-preview-box {
+      background: var(--surface2); border: 1px dashed var(--border);
+      border-radius: var(--rc-sm); padding: 10px 12px;
+      font-size: 12px; line-height: 1.5; color: var(--text2);
+      word-break: break-word;
+    }
+    .gen-preview-box b { color: var(--text); font-family: var(--fm); font-weight: 700; }
+    .price-flash {
+      outline: 2px solid var(--blue) !important;
+      box-shadow: 0 0 0 4px rgba(0,113,227,.25);
     }
 
     .gen-field { display: flex; flex-direction: column; min-width: 0; }
@@ -1291,14 +1315,23 @@
           <p class="gen-hint" id="g-profile-info">Pilih paket untuk lihat harga &amp; limit waktu</p>
         </div>
 
+        <div class="gen-field gf-samepw">
+          <label>Username &amp; Password <span style="color:var(--red)">*</span></label>
+          <select id="g-samepw" onchange="updateGenPreview()">
+            <option value="same" selected>Sama (satu kode login)</option>
+            <option value="diff">Beda (user ≠ password)</option>
+          </select>
+        </div>
+
         <div class="gen-field gf-server">
           <label>Server</label>
           <select id="g-server"><option value="all">all</option></select>
         </div>
 
         <div class="gen-field gf-prefix">
-          <label>Prefix</label>
-          <input type="text" id="g-prefix" value="vc" placeholder="vc" maxlength="8">
+          <label>Prefix username</label>
+          <input type="text" id="g-prefix" value="vc" placeholder="kosong = tanpa awalan" maxlength="8" oninput="this.value=this.value.replace(/[^a-zA-Z0-9]/g,'').slice(0,8);updateGenPreview()">
+          <p class="gen-hint">Hanya awalan. Kode unik ditambah di belakang.</p>
         </div>
 
         <div class="gen-field gf-limit">
@@ -1320,9 +1353,13 @@
         </div>
 
         <div class="gen-field gf-charlen">
-          <label>Panjang <span style="color:var(--red)">*</span></label>
+          <label>Panjang kode <span style="color:var(--red)">*</span></label>
           <input type="number" id="g-charlen" value="6" min="6" max="10" oninput="onGenCharsetChange()">
-          <p class="gen-hint" id="g-charlen-info">Minimal 6, maksimal 10</p>
+          <p class="gen-hint" id="g-charlen-info">Minimal 6, maksimal 10 (bagian unik)</p>
+        </div>
+
+        <div class="gf-preview">
+          <div class="gen-preview-box" id="g-preview">Contoh voucher akan muncul di sini</div>
         </div>
       </div>
 
@@ -2072,6 +2109,7 @@ let activeTab='users';
 ═══════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   onGenCharsetChange();
+  updateGenPreview();
   // Init MikroTik selector — TUNGGU selesai sebelum load data agar
   // pertama kali fetch sudah pakai device_id yang benar.
   // onReady dipanggil setelah list device ter-fetch & activeId di localStorage di-set.
@@ -2863,7 +2901,7 @@ function onGenProfileChange() {
   if (profInfo) {
     const bits = [];
     if (entry.price > 0) bits.push(`<span style="color:var(--green);font-weight:600">Rp ${entry.price.toLocaleString('id-ID')}</span>`);
-    else                 bits.push('<span style="color:var(--amber);font-weight:600">Harga belum di-set</span> <a href="javascript:void(0)" onclick="switchTab(\'profiles\')" style="color:var(--blue);font-weight:600;text-decoration:none;">Atur harga →</a>');
+    else                 bits.push('<span style="color:var(--amber);font-weight:600">Harga belum di-set</span> <button type="button" class="gen-hint-link" onclick="goSetPrice(event)">Atur harga →</button>');
     if (lim) bits.push(`<span style="color:var(--blue)">⏱ ${x(lim)}</span>`);
     profInfo.innerHTML = bits.join(' · ');
   }
@@ -2901,6 +2939,7 @@ function onGenCharsetChange() {
     len.max = 9;
     len.readOnly = true;
     if (info) info.textContent = 'Angka saja selalu 9 digit';
+    updateGenPreview();
     return;
   }
   len.readOnly = false;
@@ -2910,7 +2949,76 @@ function onGenCharsetChange() {
   if (!Number.isFinite(n) || n < 6) n = 6;
   if (n > 10) n = 10;
   len.value = n;
-  if (info) info.textContent = 'Minimal 6, maksimal 10';
+  if (info) info.textContent = 'Minimal 6, maksimal 10 (bagian unik)';
+  updateGenPreview();
+}
+
+const GEN_CHARSETS = {
+  az: 'abcdefghijklmnopqrstuvwxyz',
+  az09: 'abcdefghijklmnopqrstuvwxyz0123456789',
+  AZ: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  AZ09: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+  azAZ09: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+  '09': '0123456789'
+};
+
+function previewVoucherToken(len, charset) {
+  const chars = GEN_CHARSETS[charset] || GEN_CHARSETS.azAZ09;
+  const n = charset === '09' ? 9 : Math.max(6, Math.min(10, parseInt(len, 10) || 6));
+  let s = '';
+  for (let i = 0; i < n; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+function updateGenPreview() {
+  const box = document.getElementById('g-preview');
+  if (!box) return;
+  const rawPrefix = (document.getElementById('g-prefix')?.value || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8);
+  const charset = document.getElementById('g-charset')?.value || 'azAZ09';
+  const len = document.getElementById('g-charlen')?.value;
+  const same = (document.getElementById('g-samepw')?.value || 'same') === 'same';
+  const samples = [0, 1, 2].map(() => rawPrefix + previewVoucherToken(len, charset));
+  const uniq = [...new Set(samples)];
+  if (same) {
+    box.innerHTML = 'Tiap voucher <b>satu kode</b> (username = password): '
+      + uniq.map((u) => `<b>${x(u)}</b>`).join(' · ');
+  } else {
+    const pass = previewVoucherToken(len, charset);
+    box.innerHTML = 'Username unik, password beda. Contoh: user <b>' + x(uniq[0])
+      + '</b> / pass <b>' + x(pass) + '</b> · user <b>' + x(uniq[1] || uniq[0]) + '</b>';
+  }
+}
+
+async function goSetPrice(ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  const name = document.getElementById('g-profile')?.value || 'default';
+  switchTab('reports');
+  const tabBtn = document.querySelector('#tab-list .tab-item.active');
+  if (tabBtn && tabBtn.scrollIntoView) {
+    tabBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }
+  try {
+    if (typeof window.loadReportsTab === 'function') await window.loadReportsTab();
+  } catch (e) { /* editor mungkin belum siap */ }
+  const focusPrice = () => {
+    const list = document.getElementById('pricing-list');
+    const card = list && list.closest('.card');
+    if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const sel = (window.CSS && CSS.escape)
+      ? '#pricing-list input[data-profile="' + CSS.escape(name) + '"][data-field="price"]'
+      : '#pricing-list input[data-field="price"]';
+    const inp = document.querySelector(sel);
+    if (!inp) {
+      toast('Buka tab Laporan → isi Harga per Profile, lalu Simpan Harga', 'info');
+      return;
+    }
+    inp.focus();
+    inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    inp.classList.add('price-flash');
+    setTimeout(() => inp.classList.remove('price-flash'), 1800);
+  };
+  setTimeout(focusPrice, 80);
+  setTimeout(focusPrice, 400);
 }
 
 // Live summary preview di bawah generate form — total voucher, harga/voucher,
@@ -3132,11 +3240,12 @@ async function generateVouchers() {
     count,
     profile:document.getElementById('g-profile').value||'default',
     server:document.getElementById('g-server').value||'all',
-    prefix:document.getElementById('g-prefix').value||'vc',
+    prefix: (document.getElementById('g-prefix')?.value || '').trim(),
     limitUptime:document.getElementById('g-uptime').value,
     soldTo:(document.getElementById('g-soldto')?.value || '').trim(),
     charset: document.getElementById('g-charset')?.value || 'azAZ09',
     passwordLength: parseInt(document.getElementById('g-charlen')?.value, 10) || 6,
+    samePassword: (document.getElementById('g-samepw')?.value || 'same') === 'same',
   }).catch(e => ({ success: false, message: e?.message || 'Network error' }));
 
   const elapsed = Math.round((Date.now() - startTime) / 1000);

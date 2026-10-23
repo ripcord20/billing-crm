@@ -287,6 +287,21 @@ function randomVoucherToken(length, charsetCode, rng) {
   return out;
 }
 
+function normalizeVoucherPrefix(prefix) {
+  return String(prefix || '').trim().replace(/[^a-zA-Z0-9]/g, '').slice(0, 8);
+}
+
+function parseSamePassword(value) {
+  if (value === true || value === 1) return true;
+  const s = String(value || '').trim().toLowerCase();
+  return s === 'same' || s === '1' || s === 'true' || s === 'ya';
+}
+
+/** Username = prefix + kode unik (tanpa tanda hubung, supaya tiap voucher kelihatan beda). */
+function buildVoucherUsername(prefix, token) {
+  return normalizeVoucherPrefix(prefix) + String(token || '');
+}
+
 module.exports = {
   ISOLIR,
   isIsolirHotspotUser,
@@ -306,5 +321,8 @@ module.exports = {
   VOUCHER_CHARSETS,
   normalizeVoucherCharset,
   clampVoucherLength,
-  randomVoucherToken
+  randomVoucherToken,
+  normalizeVoucherPrefix,
+  parseSamePassword,
+  buildVoucherUsername
 };
