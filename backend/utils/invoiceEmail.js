@@ -160,7 +160,8 @@ async function buildInvoiceDataForPdf(invoice, customer, tplCfg, AppSetting) {
     tax_label:        taxLabel,
     tax_rate:         vatPercent,
     invoice_status:   invoice.status,
-    bank_accounts:    bankAccounts
+    bank_accounts:    bankAccounts,
+    quota_used:       require('./customerQuota').quotaForCustomer(customer && customer.id)
   };
 }
 

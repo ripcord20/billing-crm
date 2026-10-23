@@ -1091,7 +1091,7 @@ class PaymentController {
               i.status AS invoice_status,
               i.verification_status AS verification_status,
               i.proof_submitted_at AS proof_submitted_at,
-              c.name AS cust_name, c.customer_id AS cid, c.phone AS cust_phone,
+              c.id AS customer_pk, c.name AS cust_name, c.customer_id AS cid, c.phone AS cust_phone,
               c.address AS cust_address, c.email AS cust_email, c.installation_date,
               pkg.name AS pkg_name, pkg.price AS pkg_price
        FROM invoices i
@@ -1144,6 +1144,9 @@ class PaymentController {
       ? (addOneMonthKeepDay(rowWithPay.due_date) || rowWithPay.due_date)
       : rowWithPay.due_date;
 
+    const { quotaForCustomer } = require('../utils/customerQuota');
+    const quota_used = quotaForCustomer(rowWithPay.customer_pk);
+
     return {
       ...rowWithPay,
       amount,
@@ -1157,6 +1160,7 @@ class PaymentController {
       recorded_by_name,
       bank_accounts,
       active_until,
+      quota_used,
       company
     };
   }
@@ -1306,7 +1310,7 @@ class PaymentController {
                 i.invoice_number, i.due_date, i.paid_date, i.status AS invoice_status,
                 i.period_month, i.period_year,
                 i.amount AS invoice_amount, i.tax AS invoice_tax, i.total AS invoice_total,
-                c.name AS cust_name, c.customer_id AS cid, c.phone AS cust_phone,
+                c.id AS customer_pk, c.name AS cust_name, c.customer_id AS cid, c.phone AS cust_phone,
                 c.address AS cust_address, c.email AS cust_email, c.installation_date,
                 pkg.name AS pkg_name, pkg.price AS pkg_price,
                 u.name AS recorded_by_name
@@ -1366,6 +1370,9 @@ class PaymentController {
         ? (addOneMonthKeepDay(row.due_date) || row.due_date)
         : row.due_date;
 
+      const { quotaForCustomer } = require('../utils/customerQuota');
+      const quota_used = quotaForCustomer(row.customer_pk);
+
       res.json({
         success: true,
         data: {
@@ -1379,6 +1386,7 @@ class PaymentController {
           tax_applied:      invTax > 0,
           bank_accounts,
           active_until,
+          quota_used,
           company
         }
       });

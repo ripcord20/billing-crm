@@ -127,8 +127,61 @@ function normalizeData(d) {
     tax_label: d.tax_label || 'PPN',
     subtotal: subtotal, tax: tax, total: total, taxRate: displayRate,
     status: status, statusLabel: statusLabel,
-    bank_accounts: d.bank_accounts || []
+    bank_accounts: d.bank_accounts || [],
+    quota_used: normalizeQuota(d.quota_used || d.quota)
   };
+}
+
+function normalizeQuota(q) {
+  q = q || {};
+  var download = Number(q.download || q.bytesDown || 0) || 0;
+  var upload = Number(q.upload || q.bytesUp || 0) || 0;
+  var total = q.total != null && q.total !== '' ? (Number(q.total) || 0) : (download + upload);
+  var has = q.has_data === true || q.has_data === 1 || q.has_data === '1' || download > 0 || upload > 0;
+  return { download: download, upload: upload, total: total, has_data: !!has };
+}
+
+function fmtQuotaBytes(n) {
+  n = Number(n) || 0;
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n / 1024).toFixed(1).replace(/\.0$/, '') + ' KB';
+  if (n < 1073741824) return (n / 1048576).toFixed(1).replace(/\.0$/, '') + ' MB';
+  return (n / 1073741824).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1') + ' GB';
+}
+
+function renderWatermark() {
+  var row = '';
+  for (var i = 0; i < 3; i++) row += 'INETmedia&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
+  var lines = '';
+  for (var r = 0; r < 8; r++) {
+    lines += '<div style="font-size:46px;font-weight:800;letter-spacing:.16em;line-height:2.15;color:rgba(13,148,136,.09);white-space:nowrap;">' + row + '</div>';
+  }
+  return '<div aria-hidden="true" style="position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:-1;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' +
+    '<div style="position:absolute;left:-18%;top:-30%;width:160%;transform:rotate(-24deg);">' + lines + '</div>' +
+  '</div>';
+}
+
+function renderQuota(cfg, p) {
+  var q = p.quota_used || {};
+  var dash = '\u2014';
+  var down = q.has_data ? fmtQuotaBytes(q.download) : dash;
+  var up = q.has_data ? fmtQuotaBytes(q.upload) : dash;
+  var tot = q.has_data ? fmtQuotaBytes(q.total) : 'Belum tercatat';
+  function cell(lbl, val, color) {
+    return '<div style="flex:1;min-width:88px;">' +
+      '<div style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#64748b;font-weight:700;">' + lbl + '</div>' +
+      '<div style="margin-top:3px;font-size:15px;font-weight:800;color:' + color + ';font-family:\'DM Mono\',ui-monospace,monospace;">' + escHtml(val) + '</div>' +
+    '</div>';
+  }
+  return '<div style="margin-top:16px;border:1.5px solid #dbe4ee;border-radius:12px;padding:12px 16px;background:#f8fafc;">' +
+    '<div style="font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#475569;margin-bottom:8px;">Kuota Pemakaian</div>' +
+    '<div style="display:flex;gap:18px;flex-wrap:wrap;">' +
+      cell('Download', down, '#0369a1') +
+      cell('Upload', up, '#0f766e') +
+      cell('Total', tot, cfg.text || '#0f172a') +
+    '</div>' +
+    '<div style="margin-top:6px;font-size:10.5px;color:#64748b;">Angka terakhir yang tercatat di router saat invoice ini dibuat.</div>' +
+  '</div>';
 }
 
 // ── Render functions (disalin persis dari invoice-renderer.js) ──
@@ -219,6 +272,10 @@ function renderRecipient(cfg, p) {
           '<dd style="margin:0;font-weight:700;color:' + cfg.text + ';font-size:12px;font-family:\'DM Mono\',monospace;">' + escHtml(p.invoice_number) + '</dd>' +
           '<dt style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;font-weight:700;margin-top:8px;">Tanggal Bayar</dt>' +
           '<dd style="margin:0;font-weight:700;color:' + cfg.text + ';font-size:12px;">' + (p.payment_date ? fmtDate(p.payment_date) : '\u2013') + '</dd>' +
+          (p.status === 'paid' && p.recorded_by_name ?
+            '<dt style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;font-weight:700;margin-top:8px;">Dilunasi oleh</dt>' +
+            '<dd style="margin:0;font-weight:700;color:' + cfg.text + ';font-size:12px;">' + escHtml(p.recorded_by_name) + '</dd>'
+            : '') +
           (cfg.showDueDate && p.due_date ?
             '<dt style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;font-weight:700;margin-top:8px;">Jatuh Tempo</dt>' +
             '<dd style="margin:0;font-weight:700;color:' + cfg.text + ';font-size:12px;">' + fmtDate(p.due_date) + '</dd>'
@@ -292,6 +349,9 @@ function renderPaymentStatus(cfg, p) {
     '<div style="margin-top:30px;padding:14px 18px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;display:flex;gap:30px;font-size:11px;flex-wrap:wrap;">' +
       '<div><span style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;font-weight:700;display:block;margin-bottom:4px;">Metode Pembayaran</span><span style="color:' + cfg.text + ';font-weight:700;">' + escHtml(p.method_label || '\u2013') + '</span></div>' +
       ref +
+      (p.status === 'paid' && p.recorded_by_name ?
+        '<div><span style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;font-weight:700;display:block;margin-bottom:4px;">Dilunasi oleh</span><span style="color:' + cfg.text + ';font-weight:700;">' + escHtml(p.recorded_by_name) + '</span></div>'
+        : '') +
       '<div><span style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;font-weight:700;display:block;margin-bottom:4px;">Status</span><span style="color:' + statusColor + ';font-weight:700;text-transform:uppercase;letter-spacing:.04em;">' + escHtml(p.statusLabel) + '</span></div>' +
     '</div>';
 }
@@ -343,9 +403,10 @@ function buildHtml(cfg, p) {
   if (cfg.headerStyle === 'merchant') return buildMerchantHtml(cfg, p, fontStack);
 
   var paperStyle =
-    'background:#fff;padding:50px 60px;font-family:' + fontStack + ';color:' + cfg.text + ';box-sizing:border-box;overflow:hidden;';
+    'background:#fff;padding:50px 60px;font-family:' + fontStack + ';color:' + cfg.text + ';box-sizing:border-box;overflow:hidden;position:relative;z-index:0;isolation:isolate;';
   return '<div class="invoice-paper" style="' + paperStyle + '">' +
-    renderHeader(cfg, p) + renderRecipient(cfg, p) + renderItems(cfg, p) + renderTotals(cfg, p) +
+    renderWatermark() +
+    renderHeader(cfg, p) + renderRecipient(cfg, p) + renderItems(cfg, p) + renderQuota(cfg, p) + renderTotals(cfg, p) +
     renderPaymentStatus(cfg, p) + renderActiveUntil(cfg, p) + renderBankInfo(cfg, p) + renderFooter(cfg, p) +
   '</div>';
 }
@@ -407,11 +468,12 @@ function buildCleanHtml(cfg, p, fontStack) {
   var dueLine = paid ? amount + ' \u2014 <span style="color:#0a7d33;">Lunas</span>' : amount + ' due ' + fmtLong(p.due_date);
 
   var paper =
-    'background:#fff;width:612px;max-width:100%;margin:0 auto;padding:30px 30px 0;font-family:' + inter + ';color:' + dark + ';box-sizing:border-box;-webkit-font-smoothing:antialiased;font-size:9pt;line-height:1.45;position:relative;min-height:760px;';
+    'background:#fff;width:612px;max-width:100%;margin:0 auto;padding:30px 30px 0;font-family:' + inter + ';color:' + dark + ';box-sizing:border-box;-webkit-font-smoothing:antialiased;font-size:9pt;line-height:1.45;position:relative;z-index:0;isolation:isolate;overflow:hidden;min-height:760px;';
 
   return (
     '<style>@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap");</style>' +
     '<div class="invoice-paper" style="' + paper + '">' +
+      renderWatermark() +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;">' +
         '<div style="font-size:18pt;font-weight:600;letter-spacing:-.01em;color:' + dark + ';line-height:1;">' + escHtml(cfg.invoiceLabel || 'Invoice') + '</div>' +
         '<div style="min-width:120px;">' + logoBox + '</div>' +
@@ -444,6 +506,7 @@ function buildCleanHtml(cfg, p, fontStack) {
           '<td style="text-align:right;padding:9px 0 0;font-size:9pt;color:' + dark + ';vertical-align:top;">' + fmtRp(p.subtotal) + '</td>' +
         '</tr></tbody>' +
       '</table>' +
+      renderQuota(cfg, p) +
       '<div style="display:flex;justify-content:flex-end;margin-top:26px;">' +
         '<table style="width:276px;border-collapse:collapse;">' +
           subtotalRow + taxRow +
@@ -456,6 +519,7 @@ function buildCleanHtml(cfg, p, fontStack) {
         '<div style="margin-top:20px;font-size:9pt;color:#0a7d33;">\u2713 Telah dibayar' +
           (p.payment_date ? ' pada ' + fmtLong(p.payment_date) : '') +
           (p.method_label ? ' via ' + escHtml(p.method_label) : '') +
+            (p.recorded_by_name ? ' oleh ' + escHtml(p.recorded_by_name) : '') +
           (p.reference_number ? ' \u00b7 Ref: ' + escHtml(p.reference_number) : '') +
         '</div>' : '') +
       (cfg.showBankInfo && p.bank_accounts && p.bank_accounts.length ?
@@ -506,11 +570,12 @@ function buildMerchantHtml(cfg, p, fontStack) {
   var billBlock = billLines.join('<br>');
 
   var paper =
-    'background:#fff;width:595px;max-width:100%;margin:0 auto;padding:42px 40px 0;font-family:' + noto + ';color:' + dark + ';box-sizing:border-box;-webkit-font-smoothing:antialiased;font-size:9pt;line-height:1.45;position:relative;';
+    'background:#fff;width:595px;max-width:100%;margin:0 auto;padding:42px 40px 0;font-family:' + noto + ';color:' + dark + ';box-sizing:border-box;-webkit-font-smoothing:antialiased;font-size:9pt;line-height:1.45;position:relative;z-index:0;isolation:isolate;overflow:hidden;';
 
   return (
     '<style>@import url("https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,700;1,400&display=swap");</style>' +
     '<div class="invoice-paper" style="' + paper + '">' +
+      renderWatermark() +
       '<div style="margin-bottom:60px;">' + logoBox + '</div>' +
       '<div style="font-size:9pt;line-height:1.5;color:' + dark + ';margin-bottom:34px;">' + billBlock + '</div>' +
       '<div style="text-align:center;font-size:18pt;font-weight:700;color:' + dark + ';margin-bottom:10px;">' + escHtml(cfg.invoiceLabel || 'Invoice') + '</div>' +
@@ -545,6 +610,7 @@ function buildMerchantHtml(cfg, p, fontStack) {
           '<td style="text-align:right;vertical-align:top;font-size:9pt;font-weight:700;padding:4px 0;white-space:nowrap;">' + total + '</td>' +
         '</tr></tbody>' +
       '</table>' +
+      renderQuota(cfg, p) +
       '<table style="margin-left:auto;border-collapse:collapse;margin-top:18px;">' +
         (cfg.showSubtotal ? '<tr><td style="text-align:right;padding:2px 14px 2px 0;font-size:9pt;font-weight:700;">Subtotal:</td><td style="font-size:9pt;font-style:italic;text-align:right;white-space:nowrap;">' + subtotal + '</td></tr>' : '') +
         (hasTax ? '<tr><td style="text-align:right;padding:2px 14px 2px 0;font-size:9pt;font-weight:700;">VAT (' + p.taxRate + '%):</td><td style="font-size:9pt;font-style:italic;text-align:right;white-space:nowrap;">' + taxAmt + '</td></tr>' : '') +
@@ -564,7 +630,7 @@ function buildMerchantHtml(cfg, p, fontStack) {
       '<div style="border-top:1px solid ' + line + ';margin-bottom:12px;"></div>' +
       '<div style="font-size:9pt;color:' + dark + ';line-height:1.5;">' +
         (paid
-          ? 'Pembayaran sebesar <b>' + total + '</b> telah diterima' + (p.payment_date ? ' pada ' + fmtEng(p.payment_date) : '') + (p.method_label ? ' via <b>' + escHtml(p.method_label) + '</b>' : '') + '.' + (p.reference_number ? ' Ref: ' + escHtml(p.reference_number) + '.' : '')
+          ? 'Pembayaran sebesar <b>' + total + '</b> telah diterima' + (p.payment_date ? ' pada ' + fmtEng(p.payment_date) : '') + (p.method_label ? ' via <b>' + escHtml(p.method_label) + '</b>' : '') + (p.recorded_by_name ? ' oleh <b>' + escHtml(p.recorded_by_name) + '</b>' : '') + '.' + (p.reference_number ? ' Ref: ' + escHtml(p.reference_number) + '.' : '')
           : 'Tagihan ini jatuh tempo pada <b>' + fmtEng(p.due_date) + '</b>. Mohon lakukan pembayaran sebesar <b>' + total + '</b> sebelum tanggal tersebut.') +
       '</div>' +
       (cfg.showBankInfo && p.bank_accounts && p.bank_accounts.length ?
