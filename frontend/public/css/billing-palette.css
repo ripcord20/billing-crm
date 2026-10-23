@@ -187,6 +187,17 @@ body.bill-home .bill-table tbody tr:nth-child(8n+7) { background: #db2777 !impor
 body.bill-home .bill-table tbody tr:nth-child(8n+8) { background: #7c3aed !important; }
 body.bill-home .bill-table td,
 body.bill-home .bill-page.bill-narrow .bill-table td:nth-child(2) { color: #ffffff !important; }
+/* Tulisan di dalam sel (nama, nomor, nominal, "Dilunasi oleh") ikut putih.
+   Pil, tombol, dan blok yang punya latar sendiri tidak ikut. */
+body.bill-home .bill-table tbody td *:where(
+  :not([style*="background"]):not(.st-paid):not(.st-unpaid):not(.st-overdue):not(.st-cancelled):not(.act-btn):not([class*="pm-"]):not(.st-paid *):not(.st-unpaid *):not(.st-overdue *):not(.st-cancelled *):not(.act-btn *):not([class*="pm-"] *)
+) {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+body.bill-home .bill-table td [style*="background"] {
+  -webkit-text-fill-color: currentcolor !important;
+}
 
 body.bill-home .bill-table a:not(.act-btn):link,
 body.bill-home .bill-table a:not(.act-btn):visited {
@@ -195,9 +206,13 @@ body.bill-home .bill-table a:not(.act-btn):visited {
 }
 
 body.bill-home .bill-table .st-paid { background: #dcfce7 !important; color: #15803d !important; -webkit-text-fill-color: #15803d; }
+body.bill-home .bill-table .st-paid * { color: #15803d !important; -webkit-text-fill-color: #15803d !important; }
 body.bill-home .bill-table .st-unpaid { background: #fef3c7 !important; color: #b45309 !important; -webkit-text-fill-color: #b45309; }
+body.bill-home .bill-table .st-unpaid * { color: #b45309 !important; -webkit-text-fill-color: #b45309 !important; }
 body.bill-home .bill-table .st-overdue { background: #fee2e2 !important; color: #b91c1c !important; -webkit-text-fill-color: #b91c1c; }
+body.bill-home .bill-table .st-overdue * { color: #b91c1c !important; -webkit-text-fill-color: #b91c1c !important; }
 body.bill-home .bill-table .st-cancelled { background: #f1f5f9 !important; color: #475569 !important; -webkit-text-fill-color: #475569; }
+body.bill-home .bill-table .st-cancelled * { color: #475569 !important; -webkit-text-fill-color: #475569 !important; }
 
 body.bill-home .bill-table .pm-cash { background: #dcfce7 !important; color: #15803d !important; -webkit-text-fill-color: #15803d; }
 body.bill-home .bill-table .pm-transfer { background: #dbeafe !important; color: #1d4ed8 !important; -webkit-text-fill-color: #1d4ed8; }
@@ -216,9 +231,14 @@ body.bill-home .bill-table .pm-duitku { background: #cffafe !important; color: #
 
 body.bill-home .bill-table .act-btn.act-inv,
 body.bill-home .bill-table .act-btn.act-email { background: #dbeafe !important; color: #1d4ed8 !important; border-color: #93c5fd !important; -webkit-text-fill-color: #1d4ed8; }
+body.bill-home .bill-table .act-btn.act-inv *,
+body.bill-home .bill-table .act-btn.act-email * { color: #1d4ed8 !important; -webkit-text-fill-color: #1d4ed8 !important; }
 body.bill-home .bill-table .act-btn.act-wa { background: #dcfce7 !important; color: #15803d !important; border-color: #86efac !important; -webkit-text-fill-color: #15803d; }
+body.bill-home .bill-table .act-btn.act-wa * { color: #15803d !important; -webkit-text-fill-color: #15803d !important; }
 body.bill-home .bill-table .act-btn.act-pay { background: linear-gradient(135deg, #0891b2, #1d4ed8) !important; color: #ffffff !important; border-color: transparent !important; -webkit-text-fill-color: #ffffff; }
+body.bill-home .bill-table .act-btn.act-pay * { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }
 body.bill-home .bill-table .act-btn.act-del { background: #fee2e2 !important; color: #b91c1c !important; border-color: #fecaca !important; -webkit-text-fill-color: #b91c1c; }
+body.bill-home .bill-table .act-btn.act-del * { color: #b91c1c !important; -webkit-text-fill-color: #b91c1c !important; }
 
 body.bill-home .pg-btn {
   background: #100c22 !important;

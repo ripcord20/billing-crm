@@ -143,12 +143,29 @@ body.paym-home .pay-page.pay-narrow .pay-table td:nth-child(2),
 body.paym-home .pay-page.pay-narrow #tabPanelDebt .pay-table td:nth-child(6),
 body.paym-home .pay-page.pay-narrow #tabPanelProof .pay-table td:nth-child(3),
 body.paym-home .pay-page.pay-narrow #tabPanelProof .pay-table td:nth-child(6) { color: #ffffff !important; }
+/* Tulisan di dalam sel (nama, nominal, "Dilunasi oleh") ikut putih.
+   Pil, tombol, dan blok yang punya latar sendiri tidak ikut. */
+body.paym-home .pay-table tbody td *:where(
+  :not([style*="background"]):not(.mbadge):not(.inv-btn):not(.del-btn):not(.sent-badge):not(.debt-badge):not(.pm-btn-reject):not(.mbadge *):not(.inv-btn *):not(.del-btn *):not(.sent-badge *):not(.debt-badge *):not(.pm-btn-reject *)
+) {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+body.paym-home .pay-table td [style*="background"] {
+  -webkit-text-fill-color: currentcolor !important;
+}
 body.paym-home .mbadge { background: #e0f2fe !important; color: #0369a1 !important; -webkit-text-fill-color: #0369a1; }
+body.paym-home .mbadge * { color: #0369a1 !important; -webkit-text-fill-color: #0369a1 !important; }
 body.paym-home .inv-btn { background: #dbeafe !important; color: #1d4ed8 !important; border-color: #93c5fd !important; -webkit-text-fill-color: #1d4ed8; }
+body.paym-home .inv-btn * { color: #1d4ed8 !important; -webkit-text-fill-color: #1d4ed8 !important; }
 body.paym-home .del-btn { background: #fee2e2 !important; color: #b91c1c !important; border-color: #fecaca !important; -webkit-text-fill-color: #b91c1c; }
+body.paym-home .del-btn * { color: #b91c1c !important; -webkit-text-fill-color: #b91c1c !important; }
 body.paym-home .sent-badge { background: #dcfce7 !important; color: #15803d !important; -webkit-text-fill-color: #15803d; }
+body.paym-home .sent-badge * { color: #15803d !important; -webkit-text-fill-color: #15803d !important; }
 body.paym-home .debt-badge { background: #ffedd5 !important; color: #c2410c !important; -webkit-text-fill-color: #c2410c; }
+body.paym-home .debt-badge * { color: #c2410c !important; -webkit-text-fill-color: #c2410c !important; }
 body.paym-home .debt-badge.late { background: #fee2e2 !important; color: #b91c1c !important; -webkit-text-fill-color: #b91c1c; }
+body.paym-home .debt-badge.late * { color: #b91c1c !important; -webkit-text-fill-color: #b91c1c !important; }
 body.paym-home .pay-tab-badge { background: #ea580c !important; color: #ffffff !important; -webkit-text-fill-color: #ffffff; }
 body.paym-home .pg-btn { background: #100c22 !important; color: #f8fafc !important; border-color: rgba(34, 211, 238, 0.4) !important; }
 body.paym-home .pm-btn-reject { background: #fee2e2 !important; color: #b91c1c !important; -webkit-text-fill-color: #b91c1c; }
