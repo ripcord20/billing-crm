@@ -241,6 +241,18 @@ body.cust-home .cust-table tbody tr:nth-child(8n+8) { background: #7c3aed !impor
 
 body.cust-home .cust-table td { color: #ffffff !important; }
 
+/* Alamat, paket, PPPoE, password, dan tanggal jatuh tempo ikut putih.
+   Pil, tombol, avatar, dan chip yang punya latar sendiri tidak ikut. */
+body.cust-home .cust-table tbody td *:where(
+  :not([style*="background:#"]):not(.cid-badge):not(.sb):not(.rb):not(.av-circle):not(.cid-badge *):not(.sb *):not(.rb *):not(.av-circle *)
+) {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+body.cust-home .cust-table td [style*="background:#"] {
+  -webkit-text-fill-color: currentcolor !important;
+}
+
 body.cust-home .pay-page.cust-narrow .cust-table td::before { color: #e2e8f0 !important; }
 
 body.cust-home .cust-table a.cust-name-link:link,
@@ -272,10 +284,10 @@ body.cust-home .cust-table .due-overdue,
 body.cust-home .cust-table td.due-overdue { color: #fda4af !important; -webkit-text-fill-color: #fda4af; }
 body.cust-home .cust-table .due-ok { color: #e2e8f0 !important; -webkit-text-fill-color: #e2e8f0; }
 
-body.cust-home .cust-table .qused .qd { color: #7dd3fc !important; -webkit-text-fill-color: #7dd3fc; }
-body.cust-home .cust-table .qused .qu { color: #5eead4 !important; -webkit-text-fill-color: #5eead4; }
-body.cust-home .cust-table .qused .qt { color: #ffffff !important; -webkit-text-fill-color: #ffffff; }
-body.cust-home .cust-table .qused .na { color: #e2e8f0 !important; -webkit-text-fill-color: #e2e8f0; }
+body.cust-home .cust-table .qused .qd { color: #7dd3fc !important; -webkit-text-fill-color: #7dd3fc !important; }
+body.cust-home .cust-table .qused .qu { color: #5eead4 !important; -webkit-text-fill-color: #5eead4 !important; }
+body.cust-home .cust-table .qused .qt { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }
+body.cust-home .cust-table .qused .na { color: #e2e8f0 !important; -webkit-text-fill-color: #e2e8f0 !important; }
 
 body.cust-home .cust-table .rb.rb-wa,
 body.cust-home .cust-table .rb.rb-act { background: #dcfce7 !important; color: #15803d !important; border-color: #86efac !important; -webkit-text-fill-color: #15803d; }
