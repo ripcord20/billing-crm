@@ -153,6 +153,11 @@ body.paym-home .pay-table tbody tr:nth-child(8n+5) { background: #ea580c !import
 body.paym-home .pay-table tbody tr:nth-child(8n+6) { background: #e11d48 !important; }
 body.paym-home .pay-table tbody tr:nth-child(8n+7) { background: #db2777 !important; }
 body.paym-home .pay-table tbody tr:nth-child(8n+8) { background: #7c3aed !important; }
+/* Sorotan baris tetap di atas warna pelangi. Putih solid menutup tulisan. */
+body.paym-home .pay-table tbody tr:hover td {
+  background-color: transparent !important;
+  box-shadow: inset 0 0 0 999px rgba(255, 255, 255, 0.16);
+}
 body.paym-home .pay-table tbody td { color: #ffffff !important; border-bottom-color: rgba(255, 255, 255, 0.08) !important; }
 body.paym-home .pay-page.pay-narrow .pay-table td:nth-child(2),
 body.paym-home .pay-page.pay-narrow #tabPanelDebt .pay-table td:nth-child(6),
