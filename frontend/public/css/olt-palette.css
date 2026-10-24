@@ -148,9 +148,13 @@ body.olt-home .ot-modal-hdr {
 }
 body.olt-home .ot-panel-hdr-l h2,
 body.olt-home .ot-modal-hdr h3,
-body.olt-home .ot-panel-count,
 body.olt-home .card-sub {
   color: #f8fafc !important;
+}
+body.olt-home .ot-panel-count {
+  background: rgba(15, 23, 42, 0.55) !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.45) !important;
 }
 body.olt-home .ot-panel-hdr-l h2 svg { color: #67e8f9 !important; }
 
