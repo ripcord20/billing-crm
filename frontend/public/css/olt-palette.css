@@ -124,6 +124,23 @@ body.olt-home .ot-modal-foot {
   color: #f8fafc !important;
   border-color: rgba(34, 211, 238, 0.35) !important;
 }
+body.olt-home .ot-modal-body,
+body.olt-home .ot-confirm-msg,
+body.olt-home .ot-sec-title,
+body.olt-home .ot-mac-line,
+body.olt-home .ot-mac-vlan {
+  color: #f8fafc !important;
+}
+body.olt-home .ot-confirm-msg { font-size: 13.5px; line-height: 1.55; }
+body.olt-home .ot-sec-title { font-weight: 600; font-size: 13px; margin-bottom: 8px; }
+body.olt-home .ot-mac-line { font-size: 12.5px; }
+body.olt-home .ot-modal-body [style*="color:#334155"],
+body.olt-home .ot-modal-body [style*="color: #334155"],
+body.olt-home .ot-modal-box [style*="color:#334155"],
+body.olt-home .onu-table [style*="color:#334155"],
+body.olt-home .onu-table [style*="color:#475569"] {
+  color: #f8fafc !important;
+}
 body.olt-home .ot-panel-hdr,
 body.olt-home .ot-modal-hdr {
   background: #100c22 !important;
@@ -319,6 +336,7 @@ body.olt-home .onu-table tbody td,
 body.olt-home .onu-table .onu-if,
 body.olt-home .onu-table .onu-sn,
 body.olt-home .onu-table .onu-name,
+body.olt-home .onu-table .onu-namecell,
 body.olt-home .onu-table .mut,
 body.olt-home .onu-table td::before,
 body.olt-home .rxq-table tbody td,
@@ -327,6 +345,7 @@ body.olt-home .rxq-td-idx,
 body.olt-home .rxq-td-sn,
 body.olt-home .rxq-td-rx {
   color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
   border-color: rgba(255, 255, 255, 0.16) !important;
 }
 body.olt-home .onu-table tbody tr:nth-child(8n+1) td,
@@ -345,6 +364,33 @@ body.olt-home .onu-table tbody tr:nth-child(8n+7) td,
 body.olt-home .rxq-table tbody tr:nth-child(8n+7) td { background: #db2777 !important; }
 body.olt-home .onu-table tbody tr:nth-child(8n+8) td,
 body.olt-home .rxq-table tbody tr:nth-child(8n+8) td { background: #7c3aed !important; }
+
+@media (max-width: 820px) {
+  body.olt-home .onu-table tbody tr,
+  body.olt-home .onu-table tbody tr:hover {
+    background: #141028 !important;
+    border-color: rgba(34, 211, 238, 0.35) !important;
+    box-shadow: none !important;
+  }
+  body.olt-home .onu-table tbody tr:nth-child(n) td,
+  body.olt-home .onu-table tbody tr:nth-child(n) td:first-child {
+    background: #141028 !important;
+    color: #f8fafc !important;
+    -webkit-text-fill-color: #f8fafc;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+  }
+  body.olt-home .onu-table tbody tr:nth-child(n) td:first-child {
+    background: #100c22 !important;
+  }
+  body.olt-home .onu-table tbody td::before,
+  body.olt-home .onu-table .onu-if,
+  body.olt-home .onu-table .onu-sn,
+  body.olt-home .onu-table .onu-name,
+  body.olt-home .onu-table .mut {
+    color: #f8fafc !important;
+    -webkit-text-fill-color: #f8fafc;
+  }
+}
 
 body.olt-home .ot-empty,
 body.olt-home .ot-empty h3,
