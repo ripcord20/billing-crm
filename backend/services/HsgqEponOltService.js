@@ -397,7 +397,8 @@ class HsgqEponOltService extends BaseCliOltService {
         port:    pon,
         onu_if:  `${pon}/${onuId}`,
         mac:     m[3],
-        sn:      m[3],                 // alias agar UI yang pakai "sn" tetap jalan
+        sn:      m[3],                 // EPON: identifier = MAC; UI harus label MAC, bukan SN
+        id_kind: 'mac',
         type:    null,
         name:    null,
         phase_state: m[4],

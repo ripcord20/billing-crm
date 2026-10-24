@@ -844,6 +844,16 @@ function _fmtRx(v){
   const n=Number(v);
   return Number.isFinite(n) ? n.toFixed(2)+' dBm' : String(v);
 }
+// EPON (HSGQ-E04R dll) hanya punya MAC; GPON punya serial. Jangan label MAC sebagai SN.
+function _looksLikeMac(s){
+  return /^([0-9a-f]{2}[:-]){5}[0-9a-f]{2}$/i.test(String(s||'').trim());
+}
+function _ontIdLabel(o){
+  if (o && o.id_kind === 'mac') return 'MAC';
+  if (o && o.id_kind === 'sn') return 'SN';
+  const raw = (o && (o.serial_number || o.mac)) || '';
+  return _looksLikeMac(raw) ? 'MAC' : 'SN';
+}
 function renderOntOfflineTable(items){
   if(!items.length) return '';
   const byOlt={};
@@ -859,9 +869,11 @@ function renderOntOfflineTable(items){
     const cust=o.customer_name
       ? escHtml(o.customer_name)+(o.customer_cid?' <span class="oo-cid">'+escHtml(o.customer_cid)+'</span>':'')
       : '—';
+    const idVal=o.serial_number||o.mac||'—';
+    const idLbl=_ontIdLabel(o);
     return `<tr>
       <td data-label="Nama"><a class="oo-name" href="${href}">${escHtml(o.name||a.title||'ONT')}</a></td>
-      <td data-label="SN" class="oo-mono">${escHtml(o.serial_number||'—')}</td>
+      <td data-label="${idLbl}" class="oo-mono">${escHtml(idVal)}</td>
       <td data-label="OLT"><span class="oo-olt">${escHtml(o.olt_name||'—')}</span></td>
       <td data-label="PON / ONU" class="oo-mono">${pon}</td>
       <td data-label="RX" class="oo-mono">${escHtml(_fmtRx(o.rx_dbm))}</td>
@@ -872,7 +884,7 @@ function renderOntOfflineTable(items){
   return `<div class="ont-off-wrap">
     <div class="ont-off-head">ONT Offline <b>${items.length}</b><span class="ont-off-sub">${sub}</span></div>
     <div class="ont-off-scroll"><table class="ont-off-table">
-      <thead><tr><th>Nama</th><th>SN</th><th>OLT</th><th>PON / ONU</th><th>RX</th><th>Pelanggan</th><th>Update</th></tr></thead>
+      <thead><tr><th>Nama</th><th>SN / MAC</th><th>OLT</th><th>PON / ONU</th><th>RX</th><th>Pelanggan</th><th>Update</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
   </div>`;
