@@ -456,6 +456,25 @@ body.olt-home .rxq-table tbody tr:nth-child(8n+8) td { background: #7c3aed !impo
     color: #f8fafc !important;
     -webkit-text-fill-color: #f8fafc;
   }
+  body.olt-home .onu-table-wrap,
+  body.olt-home .ot-panel,
+  body.olt-home .onu-table,
+  body.olt-home .onu-table tbody tr {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+  body.olt-home .onu-table tbody td,
+  body.olt-home .onu-table tbody td > *,
+  body.olt-home .onu-table .onu-sn,
+  body.olt-home .onu-table .vlan-ports,
+  body.olt-home .onu-table .onu-if,
+  body.olt-home .onu-table .onu-name {
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
 }
 
 body.olt-home .ot-empty,

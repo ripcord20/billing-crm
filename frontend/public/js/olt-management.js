@@ -1660,11 +1660,11 @@ const OltMgmt = {
         return `<span class="card-pill ${cls}" style="margin-left:5px;font-size:10px">${esc(lbl)}</span>`;
       };
       body.innerHTML = this.vlans.map(v => `<tr class="vlan-row" style="cursor:pointer" onclick="OltMgmt.openVlanDetail(${v.vid})">
-        <td><span class="onu-if">${v.vid}</span></td>
-        <td>${v.name ? esc(v.name) : '<span class="mut">—</span>'}${(v.sources || []).map(srcBadge).join('')}</td>
-        <td>${v.type ? esc(v.type) : '<span class="mut">—</span>'}</td>
-        <td>${v.ports ? `<span class="onu-sn">${esc(v.ports)}</span>` : '<span class="mut">—</span>'}</td>
-        <td onclick="event.stopPropagation()"><div class="row-acts">
+        <td data-label="VLAN ID"><span class="onu-if">${v.vid}</span></td>
+        <td data-label="Nama">${v.name ? esc(v.name) : '<span class="mut">—</span>'}${(v.sources || []).map(srcBadge).join('')}</td>
+        <td data-label="Type">${v.type ? esc(v.type) : '<span class="mut">—</span>'}</td>
+        <td data-label="Port">${v.ports ? `<span class="onu-sn vlan-ports">${esc(v.ports)}</span>` : '<span class="mut">—</span>'}</td>
+        <td data-label="Aksi" onclick="event.stopPropagation()"><div class="row-acts">
           <button class="ra info" title="Detail VLAN" onclick="OltMgmt.openVlanDetail(${v.vid})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
           <button class="ra edit" title="Edit nama VLAN" onclick="OltMgmt.openVlanDetail(${v.vid}, true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
           <button class="ra del" title="Hapus VLAN" onclick="OltMgmt.deleteVlan(${v.vid})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>
