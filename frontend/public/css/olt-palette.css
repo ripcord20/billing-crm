@@ -333,20 +333,62 @@ body.olt-home .rxq-table thead th {
   border-color: transparent !important;
 }
 body.olt-home .onu-table tbody td,
+body.olt-home .rxq-table tbody td {
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
 body.olt-home .onu-table .onu-if,
 body.olt-home .onu-table .onu-sn,
 body.olt-home .onu-table .onu-name,
 body.olt-home .onu-table .onu-namecell,
 body.olt-home .onu-table .mut,
 body.olt-home .onu-table td::before,
-body.olt-home .rxq-table tbody td,
 body.olt-home .rxq-td-name,
 body.olt-home .rxq-td-idx,
 body.olt-home .rxq-td-sn,
 body.olt-home .rxq-td-rx {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+body.olt-home .onu-table .st-online {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+  -webkit-text-fill-color: #15803d;
+}
+body.olt-home .onu-table .st-offline {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  -webkit-text-fill-color: #475569;
+}
+body.olt-home .onu-table .st-disabled {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  -webkit-text-fill-color: #b45309;
+}
+body.olt-home .onu-table .rx-good {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+  -webkit-text-fill-color: #15803d;
+}
+body.olt-home .onu-table .rx-warning {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  -webkit-text-fill-color: #b45309;
+}
+body.olt-home .onu-table .rx-critical,
+body.olt-home .onu-table .rx-los {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  -webkit-text-fill-color: #b91c1c;
+}
+body.olt-home .onu-table .rx-unknown {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  -webkit-text-fill-color: #475569;
+}
+body.olt-home .onu-table .onu-pon-tag {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  -webkit-text-fill-color: #1d4ed8;
 }
 body.olt-home .onu-table tbody tr:nth-child(8n+1) td,
 body.olt-home .rxq-table tbody tr:nth-child(8n+1) td { background: #1d4ed8 !important; }
@@ -375,8 +417,6 @@ body.olt-home .rxq-table tbody tr:nth-child(8n+8) td { background: #7c3aed !impo
   body.olt-home .onu-table tbody tr:nth-child(n) td,
   body.olt-home .onu-table tbody tr:nth-child(n) td:first-child {
     background: #141028 !important;
-    color: #f8fafc !important;
-    -webkit-text-fill-color: #f8fafc;
     border-color: rgba(255, 255, 255, 0.12) !important;
   }
   body.olt-home .onu-table tbody tr:nth-child(n) td:first-child {
