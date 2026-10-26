@@ -269,3 +269,33 @@ body.pp-home .pb-tb tbody tr:nth-child(8n+5) td { background: #ea580c !important
 body.pp-home .pb-tb tbody tr:nth-child(8n+6) td { background: #e11d48 !important; }
 body.pp-home .pb-tb tbody tr:nth-child(8n+7) td { background: #db2777 !important; }
 body.pp-home .pb-tb tbody tr:nth-child(8n+8) td { background: #7c3aed !important; }
+
+body.pp-home .pp-user-link { color: #67e8f9 !important; }
+body.pp-home .rad-banner {
+  background: rgba(8, 145, 178, 0.18) !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+  color: #e0f2fe !important;
+}
+body.pp-home .rad-banner.warn {
+  background: rgba(217, 119, 6, 0.2) !important;
+  border-color: rgba(251, 191, 36, 0.45) !important;
+  color: #fde68a !important;
+}
+body.pp-home .rad-banner.err {
+  background: rgba(225, 29, 72, 0.2) !important;
+  border-color: rgba(251, 113, 133, 0.45) !important;
+  color: #fecdd3 !important;
+}
+body.pp-home .rad-userbar h3,
+body.pp-home .rad-sid,
+body.pp-home .rad-v { color: #ffffff !important; }
+body.pp-home .rad-userbar p,
+body.pp-home .rad-k { color: #e2e8f0 !important; }
+body.pp-home .rad-card {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.pp-home .rad-copy {
+  background: #100c22 !important;
+  color: #e2e8f0 !important;
+}

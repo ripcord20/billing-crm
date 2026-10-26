@@ -5,7 +5,7 @@
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="stylesheet" href="/css/pppoe-palette.css?v=pp1">
+  <link rel="stylesheet" href="/css/pppoe-palette.css?v=pp2">
   <style>
     :root {
       --pp-blue:#2563eb;  --pp-blue-d:#1d4ed8; --pp-blue-l:#eff6ff;
@@ -263,6 +263,54 @@
     .svc-badge.svc-any   { background:#f1f5f9; color:#475569; }
     .btn-blue { background:#2563eb; border-color:#2563eb; color:#fff; }
     .btn-blue:hover { background:#1d4ed8; }
+
+    .pp-user-link {
+      border: none; background: none; padding: 0; margin: 0;
+      font: inherit; font-weight: 700; color: var(--pp-blue);
+      cursor: pointer; text-align: left;
+    }
+    .pp-user-link:hover { text-decoration: underline; }
+
+    .rad-log { padding: 14px 16px 18px; }
+    .rad-banner {
+      display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap;
+      padding: 10px 12px; border-radius: 12px; margin-bottom: 14px;
+      background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;
+      font-size: 12.5px; line-height: 1.5;
+    }
+    .rad-banner.warn { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+    .rad-banner.err { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .rad-userbar {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
+    }
+    .rad-userbar h3 { margin: 0; font-size: 16px; font-weight: 800; color: var(--text); }
+    .rad-userbar p { margin: 0; font-size: 12px; color: var(--muted); }
+    .rad-card {
+      border: 1.5px solid var(--border); border-radius: 14px;
+      padding: 14px 16px 12px; margin-bottom: 12px; background: #fff;
+    }
+    .rad-sid {
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 800; font-size: 14px; color: var(--text); margin-bottom: 10px;
+    }
+    .rad-sid code { font-family: inherit; }
+    .rad-copy {
+      width: 28px; height: 28px; border: none; border-radius: 8px;
+      background: #f1f5f9; color: #64748b; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .rad-copy:hover { background: #e2e8f0; color: #0f172a; }
+    .rad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
+    .rad-grid .full { grid-column: 1 / -1; }
+    .rad-k { display: block; font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .45px; }
+    .rad-v { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-top: 2px; word-break: break-word; }
+    .rad-live { display: inline-flex; align-items: center; gap: 6px; color: #16a34a; font-weight: 700; }
+    .rad-live i { width: 7px; height: 7px; border-radius: 50%; background: #16a34a; display: inline-block; }
+    @media(max-width:560px) {
+      .rad-grid { grid-template-columns: 1fr; }
+      .rad-log { padding: 12px; }
+    }
   
   </style>
 </head>
@@ -279,7 +327,7 @@
           <h1>
             PPPoE Active Sessions
           </h1>
-          <p>Monitor sesi PPPoE aktif secara real-time</p>
+          <p>Monitor sesi aktif dan riwayat RADIUS per user</p>
         </div>
         <div class="pp-hdr-r">
           <div id="mtSelectorMount"></div>
@@ -422,6 +470,9 @@
             <button id="tab-secrets" class="pp-tab" onclick="onTabClick('secrets')">
               PPP Secrets <span class="pp-tab-badge" id="tb-secrets">0</span>
             </button>
+            <button id="tab-log" class="pp-tab" onclick="onTabClick('log')">
+              Log Radius <span class="pp-tab-badge" id="tb-log">0</span>
+            </button>
           </div>
           <!-- Toolbar: berubah sesuai tab aktif -->
           <div class="pp-toolbar" id="toolbar-sessions">
@@ -451,6 +502,14 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Tambah
             </button>
+          </div>
+          <div class="pp-toolbar" id="toolbar-log" style="display:none;">
+            <div class="search-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="acctUserInput" list="acctUserList" placeholder="Username PPPoE..." autocomplete="off">
+              <datalist id="acctUserList"></datalist>
+            </div>
+            <button class="btn btn-blue btn-sm" type="button" onclick="searchAcctLog()">Cari riwayat</button>
           </div>
         </div>
 
@@ -494,6 +553,16 @@
               <tr><td colspan="9"><div class="tbl-empty"><p>Memuat secrets...</p></div></td></tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- ── Log Radius: riwayat sesi per username (radacct) ── -->
+        <div id="acct-log-panel" class="rad-log" style="display:none;">
+          <div id="acctBanner" class="rad-banner">Memuat status accounting SQL...</div>
+          <div class="rad-userbar">
+            <h3 id="acctUserTitle">Pilih user</h3>
+            <p id="acctUserMeta">Klik username di Active Sessions / PPP Secrets, atau cari di atas.</p>
+          </div>
+          <div id="acctLogList"></div>
         </div>
         <span id="secretsCount" style="display:none;">0 user</span>
       </div>
@@ -619,7 +688,10 @@
   var _secretsStatusFilter = '';         // '' | 'enabled' | 'disabled' | 'offline'
   var _profiles  = [];
   var _timer     = null;
-  var _activeTab = 'sessions';  // 'sessions' | 'secrets'
+  var _activeTab = 'sessions';  // 'sessions' | 'secrets' | 'log'
+  var _acctUser  = '';
+  var _acctRows  = [];
+  var _acctStatus = null;
 
   // Stat history untuk sparkline
   var _sparkHist = { total: [], pppoe: [], enabled: [], disabled: [], offline: [] };
@@ -959,7 +1031,7 @@
       var svcClass = svc === 'pppoe' ? 'svc-pppoe' : svc === 'l2tp' ? 'svc-l2tp' : svc === 'pptp' ? 'svc-pptp' : 'svc-any';
       return '<tr data-session-id="' + esc(s.id) + '" data-session-name="' + esc(s.name) + '">' +
         '<td class="num-cell">' + (i+1) + '</td>' +
-        '<td class="username-cell" data-label="Username">' + esc(s.name) + '</td>' +
+        '<td class="username-cell" data-label="Username"><button type="button" class="pp-user-link" data-act="acct-log" title="Lihat Log Radius">' + esc(s.name) + '</button></td>' +
         '<td data-label="Service"><span class="svc-badge ' + svcClass + '">' + esc(svc.toUpperCase()) + '</span></td>' +
         '<td data-label="IP Address"><span class="ip-badge">' + (esc(s.address) || '—') + '</span></td>' +
         '<td class="mac-cell" data-label="Caller ID / MAC">' + (esc(s.callerID) || '—') + '</td>' +
@@ -968,10 +1040,15 @@
           esc(s.uptime) +
         '</span></td>' +
         '<td data-label="Action">' +
+          '<div class="pp-acts">' +
+          '<button class="act-ico" data-act="acct-log" title="Log Radius">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' +
+          '</button>' +
           '<button class="btn btn-red btn-sm" data-act="disconnect">' +
             '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
             'Disconnect' +
           '</button>' +
+          '</div>' +
         '</td>' +
       '</tr>';
     }).join('');
@@ -1061,8 +1138,10 @@
 
     // Setelah keduanya siap, baru update cards & render tab aktif
     updateSparkCards();
+    fillAcctUserList();
     if (_activeTab === 'sessions') renderSessions();
-    else renderSecrets();
+    else if (_activeTab === 'secrets') renderSecrets();
+    else if (_activeTab === 'log') loadAcctLog();
   }
   window.refreshAll = refreshAll;
 
@@ -1136,7 +1215,7 @@
 
       return '<tr data-secret-id="' + esc(s.id) + '" data-secret-name="' + esc(s.name) + '" data-secret-disabled="' + (s.disabled?'1':'0') + '">' +
         '<td class="num-cell">' + (i+1) + '</td>' +
-        '<td class="username-cell" data-label="Username">' + esc(s.name) + '</td>' +
+        '<td class="username-cell" data-label="Username"><button type="button" class="pp-user-link" data-act="acct-log" title="Lihat Log Radius">' + esc(s.name) + '</button></td>' +
         '<td data-label="Service"><span class="svc-badge ' + svcClass + '">' + esc(svc.toUpperCase()) + '</span></td>' +
         '<td data-label="Profile">' + (esc(s.profile) || '—') + '</td>' +
         '<td class="mac-cell" data-label="Local IP">' + (esc(s.localAddress) || '—') + '</td>' +
@@ -1145,6 +1224,9 @@
         '<td data-label="Comment" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(s.comment) + '">' + (esc(s.comment) || '—') + '</td>' +
         '<td data-label="Aksi">' +
           '<div class="pp-acts">' +
+            '<button class="act-ico" data-act="acct-log" title="Log Radius">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' +
+            '</button>' +
             '<button class="act-ico edit" data-act="edit" title="Edit">' +
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
             '</button>' +
@@ -1197,6 +1279,140 @@
     } catch (e) { showToast(e.message, 'error'); }
   }
 
+  // ── Log Radius (radacct per username) ───────────────────────
+  function fillAcctUserList() {
+    var dl = document.getElementById('acctUserList');
+    if (!dl) return;
+    var names = {};
+    (_secrets || []).forEach(function(s){ if (s && s.name) names[s.name] = 1; });
+    (_sessions || []).forEach(function(s){ if (s && s.name) names[s.name] = 1; });
+    dl.innerHTML = Object.keys(names).sort().map(function(n){
+      return '<option value="' + esc(n) + '">';
+    }).join('');
+  }
+
+  function renderAcctBanner() {
+    var el = document.getElementById('acctBanner');
+    if (!el) return;
+    var st = _acctStatus;
+    if (!st) { el.className = 'rad-banner'; el.textContent = 'Memuat status accounting SQL...'; return; }
+    if (!st.ok) {
+      el.className = 'rad-banner err';
+      el.textContent = 'Database RADIUS belum terhubung: ' + (st.message || 'gagal baca radacct');
+      return;
+    }
+    if (!st.total) {
+      el.className = 'rad-banner warn';
+      el.textContent = 'Accounting SQL aktif. Belum ada sesi tercatat — riwayat muncul setelah sesi PPPoE start/stop (MikroTik PPP AAA accounting=yes). Retensi ' + (st.retentionDays || 90) + ' hari.';
+      return;
+    }
+    el.className = 'rad-banner';
+    el.textContent = 'Accounting SQL aktif · ' + st.total + ' sesi di radacct · ' + (st.online || 0) + ' masih online · retensi ' + (st.retentionDays || 90) + ' hari.';
+  }
+
+  function renderAcctLog() {
+    var list = document.getElementById('acctLogList');
+    var title = document.getElementById('acctUserTitle');
+    var meta = document.getElementById('acctUserMeta');
+    var badge = document.getElementById('tb-log');
+    if (title) title.textContent = _acctUser ? ('Riwayat ' + _acctUser) : 'Pilih user';
+    if (meta) {
+      meta.textContent = _acctUser
+        ? ((_acctRows.length || 0) + ' sesi untuk user ini')
+        : 'Klik username di Active Sessions / PPP Secrets, atau cari di atas.';
+    }
+    if (badge && _acctUser) badge.textContent = _acctRows.length || 0;
+    if (!list) return;
+    if (!_acctUser) {
+      list.innerHTML = '<div class="tbl-empty"><p>Pilih username untuk melihat riwayat sesinya.</p></div>';
+      return;
+    }
+    if (!_acctRows.length) {
+      list.innerHTML = '<div class="tbl-empty"><p>Belum ada riwayat RADIUS untuk <b>' + esc(_acctUser) + '</b>.</p></div>';
+      return;
+    }
+    list.innerHTML = _acctRows.map(function(r){
+      var sid = r.id != null ? String(r.id) : (r.sessionId || '');
+      return '<article class="rad-card">' +
+        '<div class="rad-sid">' +
+          '<span>#' + esc(sid) + '</span>' +
+          '<button type="button" class="rad-copy" data-copy="' + esc(sid) + '" title="Salin session id">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>' +
+          '</button>' +
+        '</div>' +
+        '<div class="rad-grid">' +
+          '<div><span class="rad-k">Start</span><span class="rad-v">' + esc(r.start || '—') + '</span></div>' +
+          '<div><span class="rad-k">Stop</span><span class="rad-v">' +
+            (r.online ? '<span class="rad-live"><i></i>masih online</span>' : esc(r.stop || '—')) +
+          '</span></div>' +
+          '<div><span class="rad-k">Uptime</span><span class="rad-v">' + esc(r.uptime || '—') + '</span></div>' +
+          '<div><span class="rad-k">Reason</span><span class="rad-v">' + esc(r.reason || '—') + '</span></div>' +
+          '<div><span class="rad-k">Download</span><span class="rad-v">' + esc(r.download || '0 B') + '</span></div>' +
+          '<div><span class="rad-k">Upload</span><span class="rad-v">' + esc(r.upload || '0 B') + '</span></div>' +
+          '<div><span class="rad-k">MAC</span><span class="rad-v">' + esc(r.mac || '—') + '</span></div>' +
+          '<div><span class="rad-k">IP</span><span class="rad-v">' + esc(r.ip || '—') + '</span></div>' +
+        '</div>' +
+      '</article>';
+    }).join('');
+  }
+
+  async function loadAcctStatus() {
+    try {
+      var r = await App.api('/mikrotik/pppoe/acct-log?status=1');
+      _acctStatus = (r && r.success && r.data) ? r.data : { ok: false, message: (r && r.message) || 'gagal' };
+    } catch (e) {
+      _acctStatus = { ok: false, message: e.message };
+    }
+    renderAcctBanner();
+  }
+
+  async function loadAcctLog() {
+    fillAcctUserList();
+    renderAcctBanner();
+    var inp = document.getElementById('acctUserInput');
+    if (inp && _acctUser && inp.value !== _acctUser) inp.value = _acctUser;
+    if (!_acctUser) { _acctRows = []; renderAcctLog(); return; }
+    try {
+      var r = await App.api('/mikrotik/pppoe/acct-log?username=' + encodeURIComponent(_acctUser) + '&limit=50');
+      if (r && r.success) {
+        _acctRows = r.data || [];
+        if (typeof r.total === 'number') {
+          var badge = document.getElementById('tb-log');
+          if (badge) badge.textContent = r.total;
+        }
+      } else {
+        _acctRows = [];
+        showToast((r && r.message) || 'Gagal memuat log RADIUS', 'error');
+      }
+    } catch (e) {
+      _acctRows = [];
+      showToast(e.message, 'error');
+    }
+    renderAcctLog();
+  }
+
+  function openAcctLog(name) {
+    _acctUser = String(name || '').trim();
+    var inp = document.getElementById('acctUserInput');
+    if (inp) inp.value = _acctUser;
+    switchTab('log');
+  }
+  window.openAcctLog = openAcctLog;
+
+  function searchAcctLog() {
+    var inp = document.getElementById('acctUserInput');
+    _acctUser = ((inp && inp.value) || '').trim();
+    loadAcctLog();
+  }
+  window.searchAcctLog = searchAcctLog;
+
+  function copyAcctId(val) {
+    if (!val) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(String(val)).then(function(){ showToast('Session ID disalin', 'success', 1400); }).catch(function(){});
+    }
+  }
+
   // ── Tab Switch ──────────────────────────────────────────────
   // Dipanggil saat user klik tab langsung dari header (BUKAN dari card).
   // Reset filter status secrets supaya tab Secrets menampilkan semua user.
@@ -1232,22 +1448,25 @@
     _activeTab = tab;
     document.getElementById('tab-sessions').classList.toggle('active', tab === 'sessions');
     document.getElementById('tab-secrets').classList.toggle('active', tab === 'secrets');
+    var tabLog = document.getElementById('tab-log');
+    if (tabLog) tabLog.classList.toggle('active', tab === 'log');
     var sessTbl = document.getElementById('sessions-table');
     var secrTbl = document.getElementById('secrets-table');
+    var logTbl  = document.getElementById('acct-log-panel');
     var tbSess  = document.getElementById('toolbar-sessions');
     var tbSecr  = document.getElementById('toolbar-secrets');
+    var tbLog   = document.getElementById('toolbar-log');
+    if (sessTbl) sessTbl.style.display = tab === 'sessions' ? 'block' : 'none';
+    if (secrTbl) secrTbl.style.display = tab === 'secrets' ? 'block' : 'none';
+    if (logTbl)  logTbl.style.display  = tab === 'log' ? 'block' : 'none';
+    if (tbSess) tbSess.style.display = tab === 'sessions' ? 'flex' : 'none';
+    if (tbSecr) tbSecr.style.display = tab === 'secrets' ? 'flex' : 'none';
+    if (tbLog)  tbLog.style.display  = tab === 'log' ? 'flex' : 'none';
     if (tab === 'secrets') {
-      if (sessTbl) sessTbl.style.display = 'none';
-      if (secrTbl) secrTbl.style.display = 'block';
-      if (tbSess) tbSess.style.display = 'none';
-      if (tbSecr) tbSecr.style.display = 'flex';
       if (skipReload) renderSecrets();
       else loadSecrets();
-    } else {
-      if (sessTbl) sessTbl.style.display = 'block';
-      if (secrTbl) secrTbl.style.display = 'none';
-      if (tbSess) tbSess.style.display = 'flex';
-      if (tbSecr) tbSecr.style.display = 'none';
+    } else if (tab === 'log') {
+      loadAcctLog();
     }
   }
   window.switchTab = switchTab;
@@ -1478,7 +1697,9 @@
     try {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get('tab');
-      if (tab && (tab === 'sessions' || tab === 'secrets')) {
+      const user = params.get('user') || params.get('username');
+      if (user) _acctUser = String(user).trim();
+      if (tab && (tab === 'sessions' || tab === 'secrets' || tab === 'log')) {
         // Delay supaya data ter-load dulu sebelum switch
         setTimeout(function() {
           if (typeof switchTab === 'function') switchTab(tab);
@@ -1512,7 +1733,9 @@
       if (!tr) return;
       var id = tr.getAttribute('data-session-id');
       var nm = tr.getAttribute('data-session-name');
-      if (btn.getAttribute('data-act') === 'disconnect') disconnectSession(id, nm);
+      var act = btn.getAttribute('data-act');
+      if (act === 'disconnect') disconnectSession(id, nm);
+      else if (act === 'acct-log') openAcctLog(nm);
     });
 
     // Event delegation: action buttons di secrets table
@@ -1529,6 +1752,7 @@
       if (act === 'edit')    openUserModal(id);
       else if (act === 'toggle') toggleSecret(id, dis, nm);  // kalau currently disabled, button = enable
       else if (act === 'delete') deleteSecret(id, nm);
+      else if (act === 'acct-log') openAcctLog(nm);
     });
 
     // Close modal pada klik overlay
@@ -1544,6 +1768,17 @@
         if (m && m.classList.contains('show')) closeUserModal();
       }
     });
+
+    var acctInp = document.getElementById('acctUserInput');
+    if (acctInp) acctInp.addEventListener('keydown', function(e){
+      if (e.key === 'Enter') { e.preventDefault(); searchAcctLog(); }
+    });
+    var acctList = document.getElementById('acctLogList');
+    if (acctList) acctList.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-copy]');
+      if (btn) copyAcctId(btn.getAttribute('data-copy'));
+    });
+    loadAcctStatus();
 
     // Initial load dipicu oleh onReady selector (lihat di atas).
     // Kalau selector tidak ada, _reloadAllForDevice() sudah dipanggil di fallback.

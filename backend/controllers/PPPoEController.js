@@ -178,6 +178,33 @@ class PPPoEController {
       res.status(400).json({ success:false, message:err.message });
     }
   }
+
+  // GET /api/mikrotik/pppoe/acct-log?username=
+  // GET /api/mikrotik/pppoe/acct-log?suggest=
+  // GET /api/mikrotik/pppoe/acct-log?status=1
+  async acctLog(req, res) {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    try {
+      const RadiusAcct = require('../services/RadiusAcctService');
+      if (String(req.query.status || '') === '1') {
+        const data = await RadiusAcct.status();
+        return res.json({ success: true, data });
+      }
+      if (req.query.suggest != null && !String(req.query.username || '').trim()) {
+        const users = await RadiusAcct.suggestUsernames(req.query.suggest, req.query.limit);
+        return res.json({ success: true, data: users, total: users.length });
+      }
+      const result = await RadiusAcct.listByUsername(req.query.username, {
+        limit: req.query.limit,
+        offset: req.query.offset
+      });
+      res.json({ success: true, ...result });
+    } catch (err) {
+      const status = err.status || 500;
+      if (status >= 500) logger.error(`PPPoE acct-log error: ${err.message}`);
+      res.status(status).json({ success: false, message: err.message });
+    }
+  }
 }
 
 module.exports = new PPPoEController();
