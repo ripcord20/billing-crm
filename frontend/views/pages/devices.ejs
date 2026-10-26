@@ -839,6 +839,7 @@
   </div>
 </div>
 
+<script src="/socket.io/socket.io.js"></script>
 <script src="/js/app.js"></script>
 <script>
   /* eslint-disable */
@@ -932,6 +933,14 @@
     return esc(u);
   }
 
+  // CSS/SwOS (termasuk nama SWX *) tidak expose CPU%/RAM lewat SNMP
+  function isCssSwos(d) {
+    const model = String((d && d.model) || '');
+    const fw = String((d && d.firmware) || '');
+    const name = String((d && d.name) || '');
+    return /^CSS/i.test(model) || /SwOS/i.test(model) || /SwOS/i.test(fw) || /^SWX\b/i.test(name);
+  }
+
   // ── Metric bar color by pct ──
   function mbClass(pct) {
     const p = parseFloat(pct) || 0;
@@ -965,20 +974,20 @@
     }
 
     tbody.innerHTML = list.map(d => {
-      const cpu = d.cpu_load != null ? Math.round(d.cpu_load) : null;
-      const mem = d.memory_usage != null ? Math.round(d.memory_usage) : null;
+      const cpu = isCssSwos(d) ? null : (d.cpu_load != null ? Math.round(d.cpu_load) : null);
+      const mem = isCssSwos(d) ? null : (d.memory_usage != null ? Math.round(d.memory_usage) : null);
 
       const cpuHtml = cpu != null ? `
         <div class="metric-bar">
           <div class="mb-track"><div class="mb-fill ${mbClass(cpu)}" style="width:${cpu}%"></div></div>
           <span class="mb-pct">${cpu}%</span>
-        </div>` : '<span class="mb-pct" style="color:var(--faint)">—</span>';
+        </div>` : '<span class="mb-pct" style="color:var(--faint)" title="SwOS tidak menyediakan CPU% via SNMP">—</span>';
 
       const memHtml = mem != null ? `
         <div class="metric-bar">
           <div class="mb-track"><div class="mb-fill ${mbClass(mem)}" style="width:${mem}%"></div></div>
           <span class="mb-pct">${mem}%</span>
-        </div>` : '<span class="mb-pct" style="color:var(--faint)">—</span>';
+        </div>` : '<span class="mb-pct" style="color:var(--faint)" title="SwOS tidak menyediakan memory% via SNMP">—</span>';
 
       const status = d.status || 'offline';
       const brandLine = [d.brand, d.model].filter(Boolean).join(' · ');
@@ -1038,8 +1047,8 @@
     }
 
     wrap.innerHTML = list.map(d => {
-      const cpu = d.cpu_load != null ? Math.round(d.cpu_load) : null;
-      const mem = d.memory_usage != null ? Math.round(d.memory_usage) : null;
+      const cpu = isCssSwos(d) ? null : (d.cpu_load != null ? Math.round(d.cpu_load) : null);
+      const mem = isCssSwos(d) ? null : (d.memory_usage != null ? Math.round(d.memory_usage) : null);
       const status = d.status || 'offline';
       const type = d.type || 'other';
       const brandLine = [d.brand, d.model].filter(Boolean).join(' · ');
@@ -1254,7 +1263,15 @@
 
   function onDevTypeChange() {
     const type = document.getElementById('devType').value;
-    const mon = document.getElementById('devMonType').value;
+    const monSel = document.getElementById('devMonType');
+    if (type === 'switch' && monSel && monSel.value === 'api') {
+      monSel.value = 'snmp';
+      const snmpWrap = document.getElementById('snmpFields');
+      const apiWrap  = document.getElementById('apiFields');
+      if (snmpWrap) snmpWrap.classList.remove('cond-hide');
+      if (apiWrap) apiWrap.classList.add('cond-hide');
+    }
+    const mon = monSel ? monSel.value : 'snmp';
     const show = type === 'router' && (mon === 'api' || mon === 'both');
     const grp = document.getElementById('uplinkPinGroup');
     if (grp) grp.classList.toggle('cond-hide', !show);
@@ -1580,12 +1597,44 @@
   });
 
   // ── Init ──
+  function refreshStatsFromList() {
+    updateStats({
+      total: _DEVICES.length,
+      online: _DEVICES.filter(x => x.status === 'online').length,
+      offline: _DEVICES.filter(x => x.status === 'offline').length,
+      warning: _DEVICES.filter(x => x.status === 'warning').length
+    });
+  }
+
+  function applyLiveMetrics(p) {
+    if (!p || p.device_id == null) return;
+    const d = _DEVICES.find(x => x.id === p.device_id);
+    if (!d) return;
+    if (p.status) d.status = p.status;
+    if (p.uptime) d.uptime = p.uptime;
+    if (p.firmware) d.firmware = p.firmware;
+    if (p.cpu_known) d.cpu_load = p.cpu_load;
+    if (p.memory_known) d.memory_usage = p.memory_usage;
+    applyFilter();
+    refreshStatsFromList();
+  }
+
+  function bindDeviceSocket() {
+    const sock = App && App.socket;
+    if (!sock) return;
+    sock.emit('devices:subscribe');
+    sock.on('devices:metrics', applyLiveMetrics);
+    sock.on('monitoring:update', applyLiveMetrics);
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     loadDeviceList();
     _REFRESH_INT = setInterval(() => loadDeviceList(), 30000);
+    setTimeout(bindDeviceSocket, 400);
   });
   window.addEventListener('beforeunload', () => {
     if (_REFRESH_INT) clearInterval(_REFRESH_INT);
+    try { if (App && App.socket) App.socket.emit('devices:unsubscribe'); } catch (_) {}
   });
 </script>
 </body>

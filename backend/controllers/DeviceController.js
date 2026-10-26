@@ -614,13 +614,15 @@ async function _probeDevice(cfg) {
   }
 
   if (!result.reachable) {
-    result.error = `Host ${host} tidak dapat dijangkau`;
-    result.checks.push({ step: 'TCP Ping', ok: false, detail: 'All ports timeout / refused' });
-    return result;
+    result.checks.push({ step: 'TCP Ping', ok: false, detail: 'All TCP ports timeout / refused' });
+    // SNMP is UDP. Switch CSS/SwOS sering hanya buka UDP 161 — jangan vonis
+    // unreachable sebelum coba SNMP.
   }
 
   // ── Step 2: API auth check (MikroTik REST) ──
-  const useApi = ['api', 'both'].includes(cfg.monitoring_type);
+  // Switch (termasuk CSS/SwOS) tidak punya RouterOS API — skip, pakai SNMP.
+  const isSwitch = String(cfg.type || '').toLowerCase() === 'switch';
+  const useApi = !isSwitch && ['api', 'both'].includes(cfg.monitoring_type);
   if (useApi && cfg.api_username) {
     try {
       const { MikrotikService } = require('../services/MikrotikService');
@@ -648,7 +650,7 @@ async function _probeDevice(cfg) {
   }
 
   // ── Step 3: SNMP check ──
-  const useSnmp = ['snmp', 'both'].includes(cfg.monitoring_type) || !cfg.monitoring_type;
+  const useSnmp = ['snmp', 'both'].includes(cfg.monitoring_type) || !cfg.monitoring_type || isSwitch;
   if (useSnmp) {
     try {
       const snmp = require('net-snmp');
@@ -670,6 +672,7 @@ async function _probeDevice(cfg) {
         });
       });
       if (snmpResult.ok) {
+        result.reachable = true;
         if (!result.identity) result.identity = snmpResult.identity;
         result.method = result.method ? result.method + '+SNMP' : 'SNMP';
         result.checks.push({ step: 'SNMP', ok: true, detail: `sysName: ${snmpResult.identity}` });
@@ -683,9 +686,11 @@ async function _probeDevice(cfg) {
 
   // ── Verdict ──
   const authOk = result.checks.some(c => (c.step === 'API Auth' || c.step === 'SNMP') && c.ok);
-  result.success = result.reachable && (authOk || (!useApi && !useSnmp));
+  result.success = authOk || (result.reachable && !useApi && !useSnmp);
   if (!result.success && !result.error) {
-    result.error = 'Host tercapai tapi autentikasi SNMP/API gagal';
+    result.error = result.reachable
+      ? 'Host tercapai tapi autentikasi SNMP/API gagal'
+      : `Host ${host} tidak dapat dijangkau`;
   }
 
   return result;
