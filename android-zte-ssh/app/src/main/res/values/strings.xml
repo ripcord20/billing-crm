@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ZTE SSH</string>
+    <string name="hint_name">Nama profil (mis. OLT Bulusan)</string>
+    <string name="hint_host">IP / host OLT</string>
+    <string name="hint_port">Port</string>
+    <string name="hint_user">Username</string>
+    <string name="hint_pass">Password</string>
+    <string name="hint_enable">Password enable (opsional)</string>
+    <string name="proto_ssh">SSH</string>
+    <string name="proto_telnet">Telnet</string>
+    <string name="save">Simpan profil</string>
+    <string name="connect">Hubungkan</string>
+    <string name="disconnect">Putuskan</string>
+    <string name="send">Kirim</string>
+    <string name="empty">Belum ada profil. Isi IP OLT ZTE lalu simpan.</string>
+</resources>

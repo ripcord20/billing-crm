@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#0B1220</color>
+    <color name="bg_card">#141C2C</color>
+    <color name="bg_input">#1B2436</color>
+    <color name="accent">#38BDF8</color>
+    <color name="ok">#34D399</color>
+    <color name="warn">#FBBF24</color>
+    <color name="danger">#F87171</color>
+    <color name="text">#E5E7EB</color>
+    <color name="muted">#94A3B8</color>
+    <color name="term_bg">#020617</color>
+    <color name="term_fg">#A7F3D0</color>
+    <color name="launcher_bg">#0F172A</color>
+</resources>

@@ -1,0 +1,58 @@
+plugins {
+    id 'com.android.application'
+}
+
+def releaseStore = file("${rootProject.projectDir}/keystore/zte-ssh-release.jks")
+
+android {
+    namespace 'id.fiberix.zteshell'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'id.fiberix.zteshell'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    signingConfigs {
+        release {
+            if (releaseStore.exists()) {
+                storeFile releaseStore
+                storePassword 'zte-ssh-release'
+                keyAlias 'zteshell'
+                keyPassword 'zte-ssh-release'
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            debuggable false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (releaseStore.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packaging {
+        resources {
+            excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE*', 'META-INF/NOTICE*']
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'com.github.mwiede:jsch:0.2.21'
+    implementation 'commons-net:commons-net:3.11.1'
+}
