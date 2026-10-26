@@ -6,10 +6,14 @@ Handshake SSH memakai algoritma OLT lama (ssh-rsa, group1, 3des) plus keyboard-i
 
 ## Unduh
 
-- CRM: **OLT Management → Unduh APK SSH** (`/apk/ZTE-SSH.apk`)
-- File rilis: `ZTE-SSH-v1.0.1.apk`
+Langsung dari GitHub (tanpa menunggu deploy CRM):
 
-Sideload internal, bukan Play Store. Izinkan pasang dari sumber tidak dikenal, lalu Install.
+- APK: https://github.com/ripcord20/billing-crm/raw/cursor/zte-ssh-apk-9481/frontend/public/apk/ZTE-SSH.apk
+- ZIP (jika Chrome memblokir APK): https://github.com/ripcord20/billing-crm/raw/cursor/zte-ssh-apk-9481/frontend/public/apk/ZTE-SSH.zip
+
+Setelah CRM di-deploy: **OLT Management → Unduh APK SSH** membuka `/apk/` (tombol APK + ZIP).
+
+Sideload internal, bukan Play Store. Izinkan pasang dari sumber tidak dikenal, lalu Install. Kalau Chrome bilang file berbahaya, pilih Unduh anyway atau pakai ZIP.
 
 ## Cara pakai
 

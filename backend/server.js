@@ -247,6 +247,25 @@ const demoApiLimiter = rateLimit({
 app.use('/api', demoApiLimiter);
 
 
+// APK ZTE SSH — header attachment supaya HP/Chrome mengunduh, bukan menampilkan.
+function sendPublicApkFile(res, fileName, contentType) {
+  const file = path.join(__dirname, '..', 'frontend', 'public', 'apk', fileName);
+  if (!fs.existsSync(file)) {
+    return res.status(404).type('text/plain').send('File belum tersedia di server ini.');
+  }
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  return res.sendFile(path.resolve(file));
+}
+app.get('/apk/ZTE-SSH.apk', (_req, res) => {
+  sendPublicApkFile(res, 'ZTE-SSH.apk', 'application/vnd.android.package-archive');
+});
+app.get('/apk/ZTE-SSH.zip', (_req, res) => {
+  sendPublicApkFile(res, 'ZTE-SSH.zip', 'application/zip');
+});
+
 // Static files
 app.use(express.static(path.join(__dirname, '..', 'frontend', 'public')));
 
