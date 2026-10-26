@@ -203,5 +203,16 @@
             android:text="Hapus profil terpilih"
             android:textAllCaps="false"
             android:textColor="@color/danger" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="@color/bg_card"
+            android:lineSpacingExtra="3dp"
+            android:padding="14dp"
+            android:text="@string/howto"
+            android:textColor="@color/muted"
+            android:textSize="12sp" />
     </LinearLayout>
 </ScrollView>

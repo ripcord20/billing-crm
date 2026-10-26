@@ -1,7 +1,11 @@
 package id.fiberix.zteshell;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.os.Bundle;
-import android.text.method.ScrollingMovementMethod;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.KeyEvent;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -15,6 +19,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 public class TerminalActivity extends AppCompatActivity implements OltSession.Listener {
+    private static final long PASTE_LINE_MS = 120L;
     private static final String[] ZTE_CMDS = {
             "show card",
             "show gpon onu uncfg",
@@ -31,6 +36,8 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
     private EditText cmd;
     private OltSession session;
     private final StringBuilder buf = new StringBuilder();
+    private final Handler main = new Handler(Looper.getMainLooper());
+    private int sendSeq;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,7 +58,6 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         out = findViewById(R.id.termOut);
         scroll = findViewById(R.id.termScroll);
         cmd = findViewById(R.id.cmd);
-        out.setMovementMethod(new ScrollingMovementMethod());
 
         LinearLayout chips = findViewById(R.id.chips);
         int pad = (int) (8 * getResources().getDisplayMetrics().density);
@@ -74,6 +80,8 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
             chips.addView(b);
         }
 
+        findViewById(R.id.btnCopy).setOnClickListener(v -> copyOutput());
+        findViewById(R.id.btnPaste).setOnClickListener(v -> pasteIntoBox());
         findViewById(R.id.btnSend).setOnClickListener(v -> sendFromBox());
         findViewById(R.id.btnDisconnect).setOnClickListener(v -> {
             if (session != null) session.disconnect();
@@ -92,10 +100,82 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         session.connect();
     }
 
+    private void copyOutput() {
+        String selected = selectedOutput();
+        String text = selected != null ? selected : buf.toString();
+        if (text.trim().isEmpty()) {
+            Toast.makeText(this, R.string.copy_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        cm.setPrimaryClip(ClipData.newPlainText("OLT output", text));
+        Toast.makeText(this,
+                selected != null ? R.string.copied_sel : R.string.copied,
+                Toast.LENGTH_SHORT).show();
+    }
+
+    private String selectedOutput() {
+        int start = out.getSelectionStart();
+        int end = out.getSelectionEnd();
+        if (start < 0 || end <= start) return null;
+        CharSequence seq = out.getText();
+        if (seq == null) return null;
+        int lo = Math.max(0, Math.min(start, seq.length()));
+        int hi = Math.max(0, Math.min(end, seq.length()));
+        if (hi <= lo) return null;
+        return seq.subSequence(lo, hi).toString();
+    }
+
+    private void pasteIntoBox() {
+        ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (cm == null || !cm.hasPrimaryClip() || cm.getPrimaryClip() == null
+                || cm.getPrimaryClip().getItemCount() == 0) {
+            Toast.makeText(this, R.string.paste_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        CharSequence t = cm.getPrimaryClip().getItemAt(0).coerceToText(this);
+        if (t == null || t.toString().trim().isEmpty()) {
+            Toast.makeText(this, R.string.paste_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String pasted = t.toString();
+        cmd.setText(pasted);
+        cmd.setSelection(cmd.getText().length());
+        int n = lineCount(pasted);
+        Toast.makeText(this,
+                n > 1 ? getString(R.string.pasted_n, n) : getString(R.string.pasted),
+                Toast.LENGTH_SHORT).show();
+    }
+
     private void sendFromBox() {
-        String line = cmd.getText().toString();
+        String raw = cmd.getText().toString();
         cmd.setText("");
-        sendLine(line);
+        String[] lines = raw.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1);
+        int n = lines.length;
+        if (n > 0 && lines[n - 1].isEmpty()) n--;
+        if (n <= 0) {
+            sendLine("");
+            return;
+        }
+        if (n == 1) {
+            sendLine(lines[0]);
+            return;
+        }
+        final int seq = ++sendSeq;
+        for (int i = 0; i < n; i++) {
+            final String line = lines[i];
+            main.postDelayed(() -> {
+                if (seq != sendSeq) return;
+                sendLine(line);
+            }, i * PASTE_LINE_MS);
+        }
+    }
+
+    private static int lineCount(String s) {
+        String[] lines = s.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1);
+        int n = lines.length;
+        if (n > 0 && lines[n - 1].isEmpty()) n--;
+        return Math.max(n, 1);
     }
 
     private void sendLine(String line) {
@@ -128,6 +208,8 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
 
     @Override
     protected void onDestroy() {
+        sendSeq++;
+        main.removeCallbacksAndMessages(null);
         if (session != null) session.disconnect();
         super.onDestroy();
     }
