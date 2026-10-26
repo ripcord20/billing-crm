@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="id" data-theme="light">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="stylesheet" href="/css/pppoe-palette.css?v=pp1">
+  <link rel="stylesheet" href="/css/pppoe-palette.css?v=pp6">
   <style>
     :root {
       --pp-blue:#2563eb;  --pp-blue-d:#1d4ed8; --pp-blue-l:#eff6ff;
@@ -198,34 +198,52 @@
     .pp-panel-hdr { flex-direction:column; align-items:stretch; gap:0; padding:0; }
     .pp-tabbar { display:flex; gap:2px; padding:0 12px; border-bottom:2px solid #f1f5f9; }
     .pp-tab { margin-bottom:-2px; }
-    .pp-toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:13px 18px; }
+    .pp-toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:13px 18px; min-width:0; max-width:100%; }
     .pp-toolbar select { padding:8px 12px; border:1.5px solid var(--border); border-radius:10px; font-size:13px; outline:none; background:#f8fafc; color:#374151; cursor:pointer; font-family:inherit; }
     .pp-toolbar select:focus { border-color:var(--pp-blue); }
     .pp-toolbar .btn { margin-left:auto; }
-    .pp-table-scroll { overflow-x:auto; }
+    .pp-table-scroll { overflow-x:auto; min-width:0; max-width:100%; }
     #filterService { padding:8px 12px; border:1.5px solid var(--border); border-radius:10px; font-size:13px; outline:none; background:#f8fafc; color:#374151; cursor:pointer; font-family:inherit; }
+    .pp-comment { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pp-tabbar { min-width:0; max-width:100%; }
+    .pp-tbl-wrap, .pp-panel-hdr, .pp-hdr, .pp-hdr-r, .pp-cards { min-width:0; max-width:100%; }
 
-    /* ── MOBILE: tabel → kartu (stack) ── */
-    @media(max-width:640px) {
-      .pp-tabbar { padding:0 8px; }
-      .pp-tab { padding:9px 11px; font-size:12.5px; }
+    /* ── HP: kunci lebar layar, jangan geser ke kanan ── */
+    @media(max-width:900px) {
+      .pp-hdr-r { width:100%; }
+      .pp-hdr-r > span { display:none; }
+      .pp-tabbar { flex-wrap:wrap; padding:0 6px; }
+      .pp-tab { flex:1 1 auto; justify-content:center; padding:9px 8px; font-size:12px; min-width:0; }
       .pp-toolbar { padding:11px 12px; }
-      .pp-toolbar .search-wrap { flex:1 1 100%; }
-      .pp-toolbar .search-wrap input { width:100%; box-sizing:border-box; }
-      .pp-toolbar select { flex:1; }
-      .pp-toolbar .btn { margin-left:0; flex:1; justify-content:center; }
+      .pp-toolbar .search-wrap { flex:1 1 100%; min-width:0; }
+      .pp-toolbar .search-wrap input { width:100%; max-width:100%; box-sizing:border-box; }
+      .pp-toolbar select { flex:1 1 calc(50% - 4px); min-width:0; max-width:100%; }
+      .pp-toolbar .btn { margin-left:0; flex:1 1 calc(50% - 4px); justify-content:center; min-width:0; }
 
-      .pp-table-scroll { overflow-x:visible; }
+      .pp-table-scroll { overflow-x:hidden; }
       .pp-table thead { display:none; }
-      .pp-table, .pp-table tbody, .pp-table tr, .pp-table td { display:block; width:100%; box-sizing:border-box; }
-      .pp-table tr { border:1.5px solid var(--border); border-radius:12px; margin:10px 12px; padding:6px 0; background:#fff; }
+      .pp-table, .pp-table tbody { display:block; width:100%; max-width:100%; box-sizing:border-box; }
+      .pp-table tbody { padding: 4px 12px 10px; }
+      .pp-table tr {
+        display:block; width:auto; max-width:100%; box-sizing:border-box;
+        border:1.5px solid var(--border); border-radius:12px;
+        margin:10px 0; padding:6px 0; background:#fff;
+      }
       .pp-table tr:hover { background:#fff; }
-      .pp-table td { padding:7px 14px; border:none; text-align:right; display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12.5px; }
-      .pp-table td::before { content:attr(data-label); font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; text-align:left; }
+      .pp-table td {
+        display:flex; width:auto; max-width:100%; box-sizing:border-box;
+        padding:7px 14px; border:none; text-align:right;
+        align-items:center; justify-content:space-between; gap:12px;
+        font-size:12.5px; min-width:0;
+      }
+      .pp-table td::before { content:attr(data-label); font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; text-align:left; flex:0 0 auto; }
       .pp-table td:not([data-label]) { display:block; text-align:center; }
       .pp-table td:not([data-label])::before { display:none; }
       .pp-table td.num-cell { display:none; }
-      .pp-table td[data-label] > * { margin-left:auto; }
+      .pp-table td[data-label] > * { margin-left:auto; min-width:0; max-width:100%; }
+      .pp-table td.username-cell, .pp-user-link { overflow:hidden; text-overflow:ellipsis; word-break:break-all; }
+      .pp-comment { max-width:none; white-space:normal; overflow:visible; text-overflow:unset; word-break:break-word; }
+      .pp-acts { flex-wrap:wrap; justify-content:flex-end; }
       .pp-table tr:has(.tbl-empty) { border:none; margin:0; background:transparent; }
     }
 
@@ -263,6 +281,102 @@
     .svc-badge.svc-any   { background:#f1f5f9; color:#475569; }
     .btn-blue { background:#2563eb; border-color:#2563eb; color:#fff; }
     .btn-blue:hover { background:#1d4ed8; }
+
+    .pp-user-link {
+      border: none; background: none; padding: 0; margin: 0;
+      font: inherit; font-weight: 700; color: var(--pp-blue);
+      cursor: pointer; text-align: left;
+    }
+    .pp-user-link:hover { text-decoration: underline; }
+
+    .rad-log { padding: 14px 16px 18px; }
+    .rad-banner {
+      display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap;
+      padding: 10px 12px; border-radius: 12px; margin-bottom: 14px;
+      background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;
+      font-size: 12.5px; line-height: 1.5;
+    }
+    .rad-banner.warn { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+    .rad-banner.err { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .rad-userbar {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
+    }
+    .rad-userbar h3 { margin: 0; font-size: 16px; font-weight: 800; color: var(--text); }
+    .rad-userbar p { margin: 0; font-size: 12px; color: var(--muted); }
+    .rad-card {
+      border: 1.5px solid var(--border); border-radius: 14px;
+      padding: 14px 16px 12px; margin-bottom: 12px; background: #fff;
+    }
+    .rad-sid {
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 800; font-size: 15px; color: var(--text);
+      margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9;
+    }
+    .rad-sid em { font-style: normal; color: #94a3b8; font-weight: 800; }
+    .rad-copy {
+      margin-left: auto; width: 32px; height: 32px; border: none; border-radius: 9px;
+      background: #f1f5f9; color: #64748b; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .rad-copy:hover { background: #e2e8f0; color: #0f172a; }
+    .rad-kv { display: flex; flex-direction: column; gap: 7px; }
+    .rad-kv-row { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; line-height: 1.45; min-width: 0; }
+    .rad-kv-row b { flex: 0 0 92px; font-weight: 800; color: var(--text); }
+    .rad-kv-row span { flex: 1; min-width: 0; color: #1e293b; word-break: break-word; }
+    .rad-kv-row .mono { font-family: ui-monospace, monospace; font-size: 12.5px; }
+    .rad-cause { color: #b45309; font-weight: 700; }
+    .rad-k { display: block; font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .45px; }
+    .rad-v { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-top: 2px; word-break: break-word; }
+    .rad-live { display: inline-flex; align-items: center; gap: 6px; color: #16a34a; font-weight: 700; }
+    .rad-live i { width: 7px; height: 7px; border-radius: 50%; background: #16a34a; display: inline-block; }
+    .act-ico.on { background:#dbeafe; border-color:#93c5fd; color:#1d4ed8; }
+    .pp-table tr.rad-inline td { padding: 0 12px 14px; border: none; background: transparent !important; }
+    .rad-inline-box {
+      border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 12px; background: #f8fafc; min-width: 0; max-width: 100%;
+      box-sizing: border-box; overflow-x: hidden;
+    }
+    .rad-inline-hd {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      margin-bottom: 10px; min-width: 0;
+    }
+    .rad-inline-hd strong { font-size: 13px; font-weight: 800; color: var(--text); }
+    .rad-inline-hd span { font-size: 12px; color: var(--muted); min-width: 0; word-break: break-all; flex: 1 1 120px; }
+    .rad-inline-x {
+      margin-left: auto; width: 28px; height: 28px; border: none; border-radius: 8px;
+      background: #e2e8f0; color: #334155; cursor: pointer; font-size: 18px; line-height: 1;
+      flex-shrink: 0;
+    }
+    .rad-inline-empty { margin: 0; font-size: 12.5px; color: var(--muted); }
+    .rad-inline-list { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .rad-inline-box .rad-banner { margin-bottom: 10px; min-width: 0; }
+    .rad-inline-box .rad-card { margin-bottom: 0; min-width: 0; max-width: 100%; box-sizing: border-box; }
+    @media(max-width:560px) {
+      .rad-log { padding: 12px; }
+      .rad-kv-row b { flex-basis: 78px; font-size: 13px; }
+    }
+    @media(max-width:900px) {
+      .pp-table tr:has(+ tr.rad-inline) {
+        margin-bottom: 0;
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+      }
+      .pp-table tr.rad-inline {
+        border: 1.5px solid var(--border) !important;
+        border-top: none !important;
+        margin: 0 0 10px;
+        padding: 0 0 10px;
+        border-radius: 0 0 12px 12px;
+        background: #fff !important;
+      }
+      .pp-table tr.rad-inline td {
+        display: block; width: auto; max-width: 100%; padding: 8px 10px 4px;
+        text-align: left; justify-content: flex-start;
+      }
+      .pp-table tr.rad-inline td::before { display: none !important; content: none !important; }
+      .rad-inline-box { border: none; background: transparent; padding: 4px 4px 2px; }
+    }
   
   </style>
 </head>
@@ -279,7 +393,7 @@
           <h1>
             PPPoE Active Sessions
           </h1>
-          <p>Monitor sesi PPPoE aktif secara real-time</p>
+          <p>Monitor sesi aktif dan riwayat RADIUS per user</p>
         </div>
         <div class="pp-hdr-r">
           <div id="mtSelectorMount"></div>
@@ -620,6 +734,11 @@
   var _profiles  = [];
   var _timer     = null;
   var _activeTab = 'sessions';  // 'sessions' | 'secrets'
+  var _acctUser  = '';
+  var _acctRows  = [];
+  var _acctOpen  = false;
+  var _acctLoading = false;
+  var _acctStatus = null;
 
   // Stat history untuk sparkline
   var _sparkHist = { total: [], pppoe: [], enabled: [], disabled: [], offline: [] };
@@ -959,7 +1078,7 @@
       var svcClass = svc === 'pppoe' ? 'svc-pppoe' : svc === 'l2tp' ? 'svc-l2tp' : svc === 'pptp' ? 'svc-pptp' : 'svc-any';
       return '<tr data-session-id="' + esc(s.id) + '" data-session-name="' + esc(s.name) + '">' +
         '<td class="num-cell">' + (i+1) + '</td>' +
-        '<td class="username-cell" data-label="Username">' + esc(s.name) + '</td>' +
+        '<td class="username-cell" data-label="Username"><button type="button" class="pp-user-link" data-act="acct-log" title="Lihat Log Radius">' + esc(s.name) + '</button></td>' +
         '<td data-label="Service"><span class="svc-badge ' + svcClass + '">' + esc(svc.toUpperCase()) + '</span></td>' +
         '<td data-label="IP Address"><span class="ip-badge">' + (esc(s.address) || '—') + '</span></td>' +
         '<td class="mac-cell" data-label="Caller ID / MAC">' + (esc(s.callerID) || '—') + '</td>' +
@@ -968,12 +1087,17 @@
           esc(s.uptime) +
         '</span></td>' +
         '<td data-label="Action">' +
+          '<div class="pp-acts">' +
+          '<button class="act-ico' + (_acctOpen && _acctUser === s.name ? ' on' : '') + '" data-act="acct-log" title="Log Radius">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' +
+          '</button>' +
           '<button class="btn btn-red btn-sm" data-act="disconnect">' +
             '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
             'Disconnect' +
           '</button>' +
+          '</div>' +
         '</td>' +
-      '</tr>';
+      '</tr>' + acctInlineRow(s.name, 7);
     }).join('');
   }
 
@@ -1061,8 +1185,9 @@
 
     // Setelah keduanya siap, baru update cards & render tab aktif
     updateSparkCards();
-    if (_activeTab === 'sessions') renderSessions();
-    else renderSecrets();
+    if (_activeTab === 'secrets') renderSecrets();
+    else renderSessions();
+    if (_acctOpen && _acctUser) loadAcctLog(true);
   }
   window.refreshAll = refreshAll;
 
@@ -1136,15 +1261,18 @@
 
       return '<tr data-secret-id="' + esc(s.id) + '" data-secret-name="' + esc(s.name) + '" data-secret-disabled="' + (s.disabled?'1':'0') + '">' +
         '<td class="num-cell">' + (i+1) + '</td>' +
-        '<td class="username-cell" data-label="Username">' + esc(s.name) + '</td>' +
+        '<td class="username-cell" data-label="Username"><button type="button" class="pp-user-link" data-act="acct-log" title="Lihat Log Radius">' + esc(s.name) + '</button></td>' +
         '<td data-label="Service"><span class="svc-badge ' + svcClass + '">' + esc(svc.toUpperCase()) + '</span></td>' +
         '<td data-label="Profile">' + (esc(s.profile) || '—') + '</td>' +
         '<td class="mac-cell" data-label="Local IP">' + (esc(s.localAddress) || '—') + '</td>' +
         '<td class="mac-cell" data-label="Remote IP">' + (esc(s.remoteAddress) || '—') + '</td>' +
         '<td data-label="Status">' + statusBadge + '</td>' +
-        '<td data-label="Comment" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(s.comment) + '">' + (esc(s.comment) || '—') + '</td>' +
+        '<td data-label="Comment" class="pp-comment" title="' + esc(s.comment) + '">' + (esc(s.comment) || '—') + '</td>' +
         '<td data-label="Aksi">' +
           '<div class="pp-acts">' +
+            '<button class="act-ico' + (_acctOpen && _acctUser === s.name ? ' on' : '') + '" data-act="acct-log" title="Log Radius">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' +
+            '</button>' +
             '<button class="act-ico edit" data-act="edit" title="Edit">' +
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
             '</button>' +
@@ -1158,7 +1286,7 @@
             '</button>' +
           '</div>' +
         '</td>' +
-      '</tr>';
+      '</tr>' + acctInlineRow(s.name, 9);
     }).join('');
   }
 
@@ -1197,6 +1325,134 @@
     } catch (e) { showToast(e.message, 'error'); }
   }
 
+  // ── Log Radius di dalam baris tabel PPPoE ───────────────────
+  function acctBannerHtml() {
+    var st = _acctStatus;
+    if (st && !st.ok) {
+      return '<div class="rad-banner err">Database RADIUS belum terhubung: ' + esc(st.message || 'gagal') + '</div>';
+    }
+    return '';
+  }
+
+  function acctCardsHtml() {
+    if (_acctLoading) return '<p class="rad-inline-empty">Memuat Log Radius...</p>';
+    if (!_acctRows.length) {
+      return '<p class="rad-inline-empty">Belum ada riwayat RADIUS untuk user ini.</p>';
+    }
+    return _acctRows.map(function(r){
+      var sid = r.id != null ? String(r.id) : (r.sessionId || '');
+      var causeCls = (!r.online && /lost-carrier|lost_carrier/i.test(r.reason || '')) ? ' class="rad-cause"' : '';
+      return '<article class="rad-card rad-sess">' +
+        '<div class="rad-sid">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+          '<span><em>#</em>' + esc(sid) + '</span>' +
+          '<button type="button" class="rad-copy" data-copy="' + esc(sid) + '" title="Salin session id">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>' +
+          '</button>' +
+        '</div>' +
+        '<div class="rad-kv">' +
+          '<div class="rad-kv-row"><b>Start</b><span>' + esc(r.start || '—') + '</span></div>' +
+          '<div class="rad-kv-row"><b>Stop</b><span>' +
+            (r.online ? '<span class="rad-live"><i></i>masih online</span>' : esc(r.stop || '—')) +
+          '</span></div>' +
+          '<div class="rad-kv-row"><b>Uptime</b><span>' + esc(r.uptime || '—') + '</span></div>' +
+          '<div class="rad-kv-row"><b>Download</b><span>' + esc(r.download || '0 B') + '</span></div>' +
+          '<div class="rad-kv-row"><b>Upload</b><span>' + esc(r.upload || '0 B') + '</span></div>' +
+          '<div class="rad-kv-row"><b>Reason</b><span' + causeCls + '>' + esc(r.online ? 'Online' : (r.reason || '—')) + '</span></div>' +
+          '<div class="rad-kv-row"><b>MAC</b><span class="mono">' + esc(r.mac || '—') + '</span></div>' +
+          '<div class="rad-kv-row"><b>IP</b><span class="mono">' + esc(r.ip || '—') + '</span></div>' +
+        '</div>' +
+      '</article>';
+    }).join('');
+  }
+
+  function acctInlineRow(name, colspan) {
+    if (!_acctOpen || !_acctUser || String(name || '') !== _acctUser) return '';
+    return '<tr class="rad-inline">' +
+      '<td colspan="' + (colspan || 7) + '">' +
+        '<div class="rad-inline-box">' +
+          '<div class="rad-inline-hd">' +
+            '<strong>Log Radius</strong>' +
+            '<span>' + esc(_acctUser) + ' · ' + (_acctRows.length || 0) + ' sesi</span>' +
+            '<button type="button" class="rad-inline-x" data-act="acct-close" title="Tutup">×</button>' +
+          '</div>' +
+          acctBannerHtml() +
+          '<div class="rad-inline-list">' + acctCardsHtml() + '</div>' +
+        '</div>' +
+      '</td></tr>';
+  }
+
+  function paintAcct() {
+    if (_activeTab === 'secrets') renderSecrets();
+    else renderSessions();
+  }
+
+  async function loadAcctStatus() {
+    try {
+      var r = await App.api('/mikrotik/pppoe/acct-log?status=1');
+      _acctStatus = (r && r.success && r.data) ? r.data : { ok: false, message: (r && r.message) || 'gagal' };
+    } catch (e) {
+      _acctStatus = { ok: false, message: e.message };
+    }
+  }
+
+  async function loadAcctLog(silent) {
+    if (!_acctUser) return;
+    _acctLoading = true;
+    if (!silent) paintAcct();
+    try {
+      var r = await App.api('/mikrotik/pppoe/acct-log?username=' + encodeURIComponent(_acctUser) + '&limit=50');
+      if (r && r.success) {
+        _acctRows = r.data || [];
+      } else {
+        _acctRows = [];
+        if (!silent) showToast((r && r.message) || 'Gagal memuat log RADIUS', 'error');
+      }
+    } catch (e) {
+      _acctRows = [];
+      if (!silent) showToast(e.message, 'error');
+    }
+    _acctLoading = false;
+    paintAcct();
+    if (!silent && _acctOpen) {
+      var box = document.querySelector('.rad-inline-box');
+      if (box && box.scrollIntoView) box.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function closeAcctLog() {
+    _acctOpen = false;
+    _acctUser = '';
+    _acctRows = [];
+    _acctLoading = false;
+    paintAcct();
+  }
+
+  function openAcctLog(name) {
+    name = String(name || '').trim();
+    if (!name) return;
+    if (_acctOpen && _acctUser === name) {
+      closeAcctLog();
+      return;
+    }
+    _acctOpen = true;
+    _acctUser = name;
+    _acctRows = [];
+    var inSess = _sessions.some(function(s){ return String(s.name || '') === name; });
+    var inSecr = _secrets.some(function(s){ return String(s.name || '') === name; });
+    if (_activeTab === 'secrets' && !inSecr && inSess) switchTab('sessions', true);
+    else if (_activeTab !== 'secrets' && !inSess && inSecr) switchTab('secrets', true);
+    loadAcctLog();
+  }
+  window.openAcctLog = openAcctLog;
+
+  function copyAcctId(val) {
+    if (!val) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(String(val)).then(function(){ showToast('Session ID disalin', 'success', 1400); }).catch(function(){});
+    }
+  }
+
   // ── Tab Switch ──────────────────────────────────────────────
   // Dipanggil saat user klik tab langsung dari header (BUKAN dari card).
   // Reset filter status secrets supaya tab Secrets menampilkan semua user.
@@ -1229,6 +1485,8 @@
 
   // skipReload=true → tab sudah punya data fresh dari pcClick, cukup render
   function switchTab(tab, skipReload) {
+    if (tab === 'log') tab = 'sessions';
+    if (tab !== 'sessions' && tab !== 'secrets') tab = 'sessions';
     _activeTab = tab;
     document.getElementById('tab-sessions').classList.toggle('active', tab === 'sessions');
     document.getElementById('tab-secrets').classList.toggle('active', tab === 'secrets');
@@ -1236,18 +1494,13 @@
     var secrTbl = document.getElementById('secrets-table');
     var tbSess  = document.getElementById('toolbar-sessions');
     var tbSecr  = document.getElementById('toolbar-secrets');
+    if (sessTbl) sessTbl.style.display = tab === 'sessions' ? 'block' : 'none';
+    if (secrTbl) secrTbl.style.display = tab === 'secrets' ? 'block' : 'none';
+    if (tbSess) tbSess.style.display = tab === 'sessions' ? 'flex' : 'none';
+    if (tbSecr) tbSecr.style.display = tab === 'secrets' ? 'flex' : 'none';
     if (tab === 'secrets') {
-      if (sessTbl) sessTbl.style.display = 'none';
-      if (secrTbl) secrTbl.style.display = 'block';
-      if (tbSess) tbSess.style.display = 'none';
-      if (tbSecr) tbSecr.style.display = 'flex';
       if (skipReload) renderSecrets();
       else loadSecrets();
-    } else {
-      if (sessTbl) sessTbl.style.display = 'block';
-      if (secrTbl) secrTbl.style.display = 'none';
-      if (tbSess) tbSess.style.display = 'flex';
-      if (tbSecr) tbSecr.style.display = 'none';
     }
   }
   window.switchTab = switchTab;
@@ -1472,17 +1725,19 @@
       _reloadAllForDevice();
     }
 
-    // Deep-link: support URL param `?tab=sessions` atau `?tab=secrets`.
-    // Default sudah "sessions" (tab pertama), tapi parameter ini berguna
-    // kalau ke depan ada link yang explicitly mau ke secrets.
+    // Deep-link: ?tab=sessions|secrets dan/atau ?user=Nama.
+    // tab=log lama dibuka sebagai accordion di tabel PPPoE, bukan tab terpisah.
     try {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get('tab');
-      if (tab && (tab === 'sessions' || tab === 'secrets')) {
-        // Delay supaya data ter-load dulu sebelum switch
+      const user = params.get('user') || params.get('username');
+      if (tab === 'secrets') {
         setTimeout(function() {
-          if (typeof switchTab === 'function') switchTab(tab);
+          if (typeof switchTab === 'function') switchTab('secrets');
         }, 300);
+      }
+      if (user) {
+        setTimeout(function() { openAcctLog(String(user).trim()); }, 500);
       }
     } catch(_) { /* abaikan */ }
 
@@ -1506,29 +1761,44 @@
     // Event delegation: action buttons di sessions table
     var sessTbody = document.getElementById('pppoeTbody');
     if (sessTbody) sessTbody.addEventListener('click', function(e){
+      var copyBtn = e.target.closest('[data-copy]');
+      if (copyBtn && sessTbody.contains(copyBtn)) {
+        copyAcctId(copyBtn.getAttribute('data-copy'));
+        return;
+      }
       var btn = e.target.closest('button[data-act]');
-      if (!btn) return;
+      if (!btn || !sessTbody.contains(btn)) return;
+      var act = btn.getAttribute('data-act');
+      if (act === 'acct-close') { closeAcctLog(); return; }
       var tr = btn.closest('tr[data-session-id]');
       if (!tr) return;
       var id = tr.getAttribute('data-session-id');
       var nm = tr.getAttribute('data-session-name');
-      if (btn.getAttribute('data-act') === 'disconnect') disconnectSession(id, nm);
+      if (act === 'disconnect') disconnectSession(id, nm);
+      else if (act === 'acct-log') openAcctLog(nm);
     });
 
     // Event delegation: action buttons di secrets table
     var secTbody = document.getElementById('secretsTbody');
     if (secTbody) secTbody.addEventListener('click', function(e){
+      var copyBtn = e.target.closest('[data-copy]');
+      if (copyBtn && secTbody.contains(copyBtn)) {
+        copyAcctId(copyBtn.getAttribute('data-copy'));
+        return;
+      }
       var btn = e.target.closest('button[data-act]');
-      if (!btn) return;
+      if (!btn || !secTbody.contains(btn)) return;
+      var act = btn.getAttribute('data-act');
+      if (act === 'acct-close') { closeAcctLog(); return; }
       var tr = btn.closest('tr[data-secret-id]');
       if (!tr) return;
       var id = tr.getAttribute('data-secret-id');
       var nm = tr.getAttribute('data-secret-name');
       var dis = tr.getAttribute('data-secret-disabled') === '1';
-      var act = btn.getAttribute('data-act');
       if (act === 'edit')    openUserModal(id);
       else if (act === 'toggle') toggleSecret(id, dis, nm);  // kalau currently disabled, button = enable
       else if (act === 'delete') deleteSecret(id, nm);
+      else if (act === 'acct-log') openAcctLog(nm);
     });
 
     // Close modal pada klik overlay
@@ -1542,8 +1812,11 @@
       if (e.key === 'Escape') {
         var m = document.getElementById('userModal');
         if (m && m.classList.contains('show')) closeUserModal();
+        else if (_acctOpen) closeAcctLog();
       }
     });
+
+    loadAcctStatus();
 
     // Initial load dipicu oleh onReady selector (lihat di atas).
     // Kalau selector tidak ada, _reloadAllForDevice() sudah dipanggil di fallback.

@@ -225,7 +225,7 @@
 
     /* Responsive */
     @media(max-width:960px){.cp-grid{grid-template-columns:1fr;}.cp-sidebar{display:grid;grid-template-columns:1fr 1fr;gap:14px;}.stat-mg{grid-template-columns:repeat(4,1fr);}}
-    @media(max-width:640px){.cp-page{padding:0 10px 20px;}.cp-hero{border-radius:14px;}.cp-banner{height:88px;}.cp-av{width:56px;height:56px;font-size:20px;}.cp-top{margin-top:-28px;}.cp-name{font-size:16px;}.cp-banner-actions{bottom:8px;right:12px;gap:5px;}.cp-banner-actions .btn-sm{padding:5px 10px;font-size:11px;}.cp-infogrid{grid-template-columns:repeat(2,1fr);}.cp-sidebar{grid-template-columns:1fr;}.stat-mg{grid-template-columns:repeat(4,1fr);gap:5px;}.cp-tab{padding:7px 9px;font-size:11px;}.cp-tab svg{display:none;}.usage-grid{grid-template-columns:1fr;}}
+    @media(max-width:640px){.cp-page{padding:0 10px 20px;overflow-x:hidden;max-width:100%;}.cp-hero{border-radius:14px;}.cp-banner{height:88px;}.cp-av{width:56px;height:56px;font-size:20px;}.cp-top{margin-top:-28px;}.cp-name{font-size:16px;}.cp-banner-actions{bottom:8px;right:12px;gap:5px;}.cp-banner-actions .btn-sm{padding:5px 10px;font-size:11px;}.cp-infogrid{grid-template-columns:repeat(2,1fr);}.cp-sidebar{grid-template-columns:1fr;}.stat-mg{grid-template-columns:repeat(4,1fr);gap:5px;}.cp-tab{padding:7px 9px;font-size:11px;}.cp-tab svg{display:none;}.usage-grid{grid-template-columns:1fr;}.cp-tabs,.cp-panel,.rad-wrap,.rad-sess{min-width:0;max-width:100%;}}
     @media(max-width:380px){.stat-mg{grid-template-columns:repeat(2,1fr);}}
     /* ONT signal bars */
     .sig-bars{display:flex;align-items:flex-end;gap:2px;}
@@ -244,6 +244,40 @@
     .traf-tab.active{background:#1d4ed8;color:#fff;border-color:#1d4ed8;}
     .traf-canvas-wrap{position:relative;border-radius:10px;overflow:hidden;background:#f8fafc;border:1px solid #e2e8f0;}
     #trafficChart{display:block;width:100%;height:180px;}
+    /* ── Log Radius (kartu sesi per pelanggan) ───────────── */
+    .rad-wrap{padding:16px 16px 22px;min-width:0;}
+    .rad-hd{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+    .rad-hd svg{flex-shrink:0;color:var(--blue);}
+    .rad-hd h3{margin:0;font-size:18px;font-weight:800;color:var(--text);letter-spacing:-.2px;}
+    .rad-hd .rad-meta{margin-left:auto;font-size:12px;font-weight:600;color:var(--muted);}
+    .rad-sum{display:flex;flex-wrap:wrap;gap:6px;margin:-2px 0 14px;}
+    .rad-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;}
+    .rad-chip.on{background:#ecfdf5;color:#047857;border-color:#a7f3d0;}
+    .rad-sess{
+      background:#fff;border:1px solid #e5eaf3;border-radius:16px;
+      padding:14px 16px 12px;margin-bottom:12px;
+      box-shadow:0 2px 10px rgba(13,27,62,.05);min-width:0;
+    }
+    .rad-sess-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f1f5f9;}
+    .rad-sess-top .rid{font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.2px;}
+    .rad-sess-top .rid em{font-style:normal;color:#94a3b8;font-weight:800;margin-right:1px;}
+    .rad-copy{margin-left:auto;width:32px;height:32px;border:none;border-radius:9px;background:#f1f5f9;color:#64748b;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .rad-copy:hover{background:#e2e8f0;color:#0f172a;}
+    .rad-kv{display:flex;flex-direction:column;gap:7px;}
+    .rad-kv-row{display:flex;align-items:flex-start;gap:10px;font-size:13.5px;line-height:1.45;min-width:0;}
+    .rad-kv-row b{flex:0 0 92px;font-weight:800;color:#0f172a;}
+    .rad-kv-row span{flex:1;min-width:0;color:#1e293b;word-break:break-word;}
+    .rad-kv-row .mono{font-family:'DM Mono',ui-monospace,monospace;font-size:12.5px;}
+    .rad-live{display:inline-flex;align-items:center;gap:6px;color:#16a34a;font-weight:700;}
+    .rad-live i{width:7px;height:7px;border-radius:50%;background:#16a34a;display:inline-block;}
+    .rad-cause{color:#b45309;font-weight:700;}
+    .rad-empty{padding:28px 12px;text-align:center;color:var(--muted);font-size:13px;}
+    @media(max-width:640px){
+      .rad-wrap{padding:14px 12px 20px;}
+      .rad-kv-row b{flex-basis:78px;font-size:13px;}
+      .rad-kv-row{font-size:13px;}
+    }
+
     /* ── Dokumen (Foto Rumah & KTP) ───────────────────────── */
     .docs-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
     @media(max-width:560px){.docs-grid{grid-template-columns:1fr;}}
@@ -667,6 +701,7 @@ async function loadProfile() {
       +'<div>'
         +'<div class="cp-tabs">'
           +'<button class="cp-tab active" id="tab-btn-timeline"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Timeline <span class="tab-badge">'+timeline.length+'</span></button>'
+          +'<button class="cp-tab" id="tab-btn-radius"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Log Radius <span class="tab-badge" id="radTabBadge">–</span></button>'
           +'<button class="cp-tab" id="tab-btn-invoices"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>Invoice <span class="tab-badge">'+invoices.length+'</span></button>'
           +'<button class="cp-tab" id="tab-btn-payments"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>Pembayaran <span class="tab-badge">'+payments.length+'</span></button>'
           +'<button class="cp-tab" id="tab-btn-docs"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M18 6h.008v.008H18V6zm2.25 12.75H3.75A2.25 2.25 0 011.5 16.5V7.5a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 7.5v9a2.25 2.25 0 01-2.25 2.25z"/></svg>Dokumen <span class="tab-badge">'+docCount+'</span></button>'
@@ -683,6 +718,7 @@ async function loadProfile() {
               +'<div id="qrStatus" class="qr-status"></div>'
             +'</div>'
           +'</div>'
+          +'<div id="tab-radius" style="display:none"><div class="pscroll" id="radLogPanel"><div class="rad-empty">Memuat Log Radius…</div></div></div>'
           +'<div id="tab-invoices" style="display:none"><div class="pscroll">'+invHtml+'</div></div>'
           +'<div id="tab-payments" style="display:none"><div class="pscroll">'+payHtml+'</div></div>'
           +'<div id="tab-docs" style="display:none"><div class="pscroll" style="padding:4px"><div class="docs-grid">'
@@ -707,10 +743,25 @@ async function loadProfile() {
       qrTa.addEventListener('input', function(){ this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,96)+'px'; });
       qrTa.addEventListener('keydown', function(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); quickSendWA(c.phone||''); } });
     }
-    ['timeline','invoices','payments','docs'].forEach(function(name){
+    window._profilePPPoEUser = (c.pppoe_username || '').trim() || window._profilePPPoEUser || null;
+    ['timeline','radius','invoices','payments','docs'].forEach(function(name){
       var btn = document.getElementById('tab-btn-'+name);
       if (btn) btn.addEventListener('click', function(){ switchTab(name, btn); });
     });
+    var radPanel = document.getElementById('radLogPanel');
+    if (radPanel) radPanel.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-copy]');
+      if (btn) copyRadId(btn.getAttribute('data-copy'));
+    });
+    try {
+      var want = (new URLSearchParams(window.location.search).get('tab') || '').toLowerCase();
+      if (want === 'radius' || want === 'log' || want === 'log-radius') {
+        var radBtn = document.getElementById('tab-btn-radius');
+        if (radBtn) switchTab('radius', radBtn);
+      } else {
+        loadRadiusLog(true);
+      }
+    } catch(_) { loadRadiusLog(true); }
     // Simpan id customer untuk upload/hapus dokumen
     _docCustId = c.id;
     wireDocCards();
@@ -789,6 +840,108 @@ function switchTab(name, btn) {
   btn.classList.add('active');
   var panel = document.getElementById('tab-'+name);
   if (panel) panel.style.display='block';
+  if (name === 'radius') {
+    if (_radLoaded) paintRadiusLog();
+    else loadRadiusLog(false);
+  }
+}
+
+/* ── Log Radius (radacct per username PPPoE pelanggan) ──── */
+var _radRows = [];
+var _radTotal = 0;
+var _radLoading = false;
+var _radLoaded = false;
+
+function copyRadId(val) {
+  if (!val) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(String(val)).then(function(){
+      docToast('Session ID disalin', 'success');
+    }).catch(function(){});
+  }
+}
+
+function radiusSessionCardHtml(r) {
+  var sid = r.id != null ? String(r.id) : (r.sessionId || '');
+  var cause = r.online ? '' : esc(r.reason || '—');
+  var causeCls = (!r.online && /lost-carrier|lost_carrier/i.test(r.reason || '')) ? ' class="rad-cause"' : '';
+  return '<article class="rad-sess">' +
+    '<div class="rad-sess-top">' +
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+      '<div class="rid"><em>#</em>' + esc(sid) + '</div>' +
+      '<button type="button" class="rad-copy" data-copy="' + esc(sid) + '" title="Salin">' +
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>' +
+      '</button>' +
+    '</div>' +
+    '<div class="rad-kv">' +
+      '<div class="rad-kv-row"><b>Start</b><span>' + esc(r.start || '—') + '</span></div>' +
+      '<div class="rad-kv-row"><b>Stop</b><span>' +
+        (r.online ? '<span class="rad-live"><i></i>masih online</span>' : esc(r.stop || '—')) +
+      '</span></div>' +
+      '<div class="rad-kv-row"><b>Uptime</b><span>' + esc(r.uptime || '—') + '</span></div>' +
+      '<div class="rad-kv-row"><b>Download</b><span>' + esc(r.download || '0 B') + '</span></div>' +
+      '<div class="rad-kv-row"><b>Upload</b><span>' + esc(r.upload || '0 B') + '</span></div>' +
+      '<div class="rad-kv-row"><b>Reason</b><span' + causeCls + '>' + (r.online ? 'Online' : cause) + '</span></div>' +
+      '<div class="rad-kv-row"><b>MAC</b><span class="mono">' + esc(r.mac || '—') + '</span></div>' +
+      '<div class="rad-kv-row"><b>IP</b><span class="mono">' + esc(r.ip || '—') + '</span></div>' +
+    '</div>' +
+  '</article>';
+}
+
+function paintRadiusLog() {
+  var el = document.getElementById('radLogPanel');
+  if (!el) return;
+  var user = (window._profilePPPoEUser || '').trim();
+  if (!user) {
+    el.innerHTML = '<div class="rad-wrap"><div class="rad-hd">' +
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+      '<h3>Log Radius</h3></div>' +
+      '<div class="rad-empty">Belum ada username PPPoE di data pelanggan. Isi PPPoE di Edit supaya riwayat sesi tampil.</div></div>';
+    return;
+  }
+  var online = _radRows.filter(function(r){ return r.online; }).length;
+  var sumHtml = '<div class="rad-sum">' +
+    '<span class="rad-chip">' + (_radTotal || _radRows.length) + ' sesi</span>' +
+    (online ? '<span class="rad-chip on">' + online + ' online</span>' : '') +
+    '</div>';
+  var body;
+  if (_radLoading && !_radRows.length) body = '<div class="rad-empty">Memuat Log Radius…</div>';
+  else if (!_radRows.length) body = '<div class="rad-empty">Belum ada riwayat RADIUS untuk pelanggan ini.</div>';
+  else body = _radRows.map(radiusSessionCardHtml).join('');
+  el.innerHTML = '<div class="rad-wrap"><div class="rad-hd">' +
+    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+    '<h3>Log Radius</h3>' +
+    '<span class="rad-meta">' + esc(user) + '</span></div>' +
+    sumHtml + body + '</div>';
+  var badge = document.getElementById('radTabBadge');
+  if (badge) badge.textContent = String(_radTotal || _radRows.length || 0);
+}
+
+async function loadRadiusLog(silent) {
+  if (_radLoading) return;
+  var user = (window._profilePPPoEUser || '').trim();
+  var el = document.getElementById('radLogPanel');
+  if (!user) { paintRadiusLog(); return; }
+  _radLoading = true;
+  if (!silent) paintRadiusLog();
+  try {
+    var r = await App.api('/mikrotik/pppoe/acct-log?username=' + encodeURIComponent(user) + '&limit=80');
+    if (r && r.success) {
+      _radRows = r.data || [];
+      _radTotal = r.total != null ? r.total : _radRows.length;
+      _radLoaded = true;
+    } else {
+      _radRows = [];
+      _radTotal = 0;
+      if (!silent) docToast((r && r.message) || 'Gagal memuat Log Radius', 'error');
+    }
+  } catch (e) {
+    _radRows = [];
+    _radTotal = 0;
+    if (!silent) docToast(e.message, 'error');
+  }
+  _radLoading = false;
+  paintRadiusLog();
 }
 
 /* ── Dokumen Pelanggan (Foto Rumah & KTP) ──────────────────── */
@@ -1128,7 +1281,8 @@ function renderUsage(d) {
   // Untuk pelanggan PPPoE yang sedang offline, dynamic queue tidak ada di MikroTik
   // sehingga d.queueName = null. Pakai pppoe username sebagai fallback agar history
   // chart bisa load via /api/mikrotik/customer-history?pppoeUser=...
-  window._profilePPPoEUser = d.pppoe || null;
+  // Jangan timpa username PPPoE dari data pelanggan — itu yang dipakai Log Radius.
+  if (!window._profilePPPoEUser) window._profilePPPoEUser = d.pppoe || null;
   window._profileCustId    = parseInt(CUST_ID);
 }
 
