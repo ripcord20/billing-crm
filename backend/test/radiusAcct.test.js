@@ -74,4 +74,33 @@ assert.strictEqual(live.online, true);
 assert.strictEqual(live.reason, 'Online');
 assert.strictEqual(live.stop, null);
 
+const pkt = require('../utils/radiusAcctPacket');
+const secret = 'testingsecret';
+const req = pkt.buildAccountingRequest({
+  username: 'budi',
+  nasIp: '192.168.17.1',
+  framedIp: '10.2.78.208',
+  mac: 'C0:FD:84:35:95:7B',
+  sessionId: 'sess-1',
+  status: pkt.STATUS.Stop,
+  sessionTime: 1607,
+  inputOctets: 1048576,
+  outputOctets: 63678054,
+  terminateCauseCode: 2
+}, secret, 9);
+assert.strictEqual(pkt.requestAuthenticatorValid(req, secret), true);
+assert.strictEqual(pkt.requestAuthenticatorValid(req, 'wrong'), false);
+const parsed = pkt.parseAccountingRequest(req);
+assert.ok(parsed);
+assert.strictEqual(parsed.username, 'budi');
+assert.strictEqual(parsed.statusName, 'Stop');
+assert.strictEqual(parsed.terminateCause, 'Lost-Carrier');
+assert.strictEqual(parsed.framedIp, '10.2.78.208');
+assert.strictEqual(parsed.sessionTime, 1607);
+assert.strictEqual(pkt.findMatchingSecret(req, ['nope', secret]), secret);
+const resp = pkt.buildAccountingResponse(req, secret);
+assert.strictEqual(resp[0], pkt.CODE_ACCOUNTING_RESPONSE);
+assert.strictEqual(resp[1], 9);
+assert.strictEqual(resp.length, 20);
+
 console.log('✓ radiusAcct formatter tests PASS');

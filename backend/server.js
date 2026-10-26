@@ -1140,6 +1140,13 @@ const startServer = async () => {
     // Start cron jobs
     CronService.start();
 
+    // Penerima accounting RADIUS (UDP 1813) → radacct. Opt-in via env.
+    try {
+      require('./services/RadiusAcctListener').start().catch(() => {});
+    } catch (e) {
+      logger.warn('RadiusAcctListener: ' + (e.message || e));
+    }
+
     // Start NOC Alerts Service — polling untuk Live Alerts di dashboard NOC.
     // In-memory state, retention 24 jam. Hilang saat pm2 restart (intended).
     const NocAlertsService = require('./services/NocAlertsService');
@@ -1167,6 +1174,7 @@ const startServer = async () => {
       logger.info('SIGTERM received, shutting down...');
       snmpService.stopAll();
       CronService.stop();
+      try { require('./services/RadiusAcctListener').stop(); } catch (_) {}
       try { require('./services/TelegramBotService').stop(); } catch (_) {}
       NocAlertsService.stop();
       try { require('./services/UplinkMonitorService').stop(); } catch (_) {}
