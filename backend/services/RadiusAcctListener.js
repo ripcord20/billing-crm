@@ -25,22 +25,44 @@ function acctTable() {
   return '`' + (s || 'radius') + '`.`radacct`';
 }
 
+// MySQL @@time_zone sering UTC sementara UI Fiberix Asia/Jakarta.
+// DATETIME disimpan wall-clock WIB supaya formatTs tidak geser 7 jam.
+const SQL_NOW = 'TIMESTAMPADD(HOUR, 7, UTC_TIMESTAMP())';
+
+function queryRows(result) {
+  if (!result) return [];
+  return Array.isArray(result[0]) ? result[0] : (result[0] ? [result[0]] : []);
+}
+
+function queryAffected(result) {
+  const rows = result && result[0];
+  const meta = result && result[1];
+  return Number(
+    (meta && meta.affectedRows) ||
+    (rows && rows.affectedRows) ||
+    0
+  );
+}
+
 async function exec(sql, replacements = []) {
   const { sequelize } = require('../models');
-  const [rows] = await sequelize.query(sql, { replacements });
-  return rows;
+  return sequelize.query(sql, { replacements });
 }
 
 async function loadSecrets() {
   if (_secrets.length && (Date.now() - _secretsAt) < 60000) return _secrets;
   const secrets = [];
-  if (process.env.RADIUS_SECRET) secrets.push(process.env.RADIUS_SECRET);
-  if (process.env.RADIUS_NAS_SECRET) secrets.push(process.env.RADIUS_NAS_SECRET);
+  const push = (s) => {
+    const v = String(s || '').trim();
+    if (v) secrets.push(v);
+  };
+  push(process.env.RADIUS_SECRET);
+  push(process.env.RADIUS_NAS_SECRET);
   try {
-    const rows = await exec('SELECT secret FROM `radius`.`nas` WHERE secret IS NOT NULL AND secret != \'\'');
-    (rows || []).forEach((r) => { if (r.secret) secrets.push(String(r.secret)); });
+    const result = await exec('SELECT secret FROM `radius`.`nas` WHERE secret IS NOT NULL AND secret != \'\'');
+    queryRows(result).forEach((r) => push(r && r.secret));
   } catch (_) { /* nas table optional */ }
-  _secrets = Array.from(new Set(secrets.filter(Boolean)));
+  _secrets = Array.from(new Set(secrets));
   _secretsAt = Date.now();
   return _secrets;
 }
@@ -65,9 +87,9 @@ async function upsert(parsed) {
         (acctsessionid, acctuniqueid, username, nasipaddress, framedipaddress,
          callingstationid, acctstarttime, acctupdatetime, acctsessiontime,
          acctinputoctets, acctoutputoctets, acctterminatecause)
-       VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), 0, 0, 0, '')
+       VALUES (?, ?, ?, ?, ?, ?, ${SQL_NOW}, ${SQL_NOW}, 0, 0, 0, '')
        ON DUPLICATE KEY UPDATE
-         acctupdatetime = NOW(),
+         acctupdatetime = ${SQL_NOW},
          framedipaddress = VALUES(framedipaddress),
          callingstationid = VALUES(callingstationid)`,
       [sess || uid, uid, user, nas, ip, mac]
@@ -76,8 +98,8 @@ async function upsert(parsed) {
   }
 
   const stopSql = parsed.status === STATUS.Stop
-    ? ', acctstoptime = NOW(), acctterminatecause = ?'
-    : ', acctupdatetime = NOW()';
+    ? `, acctstoptime = ${SQL_NOW}, acctterminatecause = ?`
+    : `, acctupdatetime = ${SQL_NOW}`;
   const params = parsed.status === STATUS.Stop
     ? [time, input, output, cause, uid, user, sess]
     : [time, input, output, uid, user, sess];
@@ -92,15 +114,20 @@ async function upsert(parsed) {
          OR (username = ? AND acctsessionid = ? AND acctstoptime IS NULL)`,
     params
   );
-  const affected = Number(updated?.affectedRows || 0);
-  if (!affected) {
+  if (!queryAffected(updated)) {
+    const startSql = Number.isFinite(time) && time > 0
+      ? `TIMESTAMPADD(SECOND, -?, ${SQL_NOW})`
+      : SQL_NOW;
+    const insertParams = Number.isFinite(time) && time > 0
+      ? [sess || uid, uid, user, nas, ip, mac, time, time, input, output, parsed.status === STATUS.Stop ? cause : '']
+      : [sess || uid, uid, user, nas, ip, mac, time, input, output, parsed.status === STATUS.Stop ? cause : ''];
     await exec(
       `INSERT INTO ${tbl}
         (acctsessionid, acctuniqueid, username, nasipaddress, framedipaddress,
          callingstationid, acctstarttime, acctupdatetime, acctstoptime, acctsessiontime,
          acctinputoctets, acctoutputoctets, acctterminatecause)
-       VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), ${parsed.status === STATUS.Stop ? 'NOW()' : 'NULL'}, ?, ?, ?, ?)`,
-      [sess || uid, uid, user, nas, ip, mac, time, input, output, parsed.status === STATUS.Stop ? cause : '']
+       VALUES (?, ?, ?, ?, ?, ?, ${startSql}, ${SQL_NOW}, ${parsed.status === STATUS.Stop ? SQL_NOW : 'NULL'}, ?, ?, ?, ?)`,
+      insertParams
     );
   }
 }
@@ -135,8 +162,13 @@ function start() {
   sock.on('error', (e) => logger.warn('[RadiusAcctListener] ' + e.message));
   return new Promise((resolve, reject) => {
     sock.bind(port, host, () => {
-      logger.info(`[RadiusAcctListener] UDP ${host}:${port}`);
-      resolve(true);
+      loadSecrets().then((secrets) => {
+        logger.info(`[RadiusAcctListener] UDP ${host}:${port} secrets=${secrets.length}`);
+        resolve(true);
+      }).catch(() => {
+        logger.info(`[RadiusAcctListener] UDP ${host}:${port}`);
+        resolve(true);
+      });
     });
     sock.on('error', reject);
   }).catch((e) => {
@@ -153,4 +185,4 @@ function stop() {
   sock = null;
 }
 
-module.exports = { start, stop, upsert };
+module.exports = { start, stop, upsert, queryAffected };

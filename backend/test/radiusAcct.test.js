@@ -103,4 +103,13 @@ assert.strictEqual(resp[0], pkt.CODE_ACCOUNTING_RESPONSE);
 assert.strictEqual(resp[1], 9);
 assert.strictEqual(resp.length, 20);
 
+function queryAffected(result) {
+  const rows = result && result[0];
+  const meta = result && result[1];
+  return Number((meta && meta.affectedRows) || (rows && rows.affectedRows) || 0);
+}
+assert.strictEqual(queryAffected([undefined, { affectedRows: 2 }]), 2);
+assert.strictEqual(queryAffected([{ affectedRows: 1 }, undefined]), 1);
+assert.strictEqual(queryAffected([[], undefined]), 0);
+
 console.log('✓ radiusAcct formatter tests PASS');
