@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="id" data-theme="light">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="stylesheet" href="/css/pppoe-palette.css?v=pp2">
+  <link rel="stylesheet" href="/css/pppoe-palette.css?v=pp3">
   <style>
     :root {
       --pp-blue:#2563eb;  --pp-blue-d:#1d4ed8; --pp-blue-l:#eff6ff;
@@ -198,34 +198,52 @@
     .pp-panel-hdr { flex-direction:column; align-items:stretch; gap:0; padding:0; }
     .pp-tabbar { display:flex; gap:2px; padding:0 12px; border-bottom:2px solid #f1f5f9; }
     .pp-tab { margin-bottom:-2px; }
-    .pp-toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:13px 18px; }
+    .pp-toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:13px 18px; min-width:0; max-width:100%; }
     .pp-toolbar select { padding:8px 12px; border:1.5px solid var(--border); border-radius:10px; font-size:13px; outline:none; background:#f8fafc; color:#374151; cursor:pointer; font-family:inherit; }
     .pp-toolbar select:focus { border-color:var(--pp-blue); }
     .pp-toolbar .btn { margin-left:auto; }
-    .pp-table-scroll { overflow-x:auto; }
+    .pp-table-scroll { overflow-x:auto; min-width:0; max-width:100%; }
     #filterService { padding:8px 12px; border:1.5px solid var(--border); border-radius:10px; font-size:13px; outline:none; background:#f8fafc; color:#374151; cursor:pointer; font-family:inherit; }
+    .pp-comment { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pp-tabbar { min-width:0; max-width:100%; }
+    .pp-tbl-wrap, .pp-panel-hdr, .pp-hdr, .pp-hdr-r, .pp-cards { min-width:0; max-width:100%; }
 
-    /* ── MOBILE: tabel → kartu (stack) ── */
-    @media(max-width:640px) {
-      .pp-tabbar { padding:0 8px; }
-      .pp-tab { padding:9px 11px; font-size:12.5px; }
+    /* ── HP: kunci lebar layar, jangan geser ke kanan ── */
+    @media(max-width:900px) {
+      .pp-hdr-r { width:100%; }
+      .pp-hdr-r > span { display:none; }
+      .pp-tabbar { flex-wrap:wrap; padding:0 6px; }
+      .pp-tab { flex:1 1 auto; justify-content:center; padding:9px 8px; font-size:12px; min-width:0; }
       .pp-toolbar { padding:11px 12px; }
-      .pp-toolbar .search-wrap { flex:1 1 100%; }
-      .pp-toolbar .search-wrap input { width:100%; box-sizing:border-box; }
-      .pp-toolbar select { flex:1; }
-      .pp-toolbar .btn { margin-left:0; flex:1; justify-content:center; }
+      .pp-toolbar .search-wrap { flex:1 1 100%; min-width:0; }
+      .pp-toolbar .search-wrap input { width:100%; max-width:100%; box-sizing:border-box; }
+      .pp-toolbar select { flex:1 1 calc(50% - 4px); min-width:0; max-width:100%; }
+      .pp-toolbar .btn { margin-left:0; flex:1 1 calc(50% - 4px); justify-content:center; min-width:0; }
 
-      .pp-table-scroll { overflow-x:visible; }
+      .pp-table-scroll { overflow-x:hidden; }
       .pp-table thead { display:none; }
-      .pp-table, .pp-table tbody, .pp-table tr, .pp-table td { display:block; width:100%; box-sizing:border-box; }
-      .pp-table tr { border:1.5px solid var(--border); border-radius:12px; margin:10px 12px; padding:6px 0; background:#fff; }
+      .pp-table, .pp-table tbody { display:block; width:100%; max-width:100%; box-sizing:border-box; }
+      .pp-table tbody { padding: 4px 12px 10px; }
+      .pp-table tr {
+        display:block; width:auto; max-width:100%; box-sizing:border-box;
+        border:1.5px solid var(--border); border-radius:12px;
+        margin:10px 0; padding:6px 0; background:#fff;
+      }
       .pp-table tr:hover { background:#fff; }
-      .pp-table td { padding:7px 14px; border:none; text-align:right; display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12.5px; }
-      .pp-table td::before { content:attr(data-label); font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; text-align:left; }
+      .pp-table td {
+        display:flex; width:auto; max-width:100%; box-sizing:border-box;
+        padding:7px 14px; border:none; text-align:right;
+        align-items:center; justify-content:space-between; gap:12px;
+        font-size:12.5px; min-width:0;
+      }
+      .pp-table td::before { content:attr(data-label); font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; text-align:left; flex:0 0 auto; }
       .pp-table td:not([data-label]) { display:block; text-align:center; }
       .pp-table td:not([data-label])::before { display:none; }
       .pp-table td.num-cell { display:none; }
-      .pp-table td[data-label] > * { margin-left:auto; }
+      .pp-table td[data-label] > * { margin-left:auto; min-width:0; max-width:100%; }
+      .pp-table td.username-cell, .pp-user-link { overflow:hidden; text-overflow:ellipsis; word-break:break-all; }
+      .pp-comment { max-width:none; white-space:normal; overflow:visible; text-overflow:unset; word-break:break-word; }
+      .pp-acts { flex-wrap:wrap; justify-content:flex-end; }
       .pp-table tr:has(.tbl-empty) { border:none; margin:0; background:transparent; }
     }
 
@@ -1221,7 +1239,7 @@
         '<td class="mac-cell" data-label="Local IP">' + (esc(s.localAddress) || '—') + '</td>' +
         '<td class="mac-cell" data-label="Remote IP">' + (esc(s.remoteAddress) || '—') + '</td>' +
         '<td data-label="Status">' + statusBadge + '</td>' +
-        '<td data-label="Comment" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(s.comment) + '">' + (esc(s.comment) || '—') + '</td>' +
+        '<td data-label="Comment" class="pp-comment" title="' + esc(s.comment) + '">' + (esc(s.comment) || '—') + '</td>' +
         '<td data-label="Aksi">' +
           '<div class="pp-acts">' +
             '<button class="act-ico" data-act="acct-log" title="Log Radius">' +

@@ -24,6 +24,29 @@ body.pp-home .page-content {
   max-width: 100%;
 }
 
+@media (max-width: 900px) {
+  body.pp-home .app-layout,
+  body.pp-home .main-content,
+  body.pp-home .page-content,
+  body.pp-home .pp-tbl-wrap,
+  body.pp-home .pp-table-scroll,
+  body.pp-home .pp-toolbar,
+  body.pp-home .pp-tabbar,
+  body.pp-home .pp-hdr,
+  body.pp-home .pp-cards {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  body.pp-home .page-content {
+    overflow-x: hidden;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  body.pp-home .pp-table tbody tr {
+    max-width: 100%;
+  }
+}
+
 body.pp-home .sidebar {
   background: rgba(16, 12, 34, 0.96);
   border-right-color: rgba(34, 211, 238, 0.28);
