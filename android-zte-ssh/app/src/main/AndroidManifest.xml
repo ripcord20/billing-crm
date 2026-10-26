@@ -25,6 +25,6 @@
         <activity
             android:name=".TerminalActivity"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
-            android:windowSoftInputMode="adjustResize" />
+            android:windowSoftInputMode="adjustResize|stateVisible" />
     </application>
 </manifest>

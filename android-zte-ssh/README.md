@@ -21,7 +21,7 @@ Sideload internal, bukan Play Store. Izinkan pasang dari sumber tidak dikenal, l
 2. Isi IP, user, password → **Hubungkan**. Profil tersimpan di HP.
 3. C320 sering **Telnet port 23**; SSH port 22.
 4. Password enable opsional — dikirim setelah `terminal length 0`.
-5. Chip perintah: `show card`, `show gpon onu uncfg`, `show processor`, dll.
+5. Ketuk kotak perintah atau layar terminal supaya keyboard muncul, lalu ketik. Chip: `show card`, `show gpon onu uncfg`, `show processor`, dll.
 6. **Salin** = copy output terminal ke clipboard (kalau ada teks terpilih, hanya itu).
 7. **Tempel** = paste ke kotak perintah. Bisa tempel banyak baris dari WhatsApp/catatan, lalu **Kirim** — dikirim satu per satu.
 8. Long-press output juga bisa pilih teks (salin sistem Android).

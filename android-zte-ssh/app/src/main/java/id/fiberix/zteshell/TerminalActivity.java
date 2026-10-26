@@ -3,11 +3,18 @@ package id.fiberix.zteshell;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.InputType;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.WindowInsets;
 import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -44,6 +51,9 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_terminal);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().setSoftInputMode(
+                WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                        | WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
 
         String id = getIntent().getStringExtra(LoginActivity.EXTRA_PROFILE_ID);
         OltProfile profile = new ProfileStore(this).find(id);
@@ -58,6 +68,24 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         out = findViewById(R.id.termOut);
         scroll = findViewById(R.id.termScroll);
         cmd = findViewById(R.id.cmd);
+        // Output boleh di-select, tapi jangan mencuri fokus (itu yang menelan keyboard).
+        out.setTextIsSelectable(true);
+        out.setFocusable(false);
+        out.setFocusableInTouchMode(false);
+        scroll.setFocusable(false);
+        scroll.setFocusableInTouchMode(false);
+        scroll.setDescendantFocusability(LinearLayout.FOCUS_BLOCK_DESCENDANTS);
+
+        cmd.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+                | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        cmd.setImeOptions(EditorInfo.IME_ACTION_SEND
+                | EditorInfo.IME_FLAG_NO_EXTRACT_UI
+                | EditorInfo.IME_FLAG_NO_FULLSCREEN);
+        cmd.setShowSoftInputOnFocus(true);
+        cmd.setFocusable(true);
+        cmd.setFocusableInTouchMode(true);
 
         LinearLayout chips = findViewById(R.id.chips);
         int pad = (int) (8 * getResources().getDisplayMetrics().density);
@@ -87,6 +115,31 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
             if (session != null) session.disconnect();
             finish();
         });
+        cmd.setOnClickListener(v -> showCommandIme());
+        cmd.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) showCommandIme();
+        });
+        cmd.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                v.requestFocus();
+                showCommandIme();
+            }
+            return false;
+        });
+        // Tap layar terminal = ketik perintah (seperti klien SSH biasa).
+        View.OnClickListener openIme = v -> showCommandIme();
+        scroll.setOnClickListener(openIme);
+        out.setOnClickListener(openIme);
+        cmd.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEND
+                    || actionId == EditorInfo.IME_ACTION_DONE
+                    || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                    && event.getAction() == KeyEvent.ACTION_UP)) {
+                sendFromBox();
+                return true;
+            }
+            return false;
+        });
         cmd.setOnKeyListener((v, keyCode, event) -> {
             if (keyCode == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_UP) {
                 sendFromBox();
@@ -98,6 +151,29 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         append("[menghubungkan ke " + profile.host + "…]\n");
         session = new OltSession(profile, this);
         session.connect();
+        cmd.post(this::showCommandIme);
+    }
+
+    private void showCommandIme() {
+        if (cmd == null) return;
+        cmd.setFocusable(true);
+        cmd.setFocusableInTouchMode(true);
+        cmd.requestFocus();
+        cmd.post(() -> {
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.restartInput(cmd);
+                imm.showSoftInput(cmd, InputMethodManager.SHOW_FORCED);
+            }
+            if (Build.VERSION.SDK_INT >= 30) {
+                try {
+                    if (cmd.getWindowInsetsController() != null) {
+                        cmd.getWindowInsetsController().show(WindowInsets.Type.ime());
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        });
     }
 
     private void copyOutput() {
@@ -145,11 +221,13 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         Toast.makeText(this,
                 n > 1 ? getString(R.string.pasted_n, n) : getString(R.string.pasted),
                 Toast.LENGTH_SHORT).show();
+        showCommandIme();
     }
 
     private void sendFromBox() {
         String raw = cmd.getText().toString();
         cmd.setText("");
+        showCommandIme();
         String[] lines = raw.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1);
         int n = lines.length;
         if (n > 0 && lines[n - 1].isEmpty()) n--;
@@ -192,8 +270,20 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
     private void append(String s) {
         buf.append(s);
         if (buf.length() > 120_000) buf.delete(0, buf.length() - 80_000);
+        boolean cmdHadFocus = cmd != null && cmd.hasFocus();
         out.setText(buf.toString());
-        scroll.post(() -> scroll.fullScroll(ScrollView.FOCUS_DOWN));
+        scrollToEnd();
+        if (cmdHadFocus) cmd.requestFocus();
+    }
+
+    /** Scroll tanpa fullScroll(FOCUS_DOWN) — itu memindah fokus ke TextView dan menutup keyboard. */
+    private void scrollToEnd() {
+        scroll.post(() -> {
+            int childH = out.getHeight();
+            int viewH = scroll.getHeight();
+            int y = Math.max(0, childH - viewH);
+            scroll.scrollTo(0, y);
+        });
     }
 
     @Override
