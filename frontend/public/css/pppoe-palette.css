@@ -311,13 +311,18 @@ body.pp-home .rad-banner.err {
 }
 body.pp-home .rad-userbar h3,
 body.pp-home .rad-sid,
-body.pp-home .rad-v { color: #ffffff !important; }
+body.pp-home .rad-v,
+body.pp-home .rad-kv-row b,
+body.pp-home .rad-kv-row span { color: #ffffff !important; }
 body.pp-home .rad-userbar p,
 body.pp-home .rad-k { color: #e2e8f0 !important; }
-body.pp-home .rad-card {
+body.pp-home .rad-card,
+body.pp-home .rad-sess {
   background: #141028 !important;
   border-color: rgba(34, 211, 238, 0.35) !important;
 }
+body.pp-home .rad-sid { border-bottom-color: rgba(255, 255, 255, 0.16) !important; }
+body.pp-home .rad-cause { color: #fbbf24 !important; }
 body.pp-home .rad-copy {
   background: #100c22 !important;
   color: #e2e8f0 !important;

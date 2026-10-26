@@ -5,7 +5,7 @@
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="stylesheet" href="/css/pppoe-palette.css?v=pp5">
+  <link rel="stylesheet" href="/css/pppoe-palette.css?v=pp6">
   <style>
     :root {
       --pp-blue:#2563eb;  --pp-blue-d:#1d4ed8; --pp-blue-l:#eff6ff;
@@ -310,17 +310,22 @@
     }
     .rad-sid {
       display: flex; align-items: center; gap: 8px;
-      font-weight: 800; font-size: 14px; color: var(--text); margin-bottom: 10px;
+      font-weight: 800; font-size: 15px; color: var(--text);
+      margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9;
     }
-    .rad-sid code { font-family: inherit; }
+    .rad-sid em { font-style: normal; color: #94a3b8; font-weight: 800; }
     .rad-copy {
-      width: 28px; height: 28px; border: none; border-radius: 8px;
+      margin-left: auto; width: 32px; height: 32px; border: none; border-radius: 9px;
       background: #f1f5f9; color: #64748b; cursor: pointer;
-      display: inline-flex; align-items: center; justify-content: center;
+      display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
     .rad-copy:hover { background: #e2e8f0; color: #0f172a; }
-    .rad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
-    .rad-grid .full { grid-column: 1 / -1; }
+    .rad-kv { display: flex; flex-direction: column; gap: 7px; }
+    .rad-kv-row { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; line-height: 1.45; min-width: 0; }
+    .rad-kv-row b { flex: 0 0 92px; font-weight: 800; color: var(--text); }
+    .rad-kv-row span { flex: 1; min-width: 0; color: #1e293b; word-break: break-word; }
+    .rad-kv-row .mono { font-family: ui-monospace, monospace; font-size: 12.5px; }
+    .rad-cause { color: #b45309; font-weight: 700; }
     .rad-k { display: block; font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .45px; }
     .rad-v { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-top: 2px; word-break: break-word; }
     .rad-live { display: inline-flex; align-items: center; gap: 6px; color: #16a34a; font-weight: 700; }
@@ -348,8 +353,8 @@
     .rad-inline-box .rad-banner { margin-bottom: 10px; min-width: 0; }
     .rad-inline-box .rad-card { margin-bottom: 0; min-width: 0; max-width: 100%; box-sizing: border-box; }
     @media(max-width:560px) {
-      .rad-grid { grid-template-columns: 1fr; }
       .rad-log { padding: 12px; }
+      .rad-kv-row b { flex-basis: 78px; font-size: 13px; }
     }
     @media(max-width:900px) {
       .pp-table tr:has(+ tr.rad-inline) {
@@ -1323,12 +1328,10 @@
   // ── Log Radius di dalam baris tabel PPPoE ───────────────────
   function acctBannerHtml() {
     var st = _acctStatus;
-    if (!st) return '';
-    if (!st.ok) return '<div class="rad-banner err">Database RADIUS belum terhubung: ' + esc(st.message || 'gagal') + '</div>';
-    if (!st.total) {
-      return '<div class="rad-banner warn">Belum ada sesi tercatat. Retensi ' + (st.retentionDays || 90) + ' hari.</div>';
+    if (st && !st.ok) {
+      return '<div class="rad-banner err">Database RADIUS belum terhubung: ' + esc(st.message || 'gagal') + '</div>';
     }
-    return '<div class="rad-banner">' + st.total + ' sesi di radacct · ' + (st.online || 0) + ' online · retensi ' + (st.retentionDays || 90) + ' hari.</div>';
+    return '';
   }
 
   function acctCardsHtml() {
@@ -1338,24 +1341,26 @@
     }
     return _acctRows.map(function(r){
       var sid = r.id != null ? String(r.id) : (r.sessionId || '');
-      return '<article class="rad-card">' +
+      var causeCls = (!r.online && /lost-carrier|lost_carrier/i.test(r.reason || '')) ? ' class="rad-cause"' : '';
+      return '<article class="rad-card rad-sess">' +
         '<div class="rad-sid">' +
-          '<span>#' + esc(sid) + '</span>' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+          '<span><em>#</em>' + esc(sid) + '</span>' +
           '<button type="button" class="rad-copy" data-copy="' + esc(sid) + '" title="Salin session id">' +
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>' +
           '</button>' +
         '</div>' +
-        '<div class="rad-grid">' +
-          '<div><span class="rad-k">Start</span><span class="rad-v">' + esc(r.start || '—') + '</span></div>' +
-          '<div><span class="rad-k">Stop</span><span class="rad-v">' +
+        '<div class="rad-kv">' +
+          '<div class="rad-kv-row"><b>Start</b><span>' + esc(r.start || '—') + '</span></div>' +
+          '<div class="rad-kv-row"><b>Stop</b><span>' +
             (r.online ? '<span class="rad-live"><i></i>masih online</span>' : esc(r.stop || '—')) +
           '</span></div>' +
-          '<div><span class="rad-k">Uptime</span><span class="rad-v">' + esc(r.uptime || '—') + '</span></div>' +
-          '<div><span class="rad-k">Reason</span><span class="rad-v">' + esc(r.reason || '—') + '</span></div>' +
-          '<div><span class="rad-k">Download</span><span class="rad-v">' + esc(r.download || '0 B') + '</span></div>' +
-          '<div><span class="rad-k">Upload</span><span class="rad-v">' + esc(r.upload || '0 B') + '</span></div>' +
-          '<div><span class="rad-k">MAC</span><span class="rad-v">' + esc(r.mac || '—') + '</span></div>' +
-          '<div><span class="rad-k">IP</span><span class="rad-v">' + esc(r.ip || '—') + '</span></div>' +
+          '<div class="rad-kv-row"><b>Uptime</b><span>' + esc(r.uptime || '—') + '</span></div>' +
+          '<div class="rad-kv-row"><b>Download</b><span>' + esc(r.download || '0 B') + '</span></div>' +
+          '<div class="rad-kv-row"><b>Upload</b><span>' + esc(r.upload || '0 B') + '</span></div>' +
+          '<div class="rad-kv-row"><b>Reason</b><span' + causeCls + '>' + esc(r.online ? 'Online' : (r.reason || '—')) + '</span></div>' +
+          '<div class="rad-kv-row"><b>MAC</b><span class="mono">' + esc(r.mac || '—') + '</span></div>' +
+          '<div class="rad-kv-row"><b>IP</b><span class="mono">' + esc(r.ip || '—') + '</span></div>' +
         '</div>' +
       '</article>';
     }).join('');
