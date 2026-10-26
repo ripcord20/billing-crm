@@ -322,3 +322,40 @@ body.pp-home .rad-copy {
   background: #100c22 !important;
   color: #e2e8f0 !important;
 }
+
+body.pp-home .act-ico.on {
+  background: rgba(34, 211, 238, 0.22) !important;
+  border-color: #67e8f9 !important;
+  color: #67e8f9 !important;
+}
+
+body.pp-home .pp-table tbody tr.rad-inline,
+body.pp-home .pp-table tbody tr.rad-inline td {
+  background: transparent !important;
+}
+
+body.pp-home .rad-inline-box {
+  background: rgba(16, 12, 34, 0.92) !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+
+body.pp-home .rad-inline-hd strong { color: #f8fafc !important; }
+body.pp-home .rad-inline-hd span,
+body.pp-home .rad-inline-empty { color: #e2e8f0 !important; }
+
+body.pp-home .rad-inline-x {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(34, 211, 238, 0.4);
+}
+
+@media (max-width: 900px) {
+  body.pp-home .pp-table tbody tr.rad-inline {
+    background: #141028 !important;
+    border-color: rgba(34, 211, 238, 0.35) !important;
+  }
+  body.pp-home .rad-inline-box {
+    background: transparent !important;
+    border-color: transparent !important;
+  }
+}

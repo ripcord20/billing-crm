@@ -5,7 +5,7 @@
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="stylesheet" href="/css/pppoe-palette.css?v=pp3">
+  <link rel="stylesheet" href="/css/pppoe-palette.css?v=pp5">
   <style>
     :root {
       --pp-blue:#2563eb;  --pp-blue-d:#1d4ed8; --pp-blue-l:#eff6ff;
@@ -325,9 +325,52 @@
     .rad-v { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-top: 2px; word-break: break-word; }
     .rad-live { display: inline-flex; align-items: center; gap: 6px; color: #16a34a; font-weight: 700; }
     .rad-live i { width: 7px; height: 7px; border-radius: 50%; background: #16a34a; display: inline-block; }
+    .act-ico.on { background:#dbeafe; border-color:#93c5fd; color:#1d4ed8; }
+    .pp-table tr.rad-inline td { padding: 0 12px 14px; border: none; background: transparent !important; }
+    .rad-inline-box {
+      border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 12px; background: #f8fafc; min-width: 0; max-width: 100%;
+      box-sizing: border-box; overflow-x: hidden;
+    }
+    .rad-inline-hd {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      margin-bottom: 10px; min-width: 0;
+    }
+    .rad-inline-hd strong { font-size: 13px; font-weight: 800; color: var(--text); }
+    .rad-inline-hd span { font-size: 12px; color: var(--muted); min-width: 0; word-break: break-all; flex: 1 1 120px; }
+    .rad-inline-x {
+      margin-left: auto; width: 28px; height: 28px; border: none; border-radius: 8px;
+      background: #e2e8f0; color: #334155; cursor: pointer; font-size: 18px; line-height: 1;
+      flex-shrink: 0;
+    }
+    .rad-inline-empty { margin: 0; font-size: 12.5px; color: var(--muted); }
+    .rad-inline-list { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .rad-inline-box .rad-banner { margin-bottom: 10px; min-width: 0; }
+    .rad-inline-box .rad-card { margin-bottom: 0; min-width: 0; max-width: 100%; box-sizing: border-box; }
     @media(max-width:560px) {
       .rad-grid { grid-template-columns: 1fr; }
       .rad-log { padding: 12px; }
+    }
+    @media(max-width:900px) {
+      .pp-table tr:has(+ tr.rad-inline) {
+        margin-bottom: 0;
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+      }
+      .pp-table tr.rad-inline {
+        border: 1.5px solid var(--border) !important;
+        border-top: none !important;
+        margin: 0 0 10px;
+        padding: 0 0 10px;
+        border-radius: 0 0 12px 12px;
+        background: #fff !important;
+      }
+      .pp-table tr.rad-inline td {
+        display: block; width: auto; max-width: 100%; padding: 8px 10px 4px;
+        text-align: left; justify-content: flex-start;
+      }
+      .pp-table tr.rad-inline td::before { display: none !important; content: none !important; }
+      .rad-inline-box { border: none; background: transparent; padding: 4px 4px 2px; }
     }
   
   </style>
@@ -488,9 +531,6 @@
             <button id="tab-secrets" class="pp-tab" onclick="onTabClick('secrets')">
               PPP Secrets <span class="pp-tab-badge" id="tb-secrets">0</span>
             </button>
-            <button id="tab-log" class="pp-tab" onclick="onTabClick('log')">
-              Log Radius <span class="pp-tab-badge" id="tb-log">0</span>
-            </button>
           </div>
           <!-- Toolbar: berubah sesuai tab aktif -->
           <div class="pp-toolbar" id="toolbar-sessions">
@@ -520,14 +560,6 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Tambah
             </button>
-          </div>
-          <div class="pp-toolbar" id="toolbar-log" style="display:none;">
-            <div class="search-wrap">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" id="acctUserInput" list="acctUserList" placeholder="Username PPPoE..." autocomplete="off">
-              <datalist id="acctUserList"></datalist>
-            </div>
-            <button class="btn btn-blue btn-sm" type="button" onclick="searchAcctLog()">Cari riwayat</button>
           </div>
         </div>
 
@@ -571,16 +603,6 @@
               <tr><td colspan="9"><div class="tbl-empty"><p>Memuat secrets...</p></div></td></tr>
             </tbody>
           </table>
-        </div>
-
-        <!-- ── Log Radius: riwayat sesi per username (radacct) ── -->
-        <div id="acct-log-panel" class="rad-log" style="display:none;">
-          <div id="acctBanner" class="rad-banner">Memuat status accounting SQL...</div>
-          <div class="rad-userbar">
-            <h3 id="acctUserTitle">Pilih user</h3>
-            <p id="acctUserMeta">Klik username di Active Sessions / PPP Secrets, atau cari di atas.</p>
-          </div>
-          <div id="acctLogList"></div>
         </div>
         <span id="secretsCount" style="display:none;">0 user</span>
       </div>
@@ -706,9 +728,11 @@
   var _secretsStatusFilter = '';         // '' | 'enabled' | 'disabled' | 'offline'
   var _profiles  = [];
   var _timer     = null;
-  var _activeTab = 'sessions';  // 'sessions' | 'secrets' | 'log'
+  var _activeTab = 'sessions';  // 'sessions' | 'secrets'
   var _acctUser  = '';
   var _acctRows  = [];
+  var _acctOpen  = false;
+  var _acctLoading = false;
   var _acctStatus = null;
 
   // Stat history untuk sparkline
@@ -1059,7 +1083,7 @@
         '</span></td>' +
         '<td data-label="Action">' +
           '<div class="pp-acts">' +
-          '<button class="act-ico" data-act="acct-log" title="Log Radius">' +
+          '<button class="act-ico' + (_acctOpen && _acctUser === s.name ? ' on' : '') + '" data-act="acct-log" title="Log Radius">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' +
           '</button>' +
           '<button class="btn btn-red btn-sm" data-act="disconnect">' +
@@ -1068,7 +1092,7 @@
           '</button>' +
           '</div>' +
         '</td>' +
-      '</tr>';
+      '</tr>' + acctInlineRow(s.name, 7);
     }).join('');
   }
 
@@ -1156,10 +1180,9 @@
 
     // Setelah keduanya siap, baru update cards & render tab aktif
     updateSparkCards();
-    fillAcctUserList();
-    if (_activeTab === 'sessions') renderSessions();
-    else if (_activeTab === 'secrets') renderSecrets();
-    else if (_activeTab === 'log') loadAcctLog();
+    if (_activeTab === 'secrets') renderSecrets();
+    else renderSessions();
+    if (_acctOpen && _acctUser) loadAcctLog(true);
   }
   window.refreshAll = refreshAll;
 
@@ -1242,7 +1265,7 @@
         '<td data-label="Comment" class="pp-comment" title="' + esc(s.comment) + '">' + (esc(s.comment) || '—') + '</td>' +
         '<td data-label="Aksi">' +
           '<div class="pp-acts">' +
-            '<button class="act-ico" data-act="acct-log" title="Log Radius">' +
+            '<button class="act-ico' + (_acctOpen && _acctUser === s.name ? ' on' : '') + '" data-act="acct-log" title="Log Radius">' +
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' +
             '</button>' +
             '<button class="act-ico edit" data-act="edit" title="Edit">' +
@@ -1258,7 +1281,7 @@
             '</button>' +
           '</div>' +
         '</td>' +
-      '</tr>';
+      '</tr>' + acctInlineRow(s.name, 9);
     }).join('');
   }
 
@@ -1297,59 +1320,23 @@
     } catch (e) { showToast(e.message, 'error'); }
   }
 
-  // ── Log Radius (radacct per username) ───────────────────────
-  function fillAcctUserList() {
-    var dl = document.getElementById('acctUserList');
-    if (!dl) return;
-    var names = {};
-    (_secrets || []).forEach(function(s){ if (s && s.name) names[s.name] = 1; });
-    (_sessions || []).forEach(function(s){ if (s && s.name) names[s.name] = 1; });
-    dl.innerHTML = Object.keys(names).sort().map(function(n){
-      return '<option value="' + esc(n) + '">';
-    }).join('');
-  }
-
-  function renderAcctBanner() {
-    var el = document.getElementById('acctBanner');
-    if (!el) return;
+  // ── Log Radius di dalam baris tabel PPPoE ───────────────────
+  function acctBannerHtml() {
     var st = _acctStatus;
-    if (!st) { el.className = 'rad-banner'; el.textContent = 'Memuat status accounting SQL...'; return; }
-    if (!st.ok) {
-      el.className = 'rad-banner err';
-      el.textContent = 'Database RADIUS belum terhubung: ' + (st.message || 'gagal baca radacct');
-      return;
-    }
+    if (!st) return '';
+    if (!st.ok) return '<div class="rad-banner err">Database RADIUS belum terhubung: ' + esc(st.message || 'gagal') + '</div>';
     if (!st.total) {
-      el.className = 'rad-banner warn';
-      el.textContent = 'Accounting SQL aktif. Belum ada sesi tercatat — riwayat muncul setelah sesi PPPoE start/stop (MikroTik PPP AAA accounting=yes). Retensi ' + (st.retentionDays || 90) + ' hari.';
-      return;
+      return '<div class="rad-banner warn">Belum ada sesi tercatat. Retensi ' + (st.retentionDays || 90) + ' hari.</div>';
     }
-    el.className = 'rad-banner';
-    el.textContent = 'Accounting SQL aktif · ' + st.total + ' sesi di radacct · ' + (st.online || 0) + ' masih online · retensi ' + (st.retentionDays || 90) + ' hari.';
+    return '<div class="rad-banner">' + st.total + ' sesi di radacct · ' + (st.online || 0) + ' online · retensi ' + (st.retentionDays || 90) + ' hari.</div>';
   }
 
-  function renderAcctLog() {
-    var list = document.getElementById('acctLogList');
-    var title = document.getElementById('acctUserTitle');
-    var meta = document.getElementById('acctUserMeta');
-    var badge = document.getElementById('tb-log');
-    if (title) title.textContent = _acctUser ? ('Riwayat ' + _acctUser) : 'Pilih user';
-    if (meta) {
-      meta.textContent = _acctUser
-        ? ((_acctRows.length || 0) + ' sesi untuk user ini')
-        : 'Klik username di Active Sessions / PPP Secrets, atau cari di atas.';
-    }
-    if (badge && _acctUser) badge.textContent = _acctRows.length || 0;
-    if (!list) return;
-    if (!_acctUser) {
-      list.innerHTML = '<div class="tbl-empty"><p>Pilih username untuk melihat riwayat sesinya.</p></div>';
-      return;
-    }
+  function acctCardsHtml() {
+    if (_acctLoading) return '<p class="rad-inline-empty">Memuat Log Radius...</p>';
     if (!_acctRows.length) {
-      list.innerHTML = '<div class="tbl-empty"><p>Belum ada riwayat RADIUS untuk <b>' + esc(_acctUser) + '</b>.</p></div>';
-      return;
+      return '<p class="rad-inline-empty">Belum ada riwayat RADIUS untuk user ini.</p>';
     }
-    list.innerHTML = _acctRows.map(function(r){
+    return _acctRows.map(function(r){
       var sid = r.id != null ? String(r.id) : (r.sessionId || '');
       return '<article class="rad-card">' +
         '<div class="rad-sid">' +
@@ -1374,6 +1361,27 @@
     }).join('');
   }
 
+  function acctInlineRow(name, colspan) {
+    if (!_acctOpen || !_acctUser || String(name || '') !== _acctUser) return '';
+    return '<tr class="rad-inline">' +
+      '<td colspan="' + (colspan || 7) + '">' +
+        '<div class="rad-inline-box">' +
+          '<div class="rad-inline-hd">' +
+            '<strong>Log Radius</strong>' +
+            '<span>' + esc(_acctUser) + ' · ' + (_acctRows.length || 0) + ' sesi</span>' +
+            '<button type="button" class="rad-inline-x" data-act="acct-close" title="Tutup">×</button>' +
+          '</div>' +
+          acctBannerHtml() +
+          '<div class="rad-inline-list">' + acctCardsHtml() + '</div>' +
+        '</div>' +
+      '</td></tr>';
+  }
+
+  function paintAcct() {
+    if (_activeTab === 'secrets') renderSecrets();
+    else renderSessions();
+  }
+
   async function loadAcctStatus() {
     try {
       var r = await App.api('/mikrotik/pppoe/acct-log?status=1');
@@ -1381,48 +1389,57 @@
     } catch (e) {
       _acctStatus = { ok: false, message: e.message };
     }
-    renderAcctBanner();
   }
 
-  async function loadAcctLog() {
-    fillAcctUserList();
-    renderAcctBanner();
-    var inp = document.getElementById('acctUserInput');
-    if (inp && _acctUser && inp.value !== _acctUser) inp.value = _acctUser;
-    if (!_acctUser) { _acctRows = []; renderAcctLog(); return; }
+  async function loadAcctLog(silent) {
+    if (!_acctUser) return;
+    _acctLoading = true;
+    if (!silent) paintAcct();
     try {
       var r = await App.api('/mikrotik/pppoe/acct-log?username=' + encodeURIComponent(_acctUser) + '&limit=50');
       if (r && r.success) {
         _acctRows = r.data || [];
-        if (typeof r.total === 'number') {
-          var badge = document.getElementById('tb-log');
-          if (badge) badge.textContent = r.total;
-        }
       } else {
         _acctRows = [];
-        showToast((r && r.message) || 'Gagal memuat log RADIUS', 'error');
+        if (!silent) showToast((r && r.message) || 'Gagal memuat log RADIUS', 'error');
       }
     } catch (e) {
       _acctRows = [];
-      showToast(e.message, 'error');
+      if (!silent) showToast(e.message, 'error');
     }
-    renderAcctLog();
+    _acctLoading = false;
+    paintAcct();
+    if (!silent && _acctOpen) {
+      var box = document.querySelector('.rad-inline-box');
+      if (box && box.scrollIntoView) box.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function closeAcctLog() {
+    _acctOpen = false;
+    _acctUser = '';
+    _acctRows = [];
+    _acctLoading = false;
+    paintAcct();
   }
 
   function openAcctLog(name) {
-    _acctUser = String(name || '').trim();
-    var inp = document.getElementById('acctUserInput');
-    if (inp) inp.value = _acctUser;
-    switchTab('log');
-  }
-  window.openAcctLog = openAcctLog;
-
-  function searchAcctLog() {
-    var inp = document.getElementById('acctUserInput');
-    _acctUser = ((inp && inp.value) || '').trim();
+    name = String(name || '').trim();
+    if (!name) return;
+    if (_acctOpen && _acctUser === name) {
+      closeAcctLog();
+      return;
+    }
+    _acctOpen = true;
+    _acctUser = name;
+    _acctRows = [];
+    var inSess = _sessions.some(function(s){ return String(s.name || '') === name; });
+    var inSecr = _secrets.some(function(s){ return String(s.name || '') === name; });
+    if (_activeTab === 'secrets' && !inSecr && inSess) switchTab('sessions', true);
+    else if (_activeTab !== 'secrets' && !inSess && inSecr) switchTab('secrets', true);
     loadAcctLog();
   }
-  window.searchAcctLog = searchAcctLog;
+  window.openAcctLog = openAcctLog;
 
   function copyAcctId(val) {
     if (!val) return;
@@ -1463,28 +1480,22 @@
 
   // skipReload=true → tab sudah punya data fresh dari pcClick, cukup render
   function switchTab(tab, skipReload) {
+    if (tab === 'log') tab = 'sessions';
+    if (tab !== 'sessions' && tab !== 'secrets') tab = 'sessions';
     _activeTab = tab;
     document.getElementById('tab-sessions').classList.toggle('active', tab === 'sessions');
     document.getElementById('tab-secrets').classList.toggle('active', tab === 'secrets');
-    var tabLog = document.getElementById('tab-log');
-    if (tabLog) tabLog.classList.toggle('active', tab === 'log');
     var sessTbl = document.getElementById('sessions-table');
     var secrTbl = document.getElementById('secrets-table');
-    var logTbl  = document.getElementById('acct-log-panel');
     var tbSess  = document.getElementById('toolbar-sessions');
     var tbSecr  = document.getElementById('toolbar-secrets');
-    var tbLog   = document.getElementById('toolbar-log');
     if (sessTbl) sessTbl.style.display = tab === 'sessions' ? 'block' : 'none';
     if (secrTbl) secrTbl.style.display = tab === 'secrets' ? 'block' : 'none';
-    if (logTbl)  logTbl.style.display  = tab === 'log' ? 'block' : 'none';
     if (tbSess) tbSess.style.display = tab === 'sessions' ? 'flex' : 'none';
     if (tbSecr) tbSecr.style.display = tab === 'secrets' ? 'flex' : 'none';
-    if (tbLog)  tbLog.style.display  = tab === 'log' ? 'flex' : 'none';
     if (tab === 'secrets') {
       if (skipReload) renderSecrets();
       else loadSecrets();
-    } else if (tab === 'log') {
-      loadAcctLog();
     }
   }
   window.switchTab = switchTab;
@@ -1709,19 +1720,19 @@
       _reloadAllForDevice();
     }
 
-    // Deep-link: support URL param `?tab=sessions` atau `?tab=secrets`.
-    // Default sudah "sessions" (tab pertama), tapi parameter ini berguna
-    // kalau ke depan ada link yang explicitly mau ke secrets.
+    // Deep-link: ?tab=sessions|secrets dan/atau ?user=Nama.
+    // tab=log lama dibuka sebagai accordion di tabel PPPoE, bukan tab terpisah.
     try {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get('tab');
       const user = params.get('user') || params.get('username');
-      if (user) _acctUser = String(user).trim();
-      if (tab && (tab === 'sessions' || tab === 'secrets' || tab === 'log')) {
-        // Delay supaya data ter-load dulu sebelum switch
+      if (tab === 'secrets') {
         setTimeout(function() {
-          if (typeof switchTab === 'function') switchTab(tab);
+          if (typeof switchTab === 'function') switchTab('secrets');
         }, 300);
+      }
+      if (user) {
+        setTimeout(function() { openAcctLog(String(user).trim()); }, 500);
       }
     } catch(_) { /* abaikan */ }
 
@@ -1745,13 +1756,19 @@
     // Event delegation: action buttons di sessions table
     var sessTbody = document.getElementById('pppoeTbody');
     if (sessTbody) sessTbody.addEventListener('click', function(e){
+      var copyBtn = e.target.closest('[data-copy]');
+      if (copyBtn && sessTbody.contains(copyBtn)) {
+        copyAcctId(copyBtn.getAttribute('data-copy'));
+        return;
+      }
       var btn = e.target.closest('button[data-act]');
-      if (!btn) return;
+      if (!btn || !sessTbody.contains(btn)) return;
+      var act = btn.getAttribute('data-act');
+      if (act === 'acct-close') { closeAcctLog(); return; }
       var tr = btn.closest('tr[data-session-id]');
       if (!tr) return;
       var id = tr.getAttribute('data-session-id');
       var nm = tr.getAttribute('data-session-name');
-      var act = btn.getAttribute('data-act');
       if (act === 'disconnect') disconnectSession(id, nm);
       else if (act === 'acct-log') openAcctLog(nm);
     });
@@ -1759,14 +1776,20 @@
     // Event delegation: action buttons di secrets table
     var secTbody = document.getElementById('secretsTbody');
     if (secTbody) secTbody.addEventListener('click', function(e){
+      var copyBtn = e.target.closest('[data-copy]');
+      if (copyBtn && secTbody.contains(copyBtn)) {
+        copyAcctId(copyBtn.getAttribute('data-copy'));
+        return;
+      }
       var btn = e.target.closest('button[data-act]');
-      if (!btn) return;
+      if (!btn || !secTbody.contains(btn)) return;
+      var act = btn.getAttribute('data-act');
+      if (act === 'acct-close') { closeAcctLog(); return; }
       var tr = btn.closest('tr[data-secret-id]');
       if (!tr) return;
       var id = tr.getAttribute('data-secret-id');
       var nm = tr.getAttribute('data-secret-name');
       var dis = tr.getAttribute('data-secret-disabled') === '1';
-      var act = btn.getAttribute('data-act');
       if (act === 'edit')    openUserModal(id);
       else if (act === 'toggle') toggleSecret(id, dis, nm);  // kalau currently disabled, button = enable
       else if (act === 'delete') deleteSecret(id, nm);
@@ -1784,18 +1807,10 @@
       if (e.key === 'Escape') {
         var m = document.getElementById('userModal');
         if (m && m.classList.contains('show')) closeUserModal();
+        else if (_acctOpen) closeAcctLog();
       }
     });
 
-    var acctInp = document.getElementById('acctUserInput');
-    if (acctInp) acctInp.addEventListener('keydown', function(e){
-      if (e.key === 'Enter') { e.preventDefault(); searchAcctLog(); }
-    });
-    var acctList = document.getElementById('acctLogList');
-    if (acctList) acctList.addEventListener('click', function(e){
-      var btn = e.target.closest('[data-copy]');
-      if (btn) copyAcctId(btn.getAttribute('data-copy'));
-    });
     loadAcctStatus();
 
     // Initial load dipicu oleh onReady selector (lihat di atas).
