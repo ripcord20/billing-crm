@@ -1156,6 +1156,11 @@ const startServer = async () => {
     const WAService = require('./services/WAService');
     WAService.restoreAllSessions(io);
 
+    setTimeout(() => {
+      try { require('./services/DeviceResourcePoller').start(io); }
+      catch (e) { logger.warn('DeviceResourcePoller.start gagal: ' + (e.message || e)); }
+    }, 15000);
+
     // Start main HTTP server
     server.listen(PORT, () => {
       logger.info(`FLAYNET.COM CRM running on http://localhost:${PORT}`);
@@ -1170,6 +1175,7 @@ const startServer = async () => {
       try { require('./services/TelegramBotService').stop(); } catch (_) {}
       NocAlertsService.stop();
       try { require('./services/UplinkMonitorService').stop(); } catch (_) {}
+      try { require('./services/DeviceResourcePoller').stop(); } catch (_) {}
       await db.sequelize.close();
       server.close(() => process.exit(0));
     });
