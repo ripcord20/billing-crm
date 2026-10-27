@@ -1,12 +1,15 @@
 package id.fiberix.zteshell;
 
+import android.Manifest;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.text.InputType;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -46,6 +49,7 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
     private final Handler main = new Handler(Looper.getMainLooper());
     private final CommandHistory history = new CommandHistory();
     private int sendSeq;
+    private PowerManager.WakeLock wakeLock;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -160,10 +164,36 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
             return false;
         });
 
+        requestNotifyPermission();
+        acquireWakeLock();
+        OltKeepAliveService.start(this, profile.label());
         append("[menghubungkan ke " + profile.host + "…]\n");
         session = new OltSession(profile, this);
         session.connect();
         cmd.post(this::showCommandIme);
+    }
+
+    private void requestNotifyPermission() {
+        if (Build.VERSION.SDK_INT < 33) return;
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) return;
+        requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 41);
+    }
+
+    private void acquireWakeLock() {
+        releaseWakeLock();
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        if (pm == null) return;
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "zteshell:session");
+        wakeLock.setReferenceCounted(false);
+        wakeLock.acquire(3 * 60 * 60 * 1000L);
+    }
+
+    private void releaseWakeLock() {
+        if (wakeLock != null && wakeLock.isHeld()) {
+            try { wakeLock.release(); } catch (Exception ignored) {}
+        }
+        wakeLock = null;
     }
 
     private void showCommandIme() {
@@ -328,12 +358,16 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
     @Override
     public void onClosed(String reason) {
         append("\n[" + reason + "]\n");
+        OltKeepAliveService.stop(this);
+        releaseWakeLock();
     }
 
     @Override
     protected void onDestroy() {
         sendSeq++;
         main.removeCallbacksAndMessages(null);
+        OltKeepAliveService.stop(this);
+        releaseWakeLock();
         if (session != null) session.disconnect();
         super.onDestroy();
     }

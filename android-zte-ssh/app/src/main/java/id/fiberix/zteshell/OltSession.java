@@ -14,6 +14,7 @@ import org.apache.commons.net.telnet.TelnetClient;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
@@ -33,6 +34,14 @@ public class OltSession {
 
     private static final Pattern MORE = Pattern.compile("(?i)--\\s*more\\s*--|----more----");
     private static final Pattern ANSI = Pattern.compile("\\u001B\\[[0-9;?]*[A-Za-z]");
+    /** Timeout hanya untuk handshake awal, bukan idle sesi. */
+    private static final int CONNECT_MS = 20_000;
+    /** Ping SSH diam-diam, supaya NAT/HP tidak memutus saat pindah aplikasi. */
+    private static final int SSH_ALIVE_MS = 20_000;
+    private static final int SSH_ALIVE_COUNT = 180;
+    /** Kalau OLT idle-timeout CLI, kirim Enter pelan-pelan (tidak tiap detik). */
+    private static final long CLI_KEEP_MS = 90_000L;
+    private static final long SSH_KEEP_MS = 30_000L;
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -40,10 +49,12 @@ public class OltSession {
     private final Listener listener;
 
     private volatile boolean running;
+    private volatile long lastIoAt;
     private Session ssh;
     private ChannelShell shell;
     private TelnetClient telnet;
     private OutputStream out;
+    private Thread keepThread;
 
     public OltSession(OltProfile profile, Listener listener) {
         this.profile = profile;
@@ -56,10 +67,15 @@ public class OltSession {
                 if (profile.ssh) openSsh();
                 else openTelnet();
                 running = true;
-                emit("\n[terhubung " + (profile.ssh ? "SSH" : "Telnet") + " " + profile.host + ":" + profile.port + "]\n");
+                lastIoAt = System.currentTimeMillis();
+                emit("\n[terhubung " + (profile.ssh ? "SSH" : "Telnet") + " " + profile.host + ":" + profile.port
+                        + " — sesi tetap hidup jika pindah aplikasi]\n");
                 Thread reader = new Thread(this::readLoop, "olt-read");
                 reader.setDaemon(true);
                 reader.start();
+                keepThread = new Thread(this::keepLoop, "olt-keep");
+                keepThread.setDaemon(true);
+                keepThread.start();
                 Thread.sleep(500);
                 sendRaw("terminal length 0\n");
                 if (!TextUtils.isEmpty(profile.enablePassword)) {
@@ -103,20 +119,36 @@ public class OltSession {
         ssh = jsch.getSession(profile.username, profile.host, profile.port);
         ssh.setPassword(profile.password == null ? "" : profile.password);
         ssh.setUserInfo(new PassUserInfo(profile.password));
-        ssh.setTimeout(15000);
-        ssh.connect(15000);
+        ssh.setTimeout(CONNECT_MS);
+        ssh.connect(CONNECT_MS);
+        // Setelah login: jangan timeout 15 detik saat OLT diam di prompt ZXAN#.
+        ssh.setServerAliveInterval(SSH_ALIVE_MS);
+        ssh.setServerAliveCountMax(SSH_ALIVE_COUNT);
+        ssh.setTimeout(0);
+        try {
+            java.lang.reflect.Field f = Session.class.getDeclaredField("socket");
+            f.setAccessible(true);
+            Object sock = f.get(ssh);
+            if (sock instanceof Socket) {
+                ((Socket) sock).setKeepAlive(true);
+                ((Socket) sock).setSoTimeout(0);
+            }
+        } catch (Exception ignored) {
+        }
         shell = (ChannelShell) ssh.openChannel("shell");
         shell.setPtyType("vt100");
         shell.setPtySize(120, 40, 800, 600);
-        shell.connect(8000);
+        shell.connect(CONNECT_MS);
         out = shell.getOutputStream();
     }
 
     private void openTelnet() throws Exception {
         telnet = new TelnetClient();
-        telnet.setConnectTimeout(15000);
+        telnet.setConnectTimeout(CONNECT_MS);
         telnet.setDefaultTimeout(0);
+        telnet.setKeepAlive(true);
         telnet.connect(profile.host, profile.port);
+        try { telnet.setSoTimeout(0); } catch (Exception ignored) {}
         out = telnet.getOutputStream();
         // Login banner ZTE: Username / Password
         Thread.sleep(400);
@@ -139,6 +171,7 @@ public class OltSession {
                 if (n < 0) break;
                 String chunk = new String(buf, 0, n, StandardCharsets.UTF_8);
                 chunk = ANSI.matcher(chunk).replaceAll("").replace("\r", "");
+                lastIoAt = System.currentTimeMillis();
                 emit(chunk);
                 moreAcc.append(chunk);
                 if (moreAcc.length() > 400) moreAcc.delete(0, moreAcc.length() - 400);
@@ -158,11 +191,35 @@ public class OltSession {
         }
     }
 
+    private void keepLoop() {
+        while (running) {
+            try {
+                Thread.sleep(SSH_KEEP_MS);
+            } catch (InterruptedException e) {
+                return;
+            }
+            if (!running) return;
+            try {
+                if (ssh != null && ssh.isConnected()) {
+                    ssh.sendKeepAliveMsg();
+                }
+                long idle = System.currentTimeMillis() - lastIoAt;
+                if (idle >= CLI_KEEP_MS) {
+                    lastIoAt = System.currentTimeMillis();
+                    // Enter kosong di prompt ZTE mengulang ZXAN# dan mereset idle-timeout OLT.
+                    io.execute(() -> sendRaw("\n"));
+                }
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
     private void sendRaw(String data) {
         try {
             if (out == null) return;
             out.write(data.getBytes(StandardCharsets.UTF_8));
             out.flush();
+            lastIoAt = System.currentTimeMillis();
         } catch (Exception e) {
             emit("\n[kirim gagal: " + e.getMessage() + "]\n");
         }
@@ -175,6 +232,9 @@ public class OltSession {
 
     private void closeQuiet() {
         running = false;
+        Thread kt = keepThread;
+        keepThread = null;
+        if (kt != null) kt.interrupt();
         try { if (shell != null) shell.disconnect(); } catch (Exception ignored) {}
         try { if (ssh != null) ssh.disconnect(); } catch (Exception ignored) {}
         try { if (telnet != null) telnet.disconnect(); } catch (Exception ignored) {}
@@ -190,7 +250,7 @@ public class OltSession {
             return "Login ditolak OLT. Username atau password salah.";
         }
         if (m.matches("(?i).*timed? ?out.*")) {
-            return "Timeout. Pastikan HP satu jaringan / VPN dengan OLT.";
+            return "Timeout. HP harus satu jaringan / VPN dengan OLT, atau sesi diputus OLT.";
         }
         if (m.matches("(?i).*no matching.*")) {
             return "Handshake SSH gagal (algoritma). Coba Telnet (port 23) jika OLT membukanya.";

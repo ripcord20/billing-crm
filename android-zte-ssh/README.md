@@ -22,9 +22,10 @@ Sideload internal, bukan Play Store. Izinkan pasang dari sumber tidak dikenal, l
 3. C320 sering **Telnet port 23**; SSH port 22.
 4. Password enable opsional — dikirim setelah `terminal length 0`.
 5. Ketuk kotak perintah atau layar terminal supaya keyboard muncul, lalu ketik. Chip: `show card`, `show gpon onu uncfg`, `show processor`, dll. Panah **atas** = perintah terakhir, panah **bawah** = berikutnya.
-6. **Salin** = copy output terminal ke clipboard (kalau ada teks terpilih, hanya itu).
-7. **Tempel** = paste ke kotak perintah. Bisa tempel banyak baris dari WhatsApp/catatan, lalu **Kirim** — dikirim satu per satu.
-8. Long-press output juga bisa pilih teks (salin sistem Android).
+6. Boleh pindah ke WhatsApp/catatan — keepalive SSH + notifikasi menjaga sesi (jangan swipe tutup aplikasi).
+7. **Salin** = copy output terminal ke clipboard (kalau ada teks terpilih, hanya itu).
+8. **Tempel** = paste ke kotak perintah. Bisa tempel banyak baris dari WhatsApp/catatan, lalu **Kirim** — dikirim satu per satu.
+9. Long-press output juga bisa pilih teks (salin sistem Android).
 
 ## Bangun sendiri
 

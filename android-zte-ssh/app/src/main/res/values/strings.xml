@@ -28,5 +28,9 @@
     <string name="hist_down_desc">Perintah berikutnya</string>
     <string name="hist_empty">Belum ada perintah. Ketik dulu, lalu panah atas untuk mengulang.</string>
     <string name="empty">Belum ada profil. Isi IP OLT ZTE lalu simpan.</string>
-    <string name="howto">Cara pakai:\n1. HP harus satu Wi-Fi / VPN dengan OLT.\n2. Isi IP, user, password, lalu Hubungkan.\n3. C320 sering Telnet port 23 (bukan SSH 22).\n4. Di terminal: ketik perintah, tap chip cepat, atau Tempel dari WhatsApp/catatan.\n5. Panah atas = perintah terakhir, panah bawah = berikutnya.\n6. Salin = copy output. Blok teks lalu Salin = copy yang terpilih saja.\n7. Tempel banyak baris lalu Kirim — dikirim satu per satu (~120 ms).</string>
+    <string name="keep_channel">Sesi OLT</string>
+    <string name="keep_channel_desc">Menjaga SSH/Telnet tetap hidup saat pindah aplikasi</string>
+    <string name="keep_title">ZTE SSH terhubung</string>
+    <string name="keep_text">Sesi %1$s tetap hidup. Ketuk untuk kembali.</string>
+    <string name="howto">Cara pakai:\n1. HP harus satu Wi-Fi / VPN dengan OLT.\n2. Isi IP, user, password, lalu Hubungkan.\n3. C320 sering Telnet port 23 (bukan SSH 22).\n4. Di terminal: ketik perintah, tap chip cepat, atau Tempel dari WhatsApp/catatan.\n5. Panah atas = perintah terakhir, panah bawah = berikutnya.\n6. Boleh pindah ke WhatsApp/catatan — sesi SSH tidak timeout cepat.\n7. Salin = copy output. Blok teks lalu Salin = copy yang terpilih saja.\n8. Tempel banyak baris lalu Kirim — dikirim satu per satu (~120 ms).</string>
 </resources>
