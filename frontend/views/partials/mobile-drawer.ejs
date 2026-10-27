@@ -616,8 +616,13 @@
         el.textContent='Pilih satu atau beberapa wilayah'+extra;
       }
     }
+    var _wTapAt=0, _wTapId=0;
     function toggleWilayah(id){
-      var row=_wlist.find(function(w){ return Number(w.id)===Number(id); });
+      id=Number(id);
+      var now=Date.now();
+      if(_wTapId===id && (now-_wTapAt)<400) return;
+      _wTapAt=now; _wTapId=id;
+      var row=_wlist.find(function(w){ return Number(w.id)===id; });
       if(!row) return;
       if(_wsel[id]) delete _wsel[id]; else _wsel[id]=row;
       _renderWilayah();

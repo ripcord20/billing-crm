@@ -637,7 +637,7 @@ function _genRenderWilayahList() {
     const picked = !!_genSelectedWilayah[w.id];
     const elig = w.eligible || 0;
     return `<div onclick="genToggleWilayah(${w.id})"
-      style="padding:9px 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #f1f5f9;${picked ? 'background:#eff6ff;' : ''}">
+      style="padding:9px 12px;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #f1f5f9;${picked ? 'background:#eff6ff;' : ''}">
       <div style="display:flex;align-items:center;gap:9px;min-width:0;">
         <span style="width:16px;height:16px;border-radius:50%;border:2px solid ${picked ? '#1a6ef5' : '#cbd5e1'};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
           ${picked ? '<span style="width:8px;height:8px;border-radius:50%;background:#1a6ef5;display:block;"></span>' : ''}
@@ -653,8 +653,16 @@ function _genRenderWilayahList() {
   _genRenderWilayahPicked();
 }
 
+let _genWTapAt = 0;
+let _genWTapId = 0;
 window.genToggleWilayah = function(id) {
-  const row = (_genWilayahList || []).find((w) => Number(w.id) === Number(id));
+  id = Number(id);
+  const now = Date.now();
+  // HP kadang kirim touchend + click — tanpa debounce pilihan langsung batal.
+  if (_genWTapId === id && (now - _genWTapAt) < 400) return;
+  _genWTapAt = now;
+  _genWTapId = id;
+  const row = (_genWilayahList || []).find((w) => Number(w.id) === id);
   if (!row) return;
   if (_genSelectedWilayah[id]) delete _genSelectedWilayah[id];
   else _genSelectedWilayah[id] = row;
