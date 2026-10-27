@@ -5,10 +5,30 @@
         <item name="android:navigationBarColor">@color/bg</item>
         <item name="android:windowBackground">@color/bg</item>
         <item name="colorPrimary">@color/accent</item>
-        <item name="colorOnPrimary">@color/bg</item>
+        <item name="colorPrimaryVariant">@color/bg_card</item>
+        <item name="colorOnPrimary">@color/on_accent</item>
+        <item name="colorSecondary">@color/magenta</item>
+        <item name="colorOnSecondary">@color/text</item>
         <item name="colorSurface">@color/bg_card</item>
+        <item name="colorOnSurface">@color/text</item>
         <item name="android:textColor">@color/text</item>
         <item name="android:textColorPrimary">@color/text</item>
         <item name="android:textColorSecondary">@color/muted</item>
+        <item name="android:textColorHint">@color/muted</item>
+        <item name="colorControlActivated">@color/accent</item>
+        <item name="colorControlNormal">@color/accent</item>
+        <item name="android:colorAccent">@color/accent</item>
+    </style>
+
+    <style name="Widget.ZteSsh.Btn" parent="Widget.MaterialComponents.Button.UnelevatedButton">
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="elevation">0dp</item>
+        <item name="backgroundTint">@null</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:letterSpacing">0.04</item>
+        <item name="android:fontFamily">monospace</item>
     </style>
 </resources>

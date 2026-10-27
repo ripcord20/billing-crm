@@ -31,9 +31,10 @@ def write_png(path, w, h, pixels):
 
 def draw(size):
     px = bytearray(size * size * 4)
-    bg = (15, 23, 42, 255)
-    acc = (56, 189, 248, 255)
-    ok = (52, 211, 153, 255)
+    bg = (7, 8, 20, 255)
+    acc = (34, 211, 238, 255)
+    mag = (255, 78, 205, 255)
+    ok = (74, 222, 128, 255)
 
     def setp(x, y, c):
         if 0 <= x < size and 0 <= y < size:
@@ -52,7 +53,7 @@ def draw(size):
                 setp(x, y, c)
 
     rect(30, 34, 78, 42, acc)
-    rect(30, 50, 58, 58, acc)
+    rect(30, 50, 58, 58, mag)
     rect(30, 66, 70, 74, ok)
     return bytes(px)
 

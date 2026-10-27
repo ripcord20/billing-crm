@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ZTE SSH</string>
+    <string name="tagline">// OLT CONSOLE</string>
+    <string name="subtitle">Konsol SSH / Telnet untuk OLT ZTE C300 / C320</string>
+    <string name="saved_profiles">Profil tersimpan</string>
+    <string name="delete_profile">Hapus profil terpilih</string>
     <string name="hint_name">Nama profil (mis. OLT Bulusan)</string>
     <string name="hint_host">IP / host OLT</string>
     <string name="hint_port">Port</string>

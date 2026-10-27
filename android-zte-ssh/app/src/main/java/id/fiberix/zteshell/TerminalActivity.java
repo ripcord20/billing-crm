@@ -102,8 +102,9 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
             b.setMinHeight(0);
             b.setMinimumHeight(0);
             b.setPadding(pad, pad / 2, pad, pad / 2);
-            b.setTextColor(ContextCompat.getColor(this, R.color.text));
-            b.setBackgroundTintList(ContextCompat.getColorStateList(this, R.color.bg_input));
+            b.setTextColor(ContextCompat.getColor(this, R.color.accent));
+            b.setBackgroundResource(R.drawable.bg_chip);
+            b.setBackgroundTintList(null);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT);

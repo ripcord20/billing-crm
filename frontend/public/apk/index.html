@@ -5,20 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Unduh ZTE SSH</title>
   <style>
-    body { font-family: system-ui, sans-serif; background:#0B1220; color:#E5E7EB; margin:0; padding:28px 20px; }
+    body { font-family: ui-monospace, monospace, system-ui, sans-serif; background:
+      radial-gradient(900px 420px at 0% -10%, rgba(255,78,205,.18), transparent 55%),
+      radial-gradient(800px 380px at 100% 0%, rgba(34,211,238,.16), transparent 50%),
+      #070814; color:#f8fafc; margin:0; padding:28px 20px; }
     main { max-width:440px; margin:0 auto; }
+    .tag { color:#22d3ee; letter-spacing:.16em; font-size:11px; margin:0 0 6px; }
     h1 { font-size:28px; margin:0 0 8px; }
-    .sub { color:#94A3B8; margin:0 0 24px; line-height:1.45; }
-    a.btn { display:block; text-align:center; padding:16px 18px; border-radius:14px; margin:0 0 12px; text-decoration:none; font-weight:700; font-size:16px; }
-    .apk { background:#38BDF8; color:#0B1220; }
-    .zip { background:#1B2436; color:#38BDF8; border:1px solid #38BDF8; }
-    ol { color:#94A3B8; padding-left:20px; line-height:1.6; }
-    .note { background:#141C2C; border-radius:12px; padding:14px 16px; color:#94A3B8; font-size:13px; line-height:1.5; }
+    .bar { width:56px; height:3px; background:#22d3ee; margin:0 0 14px; }
+    .sub { color:#d6dee8; margin:0 0 24px; line-height:1.45; }
+    a.btn { display:block; text-align:center; padding:16px 18px; border-radius:4px; margin:0 0 12px; text-decoration:none; font-weight:700; font-size:16px; letter-spacing:.04em; }
+    .apk { background:#22d3ee; color:#070814; }
+    .zip { background:transparent; color:#22d3ee; border:1px solid #22d3ee; }
+    ol { color:#d6dee8; padding-left:20px; line-height:1.6; }
+    .note { background:#141028; border:1px solid rgba(34,211,238,.35); border-left:3px solid #ff4ecd; border-radius:4px; padding:14px 16px; color:#d6dee8; font-size:13px; line-height:1.5; }
   </style>
 </head>
 <body>
   <main>
-    <h1>ZTE SSH 1.0.4</h1>
+    <p class="tag">// OLT CONSOLE</p>
+    <h1>ZTE SSH 1.0.5</h1>
+    <div class="bar"></div>
     <p class="sub">APK konsol SSH / Telnet untuk OLT ZTE C300 / C320. Bukan lewat server Fiberix — HP harus satu Wi-Fi atau VPN dengan OLT.</p>
     <a class="btn apk" href="/apk/ZTE-SSH.apk" download="ZTE-SSH.apk">Unduh APK</a>
     <a class="btn zip" href="/apk/ZTE-SSH.zip" download="ZTE-SSH.zip">Unduh ZIP (jika Chrome memblokir APK)</a>

@@ -57,7 +57,7 @@ public class LoginActivity extends AppCompatActivity {
         Button btnConnect = findViewById(R.id.btnConnect);
         Button btnDelete = findViewById(R.id.btnDelete);
 
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<>());
+        adapter = new ArrayAdapter<>(this, R.layout.item_profile, new ArrayList<>());
         list.setAdapter(adapter);
         list.setOnItemClickListener((parent, view, position, id) -> {
             selected = profiles.get(position);

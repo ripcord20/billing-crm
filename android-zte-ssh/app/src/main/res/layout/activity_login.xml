@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg"
+    android:background="@drawable/bg_screen"
     android:fillViewport="true">
 
     <LinearLayout
@@ -14,27 +14,46 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textColor="@color/text"
-            android:textSize="24sp"
-            android:textStyle="bold" />
+            android:fontFamily="monospace"
+            android:letterSpacing="0.16"
+            android:text="@string/tagline"
+            android:textColor="@color/accent"
+            android:textSize="11sp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="16dp"
-            android:text="Konsol SSH / Telnet untuk OLT ZTE C300 / C320"
+            android:layout_marginTop="6dp"
+            android:fontFamily="monospace"
+            android:text="@string/app_name"
+            android:textColor="@color/text"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="56dp"
+            android:layout_height="3dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/bg_accent_bar" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="18dp"
+            android:text="@string/subtitle"
             android:textColor="@color/muted"
             android:textSize="13sp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Profil tersimpan"
-            android:textColor="@color/muted"
-            android:textSize="12sp"
-            android:textAllCaps="true" />
+            android:fontFamily="monospace"
+            android:letterSpacing="0.12"
+            android:text="@string/saved_profiles"
+            android:textAllCaps="true"
+            android:textColor="@color/accent"
+            android:textSize="11sp" />
 
         <ListView
             android:id="@+id/profileList"
@@ -42,8 +61,9 @@
             android:layout_height="140dp"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp"
-            android:background="@color/bg_card"
-            android:divider="@color/bg_input"
+            android:background="@drawable/bg_panel"
+            android:cacheColorHint="#00000000"
+            android:divider="@color/stroke"
             android:dividerHeight="1dp"
             android:padding="4dp" />
 
@@ -61,7 +81,7 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_marginTop="4dp"
-            android:background="@color/bg_input"
+            android:background="@drawable/bg_input"
             android:hint="@string/hint_name"
             android:inputType="textPersonName"
             android:padding="12dp"
@@ -74,7 +94,7 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_marginTop="8dp"
-            android:background="@color/bg_input"
+            android:background="@drawable/bg_input"
             android:hint="@string/hint_host"
             android:inputType="textUri"
             android:padding="12dp"
@@ -93,7 +113,7 @@
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_weight="1"
-                android:background="@color/bg_input"
+                android:background="@drawable/bg_input"
                 android:hint="@string/hint_port"
                 android:inputType="number"
                 android:padding="12dp"
@@ -106,6 +126,7 @@
                 android:id="@+id/proto"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
                 android:layout_marginStart="8dp"
                 android:layout_weight="2"
                 android:orientation="horizontal">
@@ -114,6 +135,7 @@
                     android:id="@+id/protoSsh"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:buttonTint="@color/accent"
                     android:checked="true"
                     android:text="@string/proto_ssh"
                     android:textColor="@color/text" />
@@ -122,6 +144,7 @@
                     android:id="@+id/protoTelnet"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:buttonTint="@color/accent"
                     android:text="@string/proto_telnet"
                     android:textColor="@color/text" />
             </RadioGroup>
@@ -132,7 +155,7 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_marginTop="8dp"
-            android:background="@color/bg_input"
+            android:background="@drawable/bg_input"
             android:hint="@string/hint_user"
             android:inputType="textVisiblePassword"
             android:padding="12dp"
@@ -145,7 +168,7 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_marginTop="8dp"
-            android:background="@color/bg_input"
+            android:background="@drawable/bg_input"
             android:hint="@string/hint_pass"
             android:inputType="textPassword"
             android:padding="12dp"
@@ -158,7 +181,7 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_marginTop="8dp"
-            android:background="@color/bg_input"
+            android:background="@drawable/bg_input"
             android:hint="@string/hint_enable"
             android:inputType="textPassword"
             android:padding="12dp"
@@ -174,43 +197,44 @@
 
             <Button
                 android:id="@+id/btnSave"
+                style="@style/Widget.ZteSsh.Btn"
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_marginEnd="8dp"
                 android:layout_weight="1"
-                android:backgroundTint="@color/bg_input"
+                android:background="@drawable/bg_btn_ghost"
                 android:text="@string/save"
-                android:textAllCaps="false"
                 android:textColor="@color/text" />
 
             <Button
                 android:id="@+id/btnConnect"
+                style="@style/Widget.ZteSsh.Btn"
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_weight="1"
-                android:backgroundTint="@color/accent"
+                android:background="@drawable/bg_btn_cyan"
                 android:text="@string/connect"
-                android:textAllCaps="false"
-                android:textColor="@color/bg" />
+                android:textColor="@color/on_accent" />
         </LinearLayout>
 
         <Button
             android:id="@+id/btnDelete"
+            style="@style/Widget.ZteSsh.Btn"
             android:layout_width="match_parent"
             android:layout_height="44dp"
             android:layout_marginTop="8dp"
-            android:backgroundTint="@color/bg_card"
-            android:text="Hapus profil terpilih"
-            android:textAllCaps="false"
+            android:background="@drawable/bg_btn_ghost"
+            android:text="@string/delete_profile"
             android:textColor="@color/danger" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:background="@color/bg_card"
+            android:background="@drawable/bg_howto"
             android:lineSpacingExtra="3dp"
             android:padding="14dp"
+            android:paddingStart="16dp"
             android:text="@string/howto"
             android:textColor="@color/muted"
             android:textSize="12sp" />
