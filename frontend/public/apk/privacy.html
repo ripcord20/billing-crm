@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kebijakan privasi — ZTE SSH</title>
+  <style>
+    body { font-family: ui-monospace, monospace, system-ui, sans-serif; background:
+      radial-gradient(900px 420px at 0% -10%, rgba(255,78,205,.18), transparent 55%),
+      radial-gradient(800px 380px at 100% 0%, rgba(34,211,238,.16), transparent 50%),
+      #070814; color:#f8fafc; margin:0; padding:28px 20px; line-height:1.55; }
+    main { max-width:640px; margin:0 auto; }
+    .tag { color:#22d3ee; letter-spacing:.16em; font-size:11px; margin:0 0 6px; }
+    h1 { font-size:26px; margin:0 0 8px; }
+    .bar { width:56px; height:3px; background:#22d3ee; margin:0 0 14px; }
+    .meta { color:#d6dee8; margin:0 0 24px; }
+    h2 { font-size:16px; color:#22d3ee; margin:22px 0 8px; }
+    p, li { color:#e8eef4; }
+    a { color:#22d3ee; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="tag">// OLT CONSOLE</p>
+    <h1>Kebijakan privasi ZTE SSH</h1>
+    <div class="bar"></div>
+    <p class="meta">Versi 1.1.0 — 27 Oktober 2026 (Waktu Indonesia Barat)</p>
+    <p>Aplikasi <b>ZTE SSH</b> (<code>id.fiberix.zteshell</code>) adalah konsol SSH/Telnet di perangkat Anda untuk OLT ZTE yang Anda pilih sendiri. Bukan layanan cloud, bukan akun pengguna, bukan iklan.</p>
+
+    <h2>1. Data yang disimpan di HP</h2>
+    <p>Profil yang Anda isi (nama, IP/host, port, username, password, password enable, pilihan SSH/Telnet) disimpan hanya di perangkat. Password dienkripsi dengan Android Keystore (AES-GCM). Cadangan cloud Android dinonaktifkan supaya kredensial tidak ikut backup.</p>
+
+    <h2>2. Data yang dikirim lewat jaringan</h2>
+    <p>Saat Anda menekan Hubungkan, aplikasi hanya membuka koneksi ke IP/host dan port yang Anda ketik. Tidak ada server Fiberix, analitik, crash reporter, atau iklan. Perintah CLI dan output terminal hanya antara HP dan OLT.</p>
+    <p>SSH mengenkripsi lalu lintas. Telnet (sering dipakai C320 di LAN) tidak terenkripsi — itu sifat protokol Telnet, bukan pengiriman ke pihak ketiga.</p>
+
+    <h2>3. Izin</h2>
+    <ul>
+      <li>Internet dan status jaringan: untuk SSH/Telnet ke OLT.</li>
+      <li>Notifikasi + layanan latar (specialUse): menjaga sesi yang Anda mulai tetap hidup saat pindah ke aplikasi lain. Dapat dihentikan dari notifikasi Putuskan.</li>
+      <li>Wake lock: mencegah HP tidur saat sesi aktif.</li>
+    </ul>
+
+    <h2>4. Data yang tidak kami kumpulkan</h2>
+    <p>Tidak ada akun, lokasi, kontak, foto, mikrofon, identifikasi iklan, atau analitik.</p>
+
+    <h2>5. Anak-anak</h2>
+    <p>Aplikasi ini untuk teknisi jaringan, bukan untuk anak di bawah 13 tahun.</p>
+
+    <h2>6. Perubahan</h2>
+    <p>Kebijakan ini dapat diperbarui di versi aplikasi berikutnya. Tanggal versi tercantum di atas.</p>
+
+    <h2>7. Kontak</h2>
+    <p>Hubungi pengelola Fiberix yang memasang aplikasi ini jika ada pertanyaan privasi.</p>
+    <p><a href="/apk/">← Kembali ke unduhan</a></p>
+  </main>
+</body>
+</html>

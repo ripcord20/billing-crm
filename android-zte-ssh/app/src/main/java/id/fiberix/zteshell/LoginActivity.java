@@ -1,6 +1,9 @@
 package id.fiberix.zteshell;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
@@ -40,6 +43,7 @@ public class LoginActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+        InsetFit.apply(findViewById(R.id.loginRoot));
         store = new ProfileStore(this);
 
         name = findViewById(R.id.name);
@@ -103,9 +107,20 @@ public class LoginActivity extends AppCompatActivity {
             reload();
         });
 
+        findViewById(R.id.privacyLink).setOnClickListener(v ->
+                startActivity(new Intent(this, PrivacyActivity.class)));
+
         protoSsh.setChecked(true);
         protoTelnet.setChecked(false);
+        requestNotifyPermission();
         reload();
+    }
+
+    private void requestNotifyPermission() {
+        if (Build.VERSION.SDK_INT < 33) return;
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) return;
+        requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 42);
     }
 
     private void reload() {

@@ -1,7 +1,6 @@
 package id.fiberix.zteshell;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 
 import org.json.JSONArray;
 
@@ -10,18 +9,16 @@ import java.util.List;
 import java.util.UUID;
 
 public class ProfileStore {
-    private static final String PREF = "zte_ssh_profiles";
-    private static final String KEY = "list";
-    private final SharedPreferences prefs;
+    private final SecurePrefs prefs;
 
     public ProfileStore(Context ctx) {
-        prefs = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+        prefs = new SecurePrefs(ctx);
     }
 
     public List<OltProfile> all() {
         List<OltProfile> out = new ArrayList<>();
         try {
-            JSONArray arr = new JSONArray(prefs.getString(KEY, "[]"));
+            JSONArray arr = new JSONArray(prefs.load());
             for (int i = 0; i < arr.length(); i++) {
                 out.add(OltProfile.fromJson(arr.getJSONObject(i)));
             }
@@ -67,6 +64,6 @@ public class ProfileStore {
             for (OltProfile p : list) arr.put(p.toJson());
         } catch (Exception ignored) {
         }
-        prefs.edit().putString(KEY, arr.toString()).apply();
+        prefs.save(arr.toString());
     }
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bangun APK rilis ZTE SSH (bukan debug).
+# Bangun APK rilis + AAB (Play Store) ZTE SSH.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/android-sdk}}"
@@ -7,7 +7,7 @@ export ANDROID_SDK_ROOT="$SDK"
 export ANDROID_HOME="$SDK"
 export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-21-openjdk-amd64}"
 
-if [[ ! -x "$SDK/cmdline-tools/latest/bin/sdkmanager" && ! -d "$SDK/platforms/android-34" ]]; then
+if [[ ! -x "$SDK/cmdline-tools/latest/bin/sdkmanager" && ! -d "$SDK/platforms/android-36" && ! -d "$SDK/platforms/android-34" ]]; then
   echo "Android SDK belum ada di $SDK" >&2
   echo "Lihat android-zte-ssh/README.md" >&2
   exit 1
@@ -29,7 +29,10 @@ python3 "$ROOT/scripts/gen-icons.py"
 
 cd "$ROOT"
 chmod +x gradlew 2>/dev/null || true
-./gradlew :app:assembleRelease --no-daemon
+./gradlew :app:assembleRelease :app:bundleRelease --no-daemon
 APK="$ROOT/app/build/outputs/apk/release/app-release.apk"
+AAB="$ROOT/app/build/outputs/bundle/release/app-release.aab"
 echo "APK: $APK"
 ls -lh "$APK"
+echo "AAB: $AAB"
+ls -lh "$AAB"

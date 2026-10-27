@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/loginRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bg_screen"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:clipToPadding="false">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -238,5 +240,17 @@
             android:text="@string/howto"
             android:textColor="@color/muted"
             android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/privacyLink"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"
+            android:gravity="center"
+            android:padding="8dp"
+            android:text="@string/privacy_link"
+            android:textColor="@color/accent"
+            android:textSize="13sp" />
     </LinearLayout>
 </ScrollView>

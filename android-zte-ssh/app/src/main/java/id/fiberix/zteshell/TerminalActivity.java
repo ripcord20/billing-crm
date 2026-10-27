@@ -1,9 +1,12 @@
 package id.fiberix.zteshell;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -65,11 +68,20 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
     private ArrayAdapter<String> suggestionAdapter;
     private boolean highlighting;
     private String cliMode = ZteCliParser.PRIV;
+    private boolean stopReceiverRegistered;
+    private final BroadcastReceiver userStop = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (session != null) session.disconnect();
+            finish();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_terminal);
+        InsetFit.apply(findViewById(R.id.termRoot));
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().setSoftInputMode(
                 WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
@@ -185,6 +197,7 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         });
 
         requestNotifyPermission();
+        registerStopReceiver();
         acquireWakeLock();
         OltKeepAliveService.start(this, profile.label());
         append("[menghubungkan ke " + profile.host + "…]\n");
@@ -198,6 +211,17 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
                 == PackageManager.PERMISSION_GRANTED) return;
         requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 41);
+    }
+
+    private void registerStopReceiver() {
+        if (stopReceiverRegistered) return;
+        IntentFilter filter = new IntentFilter(OltKeepAliveService.ACTION_USER_STOP);
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(userStop, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(userStop, filter);
+        }
+        stopReceiverRegistered = true;
     }
 
     private void acquireWakeLock() {
@@ -463,6 +487,13 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         OltKeepAliveService.stop(this);
         releaseWakeLock();
         if (session != null) session.disconnect();
+        if (stopReceiverRegistered) {
+            try {
+                unregisterReceiver(userStop);
+            } catch (Exception ignored) {
+            }
+            stopReceiverRegistered = false;
+        }
         super.onDestroy();
     }
 }

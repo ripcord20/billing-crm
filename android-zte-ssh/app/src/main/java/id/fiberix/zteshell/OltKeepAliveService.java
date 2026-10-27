@@ -14,10 +14,14 @@ import android.os.IBinder;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
-/** Menjaga proses tetap hidup saat HP pindah ke WhatsApp/catatan. */
+/**
+ * Foreground service tipe specialUse: menjaga sesi SSH/Telnet yang user mulai.
+ * Bisa dihentikan dari notifikasi (syarat Play: user perceptible + user stoppable).
+ */
 public class OltKeepAliveService extends Service {
     static final String ACTION_START = "id.fiberix.zteshell.KEEP_START";
     static final String ACTION_STOP = "id.fiberix.zteshell.KEEP_STOP";
+    static final String ACTION_USER_STOP = "id.fiberix.zteshell.USER_STOP_SESSION";
     static final String EXTRA_LABEL = "label";
     private static final String CHANNEL = "olt_session";
     private static final int NOTIF_ID = 41;
@@ -30,19 +34,16 @@ public class OltKeepAliveService extends Service {
     }
 
     static void stop(Context ctx) {
-        Intent i = new Intent(ctx, OltKeepAliveService.class);
-        i.setAction(ACTION_STOP);
-        try {
-            ctx.startService(i);
-        } catch (Exception e) {
-            ctx.stopService(new Intent(ctx, OltKeepAliveService.class));
-        }
+        ctx.stopService(new Intent(ctx, OltKeepAliveService.class));
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && ACTION_STOP.equals(intent.getAction())) {
-            stopForeground(true);
+            Intent stopped = new Intent(ACTION_USER_STOP);
+            stopped.setPackage(getPackageName());
+            sendBroadcast(stopped);
+            stopForeground(STOP_FOREGROUND_REMOVE);
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -50,12 +51,20 @@ public class OltKeepAliveService extends Service {
         if (label == null || label.trim().isEmpty()) label = getString(R.string.app_name);
         ensureChannel();
         Notification n = buildNotification(label);
-        if (Build.VERSION.SDK_INT >= 29) {
-            startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        if (Build.VERSION.SDK_INT >= 34) {
+            startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        } else if (Build.VERSION.SDK_INT >= 29) {
+            startForeground(NOTIF_ID, n);
         } else {
             startForeground(NOTIF_ID, n);
         }
-        return START_STICKY;
+        return START_NOT_STICKY;
+    }
+
+    @Override
+    public void onDestroy() {
+        stopForeground(STOP_FOREGROUND_REMOVE);
+        super.onDestroy();
     }
 
     private void ensureChannel() {
@@ -77,6 +86,13 @@ public class OltKeepAliveService extends Service {
         PendingIntent pi = PendingIntent.getActivity(
                 this, 0, open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        Intent stop = new Intent(this, OltKeepAliveService.class);
+        stop.setAction(ACTION_STOP);
+        PendingIntent stopPi = PendingIntent.getService(
+                this, 1, stop,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
         return new NotificationCompat.Builder(this, CHANNEL)
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .setContentTitle(getString(R.string.keep_title))
@@ -84,6 +100,8 @@ public class OltKeepAliveService extends Service {
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(pi)
+                .addAction(0, getString(R.string.disconnect), stopPi)
+                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
                 .build();
     }
 
