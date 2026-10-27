@@ -6,7 +6,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="stylesheet" href="/css/olt-palette.css?v=olt1">
+  <link rel="stylesheet" href="/css/olt-palette.css?v=cli1">
   <style>
     :root {
       --ot-blue:#2563eb; --ot-blue-d:#1d4ed8; --ot-blue-l:#eff6ff;
@@ -261,6 +261,11 @@
     .power-box .pv { font-family:'Geist Mono',ui-monospace,monospace; font-size:20px; font-weight:800; letter-spacing:-.5px; }
 
     .info-note { background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 13px; font-size:11.5px; color:#1e40af; line-height:1.5; margin-top:8px; }
+    .cli-hint { display:none; margin:0 0 12px; padding:10px 12px; border-radius:10px; background:#fffbeb; border:1px solid #fcd34d; }
+    .cli-hint.show { display:block; }
+    .cli-hint-reason { font-size:12px; color:#92400e; font-weight:600; margin-bottom:8px; line-height:1.45; }
+    .cli-hint-cmds { display:flex; flex-wrap:wrap; gap:6px; }
+    .cli-hint-cmd { font-family:'Geist Mono',ui-monospace,monospace; font-size:12px; padding:6px 10px; border-radius:8px; border:1px solid #f59e0b; background:#fff; color:#92400e; font-weight:700; cursor:pointer; }
 
     /* Wizard provisioning */
     .wiz-steps { display:flex; align-items:center; padding:16px 22px 0; gap:8px; }
@@ -908,12 +913,13 @@
           </div>
           <div style="padding:16px 20px">
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-              <input type="text" id="rawCmd" class="form-control" placeholder="cth: show card  /  show gpon onu state gpon-olt_1/1/1" style="flex:1;min-width:240px;font-family:'Geist Mono',monospace;font-size:12px">
+              <input type="text" id="rawCmd" class="form-control" placeholder="cth: show card  /  show gpon onu state gpon-olt_1/1/1" style="flex:1;min-width:240px;font-family:'Geist Mono',monospace;font-size:12px" autocomplete="off" spellcheck="false">
               <button class="btn btn-blue btn-sm" id="btnRunRaw" onclick="OltMgmt.runRaw()">Jalankan</button>
             </div>
+            <div id="rawHint" class="cli-hint"></div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="rawSuggest"></div>
             <pre id="rawOutput" style="display:none;background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px 16px;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;line-height:1.55;overflow-x:auto;max-height:380px;white-space:pre-wrap;word-break:break-word;margin:0"></pre>
-            <div class="info-note" style="margin-top:10px">Gunakan ini untuk melihat output asli OLT bila daftar ONU / info sistem kosong. Salin hasilnya agar parser bisa disesuaikan dengan format firmware Anda.</div>
+            <div class="info-note" style="margin-top:10px">Gunakan ini untuk melihat output asli OLT bila daftar ONU / info sistem kosong. Kalau urutan kata atau ejaan salah, petunjuk perintah ZTE yang benar muncul di atas — ketuk untuk mengisi. Salin hasilnya agar parser bisa disesuaikan dengan format firmware Anda.</div>
           </div>
         </div>
       </section>
@@ -1344,6 +1350,7 @@
 
 <script src="/vendor/apexcharts/apexcharts.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/olt-management.js?v=dgasp5"></script>
+<script src="/js/olt-cli-hints.js?v=cli1"></script>
+<script src="/js/olt-management.js?v=cli1"></script>
 </body>
 </html>
