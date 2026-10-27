@@ -456,7 +456,7 @@
           <select id="filterStatus" class="filter-select">
             <option value="">Semua Status</option>
             <option value="active">Aktif</option>
-            <option value="inactive">Nonaktif</option>
+            <option value="inactive">Berhenti</option>
             <option value="suspended">Suspended</option>
             <option value="overdue">Overdue</option>
             <option value="due_soon">Jatuh Tempo 3 Hari</option>
@@ -539,11 +539,27 @@
         </div>
         <div class="form-field">
           <label class="flbl">Status</label>
-          <select class="finput" id="custStatus">
+          <select class="finput" id="custStatus" onchange="onCustStatusChange()">
             <option value="active">Aktif</option>
-            <option value="inactive">Nonaktif</option>
+            <option value="inactive">Berhenti</option>
             <option value="suspended">Suspended</option>
           </select>
+        </div>
+        <div class="form-field span-all" id="custStopWrap" style="display:none">
+          <label class="flbl">Alasan berhenti</label>
+          <select class="finput" id="custStopReason">
+            <option value="Pindah rumah">Pindah rumah (contoh)</option>
+            <option value="Pindah kota">Pindah kota</option>
+            <option value="Ganti ISP">Ganti ISP</option>
+            <option value="Tidak mampu bayar">Tidak mampu bayar</option>
+            <option value="Isolir berkepanjangan">Isolir berkepanjangan</option>
+            <option value="Tutup usaha">Tutup usaha</option>
+            <option value="Kualitas jaringan">Kualitas jaringan</option>
+            <option value="Lainnya">Lainnya</option>
+          </select>
+          <div class="form-hint">Data masuk menu Pelanggan Berhenti. Isolir juga bisa dicatat berhenti dari tombol Berhenti.</div>
+          <label class="flbl" style="margin-top:10px">Tanggal berhenti</label>
+          <input type="date" class="finput" id="custStoppedAt">
         </div>
 
         <div class="form-field span-all">
@@ -910,13 +926,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/customers.js?v=1779700000"></script>
+<script src="/js/customers.js?v=stop3"></script>
 <script>
 /* ── Extra stat update from loadCustomerStats ── */
 const _origStats = window.loadCustomerStats;
 
 /* applyFilter — set dropdown + reload */
 window.applyFilter = function(status) {
+  if (status === 'inactive') { window.location.href = '/customers/stopped'; return; }
   const sel = document.getElementById('filterStatus');
   if (sel) sel.value = status;
   window._custPage = 1;
