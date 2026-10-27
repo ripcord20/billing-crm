@@ -22,6 +22,11 @@
     <string name="pasted_n">Ditempel %d baris. Ketuk Kirim — dikirim satu per satu.</string>
     <string name="paste_empty">Clipboard kosong</string>
     <string name="hint_cmd">ketuk di sini untuk mengetik</string>
+    <string name="hist_up">↑</string>
+    <string name="hist_down">↓</string>
+    <string name="hist_up_desc">Perintah sebelumnya</string>
+    <string name="hist_down_desc">Perintah berikutnya</string>
+    <string name="hist_empty">Belum ada perintah. Ketik dulu, lalu panah atas untuk mengulang.</string>
     <string name="empty">Belum ada profil. Isi IP OLT ZTE lalu simpan.</string>
-    <string name="howto">Cara pakai:\n1. HP harus satu Wi-Fi / VPN dengan OLT.\n2. Isi IP, user, password, lalu Hubungkan.\n3. C320 sering Telnet port 23 (bukan SSH 22).\n4. Di terminal: ketik perintah, tap chip cepat, atau Tempel dari WhatsApp/catatan.\n5. Salin = copy output. Blok teks lalu Salin = copy yang terpilih saja.\n6. Tempel banyak baris lalu Kirim — dikirim satu per satu (~120 ms).</string>
+    <string name="howto">Cara pakai:\n1. HP harus satu Wi-Fi / VPN dengan OLT.\n2. Isi IP, user, password, lalu Hubungkan.\n3. C320 sering Telnet port 23 (bukan SSH 22).\n4. Di terminal: ketik perintah, tap chip cepat, atau Tempel dari WhatsApp/catatan.\n5. Panah atas = perintah terakhir, panah bawah = berikutnya.\n6. Salin = copy output. Blok teks lalu Salin = copy yang terpilih saja.\n7. Tempel banyak baris lalu Kirim — dikirim satu per satu (~120 ms).</string>
 </resources>

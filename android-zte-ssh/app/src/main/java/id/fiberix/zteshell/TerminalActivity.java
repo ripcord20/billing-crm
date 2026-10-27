@@ -44,6 +44,7 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
     private OltSession session;
     private final StringBuilder buf = new StringBuilder();
     private final Handler main = new Handler(Looper.getMainLooper());
+    private final CommandHistory history = new CommandHistory();
     private int sendSeq;
 
     @Override
@@ -110,6 +111,8 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
 
         findViewById(R.id.btnCopy).setOnClickListener(v -> copyOutput());
         findViewById(R.id.btnPaste).setOnClickListener(v -> pasteIntoBox());
+        findViewById(R.id.btnHistUp).setOnClickListener(v -> historyUp());
+        findViewById(R.id.btnHistDown).setOnClickListener(v -> historyDown());
         findViewById(R.id.btnSend).setOnClickListener(v -> sendFromBox());
         findViewById(R.id.btnDisconnect).setOnClickListener(v -> {
             if (session != null) session.disconnect();
@@ -141,8 +144,17 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
             return false;
         });
         cmd.setOnKeyListener((v, keyCode, event) -> {
-            if (keyCode == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_UP) {
+            if (event.getAction() != KeyEvent.ACTION_UP) return false;
+            if (keyCode == KeyEvent.KEYCODE_ENTER) {
                 sendFromBox();
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                historyUp();
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                historyDown();
                 return true;
             }
             return false;
@@ -200,6 +212,27 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         int hi = Math.max(0, Math.min(end, seq.length()));
         if (hi <= lo) return null;
         return seq.subSequence(lo, hi).toString();
+    }
+
+    private void historyUp() {
+        String next = history.up(cmd.getText().toString());
+        if (next == null) {
+            Toast.makeText(this, R.string.hist_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        fillCommand(next);
+    }
+
+    private void historyDown() {
+        String next = history.down();
+        if (next == null) return;
+        fillCommand(next);
+    }
+
+    private void fillCommand(String text) {
+        cmd.setText(text);
+        cmd.setSelection(text.length());
+        showCommandIme();
     }
 
     private void pasteIntoBox() {
@@ -263,6 +296,7 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
             if (session != null) session.send("\n");
             return;
         }
+        history.add(t);
         append(t + "\n");
         if (session != null) session.send(t);
     }
