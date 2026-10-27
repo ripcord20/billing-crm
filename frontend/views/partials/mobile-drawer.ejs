@@ -203,9 +203,11 @@
   .gi-row{display:flex;gap:10px;}
   .gi-sel,.gi-inp{width:100%;padding:11px 13px;border:1.5px solid #e2e8f0;border-radius:12px;font-family:inherit;font-size:14px;color:#1f3849;background:#fff;outline:none;-webkit-appearance:none;appearance:none;}
   .gi-sel:focus,.gi-inp:focus{border-color:#0ea5e9;}
-  .gi-scope{display:flex;gap:8px;margin-bottom:4px;}
-  .gi-scope-opt{flex:1;padding:11px 8px;border:1.5px solid #e2e8f0;border-radius:12px;text-align:center;font-size:12.5px;font-weight:700;color:#6b7a97;cursor:pointer;background:#fff;transition:all .12s;}
+  .gi-scope{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
+  .gi-scope-opt{flex:1 1 calc(50% - 4px);padding:11px 8px;border:1.5px solid #e2e8f0;border-radius:12px;text-align:center;font-size:12.5px;font-weight:700;color:#6b7a97;cursor:pointer;background:#fff;transition:all .12s;}
+  .gi-scope-opt.wide{flex:1 1 100%;}
   .gi-scope-opt.on{border-color:#0ea5e9;background:#e0f2fe;color:#0284c7;}
+  #giSheet{max-height:min(92vh,720px);overflow-y:auto;-webkit-overflow-scrolling:touch;}
   .gi-picker{margin-top:10px;}
   .gi-search{width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:12px;font-family:inherit;font-size:13.5px;outline:none;margin-bottom:8px;}
   .gi-search:focus{border-color:#0ea5e9;}
@@ -468,11 +470,17 @@
     <div class="gi-scope">
       <div class="gi-scope-opt on" id="giScopeAll" onclick="FabSheet.setScope('all')">Semua Pelanggan</div>
       <div class="gi-scope-opt" id="giScopeSel" onclick="FabSheet.setScope('selected')">Pilih Pelanggan</div>
+      <div class="gi-scope-opt wide" id="giScopeWilayah" onclick="FabSheet.setScope('wilayah')">Per Wilayah</div>
     </div>
     <div class="gi-picker" id="giPicker" style="display:none;">
       <input type="text" class="gi-search" id="giSearch" placeholder="Cari nama / ID pelanggan…" oninput="FabSheet.searchCust()">
       <div class="gi-results" id="giResults"></div>
       <div class="gi-selcount" id="giSelCount"></div>
+    </div>
+    <div class="gi-picker" id="giWilayahPicker" style="display:none;">
+      <input type="text" class="gi-search" id="giWilayahSearch" placeholder="Cari wilayah…" oninput="FabSheet.searchWilayah()">
+      <div class="gi-results" id="giWilayahResults"></div>
+      <div class="gi-selcount" id="giWilayahCount"></div>
     </div>
   </div>
   <div class="gi-actions">
@@ -490,7 +498,7 @@
       try{ if(window.flynToast){ window.flynToast(msg); return; } }catch(_){}
       alert(msg);
     }
-    var _scope='all', _sel={}, _searchTimer=null, _fmtRp=function(n){ return 'Rp '+Number(n||0).toLocaleString('id-ID'); };
+    var _scope='all', _sel={}, _wsel={}, _wlist=[], _wloaded=false, _wunassigned=0, _searchTimer=null, _fmtRp=function(n){ return 'Rp '+Number(n||0).toLocaleString('id-ID'); };
 
     function open(){
       document.getElementById('fabOv').classList.add('open');
@@ -514,7 +522,7 @@
     var _giOnDone=null;
     function openGenerate(preset){
       close();
-      _scope='all'; _sel={};
+      _scope='all'; _sel={}; _wsel={};
       _fillPeriods();
       setScope('all');
       // Pre-fill periode bila dipanggil dari halaman yg punya konteks bulan/tahun
@@ -534,7 +542,12 @@
       }
       var s=document.getElementById('giSearch'); if(s) s.value='';
       var r=document.getElementById('giResults'); if(r) r.innerHTML='';
+      var ws=document.getElementById('giWilayahSearch'); if(ws) ws.value='';
       _renderSelCount();
+      _renderWilayah();
+      var mm=document.getElementById('giMonth'), yy=document.getElementById('giYear');
+      if(mm && !mm._wPrevBound){ mm.addEventListener('change', function(){ if(_scope==='wilayah') _refreshWilayahPreview(); }); mm._wPrevBound=true; }
+      if(yy && !yy._wPrevBound){ yy.addEventListener('change', function(){ if(_scope==='wilayah') _refreshWilayahPreview(); }); yy._wPrevBound=true; }
       setTimeout(function(){
         document.getElementById('giOv').classList.add('open');
         document.getElementById('giSheet').classList.add('open');
@@ -546,9 +559,96 @@
     }
     function setScope(sc){
       _scope=sc;
-      document.getElementById('giScopeAll').classList.toggle('on', sc==='all');
-      document.getElementById('giScopeSel').classList.toggle('on', sc==='selected');
-      document.getElementById('giPicker').style.display = sc==='selected' ? 'block' : 'none';
+      var allEl=document.getElementById('giScopeAll');
+      var selEl=document.getElementById('giScopeSel');
+      var wilEl=document.getElementById('giScopeWilayah');
+      if(allEl) allEl.classList.toggle('on', sc==='all');
+      if(selEl) selEl.classList.toggle('on', sc==='selected');
+      if(wilEl) wilEl.classList.toggle('on', sc==='wilayah');
+      var picker=document.getElementById('giPicker');
+      if(picker) picker.style.display = sc==='selected' ? 'block' : 'none';
+      var wp=document.getElementById('giWilayahPicker');
+      if(wp) wp.style.display = sc==='wilayah' ? 'block' : 'none';
+      if(sc==='wilayah') _ensureWilayah();
+    }
+    function searchWilayah(){ _renderWilayah(); }
+    async function _ensureWilayah(){
+      if(!_wloaded){
+        var box=document.getElementById('giWilayahResults');
+        if(box) box.innerHTML='<div style="font-size:12px;color:#8296a8;padding:8px 6px;">Memuat wilayah…</div>';
+        try{
+          var t=_tok();
+          var r=await fetch('/api/billing/generate/wilayah',{credentials:'include',headers:t?{'Authorization':'Bearer '+t}:{}});
+          var j=await r.json();
+          _wlist=Array.isArray(j&&j.data)?j.data:[];
+          _wunassigned=parseInt(j&&j.unassigned_eligible,10)||0;
+          _wloaded=true;
+        }catch(e){ _wlist=[]; _wloaded=false; }
+      }
+      _renderWilayah();
+      _refreshWilayahPreview();
+    }
+    function _renderWilayah(){
+      var box=document.getElementById('giWilayahResults');
+      if(!box) return;
+      var q=(document.getElementById('giWilayahSearch')&&document.getElementById('giWilayahSearch').value||'').trim().toLowerCase();
+      var rows=_wlist.filter(function(w){
+        if(!q) return true;
+        return String(w.name||'').toLowerCase().indexOf(q)>=0 || String(w.code||'').toLowerCase().indexOf(q)>=0;
+      });
+      if(!_wlist.length){
+        box.innerHTML='<div style="font-size:12px;color:#8296a8;padding:8px 6px;">Belum ada wilayah operasional.</div>';
+      } else if(!rows.length){
+        box.innerHTML='<div style="font-size:12px;color:#8296a8;padding:8px 6px;">Tidak ada wilayah yang cocok.</div>';
+      } else {
+        box.innerHTML=rows.map(function(w){
+          var id=w.id, on=!!_wsel[id];
+          return '<div class="gi-cust'+(on?' sel':'')+'" onclick="FabSheet.toggleWilayah('+id+')">'
+            +'<span class="gi-cust-chk"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>'
+            +'<div><div class="gi-cust-nm">'+_esc(w.name||'-')+'</div>'
+            +'<div class="gi-cust-cid">'+_esc(w.code||'')+' · '+(w.eligible||0)+' eligible</div></div></div>';
+        }).join('');
+      }
+      var n=Object.keys(_wsel).length;
+      var el=document.getElementById('giWilayahCount');
+      if(el && !n){
+        var extra=_wunassigned>0?(' · '+_wunassigned+' pelanggan belum punya wilayah'):'';
+        el.textContent='Pilih satu atau beberapa wilayah'+extra;
+      }
+    }
+    var _wTapAt=0, _wTapId=0;
+    function toggleWilayah(id){
+      id=Number(id);
+      var now=Date.now();
+      if(_wTapId===id && (now-_wTapAt)<400) return;
+      _wTapAt=now; _wTapId=id;
+      var row=_wlist.find(function(w){ return Number(w.id)===id; });
+      if(!row) return;
+      if(_wsel[id]) delete _wsel[id]; else _wsel[id]=row;
+      _renderWilayah();
+      _refreshWilayahPreview();
+    }
+    async function _refreshWilayahPreview(){
+      var el=document.getElementById('giWilayahCount');
+      if(!el) return;
+      var ids=Object.keys(_wsel).map(Number).filter(Boolean);
+      if(!ids.length){
+        var extra=_wunassigned>0?(' · '+_wunassigned+' pelanggan belum punya wilayah'):'';
+        el.textContent='Pilih satu atau beberapa wilayah'+extra;
+        return;
+      }
+      el.textContent=ids.length+' wilayah dipilih — menghitung estimasi…';
+      try{
+        var month=(document.getElementById('giMonth')||{}).value;
+        var year=(document.getElementById('giYear')||{}).value;
+        var t=_tok();
+        var r=await fetch('/api/billing/generate/preview?month='+encodeURIComponent(month)+'&year='+encodeURIComponent(year)+'&wilayah_ids='+ids.join(','),{credentials:'include',headers:t?{'Authorization':'Bearer '+t}:{}});
+        var j=await r.json();
+        var data=(j&&j.data)||{};
+        var est=data.estimated_to_generate||0;
+        var elig=data.eligible_customers||0;
+        el.textContent=ids.length+' wilayah · '+elig+' eligible · estimasi '+est+' invoice';
+      }catch(e){ el.textContent=ids.length+' wilayah dipilih'; }
     }
     function searchCust(){
       clearTimeout(_searchTimer);
@@ -593,6 +693,10 @@
         var ids=Object.keys(_sel).map(Number).filter(Boolean);
         if(!ids.length){ _toast('Pilih minimal satu pelanggan dulu.', false); return; }
         payload.customer_ids=ids;
+      } else if(_scope==='wilayah'){
+        var wids=Object.keys(_wsel).map(Number).filter(Boolean);
+        if(!wids.length){ _toast('Pilih minimal satu wilayah dulu.', false); return; }
+        payload.wilayah_ids=wids;
       }
       btn.disabled=true; btn.textContent='Generating…';
       try{
@@ -637,7 +741,8 @@
     else _autoOpenAdd();
 
     return { open:open, close:close, openGenerate:openGenerate, closeGenerate:closeGenerate,
-             setScope:setScope, searchCust:searchCust, toggleCust:toggleCust, doGenerate:doGenerate };
+             setScope:setScope, searchCust:searchCust, toggleCust:toggleCust, doGenerate:doGenerate,
+             searchWilayah:searchWilayah, toggleWilayah:toggleWilayah };
   })();
 
   /* Jaring pengaman: pastikan drawer & overlay dalam keadaan TERTUTUP saat

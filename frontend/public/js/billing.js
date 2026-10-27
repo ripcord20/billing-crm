@@ -342,15 +342,19 @@ window.openGenerate = function() {
   const now = new Date();
   document.getElementById('genMonth').value = now.getMonth() + 1;
   document.getElementById('genYear').value  = now.getFullYear();
-  // Reset cakupan ke 'semua' + bersihkan pilihan pelanggan.
+  // Reset cakupan ke 'semua' + bersihkan pilihan pelanggan/wilayah.
   _genSelectedCust = {};
+  _genSelectedWilayah = {};
   const allRadio = document.querySelector('input[name="genScope"][value="all"]');
   if (allRadio) allRadio.checked = true;
   const searchEl = document.getElementById('genCustSearch');
   if (searchEl) searchEl.value = '';
   const resBox = document.getElementById('genCustResults');
   if (resBox) { resBox.style.display = 'none'; resBox.innerHTML = ''; }
+  const wSearch = document.getElementById('genWilayahSearch');
+  if (wSearch) wSearch.value = '';
   _genRenderChips();
+  _genRenderWilayahPicked();
   onGenScopeChange();
   document.getElementById('generateModal').classList.add('active');
   // Load preview customer info
@@ -368,14 +372,40 @@ async function loadGeneratePreview() {
   const warnEl    = document.getElementById('gpWarn');
   if (!loadingEl || !contentEl) return;
 
+  const scope = (document.querySelector('input[name="genScope"]:checked') || {}).value || 'all';
+  if (scope === 'selected') return;
+
+  if (scope === 'wilayah') {
+    const wids = Object.keys(_genSelectedWilayah || {}).map(Number).filter(Boolean);
+    if (!wids.length) {
+      loadingEl.style.display = 'none';
+      contentEl.style.display = 'block';
+      const ac = document.getElementById('gpActiveCount');
+      const pk = document.getElementById('gpWithPackage');
+      if (ac) ac.textContent = '–';
+      if (pk) pk.textContent = '–';
+      if (warnEl) {
+        warnEl.innerHTML = 'Pilih minimal satu wilayah untuk melihat estimasi tagihan.';
+        warnEl.style.display = 'block';
+      }
+      return;
+    }
+  }
+
   loadingEl.style.display = 'inline';
   loadingEl.textContent = 'Memeriksa customer…';
   contentEl.style.display = 'none';
 
   const month = document.getElementById('genMonth')?.value;
   const year  = document.getElementById('genYear')?.value;
+  const params = [];
+  if (month && year) { params.push('month=' + encodeURIComponent(month)); params.push('year=' + encodeURIComponent(year)); }
+  if (scope === 'wilayah') {
+    const wids = Object.keys(_genSelectedWilayah || {}).map(Number).filter(Boolean);
+    if (wids.length) params.push('wilayah_ids=' + wids.join(','));
+  }
   let url = '/billing/generate/preview';
-  if (month && year) url += '?month=' + month + '&year=' + year;
+  if (params.length) url += '?' + params.join('&');
 
   try {
     const d = await App.api(url);
@@ -454,7 +484,7 @@ window.confirmGenerate = async function() {
   const month = parseInt(document.getElementById('genMonth').value);
   const year  = parseInt(document.getElementById('genYear').value);
 
-  // Cakupan: 'all' (semua) atau 'selected' (pelanggan tertentu).
+  // Cakupan: semua, per wilayah, atau pelanggan tertentu.
   const scope = (document.querySelector('input[name="genScope"]:checked') || {}).value || 'all';
   const payload = { month, year };
   if (scope === 'selected') {
@@ -464,6 +494,13 @@ window.confirmGenerate = async function() {
       return;
     }
     payload.customer_ids = ids;
+  } else if (scope === 'wilayah') {
+    const wids = Object.keys(_genSelectedWilayah || {}).map(Number).filter(Boolean);
+    if (!wids.length) {
+      App.showToast('Pilih minimal satu wilayah dulu.', 'error');
+      return;
+    }
+    payload.wilayah_ids = wids;
   }
 
   btn.disabled = true; btn.textContent = 'Generating...';
@@ -494,14 +531,41 @@ window.confirmGenerate = async function() {
   btn.disabled = false; btn.textContent = 'Generate';
 };
 
-// ── Customer picker untuk generate selektif ──────────────────────────
+// ── Customer / wilayah picker untuk generate selektif ────────────────
 let _genSelectedCust = {};   // { [id]: { id, name, customer_id } }
+let _genSelectedWilayah = {}; // { [id]: { id, name, code, eligible } }
+let _genWilayahList = [];
+let _genWilayahUnassigned = 0;
+let _genWilayahLoaded = false;
 let _genSearchTimer  = null;
+
+function _genEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function _genUpdateGenerateBtn() {
+  const btn = document.getElementById('confirmGenerateBtn');
+  if (!btn) return;
+  const scope = (document.querySelector('input[name="genScope"]:checked') || {}).value || 'all';
+  if (scope === 'selected') {
+    const n = Object.keys(_genSelectedCust || {}).length;
+    btn.textContent = n ? `Generate (${n})` : 'Generate';
+  } else if (scope === 'wilayah') {
+    const n = Object.keys(_genSelectedWilayah || {}).length;
+    btn.textContent = n ? `Generate (${n} wilayah)` : 'Generate';
+  } else {
+    btn.textContent = 'Generate';
+  }
+}
 
 window.onGenScopeChange = function() {
   const scope = (document.querySelector('input[name="genScope"]:checked') || {}).value || 'all';
-  const picker = document.getElementById('genCustPicker');
-  if (picker) picker.style.display = scope === 'selected' ? 'block' : 'none';
+  const custPicker = document.getElementById('genCustPicker');
+  const wilayahPicker = document.getElementById('genWilayahPicker');
+  if (custPicker) custPicker.style.display = scope === 'selected' ? 'block' : 'none';
+  if (wilayahPicker) wilayahPicker.style.display = scope === 'wilayah' ? 'block' : 'none';
   // Highlight opsi terpilih
   document.querySelectorAll('.gen-scope-opt').forEach(opt => {
     const input = opt.querySelector('input');
@@ -509,20 +573,120 @@ window.onGenScopeChange = function() {
     opt.style.borderColor = on ? '#1a6ef5' : '#e2e8f0';
     opt.style.background = on ? '#eff6ff' : '#fff';
   });
-  // Preview hanya relevan untuk mode 'all'
+  // Preview untuk 'all' dan 'wilayah' (bukan pilih pelanggan satu-satu)
   const preview = document.getElementById('genPreview');
-  if (preview) preview.style.display = scope === 'all' ? 'block' : 'none';
-  // Sinkronkan label tombol Generate dengan cakupan.
-  const btn = document.getElementById('confirmGenerateBtn');
-  if (btn) {
-    if (scope === 'selected') {
-      const n = Object.keys(_genSelectedCust || {}).length;
-      btn.textContent = n ? `Generate (${n})` : 'Generate';
-    } else {
-      btn.textContent = 'Generate';
-    }
+  if (preview) preview.style.display = scope === 'selected' ? 'none' : 'block';
+  _genUpdateGenerateBtn();
+  if (scope === 'wilayah') {
+    _genEnsureWilayahList();
+    loadGeneratePreview();
+  } else if (scope === 'all') {
+    loadGeneratePreview();
   }
 };
+
+window.onGenWilayahSearch = function() {
+  _genRenderWilayahList();
+};
+
+async function _genEnsureWilayahList() {
+  if (_genWilayahLoaded) {
+    _genRenderWilayahList();
+    return;
+  }
+  const box = document.getElementById('genWilayahList');
+  if (box) box.innerHTML = '<div style="padding:12px;font-size:12px;color:#94a3b8;">Memuat wilayah…</div>';
+  try {
+    const d = await App.api('/billing/generate/wilayah');
+    if (!d?.success) {
+      if (box) box.innerHTML = '<div style="padding:12px;font-size:12px;color:#dc2626;">' + _genEsc(d?.message || 'Gagal memuat wilayah.') + '</div>';
+      _genWilayahLoaded = false;
+      return;
+    }
+    _genWilayahList = Array.isArray(d?.data) ? d.data : [];
+    _genWilayahUnassigned = parseInt(d?.unassigned_eligible, 10) || 0;
+    _genWilayahLoaded = true;
+  } catch (e) {
+    _genWilayahList = [];
+    _genWilayahLoaded = false;
+    if (box) box.innerHTML = '<div style="padding:12px;font-size:12px;color:#dc2626;">Gagal memuat wilayah.</div>';
+    return;
+  }
+  _genRenderWilayahList();
+}
+
+function _genRenderWilayahList() {
+  const box = document.getElementById('genWilayahList');
+  if (!box) return;
+  const q = (document.getElementById('genWilayahSearch')?.value || '').trim().toLowerCase();
+  const rows = (_genWilayahList || []).filter((w) => {
+    if (!q) return true;
+    return String(w.name || '').toLowerCase().includes(q) || String(w.code || '').toLowerCase().includes(q);
+  });
+  if (!(_genWilayahList || []).length) {
+    box.innerHTML = '<div style="padding:12px;font-size:12px;color:#94a3b8;">Belum ada wilayah operasional. Tambah di menu Wilayah dulu.</div>';
+    _genRenderWilayahPicked();
+    return;
+  }
+  if (!rows.length) {
+    box.innerHTML = '<div style="padding:12px;font-size:12px;color:#94a3b8;">Tidak ada wilayah yang cocok.</div>';
+    _genRenderWilayahPicked();
+    return;
+  }
+  box.innerHTML = rows.map((w) => {
+    const picked = !!_genSelectedWilayah[w.id];
+    const elig = w.eligible || 0;
+    return `<div onclick="genToggleWilayah(${w.id})"
+      style="padding:9px 12px;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #f1f5f9;${picked ? 'background:#eff6ff;' : ''}">
+      <div style="display:flex;align-items:center;gap:9px;min-width:0;">
+        <span style="width:16px;height:16px;border-radius:50%;border:2px solid ${picked ? '#1a6ef5' : '#cbd5e1'};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+          ${picked ? '<span style="width:8px;height:8px;border-radius:50%;background:#1a6ef5;display:block;"></span>' : ''}
+        </span>
+        <div style="min-width:0;">
+          <div style="font-size:12.5px;font-weight:700;color:#0f172a;">${_genEsc(w.name)}</div>
+          <div style="font-size:11px;color:#94a3b8;">${_genEsc(w.code || '')}${elig ? ' · ' + elig + ' eligible' : ' · 0 eligible'}</div>
+        </div>
+      </div>
+      ${picked ? '<span style="font-size:11px;color:#1a6ef5;font-weight:700;">✓</span>' : ''}
+    </div>`;
+  }).join('');
+  _genRenderWilayahPicked();
+}
+
+let _genWTapAt = 0;
+let _genWTapId = 0;
+window.genToggleWilayah = function(id) {
+  id = Number(id);
+  const now = Date.now();
+  // HP kadang kirim touchend + click — tanpa debounce pilihan langsung batal.
+  if (_genWTapId === id && (now - _genWTapAt) < 400) return;
+  _genWTapAt = now;
+  _genWTapId = id;
+  const row = (_genWilayahList || []).find((w) => Number(w.id) === id);
+  if (!row) return;
+  if (_genSelectedWilayah[id]) delete _genSelectedWilayah[id];
+  else _genSelectedWilayah[id] = row;
+  _genRenderWilayahList();
+  _genUpdateGenerateBtn();
+  loadGeneratePreview();
+};
+
+function _genRenderWilayahPicked() {
+  const el = document.getElementById('genWilayahPicked');
+  if (!el) return;
+  const items = Object.values(_genSelectedWilayah || {});
+  const eligSum = items.reduce((s, w) => s + (parseInt(w.eligible, 10) || 0), 0);
+  let extra = '';
+  if (_genWilayahUnassigned > 0) {
+    extra = `<div style="margin-top:4px;color:#94a3b8;font-weight:500;">${_genWilayahUnassigned} pelanggan eligible belum punya wilayah — hanya ikut jika generate Semua Pelanggan.</div>`;
+  }
+  if (!items.length) {
+    el.innerHTML = 'Belum ada wilayah dipilih.' + extra;
+    el.style.color = '#1a6ef5';
+    return;
+  }
+  el.innerHTML = `${items.length} wilayah dipilih · ${eligSum} pelanggan eligible.` + extra;
+}
 
 // Tutup dropdown hasil saat klik di luar area picker (dipasang sekali).
 if (!window._genOutsideBound) {
@@ -610,11 +774,7 @@ function _genRenderChips() {
     wrap.insertAdjacentHTML('afterbegin',
       `<span style="font-size:11.5px;color:#16a34a;font-weight:700;align-self:center;margin-right:2px;">${items.length} dipilih:</span>`);
   }
-  const btn = document.getElementById('confirmGenerateBtn');
-  const scope = (document.querySelector('input[name="genScope"]:checked') || {}).value || 'all';
-  if (btn && scope === 'selected') {
-    btn.textContent = items.length ? `Generate (${items.length})` : 'Generate';
-  }
+  _genUpdateGenerateBtn();
 }
 
 // ── MARK OVERDUE ──────────────────────────────────────────────
