@@ -2602,7 +2602,7 @@ class BillingController {
       const counts = await Customer.findAll({
         attributes: [
           'wilayah_id',
-          [sequelize.fn('COUNT', sequelize.col('customers.id')), 'eligible']
+          [sequelize.fn('COUNT', sequelize.col('id')), 'eligible']
         ],
         where: {
           status: { [Op.in]: INVOICE_ELIGIBLE_STATUSES },
