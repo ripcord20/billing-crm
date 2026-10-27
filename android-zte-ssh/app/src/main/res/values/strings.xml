@@ -25,7 +25,7 @@
     <string name="pasted">Ditempel. Ketuk Kirim untuk mengirim ke OLT.</string>
     <string name="pasted_n">Ditempel %d baris. Ketuk Kirim — dikirim satu per satu.</string>
     <string name="paste_empty">Clipboard kosong</string>
-    <string name="hint_cmd">ketuk di sini untuk mengetik</string>
+    <string name="hint_cmd">ketuk di sini — saran perintah muncul saat mengetik</string>
     <string name="hist_up">↑</string>
     <string name="hist_down">↓</string>
     <string name="hist_up_desc">Perintah sebelumnya</string>

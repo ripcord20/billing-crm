@@ -9,6 +9,7 @@
     <color name="ok">#4ADE80</color>
     <color name="warn">#FDE047</color>
     <color name="danger">#FF7AD9</color>
+    <color name="error">#FF5252</color>
     <color name="text">#F8FAFC</color>
     <color name="muted">#D6DEE8</color>
     <color name="term_bg">#05040C</color>

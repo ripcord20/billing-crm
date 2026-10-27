@@ -10,7 +10,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.Spannable;
+import android.text.TextWatcher;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.UnderlineSpan;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -18,12 +23,17 @@ import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ListPopupWindow;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
@@ -48,8 +58,13 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
     private final StringBuilder buf = new StringBuilder();
     private final Handler main = new Handler(Looper.getMainLooper());
     private final CommandHistory history = new CommandHistory();
+    private final List<String> suggestionItems = new ArrayList<>();
     private int sendSeq;
     private PowerManager.WakeLock wakeLock;
+    private ListPopupWindow suggestionPopup;
+    private ArrayAdapter<String> suggestionAdapter;
+    private boolean highlighting;
+    private String cliMode = ZteCliParser.PRIV;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,6 +106,8 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         cmd.setShowSoftInputOnFocus(true);
         cmd.setFocusable(true);
         cmd.setFocusableInTouchMode(true);
+        setupSuggestions();
+        setupCommandAssist();
 
         LinearLayout chips = findViewById(R.id.chips);
         int pad = (int) (8 * getResources().getDisplayMetrics().density);
@@ -155,10 +172,12 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
                 return true;
             }
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                if (suggestionPopup != null && suggestionPopup.isShowing()) return false;
                 historyUp();
                 return true;
             }
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                if (suggestionPopup != null && suggestionPopup.isShowing()) return false;
                 historyDown();
                 return true;
             }
@@ -195,6 +214,78 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
             try { wakeLock.release(); } catch (Exception ignored) {}
         }
         wakeLock = null;
+    }
+
+    private void setupSuggestions() {
+        suggestionAdapter = new ArrayAdapter<>(this, R.layout.item_suggestion, suggestionItems);
+        suggestionPopup = new ListPopupWindow(this);
+        suggestionPopup.setAnchorView(cmd);
+        suggestionPopup.setAdapter(suggestionAdapter);
+        suggestionPopup.setModal(false);
+        suggestionPopup.setInputMethodMode(ListPopupWindow.INPUT_METHOD_NEEDED);
+        suggestionPopup.setPromptPosition(ListPopupWindow.POSITION_PROMPT_ABOVE);
+        suggestionPopup.setBackgroundDrawable(ContextCompat.getDrawable(this, R.drawable.bg_popup));
+        suggestionPopup.setOnItemClickListener((parent, view, position, id) -> {
+            if (position < 0 || position >= suggestionItems.size()) return;
+            String next = ZteCliParser.applySuggestion(cmd.getText().toString(), suggestionItems.get(position));
+            cmd.setText(next);
+            cmd.setSelection(next.length());
+            showCommandIme();
+        });
+    }
+
+    private void setupCommandAssist() {
+        cmd.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                refreshCommandAssist();
+            }
+        });
+    }
+
+    private void refreshCommandAssist() {
+        if (highlighting || cmd == null) return;
+        highlighting = true;
+        try {
+            Editable e = cmd.getText();
+            ForegroundColorSpan[] oldFg = e.getSpans(0, e.length(), ForegroundColorSpan.class);
+            for (ForegroundColorSpan sp : oldFg) e.removeSpan(sp);
+            UnderlineSpan[] oldUl = e.getSpans(0, e.length(), UnderlineSpan.class);
+            for (UnderlineSpan sp : oldUl) e.removeSpan(sp);
+
+            ZteCliParser.Result r = ZteCliParser.parse(cliMode, e.toString());
+            int err = ContextCompat.getColor(this, R.color.error);
+            for (ZteCliParser.Span span : r.errors) {
+                if (span.start < 0 || span.end > e.length() || span.start >= span.end) continue;
+                e.setSpan(new ForegroundColorSpan(err), span.start, span.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                e.setSpan(new UnderlineSpan(), span.start, span.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+            updateSuggestionPopup(r.suggestions);
+        } finally {
+            highlighting = false;
+        }
+    }
+
+    private void updateSuggestionPopup(List<String> suggestions) {
+        if (suggestionPopup == null) return;
+        suggestionItems.clear();
+        if (suggestions != null) suggestionItems.addAll(suggestions);
+        suggestionAdapter.notifyDataSetChanged();
+        if (suggestionItems.isEmpty()) {
+            if (suggestionPopup.isShowing()) suggestionPopup.dismiss();
+            return;
+        }
+        float d = getResources().getDisplayMetrics().density;
+        int row = (int) (40 * d);
+        suggestionPopup.setWidth(Math.max(cmd.getWidth(), (int) (180 * d)));
+        suggestionPopup.setHeight(Math.min(6, suggestionItems.size()) * row);
+        if (cmd.getWindowToken() != null) suggestionPopup.show();
+    }
+
+    private void dismissSuggestions() {
+        if (suggestionPopup != null && suggestionPopup.isShowing()) suggestionPopup.dismiss();
     }
 
     private void showCommandIme() {
@@ -328,6 +419,7 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
             return;
         }
         history.add(t);
+        cliMode = ZteCliParser.modeAfter(cliMode, t);
         append(t + "\n");
         if (session != null) session.send(t);
     }
@@ -367,6 +459,7 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
     protected void onDestroy() {
         sendSeq++;
         main.removeCallbacksAndMessages(null);
+        dismissSuggestions();
         OltKeepAliveService.stop(this);
         releaseWakeLock();
         if (session != null) session.disconnect();
