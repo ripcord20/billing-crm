@@ -8,8 +8,8 @@ Handshake SSH memakai algoritma OLT lama (ssh-rsa, group1, 3des) plus keyboard-i
 
 Langsung dari GitHub (tanpa menunggu deploy CRM):
 
-- APK: https://github.com/ripcord20/billing-crm/raw/cursor/zte-ssh-apk-9481/frontend/public/apk/ZTE-SSH.apk
-- ZIP (jika Chrome memblokir APK): https://github.com/ripcord20/billing-crm/raw/cursor/zte-ssh-apk-9481/frontend/public/apk/ZTE-SSH.zip
+- APK: https://github.com/ripcord20/billing-crm/raw/cursor/olt-cli-hints-4127/frontend/public/apk/ZTE-SSH.apk
+- ZIP (jika Chrome memblokir APK): https://github.com/ripcord20/billing-crm/raw/cursor/olt-cli-hints-4127/frontend/public/apk/ZTE-SSH.zip
 
 Setelah CRM di-deploy: **OLT Management → Unduh APK SSH** membuka `/apk/` (tombol APK + ZIP).
 
@@ -22,9 +22,10 @@ Sideload internal, bukan Play Store. Izinkan pasang dari sumber tidak dikenal, l
 3. C320 sering **Telnet port 23**; SSH port 22.
 4. Password enable opsional — dikirim setelah `terminal length 0`.
 5. Ketuk kotak perintah atau layar terminal supaya keyboard muncul, lalu ketik. Chip: `show card`, `show gpon onu uncfg`, `show processor`, dll.
-6. **Salin** = copy output terminal ke clipboard (kalau ada teks terpilih, hanya itu).
-7. **Tempel** = paste ke kotak perintah. Bisa tempel banyak baris dari WhatsApp/catatan, lalu **Kirim** — dikirim satu per satu.
-8. Long-press output juga bisa pilih teks (salin sistem Android).
+6. Salah urutan (`show onu gpon unconf`) atau salah ketik (`sshow …`): petunjuk kuning muncul — ketuk perintah yang benar. Kirim yang salah urutan/ketik dengan yakin juga otomatis dikoreksi untuk perintah `show` yang dikenali.
+7. **Salin** = copy output terminal ke clipboard (kalau ada teks terpilih, hanya itu).
+8. **Tempel** = paste ke kotak perintah. Bisa tempel banyak baris dari WhatsApp/catatan, lalu **Kirim** — dikirim satu per satu.
+9. Long-press output juga bisa pilih teks (salin sistem Android).
 
 ## Bangun sendiri
 

@@ -413,6 +413,17 @@ body.olt-home .att-event-scroll tbody tr:nth-child(8n+6) td { background: #e11d4
 body.olt-home .att-event-scroll tbody tr:nth-child(8n+7) td { background: #db2777 !important; }
 body.olt-home .att-event-scroll tbody tr:nth-child(8n+8) td { background: #7c3aed !important; }
 
+body.olt-home .cli-hint {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.45);
+}
+body.olt-home .cli-hint-reason { color: #fde68a; }
+body.olt-home .cli-hint-cmd {
+  background: #1c1917;
+  color: #fde68a;
+  border-color: #d97706;
+}
+
 body.olt-home .apexcharts-text,
 body.olt-home .apexcharts-legend-text,
 body.olt-home .apexcharts-datalabel {

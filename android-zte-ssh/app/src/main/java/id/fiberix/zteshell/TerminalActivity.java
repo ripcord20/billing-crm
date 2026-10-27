@@ -7,7 +7,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.TextWatcher;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -41,10 +43,15 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
     private TextView out;
     private ScrollView scroll;
     private EditText cmd;
+    private View hintWrap;
+    private TextView hintReason;
+    private LinearLayout hintChips;
     private OltSession session;
     private final StringBuilder buf = new StringBuilder();
     private final Handler main = new Handler(Looper.getMainLooper());
     private int sendSeq;
+    private String lastRawSent;
+    private String lastHintedFor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +75,9 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         out = findViewById(R.id.termOut);
         scroll = findViewById(R.id.termScroll);
         cmd = findViewById(R.id.cmd);
+        hintWrap = findViewById(R.id.hintWrap);
+        hintReason = findViewById(R.id.hintReason);
+        hintChips = findViewById(R.id.hintChips);
         // Output boleh di-select, tapi jangan mencuri fokus (itu yang menelan keyboard).
         out.setTextIsSelectable(true);
         out.setFocusable(false);
@@ -146,6 +156,13 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
                 return true;
             }
             return false;
+        });
+        cmd.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override public void afterTextChanged(Editable s) {
+                refreshHint();
+            }
         });
 
         append("[menghubungkan ke " + profile.host + "…]\n");
@@ -263,8 +280,73 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
             if (session != null) session.send("\n");
             return;
         }
+        lastRawSent = t;
         append(t + "\n");
-        if (session != null) session.send(t);
+        ZteCliCoach.Hint h = ZteCliCoach.hint(t);
+        String send = t;
+        if (h != null && h.highConfidence && h.correct != null && !h.correct.equalsIgnoreCase(t)) {
+            lastHintedFor = t;
+            append("[petunjuk] " + h.reason + "\n");
+            send = h.correct;
+        }
+        if (session != null) session.send(send);
+    }
+
+    private void refreshHint() {
+        if (cmd == null || hintWrap == null || hintReason == null || hintChips == null) return;
+        CharSequence seq = cmd.getText();
+        String typed = seq == null ? "" : seq.toString();
+        ZteCliCoach.Hint h = ZteCliCoach.hint(typed);
+        if (h == null) {
+            hintWrap.setVisibility(View.GONE);
+            return;
+        }
+        hintWrap.setVisibility(View.VISIBLE);
+        hintReason.setText(h.reason);
+        hintChips.removeAllViews();
+        addHintChip(h.correct);
+        if (h.alternatives != null) {
+            for (String alt : h.alternatives) {
+                if (alt != null && !alt.equals(h.correct)) addHintChip(alt);
+            }
+        }
+    }
+
+    private void addHintChip(String text) {
+        int pad = (int) (8 * getResources().getDisplayMetrics().density);
+        Button b = new Button(this);
+        b.setText(text);
+        b.setAllCaps(false);
+        b.setTextSize(11.5f);
+        b.setMinHeight(0);
+        b.setMinimumHeight(0);
+        b.setPadding(pad, pad / 2, pad, pad / 2);
+        b.setTextColor(ContextCompat.getColor(this, R.color.warn));
+        b.setBackgroundTintList(ContextCompat.getColorStateList(this, R.color.bg_input));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.setMarginEnd(pad);
+        b.setLayoutParams(lp);
+        b.setOnClickListener(v -> applyHint(text));
+        hintChips.addView(b);
+    }
+
+    private void applyHint(String text) {
+        if (cmd == null || text == null) return;
+        cmd.setText(text);
+        cmd.setSelection(text.length());
+        showCommandIme();
+    }
+
+    private void maybeHintOnError(String chunk) {
+        if (!ZteCliCoach.looksLikeCliError(chunk)) return;
+        if (lastRawSent == null || lastRawSent.equals(lastHintedFor)) return;
+        ZteCliCoach.Hint h = ZteCliCoach.hint(lastRawSent);
+        if (h == null) return;
+        lastHintedFor = lastRawSent;
+        append("\n[petunjuk] " + h.reason + "\n");
+        applyHint(h.correct);
     }
 
     private void append(String s) {
@@ -289,6 +371,7 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
     @Override
     public void onOutput(String chunk) {
         append(chunk);
+        maybeHintOnError(chunk);
     }
 
     @Override

@@ -115,6 +115,50 @@ const OltMgmt = {
         if (m && m.classList.contains('show')) closeModal(id, m);
       });
     });
+
+    this.bindCliHint();
+  },
+
+  bindCliHint() {
+    const inp = document.getElementById('rawCmd');
+    if (!inp) return;
+    inp.addEventListener('input', () => this.refreshCliHint());
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); this.runRaw(); }
+    });
+  },
+
+  refreshCliHint() {
+    const box = document.getElementById('rawHint');
+    if (!box) return;
+    if (!this._isZte() || typeof OltCliHints === 'undefined') {
+      box.classList.remove('show');
+      box.innerHTML = '';
+      return;
+    }
+    const inp = document.getElementById('rawCmd');
+    const typed = inp ? inp.value : '';
+    const h = OltCliHints.hint(typed);
+    if (!h) {
+      box.classList.remove('show');
+      box.innerHTML = '';
+      return;
+    }
+    const cmds = [h.correct].concat(h.alternatives || []).filter((c, i, a) => c && a.indexOf(c) === i);
+    box.classList.add('show');
+    box.innerHTML = '<div class="cli-hint-reason">' + esc(h.reason) + '</div>'
+      + '<div class="cli-hint-cmds">'
+      + cmds.map(c => '<button type="button" class="cli-hint-cmd">' + esc(c) + '</button>').join('')
+      + '</div>';
+    box.querySelectorAll('.cli-hint-cmd').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (inp) {
+          inp.value = btn.textContent;
+          inp.focus();
+        }
+        this.refreshCliHint();
+      });
+    });
   },
 
   // ════════════════════ Filter via stat card (clickable) ════════════════════
@@ -153,7 +197,7 @@ const OltMgmt = {
     if (tab === 'vlan' && this.activeOltId && !this._vlanLoaded) { this._vlanLoaded = true; this.loadVlans(); }
     if (tab === 'system' && this.activeOltId && !this._systemLoaded) { this._systemLoaded = true; this.loadSystem(true); }
     if (tab === 'cards' && this.activeOltId && !this._cardsLoaded) { this._cardsLoaded = true; this.loadCards(true); }
-    if (tab === 'cli') { this.renderRawSuggest(); }
+    if (tab === 'cli') { this.renderRawSuggest(); this.refreshCliHint(); }
     if (tab === 'profil' && this.activeOltId && !this._profilLoaded) { this._profilLoaded = true; this.loadProfiles(); }
   },
 
@@ -1477,8 +1521,19 @@ const OltMgmt = {
 
   async runRaw() {
     if (!this.activeOltId) { App.showToast('Pilih OLT dulu', 'warning'); return; }
-    const cmd = document.getElementById('rawCmd').value.trim();
-    if (!cmd) { App.showToast('Masukkan perintah show', 'warning'); return; }
+    const typed = document.getElementById('rawCmd').value.trim();
+    if (!typed) { App.showToast('Masukkan perintah show', 'warning'); return; }
+    let cmd = typed;
+    let note = '';
+    if (this._isZte() && typeof OltCliHints !== 'undefined') {
+      const h = OltCliHints.hint(typed);
+      if (h && h.highConfidence && h.correct && h.correct.toLowerCase() !== typed.toLowerCase()) {
+        note = '[petunjuk] ' + h.reason + '\n[dikirim] ' + h.correct + '\n\n';
+        cmd = h.correct;
+        document.getElementById('rawCmd').value = cmd;
+        this.refreshCliHint();
+      }
+    }
     const out = document.getElementById('rawOutput');
     const btn = document.getElementById('btnRunRaw');
     btn.disabled = true;
@@ -1487,12 +1542,18 @@ const OltMgmt = {
     try {
       const res = await App.api(`/olt-mgmt/${this.activeOltId}/raw`, { method: 'POST', body: JSON.stringify({ cmd }) });
       if (res?.success) {
-        out.textContent = res.data.output || '(output kosong)';
+        let text = note + (res.data.output || '(output kosong)');
+        if (!note && this._isZte() && typeof OltCliHints !== 'undefined'
+            && /Error 2020|Invalid command|Invalid input|Incomplete command/i.test(text)) {
+          const h = OltCliHints.hint(typed);
+          if (h) text += '\n\n[petunjuk] ' + h.reason;
+        }
+        out.textContent = text;
       } else {
-        out.textContent = '✗ ' + (res?.message || 'Gagal');
+        out.textContent = (note || '') + '✗ ' + (res?.message || 'Gagal');
       }
     } catch (e) {
-      out.textContent = '✗ ' + e.message;
+      out.textContent = (note || '') + '✗ ' + e.message;
     } finally { btn.disabled = false; }
   },
 
