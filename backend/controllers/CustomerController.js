@@ -5,11 +5,35 @@ const { generateUniqueCustomerId, paginateResponse } = require('../utils/helpers
 const { getCompanyName } = require('../utils/companyInfo');
 const InfraSync = require('../services/CustomerInfraSyncService');
 const { applyTenantWhere, getTenantId, assertCustomerTenant, isTenantOwner } = require('../utils/tenantScope');
+const {
+  STOP_REASONS, STOP_PICKER_STATUSES, EXAMPLE_STOPPED, applyStopFields,
+  displayStoppedAt, todayYmd, customerListStatusClause, attachSettlement,
+  shouldApplyMonthFilter, monthBounds, isStopPickerQuery, normalizeNotes,
+} = require('../utils/customerStop');
+
+async function stoppedOwingIds(inactiveWhere) {
+  const rows = await Customer.findAll({
+    where: inactiveWhere,
+    attributes: ['id', 'carry_over_amount'],
+    raw: true,
+  });
+  if (!rows.length) return [];
+  const ids = rows.map(r => r.id);
+  const carry = new Set(rows.filter(r => parseFloat(r.carry_over_amount) > 0).map(r => r.id));
+  const unpaid = await Invoice.findAll({
+    attributes: ['customer_id'],
+    where: { customer_id: { [Op.in]: ids }, status: { [Op.in]: ['unpaid', 'overdue'] } },
+    group: ['customer_id'],
+    raw: true,
+  });
+  unpaid.forEach(r => carry.add(r.customer_id));
+  return [...carry];
+}
 
 class CustomerController {
   async index(req, res) {
     try {
-      const { page = 1, limit = 20, search, status, package_id, province, regency, district } = req.query;
+      const { page = 1, limit = 20, search, status, package_id, province, regency, district, for_stop } = req.query;
       const where = applyTenantWhere(req, {});
       
       if (search) {
@@ -17,12 +41,21 @@ class CustomerController {
           { name: { [Op.like]: `%${search}%` } },
           { customer_id: { [Op.like]: `%${search}%` } },
           { phone: { [Op.like]: `%${search}%` } },
-          { address: { [Op.like]: `%${search}%` } }
+          { address: { [Op.like]: `%${search}%` } },
+          { pppoe_username: { [Op.like]: `%${search}%` } }
         ];
       }
-      // overdue & due_soon adalah filter virtual — tidak set where.status
-      if (status && status !== 'overdue' && status !== 'due_soon') {
-        where.status = status
+      // Picker Catat berhenti: aktif + isolir + suspend (bukan hanya active).
+      // Arsip inactive hanya di /customers/stopped — tidak di modul pelanggan.
+      if (isStopPickerQuery(for_stop)) {
+        where.status = { [Op.in]: STOP_PICKER_STATUSES };
+      } else {
+        const listStatus = customerListStatusClause(status);
+        if (listStatus.empty) {
+          return res.json({ success: true, ...paginateResponse([], 0, page, limit) });
+        }
+        if (listStatus.status) where.status = listStatus.status;
+        else if (listStatus.excludeStopped) where.status = { [Op.ne]: 'inactive' };
       }
       if (package_id) where.package_id = package_id;
       // ── Filter per-area (berjenjang) ──
@@ -272,6 +305,9 @@ class CustomerController {
       delete sanitized.last_portal_login;     // diset otomatis oleh sistem saat login
       delete sanitized.public_link_token;     // hanya via endpoint payment-link (generate/revoke)
 
+      const nextStatus = sanitized.status || customer.status;
+      Object.assign(sanitized, applyStopFields(customer.status, nextStatus, sanitized));
+
       await customer.update(sanitized);
       const full = await Customer.findByPk(customer.id, {
         include: [{ model: Package, as: 'package' }]
@@ -289,6 +325,181 @@ class CustomerController {
         ? error.errors.map(e => e.message).join(', ')
         : error.message;
       res.status(400).json({ success: false, message: msg });
+    }
+  }
+
+  // ── PELANGGAN BERHENTI ──────────────────────────────────────────────
+  async stoppedMeta(req, res) {
+    res.json({ success: true, data: { reasons: STOP_REASONS, example: EXAMPLE_STOPPED } });
+  }
+
+  async stopped(req, res) {
+    try {
+      const { page = 1, limit = 20, search, reason, month, settlement } = req.query;
+      const where = applyTenantWhere(req, { status: 'inactive' });
+      const searchTerm = String(search || '').trim();
+      if (searchTerm) {
+        where[Op.or] = [
+          { name: { [Op.like]: `%${searchTerm}%` } },
+          { customer_id: { [Op.like]: `%${searchTerm}%` } },
+          { phone: { [Op.like]: `%${searchTerm}%` } },
+          { pppoe_username: { [Op.like]: `%${searchTerm}%` } },
+          { stop_reason: { [Op.like]: `%${searchTerm}%` } },
+          { stop_notes: { [Op.like]: `%${searchTerm}%` } },
+        ];
+      }
+      if (reason) where.stop_reason = reason;
+      if (shouldApplyMonthFilter(searchTerm, month)) {
+        const bounds = monthBounds(month);
+        if (bounds) where.stopped_at = { [Op.gte]: bounds.start, [Op.lt]: bounds.next };
+      }
+
+      const settle = String(settlement || '').toLowerCase();
+      if (settle === 'tanggungan' || settle === 'lunas') {
+        const owingIds = await stoppedOwingIds(where);
+        if (settle === 'tanggungan') {
+          if (!owingIds.length) {
+            return res.json({
+              success: true, example: EXAMPLE_STOPPED, reasons: STOP_REASONS,
+              ...paginateResponse([], 0, page, limit),
+            });
+          }
+          where.id = { [Op.in]: owingIds };
+        } else if (owingIds.length) {
+          where.id = { [Op.notIn]: owingIds };
+        }
+      }
+
+      const { count, rows } = await Customer.findAndCountAll({
+        where,
+        include: [
+          { model: Package, as: 'package', attributes: ['id', 'name', 'price'] },
+          {
+            model: Invoice, as: 'invoices',
+            attributes: ['id', 'invoice_number', 'status', 'total', 'amount', 'due_date', 'period_month', 'period_year'],
+            required: false,
+            separate: true,
+            where: { status: { [Op.in]: ['unpaid', 'overdue'] } },
+          },
+        ],
+        offset: (page - 1) * limit,
+        limit: parseInt(limit, 10),
+        order: [
+          ['stopped_at', 'DESC'],
+          ['updated_at', 'DESC'],
+        ],
+      });
+      const data = rows.map(c => {
+        const json = attachSettlement(c);
+        json.stopped_on = displayStoppedAt(json);
+        json.area = [json.district, json.regency].filter(Boolean).join(', ') || json.address || null;
+        return json;
+      });
+      res.json({ success: true, example: EXAMPLE_STOPPED, reasons: STOP_REASONS, ...paginateResponse(data, count, page, limit) });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async stoppedStats(req, res) {
+    try {
+      const where = applyTenantWhere(req, { status: 'inactive' });
+      const total = await Customer.count({ where });
+      const month = todayYmd().slice(0, 7);
+      const bounds = monthBounds(month);
+      const thisMonth = bounds
+        ? await Customer.count({ where: { ...where, stopped_at: { [Op.gte]: bounds.start, [Op.lt]: bounds.next } } })
+        : 0;
+      const rows = await Customer.findAll({
+        where,
+        attributes: ['stop_reason'],
+        raw: true,
+      });
+      const reasonCount = {};
+      for (const r of rows) {
+        const k = r.stop_reason || 'Belum diisi';
+        reasonCount[k] = (reasonCount[k] || 0) + 1;
+      }
+      const topReason = Object.entries(reasonCount).sort((a, b) => b[1] - a[1])[0] || null;
+      const owingIds = await stoppedOwingIds(where);
+      const tanggungan = owingIds.length;
+      res.json({
+        success: true,
+        data: {
+          total, this_month: thisMonth, month,
+          tanggungan, lunas: Math.max(0, total - tanggungan),
+          top_reason: topReason ? { reason: topReason[0], count: topReason[1] } : null,
+          example: EXAMPLE_STOPPED,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async markStopped(req, res) {
+    try {
+      const customer = await Customer.findByPk(req.params.id);
+      if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+      if (!assertCustomerTenant(req, customer)) {
+        return res.status(404).json({ success: false, message: 'Customer not found' });
+      }
+      if (customer.status === 'inactive') {
+        return res.status(400).json({ success: false, message: 'Pelanggan ini sudah berstatus berhenti' });
+      }
+      const patch = applyStopFields(customer.status, 'inactive', req.body || {});
+      await customer.update({ status: 'inactive', ...patch });
+      const full = await Customer.findByPk(customer.id, {
+        include: [
+          { model: Package, as: 'package' },
+          {
+            model: Invoice, as: 'invoices',
+            attributes: ['id', 'invoice_number', 'status', 'total', 'amount', 'due_date', 'period_month', 'period_year'],
+            required: false,
+            separate: true,
+          },
+        ],
+      });
+      await InfraSync.syncCustomerToInfra(full).catch(() => {});
+      const data = attachSettlement(full);
+      res.json({ success: true, message: 'Pelanggan dicatat berhenti', data });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  async reactivate(req, res) {
+    try {
+      const customer = await Customer.findByPk(req.params.id);
+      if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+      if (!assertCustomerTenant(req, customer)) {
+        return res.status(404).json({ success: false, message: 'Customer not found' });
+      }
+      const patch = applyStopFields(customer.status, 'active', {});
+      await customer.update({ status: 'active', ...patch });
+      const full = await Customer.findByPk(customer.id, { include: [{ model: Package, as: 'package' }] });
+      await InfraSync.syncCustomerToInfra(full).catch(() => {});
+      res.json({ success: true, message: 'Pelanggan diaktifkan kembali', data: full });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  async updateStopNotes(req, res) {
+    try {
+      const customer = await Customer.findByPk(req.params.id);
+      if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+      if (!assertCustomerTenant(req, customer)) {
+        return res.status(404).json({ success: false, message: 'Customer not found' });
+      }
+      if (customer.status !== 'inactive') {
+        return res.status(400).json({ success: false, message: 'Catatan hanya untuk pelanggan yang sudah berhenti' });
+      }
+      const stop_notes = normalizeNotes(req.body && req.body.stop_notes);
+      await customer.update({ stop_notes });
+      res.json({ success: true, message: 'Catatan disimpan', data: { id: customer.id, stop_notes } });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
     }
   }
 
