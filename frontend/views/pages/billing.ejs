@@ -394,7 +394,7 @@
 
 <!-- Generate Modal -->
 <div class="modal-overlay" id="generateModal">
-  <div class="modal" style="max-width:460px;">
+  <div class="modal" style="max-width:500px;">
     <div class="modal-header">
       <h2>Generate Invoice Bulanan</h2>
       <button class="modal-close" onclick="closeGenerateModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
@@ -419,7 +419,7 @@
         </div>
       </div>
 
-      <!-- Cakupan: semua pelanggan atau pelanggan tertentu -->
+      <!-- Cakupan: semua, per wilayah, atau pelanggan tertentu -->
       <label class="form-label" style="margin-bottom:6px;">Cakupan Pelanggan</label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;" id="genScopeGroup">
         <label class="gen-scope-opt" style="display:flex;align-items:center;gap:9px;padding:10px 12px;border:1.5px solid #1a6ef5;border-radius:10px;cursor:pointer;background:#eff6ff;transition:all .15s;">
@@ -436,6 +436,20 @@
             <div style="font-size:11px;color:#64748b;">Pilih satu / beberapa</div>
           </div>
         </label>
+        <label class="gen-scope-opt" style="grid-column:1/-1;display:flex;align-items:center;gap:9px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:all .15s;">
+          <input type="radio" name="genScope" value="wilayah" onchange="onGenScopeChange()">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#0f172a;">Per Wilayah</div>
+            <div style="font-size:11px;color:#64748b;">Generate tagihan satu atau beberapa kampung</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- Wilayah picker (muncul saat mode 'wilayah') -->
+      <div id="genWilayahPicker" style="display:none;margin-bottom:12px;">
+        <input type="text" class="form-control" id="genWilayahSearch" placeholder="Cari wilayah…" autocomplete="off" oninput="onGenWilayahSearch()" style="margin-bottom:8px;">
+        <div id="genWilayahList" style="border:1.5px solid #e2e8f0;border-radius:10px;max-height:196px;overflow-y:auto;background:#fff;"></div>
+        <div id="genWilayahPicked" style="font-size:11.5px;color:#1a6ef5;font-weight:700;margin-top:8px;">Belum ada wilayah dipilih.</div>
       </div>
 
       <!-- Customer picker (muncul saat mode 'selected') -->
@@ -582,7 +596,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/billing.js?v=1783162200"></script>
+<script src="/js/billing.js?v=genw2"></script>
 
 <script>
 (function(){

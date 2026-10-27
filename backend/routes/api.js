@@ -513,6 +513,10 @@ router.get('/billing/generate/preview',
   authenticate, demoGuard,
   BillingController.previewGenerate
 );
+router.get('/billing/generate/wilayah',
+  authenticate, demoGuard,
+  BillingController.listGenerateWilayah
+);
 
 // ── Logo & Favicon Upload ────────────────────────────────────────────
 // (multer/path/fs sudah di-require di atas)
