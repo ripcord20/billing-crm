@@ -6,8 +6,6 @@ const MONTHS = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agu
 // ── INIT ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof App !== 'undefined') App.init();
-  // Auto-mark overdue setiap kali halaman dibuka
-  App.api('/billing/mark-overdue', { method: 'POST' }).catch(function(){});
 
   // Isi dropdown tahun: tahun ini + 4 tahun ke belakang
   const yearSel = document.getElementById('invoiceYear');
@@ -23,6 +21,9 @@ document.addEventListener('DOMContentLoaded', () => {
   loadBillStats();
   loadInvoices();
   refreshProofBadge();
+  // Mark overdue setelah tabel tampil, paling sekali per jam.
+  // Jangan menahan buka halaman — UPDATE semua invoice unpaid di LAN yang sama.
+  setTimeout(_maybeMarkOverdue, 1200);
 
   const s = document.getElementById('searchInvoice');
   const f = document.getElementById('invoiceStatus');
@@ -618,6 +619,16 @@ function _genRenderChips() {
 }
 
 // ── MARK OVERDUE ──────────────────────────────────────────────
+function _maybeMarkOverdue() {
+  try {
+    const key = 'bill-overdue-at';
+    const last = parseInt(sessionStorage.getItem(key) || '0', 10);
+    if (Date.now() - last < 3600000) return;
+    sessionStorage.setItem(key, String(Date.now()));
+  } catch (_) { /* private mode */ }
+  App.api('/billing/mark-overdue', { method: 'POST' }).catch(function () {});
+}
+
 window.markOverdue = async function() {
   showBillConfirm(
     'Tandai Overdue',
