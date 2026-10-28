@@ -40,12 +40,11 @@ class OntController {
 
       // Dropdown / picker: SN+model saja, tanpa join pelanggan.
       if (String(req.query.picker) === '1') {
-        const lim = Math.min(Math.max(parseInt(limit, 10) || 500, 1), 500);
         const rows = await OntDevice.findAll({
           where,
           attributes: ['id', 'serial_number', 'model'],
           order: [['serial_number', 'ASC']],
-          limit: lim
+          limit: 2000
         });
         return res.json({ success: true, data: rows });
       }

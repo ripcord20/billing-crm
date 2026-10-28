@@ -32,12 +32,12 @@ class CustomerController {
 
       // Dropdown / picker: id+nama saja, tanpa Package/Invoice.
       if (String(req.query.picker) === '1') {
-        const lim = Math.min(Math.max(parseInt(limit, 10) || 500, 1), 500);
+        // Jangan pakai req.query.limit: akun demo dipotong ke 50.
         const rows = await Customer.findAll({
           where,
           attributes: ['id', 'customer_id', 'name'],
           order: [['name', 'ASC']],
-          limit: lim
+          limit: 2000
         });
         return res.json({ success: true, data: rows });
       }

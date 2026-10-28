@@ -194,7 +194,7 @@ async function loadCategories() {
 
 async function loadCustomerOptions() {
   try {
-    const r = await fetch('/api/customers?picker=1&limit=500&status=active');
+    const r = await fetch('/api/customers?picker=1&status=active');
     const j = await r.json();
     if (!j.success) return;
     customers = j.data || [];
@@ -206,7 +206,7 @@ async function loadCustomerOptions() {
 
 async function loadInfraOptions() {
   try {
-    const r = await fetch('/api/infrastructure?picker=1&limit=500');
+    const r = await fetch('/api/infrastructure?picker=1');
     const j = await r.json();
     if (!j.success) return;
     infras = j.data || [];
@@ -218,7 +218,7 @@ async function loadInfraOptions() {
 
 async function loadOntOptions() {
   try {
-    const r = await fetch('/api/ont?picker=1&limit=500');
+    const r = await fetch('/api/ont?picker=1');
     const j = await r.json();
     if (!j.success) return;
     onts = j.data || [];
