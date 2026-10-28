@@ -14,6 +14,17 @@ class InfrastructureController {
       if (status) where.status = status;
       if (search) where.name   = { [Op.like]: `%${search}%` };
 
+      // Dropdown / picker: id+nama+tipe, jangan tarik semua kolom.
+      if (String(req.query.picker) === '1') {
+        const points = await InfrastructurePoint.findAll({
+          where,
+          attributes: ['id', 'name', 'type'],
+          order: [['name', 'ASC']],
+          limit: 2000,
+        });
+        return res.json({ success: true, data: points });
+      }
+
       const points = await InfrastructurePoint.findAll({
         where,
         order: [['created_at', 'DESC']],

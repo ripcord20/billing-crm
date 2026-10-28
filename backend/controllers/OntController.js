@@ -38,6 +38,17 @@ class OntController {
       if (status)       where.status = status;
       if (manufacturer) where.manufacturer = { [Op.like]: `%${manufacturer}%` };
 
+      // Dropdown / picker: SN+model saja, tanpa join pelanggan.
+      if (String(req.query.picker) === '1') {
+        const rows = await OntDevice.findAll({
+          where,
+          attributes: ['id', 'serial_number', 'model'],
+          order: [['serial_number', 'ASC']],
+          limit: 2000
+        });
+        return res.json({ success: true, data: rows });
+      }
+
       const offset = (page - 1) * limit;
       const { count, rows } = await OntDevice.findAndCountAll({
         where,

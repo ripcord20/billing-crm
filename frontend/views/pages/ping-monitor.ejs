@@ -5,7 +5,10 @@
   <meta name="theme-color" content="#100c22">
   <meta name="color-scheme" content="dark">
   <title><%= title %> - <%= appName %></title>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="/css/app.css">
   <style>
     :root {
@@ -575,7 +578,7 @@
   <!-- TOAST -->
   <div class="toast-wrap" id="toastWrap"></div>
 
-  <script src="/js/app.js"></script>
+  <script src="/js/app.js?v=spd1"></script>
   <script src="/js/mikrotik-selector.js"></script>
   <script>
   /* ══════════════════════════════════════════════════════

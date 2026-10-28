@@ -4,9 +4,12 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
   <meta name="theme-color" content="#1e40af">
   <title><%= typeof title !== 'undefined' ? title : 'Detail Ticket' %> - <%= appName %></title>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"></noscript>
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+  <script defer src="/vendor/apexcharts/apexcharts.min.js"></script>
   <style>
     :root{
       --font:'Plus Jakarta Sans',sans-serif;
@@ -507,7 +510,7 @@
 </nav>
 
 <script>const TID='<%= ticketId %>';</script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/vendor/leaflet/leaflet.js"></script>
 <script>
 'use strict';
 let tkData=null,leafMap=null,selFiles=[],selStatus=null;

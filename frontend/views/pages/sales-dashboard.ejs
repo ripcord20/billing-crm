@@ -4,13 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= typeof title !== 'undefined' ? title : 'Sales Dashboard' %> - <%= appName %></title>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="/css/app.css">
   <link rel="stylesheet" href="/css/sales-palette.css?v=sales2">
   <link rel="stylesheet" href="/css/rainbow-tables.css?v=rb1">
   <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+  <link rel="stylesheet" href="/vendor/leaflet/MarkerCluster.css">
+  <link rel="stylesheet" href="/vendor/leaflet/MarkerCluster.Default.css">
   <style>
     :root{
       --s-blue:#2563eb; --s-blue-d:#1d4ed8; --s-blue3:#1e3a8a; --s-sky:#0891b2;
@@ -1254,10 +1257,10 @@
 <div class="sxmodal" id="detModal"><div class="sxmodal-box" id="detBox"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
+<script src="/vendor/apexcharts/apexcharts.min.js"></script>
 <script src="/vendor/leaflet/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="/vendor/leaflet/leaflet.markercluster.js"></script>
+<script src="/vendor/leaflet/leaflet-heat.js"></script>
 <script>
 const ROLE = <%- JSON.stringify((user && user.role && (typeof user.role==='object'? user.role.name : user.role)) || '') %>;
 const APP_NAME = <%- JSON.stringify(typeof appName !== 'undefined' ? appName : 'FLAYNET') %>;

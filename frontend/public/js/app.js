@@ -13,8 +13,8 @@ const App = {
     this.initSidebar();
     this.initNotifications();
     this.initLogout();
-    this.initSocket();
     this.initSearch();
+    this._whenIdle(() => this.initSocket(), 2500);
   },
 
   initTheme() {
@@ -260,7 +260,39 @@ const App = {
     }
   },
 
+  _whenIdle(fn, timeout) {
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(fn, { timeout: timeout || 2000 });
+    } else {
+      setTimeout(fn, 300);
+    }
+  },
+
   initSocket() {
+    if (this.socket) return;
+    const bind = () => this._bindSocket();
+    if (typeof io !== 'undefined') {
+      bind();
+      return;
+    }
+    const src = '/js/socket.io.min.js';
+    if (document.querySelector('script[src="' + src + '"],script[src^="' + src + '?"]')) {
+      let n = 0;
+      const wait = setInterval(() => {
+        n += 1;
+        if (typeof io !== 'undefined') { clearInterval(wait); bind(); }
+        else if (n > 80) clearInterval(wait);
+      }, 50);
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = bind;
+    s.onerror = () => console.warn('Socket script gagal dimuat');
+    document.head.appendChild(s);
+  },
+
+  _bindSocket() {
     if (typeof io === 'undefined') return;
     if (this.socket) return; // cegah koneksi ganda
     try {

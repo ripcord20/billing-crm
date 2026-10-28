@@ -30,6 +30,18 @@ class CustomerController {
       if (regency)  where.regency  = regency;
       if (district) where.district = district;
 
+      // Dropdown / picker: id+nama saja, tanpa Package/Invoice.
+      if (String(req.query.picker) === '1') {
+        // Jangan pakai req.query.limit: akun demo dipotong ke 50.
+        const rows = await Customer.findAll({
+          where,
+          attributes: ['id', 'customer_id', 'name'],
+          order: [['name', 'ASC']],
+          limit: 2000
+        });
+        return res.json({ success: true, data: rows });
+      }
+
       const offset = (page - 1) * limit;
       const { Invoice } = require('../models');
       const { count, rows } = await Customer.findAndCountAll({
