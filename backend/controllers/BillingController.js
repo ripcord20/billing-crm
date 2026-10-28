@@ -73,30 +73,47 @@ class BillingController {
         }
       ];
 
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+      const pageNum  = Math.max(1, parseInt(page, 10) || 1);
+      const offset   = (pageNum - 1) * limitNum;
+
       if (search && !where[Op.or]) {
         // Also search by invoice_number
         const invWhere = { ...where, invoice_number: { [Op.like]: '%' + search + '%' } };
-        const byInv = await Invoice.findAndCountAll({
-          where: invWhere,
-          include: [
-            { model: Customer, as: 'customer', attributes: ['id','customer_id','name','phone','email'], required: false },
-            { model: Payment, as: 'payments', attributes: ['id','amount','payment_method','payment_date','reference_number','gateway','notes'], required: false, limit: 1, order: [['payment_date','DESC']] }
-          ],
-          offset: (page-1)*limit, limit: parseInt(limit), order: [['due_date','ASC'],['created_at','DESC']]
-        });
-        if (byInv.count > 0) {
+        const byInvCount = await Invoice.count({ where: invWhere });
+        if (byInvCount > 0) {
+          const byInvRows = await Invoice.findAll({
+            where: invWhere,
+            include: [
+              { model: Customer, as: 'customer', attributes: ['id','customer_id','name','phone','email'], required: false },
+              { model: Payment, as: 'payments', attributes: ['id','amount','payment_method','payment_date','reference_number','gateway','notes'], required: false, limit: 1, order: [['payment_date','DESC']] }
+            ],
+            offset, limit: limitNum, order: [['due_date','ASC'],['created_at','DESC']]
+          });
           const { applyTaxToInvoiceList } = require('../utils/taxHelper');
-          const adjusted = await applyTaxToInvoiceList(byInv.rows);
-          return res.json({ success: true, ...paginateResponse(adjusted, byInv.count, page, limit) });
+          const adjusted = await applyTaxToInvoiceList(byInvRows);
+          return res.json({ success: true, ...paginateResponse(adjusted, byInvCount, pageNum, limitNum) });
         }
       }
 
-      const offset = (page - 1) * limit;
-      const { count, rows } = await Invoice.findAndCountAll({
+      const needCustomerJoin = !!search || !!tenantId;
+      const count = needCustomerJoin
+        ? await Invoice.count({
+            where,
+            include: [{
+              model: Customer, as: 'customer',
+              attributes: [],
+              where: Object.keys(customerWhere).length ? customerWhere : undefined,
+              required: true
+            }],
+            distinct: true
+          })
+        : await Invoice.count({ where });
+      const rows = await Invoice.findAll({
         where,
         include: includeOpts,
         offset,
-        limit: parseInt(limit),
+        limit: limitNum,
         order: [['due_date', 'ASC'], ['created_at', 'DESC']]
       });
 
@@ -106,7 +123,7 @@ class BillingController {
       const { applyTaxToInvoiceList } = require('../utils/taxHelper');
       const adjustedRows = await applyTaxToInvoiceList(rows);
 
-      res.json({ success: true, ...paginateResponse(adjustedRows, count, page, limit) });
+      res.json({ success: true, ...paginateResponse(adjustedRows, count, pageNum, limitNum) });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
@@ -670,75 +687,37 @@ class BillingController {
       const currentMonth = (qMonth >= 1 && qMonth <= 12) ? qMonth : (moment().month() + 1);
       const currentYear  = (qYear  >= 2000)              ? qYear  : moment().year();
       const today        = moment().format('YYYY-MM-DD');
-
-      // Overdue: invoice unpaid/overdue yang due_date sudah lewat (semua periode)
-      // Semua kartu di-scope ke periode terpilih (period_month/period_year)
-      // supaya konsisten saat user memilih periode di selector.
-      const periodWhere = { period_month: currentMonth, period_year: currentYear };
-
-      // Overdue: invoice unpaid/overdue periode ini yang due_date sudah lewat.
-      const overdue = await Invoice.count({
-        where: {
-          ...periodWhere,
-          status: { [Op.in]: ['unpaid','overdue'] },
-          due_date: { [Op.lt]: today }
-        }
-      });
-
-      // Belum Bayar: invoice belum dibayar (unpaid + overdue) periode ini.
-      const unpaid = await Invoice.count({
-        where: {
-          ...periodWhere,
-          status: { [Op.in]: ['unpaid','overdue'] }
-        }
-      });
-
-      // Paid: invoice lunas periode ini
-      const paidThisMonth = await Invoice.count({
-        where: { ...periodWhere, status: 'paid' }
-      });
-
-      // Jumlah PELANGGAN UNIK yang invoicenya paid periode ini.
-      const paidCustomerRows = await Invoice.findAll({
-        where: { ...periodWhere, status: 'paid' },
-        attributes: [[sequelize.fn('COUNT', sequelize.fn('DISTINCT', sequelize.col('customer_id'))), 'cnt']],
-        raw: true
-      });
-      const paidCustomerCount = parseInt(paidCustomerRows?.[0]?.cnt || 0);
-
-      // Revenue: total payment yang masuk pada periode terpilih
       const firstDay = moment({ year: currentYear, month: currentMonth - 1, day: 1 }).startOf('month').format('YYYY-MM-DD');
       const lastDay  = moment({ year: currentYear, month: currentMonth - 1, day: 1 }).endOf('month').format('YYYY-MM-DD');
-      const revenueThisMonth = await Payment.sum('amount', {
-        where: { payment_date: { [Op.between]: [firstDay, lastDay] } }
-      }) || 0;
 
-      // ── Total Potensi Penerimaan (periode terpilih) ──
-      // periodWhere sudah dideklarasi di atas. Total = SELURUH nilai invoice
-      // periode ini (semua status), TIDAK dikurangi yang sudah bayar.
-      const totalInvoiceValue = await Invoice.sum('total', { where: periodWhere }) || 0;
-      // Nilai invoice periode ini yang SUDAH lunas.
-      const paidInvoiceValue = await Invoice.sum('total', {
-        where: { ...periodWhere, status: 'paid' }
-      }) || 0;
-      // Sisa Tertagih = nilai invoice periode ini yang belum lunas (unpaid + overdue).
-      const outstandingInvoiceValue = await Invoice.sum('total', {
-        where: { ...periodWhere, status: { [Op.in]: ['unpaid', 'overdue'] } }
-      }) || 0;
-      // Jumlah invoice periode ini (semua status) & yang lunas.
-      const totalInvoiceCount = await Invoice.count({ where: periodWhere });
-      const paidInvoiceCount  = await Invoice.count({ where: { ...periodWhere, status: 'paid' } });
-      // Jumlah invoice yang belum lunas periode ini.
-      const outstandingInvoiceCount = await Invoice.count({
-        where: { ...periodWhere, status: { [Op.in]: ['unpaid', 'overdue'] } }
-      });
-      // Jumlah pelanggan unik yang ditagih periode ini.
-      const custRows = await Invoice.findAll({
-        where: periodWhere,
-        attributes: [[sequelize.fn('COUNT', sequelize.fn('DISTINCT', sequelize.col('customer_id'))), 'cnt']],
-        raw: true
-      });
-      const potensiCustomerCount = parseInt(custRows?.[0]?.cnt || 0);
+      // Satu query agregat menggantikan ~13 COUNT/SUM berurutan.
+      // Arti field sama: unpaid = unpaid+overdue periode ini (termasuk yang overdue).
+      const [invRows, revenueSum] = await Promise.all([
+        sequelize.query(
+          `SELECT
+              COUNT(*) AS total_invoice_count,
+              COALESCE(SUM(total), 0) AS total_invoice_value,
+              COALESCE(SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END), 0) AS paid_count,
+              COALESCE(SUM(CASE WHEN status = 'paid' THEN total ELSE 0 END), 0) AS paid_invoice_value,
+              COALESCE(SUM(CASE WHEN status IN ('unpaid','overdue') THEN 1 ELSE 0 END), 0) AS unpaid_count,
+              COALESCE(SUM(CASE WHEN status IN ('unpaid','overdue') THEN total ELSE 0 END), 0) AS outstanding_invoice_value,
+              COALESCE(SUM(CASE WHEN status IN ('unpaid','overdue') AND due_date < :today THEN 1 ELSE 0 END), 0) AS overdue_count,
+              COUNT(DISTINCT CASE WHEN status = 'paid' THEN customer_id END) AS paid_customer_count,
+              COUNT(DISTINCT customer_id) AS potensi_customer_count
+            FROM invoices
+            WHERE period_month = :month AND period_year = :year`,
+          {
+            replacements: { month: currentMonth, year: currentYear, today },
+            type: sequelize.QueryTypes.SELECT
+          }
+        ),
+        Payment.sum('amount', {
+          where: { payment_date: { [Op.between]: [firstDay, lastDay] } }
+        })
+      ]);
+      const r = (Array.isArray(invRows) ? invRows[0] : invRows) || {};
+      const unpaid = parseInt(r.unpaid_count || 0, 10);
+      const paidThisMonth = parseInt(r.paid_count || 0, 10);
 
       res.json({
         success: true,
@@ -746,18 +725,17 @@ class BillingController {
           period_month: currentMonth,
           period_year: currentYear,
           unpaid,
-          overdue,
+          overdue: parseInt(r.overdue_count || 0, 10),
           paidThisMonth,
-          paidCustomerCount,
-          revenueThisMonth,
-          // Total potensi penerimaan periode terpilih + rincian lunas/sisa
-          totalInvoiceValue,
-          paidInvoiceValue,
-          outstandingInvoiceValue,
-          outstandingInvoiceCount,
-          totalInvoiceCount,
-          paidInvoiceCount,
-          potensiCustomerCount
+          paidCustomerCount: parseInt(r.paid_customer_count || 0, 10),
+          revenueThisMonth: parseFloat(revenueSum || 0),
+          totalInvoiceValue: parseFloat(r.total_invoice_value || 0),
+          paidInvoiceValue: parseFloat(r.paid_invoice_value || 0),
+          outstandingInvoiceValue: parseFloat(r.outstanding_invoice_value || 0),
+          outstandingInvoiceCount: unpaid,
+          totalInvoiceCount: parseInt(r.total_invoice_count || 0, 10),
+          paidInvoiceCount: paidThisMonth,
+          potensiCustomerCount: parseInt(r.potensi_customer_count || 0, 10)
         }
       });
     } catch (error) {
@@ -2585,29 +2563,38 @@ class BillingController {
       const month = req.query.month ? parseInt(req.query.month) : null;
       const year  = req.query.year  ? parseInt(req.query.year)  : null;
 
-      const totalCustomers    = await Customer.count();
-      // Breakdown per-status untuk tampilan rinci di modal
-      const activeCount       = await Customer.count({ where: { status: 'active'    } });
-      const isolatedCount     = await Customer.count({ where: { status: 'isolated'  } });
-      const suspendedCount    = await Customer.count({ where: { status: 'suspended' } });
-      const inactiveCount     = await Customer.count({ where: { status: 'inactive'  } });
-
-      const eligibleCustomers = await Customer.count({
-        where: { status: { [Op.in]: INVOICE_ELIGIBLE_STATUSES } }
-      });
-      const eligibleWithPkg   = await Customer.count({
-        where: {
-          status: { [Op.in]: INVOICE_ELIGIBLE_STATUSES },
-          package_id: { [Op.not]: null }
+      const [statusRows, existingInPeriod] = await Promise.all([
+        sequelize.query(
+          `SELECT status,
+                  COUNT(*) AS c,
+                  SUM(CASE WHEN package_id IS NOT NULL THEN 1 ELSE 0 END) AS with_pkg
+             FROM customers
+            GROUP BY status`,
+          { type: sequelize.QueryTypes.SELECT }
+        ),
+        (month && year)
+          ? Invoice.count({ where: { period_month: month, period_year: year } })
+          : Promise.resolve(0)
+      ]);
+      const by = {};
+      let totalCustomers = 0;
+      let eligibleCustomers = 0;
+      let eligibleWithPkg = 0;
+      for (const row of (statusRows || [])) {
+        const st = String(row.status || '');
+        const c = parseInt(row.c || 0, 10);
+        const withPkg = parseInt(row.with_pkg || 0, 10);
+        by[st] = c;
+        totalCustomers += c;
+        if (INVOICE_ELIGIBLE_STATUSES.includes(st)) {
+          eligibleCustomers += c;
+          eligibleWithPkg += withPkg;
         }
-      });
-
-      let existingInPeriod = 0;
-      if (month && year) {
-        existingInPeriod = await Invoice.count({
-          where: { period_month: month, period_year: year }
-        });
       }
+      const activeCount = by.active || 0;
+      const isolatedCount = by.isolated || 0;
+      const suspendedCount = by.suspended || 0;
+      const inactiveCount = by.inactive || 0;
 
       // Estimasi: eligible-with-package dikurangi yang sudah punya invoice di
       // periode tsb. Asumsi simpel — bisa over-estimasi kalau invoice di periode
