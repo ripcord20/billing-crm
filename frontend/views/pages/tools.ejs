@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="/css/app.css">
   <style>
     :root{--d-bg:#eef2f9;--d-card:#fff;--d-border:#e0e7f3;--d-text:#0d1b3e;--d-muted:#6b7fa8;--d-blue1:#1a6ef5;--d-red:#f5365c;--d-green:#00c896;--d-navy:#1e3a8a;}
@@ -241,6 +244,6 @@
   </div>
 </div>
 
-<script src="/js/app.js"></script>
+<script src="/js/app.js?v=spd1"></script>
 <script src="/js/tools.js"></script>
 </body></html>

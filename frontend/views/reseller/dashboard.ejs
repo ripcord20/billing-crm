@@ -11,7 +11,10 @@
   <meta name="apple-mobile-web-app-title" content="Reseller">
   <link rel="apple-touch-icon" href="/img/reseller/icon-192.png">
   <title>Dashboard Reseller</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
     :root{
@@ -532,7 +535,7 @@
         border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(20,40,90,.1);}
     }
   </style>
-  <script src="/vendor/apexcharts/apexcharts.min.js"></script>
+  <script defer src="/vendor/apexcharts/apexcharts.min.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -1478,10 +1481,7 @@
     if(typeof ApexCharts!=='undefined') return Promise.resolve(true);
     if(_apexLoading) return _apexLoading;
     const cdns=[
-      '/vendor/apexcharts/apexcharts.min.js',
-      'https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js',
-      'https://unpkg.com/apexcharts@3.45.2/dist/apexcharts.min.js',
-      'https://cdnjs.cloudflare.com/ajax/libs/apexcharts/3.45.2/apexcharts.min.js'
+      '/vendor/apexcharts/apexcharts.min.js'
     ];
     _apexLoading=new Promise(resolve=>{
       let i=0;

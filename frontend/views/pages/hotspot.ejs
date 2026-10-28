@@ -7,13 +7,15 @@
   <meta name="color-scheme" content="dark">
   <title><%= title %> - <%= appName %></title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="/css/app.css">
   <link rel="stylesheet" href="/css/hotspot-palette.css?v=hs1">
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/js/app.js"></script>
-  <script src="/js/mikrotik-selector.js"></script>
+  <script defer src="/vendor/apexcharts/apexcharts.min.js"></script>
+  <script defer src="/socket.io/socket.io.js"></script>
+  <script defer src="/js/app.js?v=spd1"></script>
+  <script defer src="/js/mikrotik-selector.js"></script>
   <style>
     /* ══ RESET & BASE ══════════════════════════════════════════ */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

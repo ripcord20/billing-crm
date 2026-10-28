@@ -5,11 +5,14 @@
   <meta name="theme-color" content="#100c22">
   <meta name="color-scheme" content="dark">
   <title><%= title %> - <%= appName %></title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="/css/app.css">
   <link rel="stylesheet" href="/css/collect-palette.css?v=col1">
   <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
-  <script src="/vendor/leaflet/leaflet.js"></script>
+  <script defer src="/vendor/leaflet/leaflet.js"></script>
   <style>
     .coll-page { font-family:'DM Sans',sans-serif; }
     /* ── STAT CARDS ── */
@@ -627,7 +630,7 @@
   </div>
 </div>
 
-<script src="/js/app.js"></script>
+<script src="/js/app.js?v=spd1"></script>
 <script src="/js/collection-admin.js"></script>
 </body>
 </html>

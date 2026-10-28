@@ -5,7 +5,10 @@
   <meta name="theme-color" content="#100c22">
   <meta name="color-scheme" content="dark">
   <title><%= title %> - <%= appName %></title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="/css/app.css">
   <link rel="stylesheet" href="/css/settings-palette.css?v=set1">
   <style>
@@ -2120,8 +2123,8 @@
     </main>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
-<script src="/js/app.js"></script>
+<script src="/js/socket.io.min.js"></script>
+<script src="/js/app.js?v=spd1"></script>
 <script>
 function showSection(id, el) {
   document.querySelectorAll('.st-section').forEach(s => s.classList.remove('show'));

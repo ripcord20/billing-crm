@@ -15,6 +15,7 @@ let infras       = [];
 let onts         = [];
 let activeAssetId = null;
 let searchTimer   = null;
+let pickerPromise = null;
 
 // ApexCharts instances
 let valueChart = null;
@@ -24,15 +25,65 @@ let conditionChart = null;
 let currentPeriod = '30d';
 let currentValueFilter = 'all'; // 'all' | 'active' | 'storage' | 'damaged'
 
+function whenIdle(fn, timeout) {
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(fn, { timeout: timeout || 1200 });
+  } else {
+    setTimeout(fn, 200);
+  }
+}
+
+function loadScriptOnce(src) {
+  const key = '__load:' + src;
+  if (window[key]) return window[key];
+  window[key] = new Promise((resolve, reject) => {
+    if (src.indexOf('apexcharts') !== -1 && typeof ApexCharts !== 'undefined') {
+      resolve();
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('gagal memuat ' + src));
+    document.head.appendChild(s);
+  });
+  return window[key];
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function fillSelect(id, placeholder, rows, labelFn) {
+  const s = $(id);
+  if (!s) return;
+  s.innerHTML = '<option value="">' + placeholder + '</option>' +
+    rows.map(row => {
+      const lab = labelFn(row);
+      return '<option value="' + escHtml(row.id) + '">' + lab + '</option>';
+    }).join('');
+}
+
+function ensurePickerOptions() {
+  if (pickerPromise) return pickerPromise;
+  pickerPromise = Promise.all([
+    loadCustomerOptions(),
+    loadInfraOptions(),
+    loadOntOptions()
+  ]);
+  return pickerPromise;
+}
+
 // ── Init ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   loadStats();
   loadCategories();
   loadAssets();
-  loadCustomerOptions();
-  loadInfraOptions();
-  loadOntOptions();
-  initCharts();
+  whenIdle(() => initCharts(), 1500);
 });
 
 // ── Utilities ────────────────────────────────────────────────
@@ -143,47 +194,36 @@ async function loadCategories() {
 
 async function loadCustomerOptions() {
   try {
-    const r = await fetch('/api/customers?limit=500&status=active');
+    const r = await fetch('/api/customers?picker=1&limit=500&status=active');
     const j = await r.json();
     if (!j.success) return;
     customers = j.data || [];
-    ['fCustomer','aCustomer'].forEach(id => {
-      const s = $(id); if (!s) return;
-      s.innerHTML = '<option value="">— Tidak di-assign —</option>';
-      customers.forEach(c => {
-        s.innerHTML += `<option value="${c.id}">[${c.customer_id}] ${c.name}</option>`;
-      });
-    });
+    const label = c => '[' + escHtml(c.customer_id) + '] ' + escHtml(c.name);
+    fillSelect('fCustomer', '— Tidak di-assign —', customers, label);
+    fillSelect('aCustomer', '— Tidak di-assign —', customers, label);
   } catch(e) {}
 }
 
 async function loadInfraOptions() {
   try {
-    const r = await fetch('/api/infrastructure?limit=500');
+    const r = await fetch('/api/infrastructure?picker=1&limit=500');
     const j = await r.json();
     if (!j.success) return;
     infras = j.data || [];
-    ['fInfra','aInfra'].forEach(id => {
-      const s = $(id); if (!s) return;
-      s.innerHTML = '<option value="">— Tidak di-assign —</option>';
-      infras.forEach(p => {
-        s.innerHTML += `<option value="${p.id}">${p.name} (${p.type})</option>`;
-      });
-    });
+    const label = p => escHtml(p.name) + ' (' + escHtml(p.type) + ')';
+    fillSelect('fInfra', '— Tidak di-assign —', infras, label);
+    fillSelect('aInfra', '— Tidak di-assign —', infras, label);
   } catch(e) {}
 }
 
 async function loadOntOptions() {
   try {
-    const r = await fetch('/api/ont?limit=500');
+    const r = await fetch('/api/ont?picker=1&limit=500');
     const j = await r.json();
     if (!j.success) return;
     onts = j.data || [];
-    const s = $('fOnt'); if (!s) return;
-    s.innerHTML = '<option value="">— Tidak dilink —</option>';
-    onts.forEach(o => {
-      s.innerHTML += `<option value="${o.id}">${o.serial_number || o.id} — ${o.model || ''}</option>`;
-    });
+    fillSelect('fOnt', '— Tidak dilink —', onts, o =>
+      escHtml(o.serial_number || o.id) + ' — ' + escHtml(o.model || ''));
   } catch(e) {}
 }
 
@@ -294,7 +334,8 @@ function renderPagination(p) {
 }
 
 // ── Create/Edit Asset ────────────────────────────────────────
-function openAddAsset() {
+async function openAddAsset() {
+  await ensurePickerOptions();
   $('assetModalTitle').textContent = 'Tambah Asset Baru';
   $('editAssetId').value = '';
   ['fName', 'fBrand', 'fModel', 'fSerial', 'fPurchaseDate', 'fPrice', 'fVendor', 'fWarranty', 'fLocation', 'fNotes'].forEach(id => { const el = $(id); if (el) el.value = ''; });
@@ -304,6 +345,7 @@ function openAddAsset() {
 
 async function openEdit(id) {
   try {
+    await ensurePickerOptions();
     const r = await fetch('/api/assets/' + id);
     const j = await r.json();
     if (!j.success) return;
@@ -477,8 +519,9 @@ async function uploadPhoto(input) {
   input.value = '';
 }
 
-function openAssignModal() {
+async function openAssignModal() {
   closeModal('detailModal');
+  await ensurePickerOptions();
   $('aCustomer').value = '';
   $('aInfra').value    = '';
   $('aLocation').value = '';
@@ -578,15 +621,23 @@ const APEX_COLORS = {
 };
 
 const apexBase = {
-  chart:  { toolbar: { show: false }, fontFamily: 'DM Sans, sans-serif', animations: { enabled: true, easing: 'easeinout', speed: 600 } },
+  chart:  { toolbar: { show: false }, fontFamily: 'DM Sans, sans-serif', animations: { enabled: false } },
   grid:   { borderColor: '#f1f5f9', strokeDashArray: 4, xaxis: { lines: { show: false } } },
   tooltip: { theme: 'dark', style: { fontSize: '12px' } },
   dataLabels: { enabled: false }
 };
 
-function initCharts() {
+async function initCharts() {
+  if (typeof ApexCharts === 'undefined') {
+    try { await loadScriptOnce('/vendor/apexcharts/apexcharts.min.js'); }
+    catch (e) { console.warn('[Assets] ApexCharts tidak termuat', e); return; }
+  }
+  if (typeof ApexCharts === 'undefined') return;
+  const valueEl = document.getElementById('valueChart');
+  if (!valueEl || valueChart) return;
+
   // ── 1. Total Nilai Asset (Area chart, 3 series by status) ──
-  valueChart = new ApexCharts(document.getElementById('valueChart'), {
+  valueChart = new ApexCharts(valueEl, {
     ...apexBase,
     chart: { ...apexBase.chart, type: 'area', height: 280 },
     series: [
