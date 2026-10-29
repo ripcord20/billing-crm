@@ -406,6 +406,8 @@
       background: var(--primary);
       border-radius: 2px;
     }
+    #assetForm:not(.cable-mode) .cable-only { display: none !important; }
+    #assetForm.cable-mode .dev-only { display: none !important; }
 
     /* ── Detail panel ─────────────────────────────────────── */
     .detail-layout {
@@ -1264,7 +1266,7 @@
                   <th>Kode / Nama</th>
                   <th>Kategori</th>
                   <th>Brand / Model</th>
-                  <th>S/N</th>
+                  <th>S/N / Drum</th>
                   <th>Status</th>
                   <th>Kondisi</th>
                   <th>Lokasi / Customer</th>
@@ -1315,7 +1317,7 @@
         </div>
         <div class="form-group">
           <label>Kategori *</label>
-          <select id="fCategory" required><option value="">Pilih Kategori</option></select>
+          <select id="fCategory" required onchange="applyAssetFormMode()"><option value="">Pilih Kategori</option></select>
         </div>
         <div class="form-group">
           <label>Status</label>
@@ -1333,12 +1335,12 @@
           <label>Brand</label>
           <input type="text" id="fBrand" placeholder="ZTE, MikroTik, Huawei...">
         </div>
-        <div class="form-group">
+        <div class="form-group dev-only">
           <label>Model</label>
           <input type="text" id="fModel" placeholder="F660, hEX, EG8141A5...">
         </div>
         <div class="form-group">
-          <label>Nomor Seri (S/N)</label>
+          <label id="lblSerial">Nomor Seri (S/N)</label>
           <input type="text" id="fSerial" placeholder="SN atau MAC Address">
         </div>
         <div class="form-group">
@@ -1349,6 +1351,42 @@
             <option value="fair">Cukup</option>
             <option value="poor">Buruk</option>
           </select>
+        </div>
+        <div class="form-group cable-only">
+          <label>Tipe Kabel</label>
+          <select id="fCableKind">
+            <option value="">— pilih —</option>
+            <option value="fig8">Figure-8 (Fig8)</option>
+            <option value="adss">ADSS</option>
+            <option value="duct">Duct / Underground</option>
+            <option value="indoor">Indoor</option>
+            <option value="drop">Drop core</option>
+            <option value="armored">Armored</option>
+          </select>
+        </div>
+        <div class="form-group cable-only">
+          <label>Jumlah Core</label>
+          <select id="fCableCore">
+            <option value="">— pilih —</option>
+            <option value="2">2 Core</option>
+            <option value="4">4 Core</option>
+            <option value="6">6 Core</option>
+            <option value="8">8 Core</option>
+            <option value="12">12 Core</option>
+            <option value="24">24 Core</option>
+            <option value="48">48 Core</option>
+            <option value="96">96 Core</option>
+            <option value="144">144 Core</option>
+            <option value="288">288 Core</option>
+          </select>
+        </div>
+        <div class="form-group cable-only">
+          <label>Panjang gulungan (meter)</label>
+          <input type="number" id="fCableLength" placeholder="mis. 2000" min="0" step="0.1">
+        </div>
+        <div class="form-group cable-only">
+          <label>Sisa (meter)</label>
+          <input type="number" id="fCableRemain" placeholder="Sisa di drum" min="0" step="0.1">
         </div>
       </div>
 
@@ -1386,7 +1424,7 @@
           <label>Assign ke Infrastruktur / ODP</label>
           <select id="fInfra"><option value="">— Tidak di-assign —</option></select>
         </div>
-        <div class="form-group">
+        <div class="form-group dev-only">
           <label>Link ke ONT GenieACS</label>
           <select id="fOnt"><option value="">— Tidak dilink —</option></select>
         </div>
@@ -1451,7 +1489,9 @@
         <div class="detail-grid" style="margin-bottom:16px;">
           <div class="detail-item"><label>Kategori</label><span id="dCat"></span></div>
           <div class="detail-item"><label>Brand / Model</label><span id="dBrandModel"></span></div>
-          <div class="detail-item"><label>Nomor Seri</label><span id="dSerial"></span></div>
+          <div class="detail-item"><label id="dSerialLbl">Nomor Seri</label><span id="dSerial"></span></div>
+          <div class="detail-item" id="dCableKindRow" style="display:none"><label>Tipe Kabel</label><span id="dCableKind"></span></div>
+          <div class="detail-item" id="dCableLenRow" style="display:none"><label>Panjang / Sisa</label><span id="dCableLen"></span></div>
           <div class="detail-item"><label>Tanggal Beli</label><span id="dPurchDate"></span></div>
           <div class="detail-item"><label>Harga Beli</label><span id="dPrice"></span></div>
           <div class="detail-item"><label>Vendor</label><span id="dVendor"></span></div>
@@ -1459,7 +1499,7 @@
           <div class="detail-item"><label>Lokasi</label><span id="dLocation"></span></div>
           <div class="detail-item"><label>Customer</label><span id="dCustomer"></span></div>
           <div class="detail-item"><label>Infrastruktur</label><span id="dInfra"></span></div>
-          <div class="detail-item"><label>ONT GenieACS</label><span id="dOnt"></span></div>
+          <div class="detail-item" id="dOntRow"><label>ONT GenieACS</label><span id="dOnt"></span></div>
           <div class="detail-item"><label>Di-assign oleh</label><span id="dAssigner"></span></div>
         </div>
         <div class="detail-item" style="margin-bottom:16px;">
@@ -1527,7 +1567,7 @@
   </div>
 </div>
 
-<script src="/js/assets.js?v=ast4"></script>
+<script src="/js/assets.js?v=ast5"></script>
 
 <script>
 (function(){

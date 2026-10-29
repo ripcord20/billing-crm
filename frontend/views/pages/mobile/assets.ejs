@@ -73,6 +73,8 @@
     .fg input,.fg select,.fg textarea{width:100%;padding:12px 13px;border:1px solid #e6ebf3;border-radius:12px;font-size:14px;font-family:inherit;outline:none;background:#fff;}
     .fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--blue);}
     .fg-row{display:flex;gap:10px;} .fg-row .fg{flex:1;}
+    .sheet:not(.cable-mode) .cable-only{display:none;}
+    .sheet.cable-mode .dev-only{display:none;}
     .save-btn{width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#fff;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;margin-top:6px;}
     .save-btn:disabled{opacity:.6;}
     .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px);background:#1F3849;color:#fff;padding:12px 20px;border-radius:13px;font-size:13px;font-weight:600;z-index:700;opacity:0;transition:opacity .25s;pointer-events:none;}
@@ -145,13 +147,43 @@
       <div class="fg"><label>Nama Aset *</label><input type="text" id="fName" placeholder="mis. Router RB5009"></div>
       <div class="fg-row">
         <div class="fg"><label>Kode Aset</label><input type="text" id="fCode" placeholder="AST-001"></div>
-        <div class="fg"><label>Kategori</label><select id="fCat"><option value="">— pilih —</option></select></div>
+        <div class="fg"><label>Kategori</label><select id="fCat" onchange="applyMobileCableMode()"><option value="">— pilih —</option></select></div>
       </div>
       <div class="fg-row">
         <div class="fg"><label>Brand</label><input type="text" id="fBrand" placeholder="MikroTik"></div>
-        <div class="fg"><label>Model</label><input type="text" id="fModel" placeholder="RB5009"></div>
+        <div class="fg dev-only"><label>Model</label><input type="text" id="fModel" placeholder="RB5009"></div>
       </div>
-      <div class="fg"><label>Serial Number</label><input type="text" id="fSerial" placeholder="Opsional"></div>
+      <div class="fg"><label id="lblSerial">Serial Number</label><input type="text" id="fSerial" placeholder="Opsional"></div>
+      <div class="fg cable-only"><label>Tipe Kabel</label>
+        <select id="fCableKind">
+          <option value="">— pilih —</option>
+          <option value="fig8">Figure-8 (Fig8)</option>
+          <option value="adss">ADSS</option>
+          <option value="duct">Duct / Underground</option>
+          <option value="indoor">Indoor</option>
+          <option value="drop">Drop core</option>
+          <option value="armored">Armored</option>
+        </select>
+      </div>
+      <div class="fg-row cable-only">
+        <div class="fg"><label>Jumlah Core</label>
+          <select id="fCableCore">
+            <option value="">— pilih —</option>
+            <option value="2">2 Core</option>
+            <option value="4">4 Core</option>
+            <option value="6">6 Core</option>
+            <option value="8">8 Core</option>
+            <option value="12">12 Core</option>
+            <option value="24">24 Core</option>
+            <option value="48">48 Core</option>
+            <option value="96">96 Core</option>
+            <option value="144">144 Core</option>
+            <option value="288">288 Core</option>
+          </select>
+        </div>
+        <div class="fg"><label>Panjang (m)</label><input type="number" id="fCableLength" min="0" step="0.1" placeholder="2000"></div>
+      </div>
+      <div class="fg cable-only"><label>Sisa (meter)</label><input type="number" id="fCableRemain" min="0" step="0.1" placeholder="Sisa di drum"></div>
       <div class="fg-row">
         <div class="fg"><label>Status</label><select id="fStatus"><option value="active">Terpasang</option><option value="storage">Gudang</option><option value="repair">Servis</option><option value="damaged">Rusak</option><option value="inactive">Nonaktif</option><option value="disposed">Dibuang</option><option value="lost">Hilang</option></select></div>
         <div class="fg"><label>Kondisi</label><select id="fCond"><option value="new">Baru</option><option value="good">Baik</option><option value="fair">Cukup</option><option value="poor">Buruk</option></select></div>
@@ -266,6 +298,29 @@
       const sel=document.getElementById('fCat');
       sel.innerHTML='<option value="">— pilih —</option>'+_cats.map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('');
     }
+    function isCableCat(id){
+      const c=_cats.find(x=>String(x.id)===String(id));
+      if(!c) return false;
+      const s=((c.slug||'')+' '+(c.name||'')).toLowerCase();
+      return /kabel|cable|dropcore|drop.?core|patchcord|patch.?cord/.test(s);
+    }
+    function parseSpecs(a){
+      let s=a&&a.specs; if(!s) return {};
+      if(typeof s==='string'){ try{s=JSON.parse(s);}catch(e){return {};} }
+      return s&&typeof s==='object'?s:{};
+    }
+    function applyMobileCableMode(){
+      const cable=isCableCat(document.getElementById('fCat').value);
+      document.getElementById('sheet').classList.toggle('cable-mode', cable);
+      const name=document.getElementById('fName');
+      const brand=document.getElementById('fBrand');
+      const serial=document.getElementById('fSerial');
+      const lbl=document.getElementById('lblSerial');
+      name.placeholder=cable?'mis. Kabel FO 12 Core Fig8 IFORTE':'mis. Router RB5009';
+      brand.placeholder=cable?'IFORTE, Furukawa...':'MikroTik';
+      if(lbl) lbl.textContent=cable?'No. Drum / Gulungan':'Serial Number';
+      serial.placeholder=cable?'Nomor drum / roll':'Opsional';
+    }
 
     document.getElementById('statusChips').addEventListener('click',function(e){ const c=e.target.closest('.chip'); if(!c)return; this.querySelectorAll('.chip').forEach(x=>x.classList.remove('sel')); c.classList.add('sel'); _status=c.dataset.status||''; loadAssets(false); });
     let _st=null;
@@ -291,6 +346,19 @@
       document.getElementById('fPrice').value=a?(a.purchase_price||''):'';
       document.getElementById('fLoc').value=a?(a.location||''):'';
       document.getElementById('fNotes').value=a?(a.notes||''):'';
+      const sp=parseSpecs(a);
+      const kindEl=document.getElementById('fCableKind');
+      const coreEl=document.getElementById('fCableCore');
+      const lenEl=document.getElementById('fCableLength');
+      const remEl=document.getElementById('fCableRemain');
+      if(kindEl) kindEl.value=sp.kind||'';
+      if(coreEl){
+        const cm=(a&&a.model||'').match(/(\d+)/);
+        coreEl.value=cm?cm[1]:'';
+      }
+      if(lenEl) lenEl.value=sp.length_m!=null?sp.length_m:'';
+      if(remEl) remEl.value=sp.remaining_m!=null?sp.remaining_m:'';
+      applyMobileCableMode();
       // Foto: tampilkan yang tersimpan (edit) atau kosong (tambah)
       _photoFile=null;
       setPhotoPreview(a&&a.photo_url?a.photo_url:'');
@@ -328,17 +396,31 @@
     async function saveAsset(){
       const name=document.getElementById('fName').value.trim();
       if(!name){ toast('Nama aset wajib diisi','err'); return; }
+      const catId=document.getElementById('fCat').value||null;
+      const cable=isCableCat(catId);
+      const core=cable?(document.getElementById('fCableCore').value||''):'';
+      const lengthRaw=cable?document.getElementById('fCableLength').value:'';
+      const remainRaw=cable?document.getElementById('fCableRemain').value:'';
+      const length_m=lengthRaw===''?null:parseFloat(lengthRaw);
+      let remaining_m=remainRaw===''?null:parseFloat(remainRaw);
+      if(cable && remaining_m==null && Number.isFinite(length_m)) remaining_m=length_m;
+      const specs=cable?{
+        kind:document.getElementById('fCableKind').value||null,
+        length_m:Number.isFinite(length_m)?length_m:null,
+        remaining_m:Number.isFinite(remaining_m)?remaining_m:null
+      }:null;
       const body={ name,
         asset_code:document.getElementById('fCode').value.trim()||null,
-        category_id:document.getElementById('fCat').value||null,
+        category_id:catId,
         brand:document.getElementById('fBrand').value.trim()||null,
-        model:document.getElementById('fModel').value.trim()||null,
+        model:cable?(core?(core+' Core'):null):(document.getElementById('fModel').value.trim()||null),
         serial_number:document.getElementById('fSerial').value.trim()||null,
         status:document.getElementById('fStatus').value,
         condition:document.getElementById('fCond').value,
         purchase_price:parseInt(document.getElementById('fPrice').value)||null,
         location:document.getElementById('fLoc').value.trim()||null,
-        notes:document.getElementById('fNotes').value.trim()||null };
+        notes:document.getElementById('fNotes').value.trim()||null,
+        specs:specs };
       const btn=document.getElementById('saveBtn'); btn.disabled=true; btn.textContent='Menyimpan…';
       const url=_editId?('/api/assets/'+_editId):'/api/assets';
       const j=await api(url,{ method:_editId?'PUT':'POST', body:JSON.stringify(body) });
