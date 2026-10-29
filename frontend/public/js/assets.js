@@ -78,6 +78,105 @@ function ensurePickerOptions() {
   return pickerPromise;
 }
 
+const CABLE_KIND_LABEL = {
+  fig8: 'Figure-8 (Fig8)',
+  adss: 'ADSS',
+  duct: 'Duct / Underground',
+  indoor: 'Indoor',
+  drop: 'Drop core',
+  armored: 'Armored'
+};
+
+function categoryOf(aOrId) {
+  if (aOrId && typeof aOrId === 'object') {
+    if (aOrId.category) return aOrId.category;
+    return categories.find(c => String(c.id) === String(aOrId.category_id)) || null;
+  }
+  return categories.find(c => String(c.id) === String(aOrId)) || null;
+}
+
+function isCableCategory(aOrId) {
+  const c = categoryOf(aOrId);
+  if (!c) return false;
+  const s = ((c.slug || '') + ' ' + (c.name || '')).toLowerCase();
+  return /kabel|cable|dropcore|drop.?core|patchcord|patch.?cord/.test(s);
+}
+
+function assetSpecs(a) {
+  let s = a && a.specs;
+  if (!s) return {};
+  if (typeof s === 'string') {
+    try { s = JSON.parse(s); } catch (e) { return {}; }
+  }
+  return s && typeof s === 'object' ? s : {};
+}
+
+function parseCableCore(model) {
+  if (!model) return '';
+  const m = String(model).match(/(\d+)\s*(c|core)?/i);
+  return m ? m[1] : '';
+}
+
+function applyAssetFormMode() {
+  const catId = $('fCategory') && $('fCategory').value;
+  const cable = isCableCategory(catId);
+  const form = $('assetForm');
+  if (form) form.classList.toggle('cable-mode', cable);
+  const name = $('fName');
+  const brand = $('fBrand');
+  const serial = $('fSerial');
+  const lbl = $('lblSerial');
+  const loc = $('fLocation');
+  if (name) name.placeholder = cable ? 'Contoh: Kabel FO 12 Core Fig8 IFORTE' : 'Contoh: ONT ZTE F660 — Pelanggan Ahmad';
+  if (brand) brand.placeholder = cable ? 'IFORTE, Furukawa, Fiberhome...' : 'ZTE, MikroTik, Huawei...';
+  if (lbl) lbl.textContent = cable ? 'No. Drum / Gulungan' : 'Nomor Seri (S/N)';
+  if (serial) serial.placeholder = cable ? 'Nomor drum / roll (bukan MAC)' : 'SN atau MAC Address';
+  if (loc) loc.placeholder = cable ? 'Gudang / tray drum / tray ODP' : 'Gudang NOC / Rumah pelanggan / ODP-001';
+  if (!cable) {
+    ['fCableKind', 'fCableCore', 'fCableLength', 'fCableRemain'].forEach(id => {
+      const el = $(id); if (el) el.value = '';
+    });
+  }
+}
+
+function setCableCoreValue(core) {
+  const sel = $('fCableCore');
+  if (!sel) return;
+  if (!core) { sel.value = ''; return; }
+  if (![...sel.options].some(o => o.value === String(core))) {
+    const opt = document.createElement('option');
+    opt.value = String(core);
+    opt.textContent = core + ' Core';
+    sel.appendChild(opt);
+  }
+  sel.value = String(core);
+}
+
+function fillCableFields(a) {
+  const sp = assetSpecs(a);
+  const kindEl = $('fCableKind');
+  if (kindEl) kindEl.value = sp.kind || '';
+  setCableCoreValue(parseCableCore(a && a.model));
+  const len = $('fCableLength');
+  const rem = $('fCableRemain');
+  if (len) len.value = sp.length_m != null ? sp.length_m : '';
+  if (rem) rem.value = sp.remaining_m != null ? sp.remaining_m : '';
+}
+
+function readCableSpecs() {
+  const lengthRaw = $('fCableLength') && $('fCableLength').value;
+  const remainRaw = $('fCableRemain') && $('fCableRemain').value;
+  const length_m = lengthRaw === '' ? null : parseFloat(lengthRaw);
+  let remaining_m = remainRaw === '' ? null : parseFloat(remainRaw);
+  if (remaining_m == null && Number.isFinite(length_m)) remaining_m = length_m;
+  const kind = $('fCableKind') && $('fCableKind').value;
+  const out = {};
+  if (kind) out.kind = kind;
+  if (Number.isFinite(length_m) && length_m >= 0) out.length_m = length_m;
+  if (Number.isFinite(remaining_m) && remaining_m >= 0) out.remaining_m = remaining_m;
+  return Object.keys(out).length ? out : null;
+}
+
 // ── Init ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   loadStats();
@@ -269,6 +368,14 @@ function renderTable(rows) {
     const assigned = a.customer ? `<span style="color:var(--primary);font-size:12px;">${a.customer.name}</span>`
                     : a.infrastructure ? `<span style="color:var(--success);font-size:12px;">${a.infrastructure.name}</span>`
                     : `<span style="color:var(--text-muted);font-size:12px;">—</span>`;
+    const cable = isCableCategory(a);
+    const sp = cable ? assetSpecs(a) : {};
+    const brandCell = cable
+      ? [a.brand, a.model, CABLE_KIND_LABEL[sp.kind] || ''].filter(Boolean).join(' · ') || '—'
+      : ((a.brand || '—') + ' ' + (a.model || ''));
+    const identCell = cable
+      ? (a.serial_number || (sp.length_m != null ? (sp.length_m + ' m') : '—'))
+      : (a.serial_number || '—');
 
     return `<tr style="cursor:pointer" onclick="viewAsset(${a.id})">
       <td>${photo}</td>
@@ -277,8 +384,8 @@ function renderTable(rows) {
         <div style="font-size:11px;color:var(--text-muted);font-family:monospace;margin-top:2px;">${a.asset_code}</div>
       </td>
       <td><span class="cat-dot" style="background:${catColor};"></span>${catName}</td>
-      <td style="font-size:12px;">${a.brand || '—'} ${a.model || ''}</td>
-      <td style="font-size:12px;font-family:monospace;">${a.serial_number || '—'}</td>
+      <td style="font-size:12px;">${escHtml(brandCell)}</td>
+      <td style="font-size:12px;font-family:monospace;">${escHtml(identCell)}</td>
       <td>${statusBadge(a.status)}</td>
       <td>${conditionBadge(a.condition)}</td>
       <td>${assigned}</td>
@@ -338,8 +445,11 @@ async function openAddAsset() {
   await ensurePickerOptions();
   $('assetModalTitle').textContent = 'Tambah Asset Baru';
   $('editAssetId').value = '';
-  ['fName', 'fBrand', 'fModel', 'fSerial', 'fPurchaseDate', 'fPrice', 'fVendor', 'fWarranty', 'fLocation', 'fNotes'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+  ['fName', 'fBrand', 'fModel', 'fSerial', 'fPurchaseDate', 'fPrice', 'fVendor', 'fWarranty', 'fLocation', 'fNotes', 'fCableKind', 'fCableCore', 'fCableLength', 'fCableRemain'].forEach(id => { const el = $(id); if (el) el.value = ''; });
   ['fCategory', 'fStatus', 'fCondition', 'fCustomer', 'fInfra', 'fOnt'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+  if ($('fCondition')) $('fCondition').value = 'good';
+  if ($('fStatus')) $('fStatus').value = 'storage';
+  applyAssetFormMode();
   openModal('assetModal');
 }
 
@@ -369,6 +479,8 @@ async function openEdit(id) {
     $('fInfra').value = a.infrastructure_id || '';
     $('fOnt').value = a.ont_device_id || '';
     $('fNotes').value = a.notes || '';
+    fillCableFields(a);
+    applyAssetFormMode();
     openModal('assetModal');
   } catch(e) { alert('Gagal memuat data asset'); }
 }
@@ -381,11 +493,13 @@ async function submitAsset(event) {
   btn.textContent = 'Menyimpan...';
 
   try {
+    const cable = isCableCategory($('fCategory').value);
+    const core = cable && $('fCableCore') && $('fCableCore').value;
     const body = {
       name: $('fName').value.trim(),
       category_id: $('fCategory').value || null,
       brand: $('fBrand').value || null,
-      model: $('fModel').value || null,
+      model: cable ? (core ? (core + ' Core') : null) : ($('fModel').value || null),
       serial_number: $('fSerial').value || null,
       status: $('fStatus').value || 'storage',
       condition: $('fCondition').value || 'good',
@@ -396,8 +510,9 @@ async function submitAsset(event) {
       location: $('fLocation').value || null,
       customer_id: $('fCustomer').value || null,
       infrastructure_id: $('fInfra').value || null,
-      ont_device_id: $('fOnt').value || null,
-      notes: $('fNotes').value || null
+      ont_device_id: cable ? null : ($('fOnt').value || null),
+      notes: $('fNotes').value || null,
+      specs: cable ? readCableSpecs() : null
     };
 
     const url    = id ? '/api/assets/' + id : '/api/assets';
@@ -430,8 +545,30 @@ async function viewAsset(id) {
     $('dStatus').innerHTML       = statusBadge(a.status);
     $('dCondition').innerHTML    = conditionBadge(a.condition);
     $('dCat').textContent        = a.category?.name || '—';
+    const cable = isCableCategory(a);
+    const sp = assetSpecs(a);
     $('dBrandModel').textContent = [a.brand, a.model].filter(Boolean).join(' / ') || '—';
+    const serialLbl = $('dSerialLbl');
+    if (serialLbl) serialLbl.textContent = cable ? 'No. Drum / Gulungan' : 'Nomor Seri';
     $('dSerial').textContent     = a.serial_number || '—';
+    const kindRow = $('dCableKindRow');
+    const lenRow  = $('dCableLenRow');
+    const ontRow  = $('dOntRow');
+    if (kindRow) {
+      kindRow.style.display = cable && sp.kind ? '' : 'none';
+      if ($('dCableKind')) $('dCableKind').textContent = CABLE_KIND_LABEL[sp.kind] || sp.kind || '—';
+    }
+    if (lenRow) {
+      const hasLen = cable && (sp.length_m != null || sp.remaining_m != null);
+      lenRow.style.display = hasLen ? '' : 'none';
+      if ($('dCableLen')) {
+        const parts = [];
+        if (sp.length_m != null) parts.push(sp.length_m + ' m gulungan');
+        if (sp.remaining_m != null) parts.push(sp.remaining_m + ' m sisa');
+        $('dCableLen').textContent = parts.join(' · ') || '—';
+      }
+    }
+    if (ontRow) ontRow.style.display = cable ? 'none' : '';
     $('dPurchDate').textContent  = fmtDate(a.purchase_date);
     $('dPrice').textContent      = a.purchase_price > 0 ? fmtRp(a.purchase_price) : '—';
     $('dVendor').textContent     = a.purchase_vendor || '—';

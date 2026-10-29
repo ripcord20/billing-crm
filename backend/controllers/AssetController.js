@@ -51,6 +51,22 @@ async function logHistory(asset_id, action, old_value, new_value, note, user_id)
   }
 }
 
+function sanitizeAssetSpecs(specs) {
+  if (specs == null || specs === '') return null;
+  if (typeof specs === 'string') {
+    try { specs = JSON.parse(specs); } catch (e) { return null; }
+  }
+  if (!specs || typeof specs !== 'object' || Array.isArray(specs)) return null;
+  const out = {};
+  const kind = String(specs.kind || specs.jacket || '').toLowerCase();
+  if (['fig8', 'adss', 'duct', 'indoor', 'drop', 'armored'].includes(kind)) out.kind = kind;
+  const length = parseFloat(specs.length_m);
+  if (Number.isFinite(length) && length >= 0 && length < 1000000) out.length_m = length;
+  const remain = parseFloat(specs.remaining_m);
+  if (Number.isFinite(remain) && remain >= 0 && remain < 1000000) out.remaining_m = remain;
+  return Object.keys(out).length ? out : null;
+}
+
 const commonInclude = [
   { model: AssetCategory, as: 'category', attributes: ['id', 'name', 'slug', 'icon', 'color'] },
   { model: Customer, as: 'customer', attributes: ['id', 'customer_id', 'name', 'phone'], required: false },
@@ -236,7 +252,7 @@ class AssetController {
         infrastructure_id: infrastructure_id || null,
         ont_device_id: ont_device_id || null,
         notes: notes || null,
-        specs: specs || null,
+        specs: sanitizeAssetSpecs(specs),
         assigned_at: (customer_id || infrastructure_id) ? new Date() : null,
         assigned_by: (customer_id || infrastructure_id) ? (req.user?.id || null) : null
       });
@@ -261,6 +277,9 @@ class AssetController {
       };
 
       const updateData = { ...req.body };
+      if (Object.prototype.hasOwnProperty.call(updateData, 'specs')) {
+        updateData.specs = sanitizeAssetSpecs(updateData.specs);
+      }
 
       // Jika ada perubahan assignment
       const newCustomerId     = req.body.customer_id !== undefined ? req.body.customer_id : asset.customer_id;
