@@ -141,7 +141,7 @@ public class ScriptLibraryActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setView(form)
                 .setNegativeButton(R.string.privacy_back, null)
-                .setPositiveButton(R.string.script_use, (d, w) -> {
+                .setPositiveButton(R.string.script_use, (dialog, which) -> {
                     Map<String, String> values = new LinkedHashMap<>();
                     for (Map.Entry<String, EditText> e : fields.entrySet()) {
                         values.put(e.getKey(), e.getValue().getText().toString().trim());
