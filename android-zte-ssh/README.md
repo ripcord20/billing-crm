@@ -4,7 +4,7 @@ Aplikasi konsol **SSH / Telnet** untuk OLT ZTE C300 / C320. Bukan WebView CRM: H
 
 Handshake SSH memakai algoritma OLT lama (ssh-rsa, group1, 3des) plus keyboard-interactive, sama seperti klien CLI Fiberix.
 
-Versi **1.1.0** menargetkan Android 16 (`targetSdk 36`) dan paket AAB untuk unggah Play Store. Langkah Console: [PLAY_STORE.md](PLAY_STORE.md).
+Versi **1.2.0** menargetkan Android 16 (`targetSdk 36`) dan paket AAB untuk unggah Play Store. Pustaka skrip CLI tersimpan di HP (nama, catatan, perintah, placeholder `{SN}`). Langkah Console: [PLAY_STORE.md](PLAY_STORE.md).
 
 ## Unduh
 
@@ -25,6 +25,7 @@ Sideload internal tetap didukung. Play Store memakai file **AAB**, bukan APK.
 3. C320 sering **Telnet port 23**; SSH port 22.
 4. Password enable opsional — dikirim setelah `terminal length 0`.
 5. Ketuk kotak perintah atau layar terminal supaya keyboard muncul, lalu ketik. Chip: `show card`, `show gpon onu uncfg`, `show processor`, dll. Panah **atas** = perintah terakhir, panah **bawah** = berikutnya. Saran perintah muncul di atas kotak; kata salah (yang sudah selesai) digarisbawahi merah.
+5b. **Pustaka skrip** (tombol Skrip di terminal, atau di layar login): simpan dokumentasi + perintah ONT. Placeholder `{PON}` `{SN}` diisi saat mengambil. Skrip masuk ke kotak dulu — baru **Kirim** ke OLT.
 6. Boleh pindah ke WhatsApp/catatan — keepalive SSH + notifikasi menjaga sesi. Hentikan dari **Putuskan** di notifikasi.
 7. **Salin** = copy output terminal ke clipboard (kalau ada teks terpilih, hanya itu).
 8. **Tempel** = paste ke kotak perintah. Bisa tempel banyak baris dari WhatsApp/catatan, lalu **Kirim** — dikirim satu per satu.

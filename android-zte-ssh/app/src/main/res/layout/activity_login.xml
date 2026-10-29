@@ -229,6 +229,16 @@
             android:text="@string/delete_profile"
             android:textColor="@color/danger" />
 
+        <Button
+            android:id="@+id/btnScripts"
+            style="@style/Widget.ZteSsh.Btn"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_btn_cyan_outline"
+            android:text="@string/scripts_title"
+            android:textColor="@color/accent" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

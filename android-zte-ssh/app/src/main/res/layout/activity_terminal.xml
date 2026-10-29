@@ -112,6 +112,20 @@
         android:padding="8dp">
 
         <Button
+            android:id="@+id/btnScripts"
+            style="@style/Widget.ZteSsh.Btn"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/bg_btn_cyan"
+            android:minWidth="0dp"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:text="@string/script"
+            android:textColor="@color/on_accent"
+            android:textSize="13sp" />
+
+        <Button
             android:id="@+id/btnPaste"
             style="@style/Widget.ZteSsh.Btn"
             android:layout_width="wrap_content"

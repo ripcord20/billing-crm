@@ -38,6 +38,8 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
@@ -68,6 +70,17 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
     private ArrayAdapter<String> suggestionAdapter;
     private boolean highlighting;
     private String cliMode = ZteCliParser.PRIV;
+    private final ActivityResultLauncher<Intent> pickScript = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() != RESULT_OK || result.getData() == null) return;
+                String body = result.getData().getStringExtra(ScriptLibraryActivity.EXTRA_BODY);
+                if (body == null) return;
+                fillCommand(body);
+                int n = lineCount(body);
+                Toast.makeText(this,
+                        n > 1 ? getString(R.string.script_loaded_n, n) : getString(R.string.script_loaded),
+                        Toast.LENGTH_LONG).show();
+            });
     private boolean stopReceiverRegistered;
     private final BroadcastReceiver userStop = new BroadcastReceiver() {
         @Override
@@ -144,6 +157,8 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         }
 
         findViewById(R.id.btnCopy).setOnClickListener(v -> copyOutput());
+        findViewById(R.id.btnScripts).setOnClickListener(v ->
+                pickScript.launch(ScriptLibraryActivity.pickIntent(this, cmd.getText().toString())));
         findViewById(R.id.btnPaste).setOnClickListener(v -> pasteIntoBox());
         findViewById(R.id.btnHistUp).setOnClickListener(v -> historyUp());
         findViewById(R.id.btnHistDown).setOnClickListener(v -> historyDown());

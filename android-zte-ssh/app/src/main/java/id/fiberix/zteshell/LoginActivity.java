@@ -107,6 +107,8 @@ public class LoginActivity extends AppCompatActivity {
             reload();
         });
 
+        findViewById(R.id.btnScripts).setOnClickListener(v ->
+                startActivity(new Intent(this, ScriptLibraryActivity.class)));
         findViewById(R.id.privacyLink).setOnClickListener(v ->
                 startActivity(new Intent(this, PrivacyActivity.class)));
 

@@ -42,6 +42,16 @@
             android:name=".PrivacyActivity"
             android:exported="false"
             android:label="@string/privacy_title" />
+        <activity
+            android:name=".ScriptLibraryActivity"
+            android:exported="false"
+            android:label="@string/scripts_title"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ScriptEditorActivity"
+            android:exported="false"
+            android:label="@string/script_edit_title"
+            android:windowSoftInputMode="adjustResize" />
 
         <service
             android:name=".OltKeepAliveService"

@@ -21,7 +21,7 @@ import javax.crypto.spec.GCMParameterSpec;
 final class SecurePrefs {
     private static final String ANDROID_KEYSTORE = "AndroidKeyStore";
     private static final String ALIAS = "id.fiberix.zteshell.profiles";
-    private static final String PREF = "zte_ssh_profiles_enc";
+    private static final String PREF_PROFILES = "zte_ssh_profiles_enc";
     private static final String KEY_CT = "list_ct";
     private static final String KEY_IV = "list_iv";
     private static final String LEGACY_PREF = "zte_ssh_profiles";
@@ -32,9 +32,17 @@ final class SecurePrefs {
     private final SharedPreferences prefs;
 
     SecurePrefs(Context ctx) {
+        this(ctx, PREF_PROFILES, true);
+    }
+
+    SecurePrefs(Context ctx, String prefName) {
+        this(ctx, prefName, false);
+    }
+
+    private SecurePrefs(Context ctx, String prefName, boolean migrateProfiles) {
         app = ctx.getApplicationContext();
-        prefs = app.getSharedPreferences(PREF, Context.MODE_PRIVATE);
-        migrateLegacy();
+        prefs = app.getSharedPreferences(prefName, Context.MODE_PRIVATE);
+        if (migrateProfiles) migrateLegacy();
     }
 
     String load() {
