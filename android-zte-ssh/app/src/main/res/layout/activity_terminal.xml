@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/termRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/term_bg"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:background="@drawable/bg_header"
+        android:gravity="center_vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="8dp">
+
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:fontFamily="monospace"
+            android:maxLines="1"
+            android:textColor="@color/text"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnCopy"
+            style="@style/Widget.ZteSsh.Btn"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_btn_cyan_outline"
+            android:minWidth="0dp"
+            android:paddingLeft="12dp"
+            android:paddingRight="12dp"
+            android:text="@string/copy"
+            android:textColor="@color/accent"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/btnDisconnect"
+            style="@style/Widget.ZteSsh.Btn"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/bg_btn_ghost"
+            android:minWidth="0dp"
+            android:paddingLeft="12dp"
+            android:paddingRight="12dp"
+            android:text="@string/disconnect"
+            android:textColor="@color/danger"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="2dp"
+        android:background="@color/accent" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/bg"
+        android:padding="8dp"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/chips"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+    </HorizontalScrollView>
+
+    <ScrollView
+        android:id="@+id/termScroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clickable="true"
+        android:descendantFocusability="blocksDescendants"
+        android:fillViewport="true"
+        android:focusable="false"
+        android:padding="10dp">
+
+        <TextView
+            android:id="@+id/termOut"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:focusable="false"
+            android:focusableInTouchMode="false"
+            android:fontFamily="monospace"
+            android:lineSpacingExtra="2dp"
+            android:textColor="@color/term_fg"
+            android:textIsSelectable="true"
+            android:textSize="13sp"
+            android:typeface="monospace" />
+    </ScrollView>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/magenta" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/bg_card"
+        android:orientation="vertical"
+        android:padding="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnScripts"
+                style="@style/Widget.ZteSsh.Btn"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_btn_cyan"
+                android:minWidth="0dp"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:text="@string/script"
+                android:textColor="@color/on_accent"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnPaste"
+                style="@style/Widget.ZteSsh.Btn"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_btn_cyan_outline"
+                android:minWidth="0dp"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:text="@string/paste"
+                android:textColor="@color/accent"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnHistUp"
+                style="@style/Widget.ZteSsh.Btn"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/bg_btn_cyan_outline"
+                android:contentDescription="@string/hist_up_desc"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:padding="0dp"
+                android:text="@string/hist_up"
+                android:textColor="@color/accent"
+                android:textSize="16sp" />
+
+            <Button
+                android:id="@+id/btnHistDown"
+                style="@style/Widget.ZteSsh.Btn"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_btn_cyan_outline"
+                android:contentDescription="@string/hist_down_desc"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:padding="0dp"
+                android:text="@string/hist_down"
+                android:textColor="@color/accent"
+                android:textSize="16sp" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <Button
+                android:id="@+id/btnSend"
+                style="@style/Widget.ZteSsh.Btn"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_btn_cyan"
+                android:minWidth="0dp"
+                android:paddingLeft="16dp"
+                android:paddingRight="16dp"
+                android:text="@string/send"
+                android:textColor="@color/on_accent" />
+        </LinearLayout>
+
+        <EditText
+            android:id="@+id/cmd"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_input"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:fontFamily="monospace"
+            android:gravity="top|start"
+            android:hint="@string/hint_cmd"
+            android:imeOptions="actionSend|flagNoExtractUi|flagNoFullscreen"
+            android:importantForAutofill="no"
+            android:inputType="textVisiblePassword|textMultiLine|textNoSuggestions"
+            android:maxHeight="112dp"
+            android:maxLines="5"
+            android:minHeight="52dp"
+            android:padding="10dp"
+            android:scrollbars="vertical"
+            android:textColor="@color/text"
+            android:textColorHint="@color/muted"
+            android:textSize="13sp" />
+    </LinearLayout>
+</LinearLayout>
