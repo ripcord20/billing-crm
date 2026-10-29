@@ -107,49 +107,49 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/bg_card"
-        android:gravity="bottom"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:padding="8dp">
 
-        <Button
-            android:id="@+id/btnScripts"
-            style="@style/Widget.ZteSsh.Btn"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:layout_marginEnd="6dp"
-            android:background="@drawable/bg_btn_cyan"
-            android:minWidth="0dp"
-            android:paddingLeft="10dp"
-            android:paddingRight="10dp"
-            android:text="@string/script"
-            android:textColor="@color/on_accent"
-            android:textSize="13sp" />
-
-        <Button
-            android:id="@+id/btnPaste"
-            style="@style/Widget.ZteSsh.Btn"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:layout_marginEnd="6dp"
-            android:background="@drawable/bg_btn_cyan_outline"
-            android:minWidth="0dp"
-            android:paddingLeft="12dp"
-            android:paddingRight="12dp"
-            android:text="@string/paste"
-            android:textColor="@color/accent"
-            android:textSize="13sp" />
-
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="6dp"
-            android:orientation="vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnScripts"
+                style="@style/Widget.ZteSsh.Btn"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_btn_cyan"
+                android:minWidth="0dp"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:text="@string/script"
+                android:textColor="@color/on_accent"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnPaste"
+                style="@style/Widget.ZteSsh.Btn"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_btn_cyan_outline"
+                android:minWidth="0dp"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:text="@string/paste"
+                android:textColor="@color/accent"
+                android:textSize="13sp" />
 
             <Button
                 android:id="@+id/btnHistUp"
                 style="@style/Widget.ZteSsh.Btn"
                 android:layout_width="40dp"
-                android:layout_height="36dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="4dp"
                 android:background="@drawable/bg_btn_cyan_outline"
                 android:contentDescription="@string/hist_up_desc"
                 android:minWidth="0dp"
@@ -163,8 +163,7 @@
                 android:id="@+id/btnHistDown"
                 style="@style/Widget.ZteSsh.Btn"
                 android:layout_width="40dp"
-                android:layout_height="36dp"
-                android:layout_marginTop="2dp"
+                android:layout_height="40dp"
                 android:background="@drawable/bg_btn_cyan_outline"
                 android:contentDescription="@string/hist_down_desc"
                 android:minWidth="0dp"
@@ -173,13 +172,30 @@
                 android:text="@string/hist_down"
                 android:textColor="@color/accent"
                 android:textSize="16sp" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <Button
+                android:id="@+id/btnSend"
+                style="@style/Widget.ZteSsh.Btn"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_btn_cyan"
+                android:minWidth="0dp"
+                android:paddingLeft="16dp"
+                android:paddingRight="16dp"
+                android:text="@string/send"
+                android:textColor="@color/on_accent" />
         </LinearLayout>
 
         <EditText
             android:id="@+id/cmd"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:layout_marginTop="8dp"
             android:background="@drawable/bg_input"
             android:focusable="true"
             android:focusableInTouchMode="true"
@@ -189,21 +205,13 @@
             android:imeOptions="actionSend|flagNoExtractUi|flagNoFullscreen"
             android:importantForAutofill="no"
             android:inputType="textVisiblePassword|textMultiLine|textNoSuggestions"
-            android:maxLines="4"
-            android:minHeight="48dp"
+            android:maxHeight="112dp"
+            android:maxLines="5"
+            android:minHeight="52dp"
             android:padding="10dp"
+            android:scrollbars="vertical"
             android:textColor="@color/text"
             android:textColorHint="@color/muted"
             android:textSize="13sp" />
-
-        <Button
-            android:id="@+id/btnSend"
-            style="@style/Widget.ZteSsh.Btn"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:layout_marginStart="8dp"
-            android:background="@drawable/bg_btn_cyan"
-            android:text="@string/send"
-            android:textColor="@color/on_accent" />
     </LinearLayout>
 </LinearLayout>

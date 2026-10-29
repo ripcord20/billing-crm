@@ -4,7 +4,7 @@ Aplikasi konsol **SSH / Telnet** untuk OLT ZTE C300 / C320. Bukan WebView CRM: H
 
 Handshake SSH memakai algoritma OLT lama (ssh-rsa, group1, 3des) plus keyboard-interactive, sama seperti klien CLI Fiberix.
 
-Versi **1.2.0** menargetkan Android 16 (`targetSdk 36`) dan paket AAB untuk unggah Play Store. Pustaka skrip CLI tersimpan di HP (nama, catatan, perintah, placeholder `{SN}`). Langkah Console: [PLAY_STORE.md](PLAY_STORE.md).
+Versi **1.2.1** menargetkan Android 16 (`targetSdk 36`) dan paket AAB untuk unggah Play Store. Pustaka skrip CLI tersimpan di HP (nama, catatan, perintah, placeholder `{SN}`). Kotak perintah di baris penuh di bawah tombol. Langkah Console: [PLAY_STORE.md](PLAY_STORE.md).
 
 ## Unduh
 
