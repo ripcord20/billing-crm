@@ -426,7 +426,7 @@
           updatePerf(rt.cpuLoad||0, rt.memoryUsagePercent||0);
         } else { drawGauge('gRouterCpu',0,'—'); drawGauge('gRouterMem',0,'—'); }
         if(sv){
-          drawGauge('gServerCpu', sv.cpuLoadPercent!=null?sv.cpuLoadPercent:0, (sv.cpuCount||'?')+' core');
+          drawGauge('gServerCpu', sv.cpuPercent!=null?sv.cpuPercent:(sv.cpuLoadPercent||0), (sv.cpuCount||'?')+' core');
           drawGauge('gServerMem', sv.memoryUsagePercent!=null?sv.memoryUsagePercent:0, fmtMB(sv.usedMemory)+' / '+fmtMB(sv.totalMemory));
         } else { drawGauge('gServerCpu',0,'—'); drawGauge('gServerMem',0,'—'); }
         const info=document.getElementById('resInfo');
