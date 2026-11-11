@@ -6,6 +6,43 @@
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .users-body{padding:0;}
+    .users-table-wrap{
+      overflow-x:auto;
+      -webkit-overflow-scrolling:touch;
+      overscroll-behavior-x:contain;
+      max-width:100%;
+    }
+    .users-table{min-width:720px;}
+    .users-table th,.users-table td{white-space:nowrap;}
+    .users-table .users-aksi,
+    .users-table td:last-child{
+      position:sticky;right:0;background:#fff;z-index:2;
+      box-shadow:-8px 0 12px -8px rgba(15,23,42,.18);
+    }
+    .users-table thead .users-aksi{background:#f8fafc;z-index:3;}
+    .users-actions{display:flex;gap:6px;flex-wrap:nowrap;}
+    .users-cards{display:none;flex-direction:column;gap:10px;padding:12px;}
+    .ucard{border:1px solid #eef1f6;border-radius:14px;padding:14px 14px 12px;background:#fff;}
+    .ucard-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+    .ucard-name{font-size:15px;font-weight:700;color:#0f172a;}
+    .ucard-sub{font-size:12px;color:#94a3b8;margin-top:2px;}
+    .ucard-email{font-size:13px;color:#334155;margin-top:8px;word-break:break-all;}
+    .ucard-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center;}
+    .ucard-login{font-size:12px;color:#64748b;margin-top:8px;}
+    .ucard-act{display:flex;gap:8px;margin-top:12px;}
+    .ucard-act .btn{flex:1;min-height:42px;}
+    .btn-del{background:#dc2626;color:#fff;border:none;}
+    .btn-del:hover{background:#b91c1c;}
+    @media(max-width:768px){
+      .page-header{flex-direction:column;align-items:stretch;gap:10px;}
+      .page-header-right .btn{width:100%;}
+      .users-table-wrap{display:none;}
+      .users-cards{display:flex;}
+      #userModal > div{max-width:none;width:calc(100vw - 24px);margin:12px;max-height:88vh;overflow:auto;}
+    }
+  </style>
 </head>
 <body>
 <div class="app-layout">
@@ -22,17 +59,20 @@
       </div>
 
       <div class="card">
-        <div class="card-body">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="userTable">
-              <tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8;">Memuat...</td></tr>
-            </tbody>
-          </table>
+        <div class="card-body users-body">
+          <div class="users-table-wrap">
+            <table class="data-table users-table">
+              <thead>
+                <tr>
+                  <th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th class="users-aksi">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="userTable">
+                <tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8;">Memuat...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="users-cards" id="userCards"></div>
         </div>
       </div>
 
@@ -80,6 +120,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
 <script src="/js/app.js"></script>
-<script src="/js/users.js"></script>
+<script>
+  window.ME_USER_ID = <%- Number(user && user.id) || 0 %>;
+</script>
+<script src="/js/users.js?v=20260922"></script>
 </body>
 </html>
