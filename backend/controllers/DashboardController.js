@@ -74,7 +74,8 @@ class DashboardController {
       try {
         const mt  = await getMikrotikInstanceByDevice(deviceId);
         const res2 = await mt.getSystemResource();
-        cpuLoad = res2?.cpuLoad ?? 0;
+        const { normalizeCpuPercent } = require('../utils/deviceMetrics');
+        cpuLoad = normalizeCpuPercent(res2?.cpuLoad);
         try {
           const ident = await mt.getSystemIdentity();
           cpuDeviceName = ident?.name || 'Router';
@@ -86,7 +87,8 @@ class DashboardController {
           where: { status: 'online', is_active: true },
           raw: true
         });
-        cpuLoad = Math.round((avgCpuFallback?.avg_cpu || 0) * 100) / 100;
+        const { normalizeCpuPercent } = require('../utils/deviceMetrics');
+        cpuLoad = normalizeCpuPercent(avgCpuFallback?.avg_cpu || 0);
       }
 
       // ── Device stats ─────────────────────────────────────────
