@@ -32,6 +32,23 @@ function modeBadge(n){
   </div>`;
 }
 
+function nasActionButtons(n){
+  const label=esc(n.shortname||n.nasname);
+  return `<button class="btn btn-sm btn-primary" onclick="openRosScript(${n.id},'${label}')" title="Script RouterOS: VPN + RADIUS + isolir">Script</button>
+      ${n.conn_mode==='vpn'?`<button class="btn btn-sm btn-secondary" onclick="wgGen(${n.id},'${label}')" title="Generate/regenerate config VPN saja">VPN</button>`:''}
+      <button class="btn btn-sm btn-secondary" onclick="syncNas(${n.id})">Sync</button>
+      <button class="btn btn-sm btn-danger" onclick="delNas(${n.id})">Hapus</button>`;
+}
+
+function nasIpCell(n){
+  return `${esc(n.nasname)}${n.tunnel_address?`<br><span style="font-size:11px;color:#64748b;">tunnel: ${esc(n.tunnel_address)}</span>`:''}${n.device?`<br><span style="font-size:11px;color:#166534;">Device: ${esc(n.device.name)}</span>`:''}`;
+}
+
+function renderNasMobile(html){
+  const box=document.getElementById('nasMobileList');
+  if(box) box.innerHTML=html;
+}
+
 async function loadNas(){
   const tb=document.getElementById('nasTable');
   const d=await App.api('/nas');
@@ -40,22 +57,31 @@ async function loadNas(){
       ? 'API Modul NAS belum aktif di server. Refresh setelah diperbaiki.'
       : (d?.message||'Gagal memuat NAS');
     tb.innerHTML=`<tr><td colspan="6" style="text-align:center;color:#dc2626;padding:24px;">${esc(msg)}</td></tr>`;
+    renderNasMobile(`<div class="nas-m-empty" style="color:#dc2626;">${esc(msg)}</div>`);
     return;
   }
-  if(!d.data.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:#94a3b8;">Belum ada NAS. Tambah router yang auth ke FreeRADIUS.</td></tr>';return;}
+  if(!d.data.length){
+    tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:#94a3b8;">Belum ada NAS. Tambah router yang auth ke FreeRADIUS.</td></tr>';
+    renderNasMobile('<div class="nas-m-empty">Belum ada NAS. Tambah router yang auth ke FreeRADIUS.</div>');
+    return;
+  }
   tb.innerHTML=d.data.map(n=>`<tr>
-    <td class="mono">${esc(n.nasname)}${n.tunnel_address?`<br><span style="font-size:11px;color:#64748b;">tunnel: ${esc(n.tunnel_address)}</span>`:''}${n.device?`<br><span style="font-size:11px;color:#166534;">Device: ${esc(n.device.name)}</span>`:''}</td>
+    <td class="mono">${nasIpCell(n)}</td>
     <td>${esc(n.shortname||'—')}</td>
     <td>${esc(n.type)}</td>
     <td>${modeBadge(n)}</td>
     <td>${n.last_error?`<span style="color:#dc2626;">${esc(n.last_error)}</span>`:fmtSyncAt(n.last_sync_at)}</td>
-    <td class="nas-aksi" style="white-space:nowrap;">
-      <button class="btn btn-sm btn-primary" onclick="openRosScript(${n.id},'${esc(n.shortname||n.nasname)}')" title="Script RouterOS: VPN + RADIUS + isolir">Script</button>
-      ${n.conn_mode==='vpn'?`<button class="btn btn-sm btn-secondary" onclick="wgGen(${n.id},'${esc(n.shortname||n.nasname)}')" title="Generate/regenerate config VPN saja">VPN</button>`:''}
-      <button class="btn btn-sm btn-secondary" onclick="syncNas(${n.id})">Sync</button>
-      <button class="btn btn-sm btn-danger" onclick="delNas(${n.id})">Hapus</button>
-    </td>
+    <td class="nas-aksi" style="white-space:nowrap;">${nasActionButtons(n)}</td>
   </tr>`).join('');
+  renderNasMobile(d.data.map(n=>`<article class="nas-m-card">
+    <div class="nas-m-ip">${esc(n.nasname)}</div>
+    <div class="nas-m-meta">${esc(n.shortname||'—')} · ${esc(n.type||'—')}${n.tunnel_address?` · tunnel ${esc(n.tunnel_address)}`:''}${n.device?` · ${esc(n.device.name)}`:''}</div>
+    <div class="nas-m-row">
+      <div>${modeBadge(n)}</div>
+      <div class="nas-m-sync"><div class="nas-m-k">Sync</div>${n.last_error?`<span style="color:#dc2626;">${esc(n.last_error)}</span>`:fmtSyncAt(n.last_sync_at)}</div>
+    </div>
+    <div class="nas-m-actions">${nasActionButtons(n)}</div>
+  </article>`).join(''));
 }
 
 window.onConnModeChange=()=>{

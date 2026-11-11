@@ -115,8 +115,30 @@
       font-size: 12px;
       color: var(--text-secondary);
     }
+    .nas-mobile-list { display: none; }
+    .nas-m-card {
+      border: 1px solid var(--border, #e2e8f0);
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: var(--bg-card, #fff);
+    }
+    .nas-m-ip { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; font-weight: 800; color: var(--text, #0f172a); word-break: break-all; }
+    .nas-m-meta { margin-top: 4px; font-size: 12px; color: var(--text-secondary, #64748b); }
+    .nas-m-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-top: 10px; }
+    .nas-m-k { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #64748b; margin-bottom: 4px; }
+    .nas-m-sync { font-size: 12px; color: var(--text-secondary, #64748b); text-align: right; }
+    .nas-m-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .nas-m-actions .btn { flex: 1 1 calc(50% - 6px); justify-content: center; min-width: 0; }
+    .nas-m-empty { text-align: center; padding: 24px 8px; color: #94a3b8; font-size: 13px; }
+    [data-theme="dark"] .nas-m-card { background: #121a2b; border-color: #243049; }
+    [data-theme="dark"] .nas-m-ip { color: #e8eef9; }
+    [data-theme="dark"] .nas-m-k { color: #94a3b8; }
     @media (max-width: 768px) {
-      .nas-swipe-hint { display: block; }
+      .nas-swipe-hint { display: none !important; }
+      .nas-page .table-scroll,
+      .nas-page #nasTableScroll { display: none !important; overflow: hidden !important; }
+      .nas-page #nasTableScroll .data-table { min-width: 0 !important; }
+      .nas-mobile-list { display: flex !important; flex-direction: column; gap: 10px; }
       .nas-page .page-header-right { width: 100%; }
       .nas-page .page-header-right .btn { flex: 1 1 auto; }
     }
@@ -147,6 +169,7 @@
           <tbody id="nasTable"><tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8;">Memuat…</td></tr></tbody>
         </table>
         </div>
+        <div class="nas-mobile-list" id="nasMobileList"></div>
         <p class="nas-swipe-hint">Geser tabel ke kanan untuk Mode, Sync, dan tombol Aksi.</p>
         <div class="nas-legend" aria-label="Keterangan status Mode">
           <span class="nas-link up"><span class="nas-led"></span><span class="nas-link-text">Terhubung</span></span>
@@ -311,6 +334,6 @@
   .radius-guide-pre{margin:0;padding:12px;border-radius:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.45;white-space:pre-wrap;word-break:break-all;overflow:auto;}
 </style>
 <script src="/js/app.js"></script>
-<script src="/js/nas.js"></script>
+<script src="/js/nas.js?v=hpf1"></script>
 </body>
 </html>
