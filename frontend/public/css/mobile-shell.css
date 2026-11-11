@@ -95,7 +95,7 @@ body{padding-bottom:0 !important;}
 /* 1) Elemen full-width yang dipusatkan (nav, overlay gelap) */
 .bottomnav,
 .mdr-overlay, .dm-overlay, .add-overlay, .sh-overlay, .del-overlay,
-.pd-overlay, .cf-overlay, .pn-overlay, .es-overlay{
+.pd-overlay, .cf-overlay, .cf-ov, .sheet-ov, .act-ov, .pn-overlay, .es-overlay{
   left:50% !important;
   right:auto !important;
   width:100% !important;
@@ -107,7 +107,7 @@ body{padding-bottom:0 !important;}
 .toast{max-width:calc(var(--shell-max) - 40px) !important;}
 
 /* 2) Bottom sheet: dipusatkan + animasi naik/turun (transform digabung) */
-.dm-sheet, .sheet, .pn-sheet, .add-sheet, .pd-sheet{
+.dm-sheet, .sheet, .pn-sheet, .add-sheet, .pd-sheet, .act-sheet{
   left:50% !important;
   right:auto !important;
   width:100% !important;
@@ -115,7 +115,7 @@ body{padding-bottom:0 !important;}
   margin:0 !important;
   transform:translateX(-50%) translateY(100%) !important;
 }
-.dm-sheet.open, .sheet.open, .pn-sheet.open, .add-sheet.open, .pd-sheet.open{
+.dm-sheet.open, .sheet.open, .pn-sheet.open, .add-sheet.open, .pd-sheet.open, .act-sheet.open{
   transform:translateX(-50%) translateY(0) !important;
 }
 
@@ -124,7 +124,7 @@ body{padding-bottom:0 !important;}
    + JUDUL) masuk ke belakang address bar dan terlihat terpotong.
    `svh` = small viewport height (saat address bar TAMPIL) → selalu muat. */
 @supports (height: 100svh){
-  .dm-sheet, .sheet, .pn-sheet, .add-sheet, .pd-sheet{
+  .dm-sheet, .sheet, .pn-sheet, .add-sheet, .pd-sheet, .act-sheet{
     max-height:calc(100svh - 10px) !important;
   }
 }

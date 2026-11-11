@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title><%= title %> - <%= appName %></title>
-  <link rel="stylesheet" href="/css/mobile-shell.css?v=7">
+  <link rel="stylesheet" href="/css/mobile-shell.css?v=8">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
     :root{--bg:#eff8ff;--card:#fff;--ink:#1F3849;--muted:#7c93a0;--line:#e2eefb;--blue:#0ea5e9;--teal:#38bdf8;--green:#0f9d63;--amber:#f5a623;--red:#f2545b;--nav-h:70px;}
@@ -38,10 +38,27 @@
     .pkg-chip{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#3a4a68;background:#f4f8fd;border-radius:9px;padding:7px 11px;}
     .pkg-chip svg{width:13px;height:13px;color:var(--blue);}
     .pkg-chip.cust{color:#0f9d63;} .pkg-chip.cust svg{color:#0f9d63;}
+    .pkg-top-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+    .pkg-more{width:36px;height:36px;border:none;border-radius:11px;background:#f4f8fd;color:#3a4a68;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
+    .pkg-more svg{width:18px;height:18px;}
+    .pkg-more:active{background:#e8eef6;}
     .pkg-actions{display:flex;gap:8px;border-top:1px solid #f1f4f9;padding-top:12px;}
     .pkg-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border:none;border-radius:11px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;}
     .pkg-btn svg{width:14px;height:14px;stroke-width:2;}
     .pkg-btn.edit{background:#e0f2fe;color:#0284c7;} .pkg-btn.del{background:#fdecec;color:#d13b42;}
+    .del-btn{width:100%;padding:14px;border:none;border-radius:14px;background:#fdecec;color:#d13b42;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;margin-top:10px;display:none;}
+    .act-ov{position:fixed;inset:0;background:rgba(20,35,60,.5);opacity:0;pointer-events:none;transition:opacity .25s;z-index:620;}
+    .act-ov.open{opacity:1;pointer-events:auto;}
+    .act-sheet{position:fixed;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;background:#fff;border-radius:22px 22px 0 0;padding:10px 12px calc(14px + env(safe-area-inset-bottom));z-index:621;transform:translateY(100%);transition:transform .28s cubic-bezier(.22,.61,.36,1);}
+    .act-sheet.open{transform:translateY(0);}
+    .act-handle{width:40px;height:4px;border-radius:100px;background:#d9e2ee;margin:4px auto 12px;}
+    .act-title{font-size:13px;font-weight:800;color:#3a4a68;padding:0 12px 10px;}
+    .act-item{width:100%;display:flex;align-items:center;gap:12px;padding:14px 12px;border:none;border-radius:14px;background:transparent;font-family:inherit;font-size:15px;font-weight:700;color:#1F3849;cursor:pointer;text-align:left;}
+    .act-item svg{width:20px;height:20px;stroke-width:2;flex-shrink:0;}
+    .act-item:active{background:#f4f8fd;}
+    .act-item.danger{color:#d13b42;}
+    .act-item.danger:active{background:#fdecec;}
+    .act-item.cancel{justify-content:center;margin-top:6px;background:#f1f4f9;color:#5a6885;}
     .empty{padding:44px 16px;text-align:center;color:var(--muted);font-size:13px;}
     .skel{background:linear-gradient(90deg,#e7edf6 25%,#f2f6fb 50%,#e7edf6 75%);background-size:200% 100%;animation:sh 1.3s infinite;border-radius:8px;}
     @keyframes sh{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
@@ -128,7 +145,27 @@
       <div class="fg"><label>Deskripsi</label><textarea id="fDesc" rows="2" placeholder="Opsional"></textarea></div>
       <div class="switch-row"><span>Paket Aktif</span><label class="sw"><input type="checkbox" id="fActive" checked><span class="sw-sl"></span></label></div>
       <button class="save-btn" id="saveBtn" onclick="savePackage()">Simpan Paket</button>
+      <button type="button" class="del-btn" id="sheetDelBtn" onclick="deleteFromSheet()">Hapus Paket</button>
     </div>
+  </div>
+
+  <div class="act-ov" id="actOv" onclick="if(event.target===this)closeActMenu()"></div>
+  <div class="act-sheet" id="actSheet">
+    <div class="act-handle"></div>
+    <div class="act-title" id="actTitle">Paket</div>
+    <button type="button" class="act-item" onclick="actEdit()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Edit
+    </button>
+    <button type="button" class="act-item" id="actToggleBtn" onclick="actToggle()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>
+      <span id="actToggleTxt">Nonaktifkan</span>
+    </button>
+    <button type="button" class="act-item danger" onclick="actDelete()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+      Hapus
+    </button>
+    <button type="button" class="act-item cancel" onclick="closeActMenu()">Batal</button>
   </div>
 
   <div class="cf-ov" id="cfOv" onclick="if(event.target===this)closeCf()">
@@ -156,7 +193,7 @@
     function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
     function fmtRp(n){ n=Number(n)||0; return 'Rp '+n.toLocaleString('id-ID'); }
     function toast(m,t){ const el=document.getElementById('toast'); el.textContent=m; el.className='toast show'+(t?' '+t:''); setTimeout(()=>el.classList.remove('show'),2400); }
-    let _all=[], _editId=null, _delId=null;
+    let _all=[], _editId=null, _delId=null, _menuId=null;
 
     async function loadStats(){
       const j=await api('/api/packages/stats');
@@ -170,9 +207,14 @@
       const active=p.is_active!==false && p.is_active!==0;
       const down=p.speed_down!=null?p.speed_down:'-', up=p.speed_up!=null?p.speed_up:'-';
       const cust=p.customer_count!=null?p.customer_count:0;
-      return '<div class="pkg">'+
+      return '<div class="pkg" data-id="'+p.id+'">'+
         '<div class="pkg-top"><div><div class="pkg-name">'+esc(p.name||'Paket')+'</div>'+(p.category?'<div class="pkg-cat">'+esc(p.category)+'</div>':'')+'</div>'+
-          '<span class="pkg-badge '+(active?'b-on':'b-off')+'">'+(active?'Aktif':'Nonaktif')+'</span></div>'+
+          '<div class="pkg-top-right">'+
+            '<span class="pkg-badge '+(active?'b-on':'b-off')+'">'+(active?'Aktif':'Nonaktif')+'</span>'+
+            '<button type="button" class="pkg-more" data-act="menu" aria-label="Menu paket">'+
+              '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>'+
+            '</button>'+
+          '</div></div>'+
         '<div class="pkg-price">'+fmtRp(p.price)+' <span>/bulan</span></div>'+
         '<div class="pkg-meta">'+
           '<div class="pkg-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v14"/><path d="M6 11l6 6 6-6"/></svg>'+down+' Mbps</div>'+
@@ -180,8 +222,8 @@
           '<div class="pkg-chip cust"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>'+cust+' pelanggan</div>'+
         '</div>'+
         '<div class="pkg-actions">'+
-          '<button class="pkg-btn edit" onclick=\'openForm('+JSON.stringify(p.id)+')\'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</button>'+
-          '<button class="pkg-btn del" onclick=\'askDelete('+JSON.stringify(p.id)+',"'+esc(p.name||'')+'",'+cust+')\'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Hapus</button>'+
+          '<button type="button" class="pkg-btn edit" data-act="edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</button>'+
+          '<button type="button" class="pkg-btn del" data-act="delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Hapus</button>'+
         '</div></div>';
     }
     function renderList(rows){
@@ -218,11 +260,18 @@
       document.getElementById('fProfile').value=p?(p.mikrotik_profile||''):'';
       document.getElementById('fDesc').value=p?(p.description||''):'';
       document.getElementById('fActive').checked=p?(p.is_active!==false&&p.is_active!==0):true;
+      document.getElementById('sheetDelBtn').style.display=_editId?'block':'none';
       document.getElementById('sheetOv').classList.add('open');
       document.getElementById('sheet').classList.add('open');
       document.body.style.overflow='hidden';
     }
     function closeForm(){ document.getElementById('sheetOv').classList.remove('open'); document.getElementById('sheet').classList.remove('open'); document.body.style.overflow=''; }
+    function deleteFromSheet(){
+      if(_editId==null) return;
+      var id=_editId;
+      closeForm();
+      askDelete(id);
+    }
     async function savePackage(){
       const name=document.getElementById('fName').value.trim();
       const price=parseInt(document.getElementById('fPrice').value)||0;
@@ -243,23 +292,73 @@
       else { toast((j&&j.message)||'Gagal menyimpan paket','err'); }
     }
 
+    // ── Menu aksi (Android) ──
+    function findPkg(id){ return _all.find(function(x){ return x.id===id || String(x.id)===String(id); }); }
+    function openActMenu(id){
+      var p=findPkg(id); if(!p) return;
+      _menuId=id;
+      var active=p.is_active!==false && p.is_active!==0;
+      document.getElementById('actTitle').textContent=p.name||'Paket';
+      document.getElementById('actToggleTxt').textContent=active?'Nonaktifkan':'Aktifkan';
+      document.getElementById('actOv').classList.add('open');
+      document.getElementById('actSheet').classList.add('open');
+    }
+    function closeActMenu(){
+      document.getElementById('actOv').classList.remove('open');
+      document.getElementById('actSheet').classList.remove('open');
+      _menuId=null;
+    }
+    function actEdit(){ var id=_menuId; closeActMenu(); if(id!=null) openForm(id); }
+    function actDelete(){ var id=_menuId; closeActMenu(); if(id!=null) askDelete(id); }
+    async function actToggle(){
+      var id=_menuId; var p=findPkg(id); closeActMenu();
+      if(!p) return;
+      var next=!(p.is_active!==false && p.is_active!==0);
+      var j=await api('/api/packages/'+id,{ method:'PUT', body:JSON.stringify({ is_active: next }) });
+      if(j&&j.success){ toast(next?'Paket diaktifkan':'Paket dinonaktifkan','ok'); loadPackages(false); }
+      else toast((j&&j.message)||'Gagal mengubah status','err');
+    }
+
     // ── Hapus ──
-    function askDelete(id,name,cust){
+    function askDelete(id){
+      var p=findPkg(id);
       _delId=id;
-      document.getElementById('cfText').innerHTML=cust>0
-        ? ('<b>'+esc(name)+'</b> masih dipakai <b>'+cust+' pelanggan</b>. Hapus paket ini?')
-        : ('Paket <b>'+esc(name)+'</b> akan dihapus permanen.');
+      var name=p?(p.name||''):'';
+      var cust=p?(p.customer_count||0):0;
+      var ok=document.getElementById('cfOk');
+      if(cust>0){
+        document.getElementById('cfText').innerHTML='<b>'+esc(name)+'</b> masih dipakai <b>'+cust+' pelanggan</b>. Tidak bisa dihapus.';
+        if(ok){ ok.disabled=true; ok.style.opacity='.5'; }
+      }else{
+        document.getElementById('cfText').innerHTML='Paket <b>'+esc(name)+'</b> akan dihapus permanen.';
+        if(ok){ ok.disabled=false; ok.style.opacity='1'; }
+      }
       document.getElementById('cfOv').classList.add('open');
     }
     function closeCf(){ document.getElementById('cfOv').classList.remove('open'); _delId=null; }
+    function closeConfirm(){ closeCf(); }
     async function doDelete(){
       if(_delId==null)return;
-      const btn=document.getElementById('cfOk'); btn.disabled=true; btn.textContent='Menghapus…';
+      const btn=document.getElementById('cfOk');
+      if(btn&&btn.disabled) return;
+      btn.disabled=true; btn.textContent='Menghapus…';
       const j=await api('/api/packages/'+_delId,{ method:'DELETE' });
       btn.disabled=false; btn.textContent='Hapus';
       if(j&&j.success){ toast('Paket dihapus','ok'); closeCf(); loadPackages(false); }
       else { toast((j&&j.message)||'Gagal menghapus (mungkin masih dipakai)','err'); closeCf(); }
     }
+
+    document.getElementById('pkgList').addEventListener('click', function(e){
+      var btn=e.target.closest('[data-act]');
+      if(!btn) return;
+      var card=btn.closest('.pkg');
+      if(!card) return;
+      var id=Number(card.getAttribute('data-id'));
+      var act=btn.getAttribute('data-act');
+      if(act==='edit') openForm(id);
+      else if(act==='delete') askDelete(id);
+      else if(act==='menu') openActMenu(id);
+    });
 
     loadPackages(false);
   </script>
