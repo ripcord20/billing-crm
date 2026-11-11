@@ -18,7 +18,10 @@ const DEFAULTS = {
   dnsProbeHost: 'google.com',
   dnsWarnMs: 80,
   dnsCritMs: 200,
-  uplinkMbps: 1000
+  uplinkMbps: 1000,
+  minDdosBaselineBps: 8e6,
+  minDdosCurrentBps: 80e6,
+  ddosMinSamples: 2
 };
 
 function toNum(v, fallback) {
@@ -108,6 +111,46 @@ function classifyTrafficAnomaly(current, baseline, thresholds = DEFAULTS) {
   return { status, ratio, current: c, baseline: b };
 }
 
+/**
+ * DDoS only on WAN/uplink with a real baseline. Idle PPPoE → normal use
+ * looks like 10–100× and must not raise ddos_anomaly.
+ */
+function shouldRaiseDdos({ currentBps, baselineBps, consecutive = 1 } = {}, thresholds = DEFAULTS) {
+  const current = Number(currentBps) || 0;
+  const baseline = Number(baselineBps) || 0;
+  const minBaseline = toNum(thresholds.minDdosBaselineBps, DEFAULTS.minDdosBaselineBps);
+  const minCurrent = toNum(thresholds.minDdosCurrentBps, DEFAULTS.minDdosCurrentBps);
+  const need = toNum(thresholds.ddosMinSamples, DEFAULTS.ddosMinSamples);
+  if (baseline < minBaseline || current < minCurrent) return false;
+  if ((Number(consecutive) || 0) < need) return false;
+  const a = classifyTrafficAnomaly(current, baseline, thresholds);
+  return a.status !== 'ok' && a.status !== 'unknown';
+}
+
+function dnsCompare(rows) {
+  const list = rows || [];
+  const pub = list.filter((r) => r.group === 'public');
+  const isp = list.filter((r) => r.group === 'isp');
+  const avg = (arr) => {
+    const vals = arr.map((r) => Number(r.value)).filter((n) => Number.isFinite(n));
+    if (!vals.length) return null;
+    return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
+  };
+  const publicAvg = avg(pub);
+  const ispAvg = avg(isp);
+  let winner = null;
+  if (publicAvg != null && ispAvg != null) winner = publicAvg <= ispAvg ? 'public' : 'isp';
+  else if (publicAvg != null) winner = 'public';
+  else if (ispAvg != null) winner = 'isp';
+  const worst = list.reduce((acc, r) => {
+    if (!acc) return r.status || 'ok';
+    if (r.status === 'critical' || acc === 'critical') return 'critical';
+    if (r.status === 'warn' || acc === 'warn') return 'warn';
+    return acc;
+  }, 'ok');
+  return { public_avg: publicAvg, isp_avg: ispAvg, winner, status: worst || 'unknown' };
+}
+
 function classifyDns({ ok, latencyMs, accurate } = {}, thresholds = DEFAULTS) {
   if (!ok) {
     return { status: 'critical', value: latencyMs ?? null, accurate: false };
@@ -159,7 +202,10 @@ function mergeSettings(raw = {}) {
     uplinkMbps: toNum(raw.uplinkMbps ?? raw.qos_uplink_mbps, DEFAULTS.uplinkMbps),
     publicDns: parseServerList(raw.publicDns ?? raw.qos_public_dns, DEFAULTS.publicDns),
     ispDns: parseServerList(raw.ispDns ?? raw.qos_isp_dns, []),
-    pingTargets: parseServerList(raw.pingTargets ?? raw.qos_ping_targets, DEFAULTS.publicDns)
+    pingTargets: parseServerList(raw.pingTargets ?? raw.qos_ping_targets, DEFAULTS.publicDns),
+    minDdosBaselineBps: toNum(raw.minDdosBaselineBps ?? raw.qos_ddos_min_baseline, DEFAULTS.minDdosBaselineBps),
+    minDdosCurrentBps: toNum(raw.minDdosCurrentBps ?? raw.qos_ddos_min_current, DEFAULTS.minDdosCurrentBps),
+    ddosMinSamples: toNum(raw.ddosMinSamples ?? raw.qos_ddos_min_samples, DEFAULTS.ddosMinSamples)
   };
 }
 
@@ -212,6 +258,8 @@ module.exports = {
   classifyBandwidth,
   classifyAuthFails,
   classifyTrafficAnomaly,
+  shouldRaiseDdos,
+  dnsCompare,
   classifyDns,
   alertAudience,
   alertRoles,
