@@ -157,3 +157,115 @@ body.keu-home .keu-table tbody tr:nth-child(8n+5) td { background: #ea580c !impo
 body.keu-home .keu-table tbody tr:nth-child(8n+6) td { background: #e11d48 !important; }
 body.keu-home .keu-table tbody tr:nth-child(8n+7) td { background: #db2777 !important; }
 body.keu-home .keu-table tbody tr:nth-child(8n+8) td { background: #7c3aed !important; }
+
+html:has(body.keu-home) { background: #070814; color-scheme: dark; }
+
+body.keu-home .fin-grid,
+body.keu-home .fin-grid-4 {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+
+body.keu-home .form-control::placeholder,
+body.keu-home .search-input::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1;
+}
+body.keu-home .amount-prefix {
+  color: #cbd5e1 !important;
+}
+
+body.keu-home input,
+body.keu-home select,
+body.keu-home textarea {
+  color-scheme: dark;
+}
+
+/* PNBP: kotak dasar jangan tetap putih — teks dipaksa terang di atasnya. */
+body.keu-home .pnbp-tabs {
+  background: #100c22 !important;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+}
+body.keu-home .pnbp-tab {
+  background: transparent !important;
+  color: #e2e8f0 !important;
+}
+body.keu-home .pnbp-tab.on {
+  background: #22d3ee !important;
+  color: #070814 !important;
+}
+body.keu-home .pnbp-settings-btn {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.keu-home .pnbp-basis {
+  background: #100c22 !important;
+  border: 1px solid rgba(34, 211, 238, 0.35) !important;
+  color: #f8fafc;
+}
+body.keu-home .pnbp-basis-lbl,
+body.keu-home .pnbp-basis-note {
+  color: #e2e8f0 !important;
+}
+body.keu-home .pnbp-basis-amt {
+  color: #f8fafc !important;
+}
+body.keu-home .pnbp-badge.on {
+  background: #14532d !important;
+  color: #bbf7d0 !important;
+}
+body.keu-home .pnbp-badge.off {
+  background: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+body.keu-home .page-btn {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.keu-home .page-btn.active {
+  background: linear-gradient(135deg, #0891b2, #4f46e5) !important;
+  color: #ffffff !important;
+}
+
+body.keu-home .pnbp-item [style*="color:#1d4ed8"] { color: #93c5fd !important; }
+body.keu-home .pnbp-item [style*="color:#0e7490"] { color: #67e8f9 !important; }
+body.keu-home .pnbp-item [style*="background:#dbeafe"] { background: #1e3a8a !important; color: #dbeafe !important; }
+body.keu-home .pnbp-item [style*="background:#cffafe"] { background: #134e4a !important; color: #99f6e4 !important; }
+
+body.keu-home .modal-box [style*="background:#f8fafc"] {
+  background: #100c22 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.keu-home .modal-box [style*="color:#1e3a8a"],
+body.keu-home .modal-box [style*="color:#33415c"] {
+  color: #f8fafc !important;
+}
+body.keu-home .modal-box input[type="number"] {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+
+@media (max-width: 768px) {
+  body.keu-home .app-layout,
+  body.keu-home .main-content,
+  body.keu-home .page-content,
+  body.keu-home .keu-page,
+  body.keu-home .pnbp-card,
+  body.keu-home .form-card,
+  body.keu-home .w-card,
+  body.keu-home .fin-grid,
+  body.keu-home .main-layout {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  body.keu-home .page-content {
+    overflow-x: hidden;
+    overflow-x: clip;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}

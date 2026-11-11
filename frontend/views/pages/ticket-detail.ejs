@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
   <title><%= typeof title !== 'undefined' ? title : 'Detail Ticket' %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
@@ -31,7 +31,7 @@
     .info-value a{color:#667eea;text-decoration:none;}
     .desc-box{padding:18px;background:#f7fafc;border-radius:10px;line-height:1.8;color:#4a5568;font-size:14px;}
     /* Map */
-    #map{height:500px;border-radius:10px;overflow:hidden;margin-top:15px;box-shadow:0 4px 15px rgba(0,0,0,.1);border:2px solid #e2e8f0;position:relative;}
+    #map{height:500px;width:100%;max-width:100%;border-radius:10px;overflow:hidden;margin-top:15px;box-shadow:0 4px 15px rgba(0,0,0,.1);border:2px solid #e2e8f0;position:relative;}
     .map-layer-control{position:absolute;top:10px;right:10px;z-index:1000;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.2);overflow:hidden;display:flex;gap:0;}
     .map-layer-btn{padding:6px 12px;border:none;background:white;cursor:pointer;font-size:11px;font-weight:600;color:#4a5568;display:flex;align-items:center;gap:4px;transition:all 0.2s;border-right:1px solid #e2e8f0;}
     .map-layer-btn:last-child{border-right:none;}
@@ -223,7 +223,52 @@
     .lb img{max-width:90%;max-height:90%;border-radius:12px;}
     .lbx{position:absolute;top:18px;right:28px;color:#fff;font-size:38px;cursor:pointer;}
     @keyframes spin{to{transform:rotate(360deg)}}
-    @media(max-width:768px){.tkt-ttl{font-size:17px;}.frow{grid-template-columns:1fr;}}
+    @media(max-width:768px){
+      .tkt-ttl{font-size:17px;}
+      .frow{grid-template-columns:1fr;}
+      .page-content{
+        padding:12px 12px 96px !important;
+        max-width:100%;
+        min-width:0;
+        overflow-x:hidden;
+        overflow-x:clip;
+        box-sizing:border-box;
+      }
+      .detail-grid,
+      .ticket-header-card,
+      .card-modern,
+      .sidebar-card,
+      .info-section,
+      .timeline-container,
+      .comment-box,
+      .map-buttons{
+        max-width:100%;
+        min-width:0;
+        box-sizing:border-box;
+      }
+      .ticket-header-card{padding:18px 16px;margin-bottom:14px;}
+      .ticket-title{font-size:20px;word-break:break-word;}
+      .ticket-meta{gap:8px;}
+      .meta-item{font-size:12px;padding:5px 10px;}
+      .info-section{padding:16px;}
+      .section-title{font-size:15px;}
+      .info-grid{grid-template-columns:1fr;}
+      .sidebar-card{padding:16px;}
+      #map,.leaflet-container{
+        width:100% !important;
+        max-width:100% !important;
+        height:220px !important;
+      }
+      .leaflet-pane,.leaflet-map-pane,.leaflet-tile-pane{
+        max-width:100%;
+      }
+      .leaflet-control-attribution{max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+      .leaflet-popup-content{width:min(220px,calc(100vw - 64px)) !important;}
+      .map-buttons .btn{width:auto;flex:1 1 auto;min-width:0;}
+      .timeline-item:hover{transform:none;}
+      .timeline-item,.info-value,.ticket-title,.section-title{overflow-wrap:anywhere;word-break:break-word;}
+      .btn.btn-secondary{max-width:100%;white-space:normal;text-align:left;}
+    }
   </style>
 </head>
 <body>
@@ -844,7 +889,9 @@ $('commentFile')?.addEventListener('change',function(){
 
 function initMap(lat,lng,t){
   if(leafMap){leafMap.remove();leafMap=null;}
-  leafMap=L.map('map').setView([lat,lng],15);
+  const mapEl=$('map');
+  if(mapEl){mapEl.style.width='100%';mapEl.style.maxWidth='100%';}
+  leafMap=L.map('map',{zoomControl:true}).setView([lat,lng],15);
   const streets=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'});
   const sat=L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',{maxZoom:21,subdomains:'0123',attribution:'© Google'});
   streets.addTo(leafMap);window._ml={streets,sat};window._mc='streets';
@@ -861,8 +908,15 @@ function initMap(lat,lng,t){
     <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" style="background:linear-gradient(135deg,var(--nv),var(--nv2));"><i class="fas fa-map"></i> Maps</a>
     <a href="https://wa.me/62${(c.phone||'').replace(/^0/,'')}" target="_blank" style="background:linear-gradient(135deg,#25d366,#128c7e);"><i class="fab fa-whatsapp"></i> Hubungi</a>
     </div></div>`:'<div style="padding:12px;font-size:13px;">Lokasi Ticket</div>';
-  L.marker([lat,lng],{icon:mkI}).addTo(leafMap).bindPopup(ph,{maxWidth:260}).openPopup();
-  setTimeout(addMapLayerControl,100);
+  const isPhone=window.innerWidth<768;
+  const marker=L.marker([lat,lng],{icon:mkI}).addTo(leafMap).bindPopup(ph,{maxWidth:isPhone?Math.min(220,window.innerWidth-72):260,autoPan:!isPhone});
+  if(!isPhone) marker.openPopup();
+  setTimeout(()=>{
+    addMapLayerControl();
+    if(leafMap) leafMap.invalidateSize();
+    const pc=document.getElementById('mainContent');
+    if(pc) pc.scrollLeft=0;
+  },100);
 }
 function addMapLayerControl(){
   const m=$('map');const ex=m.querySelector('.map-layer-control');if(ex)ex.remove();
