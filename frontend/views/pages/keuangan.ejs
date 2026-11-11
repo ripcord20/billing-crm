@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="id" data-theme="light">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="stylesheet" href="/css/keuangan-palette.css?v=keu1">
+  <link rel="stylesheet" href="/css/keuangan-palette.css?v=keu2">
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
   <script src="/js/app.js"></script>
@@ -113,6 +113,19 @@
     textarea.form-control { resize:vertical;min-height:70px; }
     .form-row { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
 
+    /* ── PNBP tabs / dasar penghitungan ── */
+    .pnbp-tabs { display:inline-flex;background:#f1f5f9;border-radius:9px;padding:3px; }
+    .pnbp-tab { padding:6px 13px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:#64748b;font-family:inherit; }
+    .pnbp-tab.on { background:#fff;color:#1e3a8a;box-shadow:0 1px 2px rgba(0,0,0,.08); }
+    .pnbp-settings-btn { display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;border:1.5px solid #e2e8f0;background:#fff;color:#1e3a8a;font-family:inherit; }
+    .pnbp-basis { background:linear-gradient(120deg,#eff6ff,#f0fdfa);border:1px solid #dbeafe;border-radius:12px;padding:13px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px; }
+    .pnbp-basis-lbl { font-size:11.5px;color:#64748b;font-weight:600; }
+    .pnbp-basis-note { font-size:11px;color:#94a3b8;margin-top:2px; }
+    .pnbp-basis-amt { font-size:22px;font-weight:800;color:#0d1b3e;letter-spacing:-.5px; }
+    .pnbp-badge { font-size:10px;font-weight:700;padding:2px 8px;border-radius:9px; }
+    .pnbp-badge.on { background:#dcfce7;color:#15803d; }
+    .pnbp-badge.off { background:#e2e8f0;color:#475569; }
+
     /* ── Amount input ── */
     .amount-wrap { position:relative; }
     .amount-prefix { position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:12.5px;font-weight:700;color:var(--d-muted);pointer-events:none; }
@@ -211,9 +224,14 @@
       .fin-grid { grid-template-columns:1fr !important;gap:0 !important; }
       .fin-card { padding:18px 20px !important; min-height:auto !important; border-right:none !important; border-bottom:1px solid #e8eaed; }
       .fin-card:last-child { border-bottom:none; }
-      .type-tabs { grid-template-columns:repeat(3,1fr) !important; }
+      .type-tabs { grid-template-columns:repeat(2,1fr) !important; }
+      .form-row { grid-template-columns:1fr !important; }
       .filter-bar { flex-wrap:wrap; }
       .col-hide { display:none !important; }
+      .pnbp-basis { flex-direction:column; align-items:flex-start; }
+      .pnbp-basis-amt { font-size:20px; word-break:break-word; max-width:100%; }
+      .form-card, .w-card, .pnbp-card, .fin-grid { max-width:100%; min-width:0; }
+      .keu-table { min-width:0; }
     }
   
     /* ── Card active state ── */
@@ -381,16 +399,16 @@
           <div>
             <div class="wc-lbl" style="display:flex;align-items:center;gap:7px;">
               PNBP ISP (BHP & USO)
-              <span id="pnbp-status-badge" style="display:none;font-size:10px;font-weight:700;padding:2px 8px;border-radius:9px;"></span>
+              <span id="pnbp-status-badge" class="pnbp-badge" style="display:none;"></span>
             </div>
             <div class="wc-ttl" id="pnbp-period">Dari pemasukan kotor periode ini</div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <div style="display:inline-flex;background:#f1f5f9;border-radius:9px;padding:3px;">
-              <button id="pnbp-tab-month" onclick="setPnbpScope('month')" style="padding:6px 13px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:#1e3a8a;box-shadow:0 1px 2px rgba(0,0,0,.08);">Bulan Ini</button>
-              <button id="pnbp-tab-year" onclick="setPnbpScope('year')" style="padding:6px 13px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:#64748b;">Tahun Ini</button>
+            <div class="pnbp-tabs">
+              <button type="button" id="pnbp-tab-month" class="pnbp-tab on" onclick="setPnbpScope('month')">Bulan Ini</button>
+              <button type="button" id="pnbp-tab-year" class="pnbp-tab" onclick="setPnbpScope('year')">Tahun Ini</button>
             </div>
-            <button onclick="openPnbpSettings()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;border:1.5px solid #e2e8f0;background:#fff;color:#1e3a8a;">
+            <button type="button" class="pnbp-settings-btn" onclick="openPnbpSettings()">
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
               Atur Persentase
             </button>
@@ -398,12 +416,12 @@
         </div>
 
         <!-- Dasar penghitungan -->
-        <div style="background:linear-gradient(120deg,#eff6ff,#f0fdfa);border:1px solid #dbeafe;border-radius:12px;padding:13px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <div class="pnbp-basis">
           <div>
-            <div style="font-size:11.5px;color:#64748b;font-weight:600;">Dasar Penghitungan (Pendapatan Kotor)</div>
-            <div style="font-size:11px;color:#94a3b8;margin-top:2px;" id="pnbp-base-note">100% dari pemasukan kotor</div>
+            <div class="pnbp-basis-lbl">Dasar Penghitungan (Pendapatan Kotor)</div>
+            <div class="pnbp-basis-note" id="pnbp-base-note">100% dari pemasukan kotor</div>
           </div>
-          <div style="font-size:22px;font-weight:800;color:#0d1b3e;letter-spacing:-.5px;" id="pnbp-base">Rp 0</div>
+          <div class="pnbp-basis-amt" id="pnbp-base">Rp 0</div>
         </div>
 
         <!-- Grid komponen -->
@@ -816,11 +834,8 @@ function setPnbpScope(scope){
   // Toggle tampilan tombol
   const tm=el('pnbp-tab-month'), ty=el('pnbp-tab-year');
   if(tm&&ty){
-    const on='background:#fff;color:#1e3a8a;box-shadow:0 1px 2px rgba(0,0,0,.08);';
-    const off='background:transparent;color:#64748b;box-shadow:none;';
-    const base='padding:6px 13px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;';
-    tm.style.cssText = base + (scope==='month'?on:off);
-    ty.style.cssText = base + (scope==='year'?on:off);
+    tm.classList.toggle('on', scope==='month');
+    ty.classList.toggle('on', scope==='year');
   }
   if(scope==='year') loadPnbpYear();
   else loadSummary(); // muat ulang → renderPnbp pakai data bulan ini
@@ -863,8 +878,7 @@ function renderPnbp(p, month, year, scope){
     const on = !!(p.enabled || (r && r.enabled));
     badge.style.display = 'inline-block';
     badge.textContent = on ? 'AKTIF' : 'NONAKTIF';
-    badge.style.background = on ? '#dcfce7' : '#f1f5f9';
-    badge.style.color      = on ? '#15803d' : '#94a3b8';
+    badge.className = 'pnbp-badge ' + (on ? 'on' : 'off');
   }
 }
 
