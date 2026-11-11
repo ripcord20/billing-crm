@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app-layout">
+  <%- include('../partials/sidebar') %>
+  <div class="main-content">
+    <%- include('../partials/topbar') %>
+    <main class="page-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Modul RADIUS</h1>
+          <p style="margin:4px 0 0;color:#64748b;font-size:13px;">Integrasi billing (192.168.22.99) ke FreeRADIUS + daloRADIUS (192.168.22.9) lewat MySQL schema radius — tanpa mengubah tabel tagihan yang sudah ada.</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-body">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <strong>Server FreeRADIUS</strong>
+            <button class="btn btn-sm btn-primary" onclick="openSrv()">+ Server</button>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>Nama</th><th>Host</th><th>MySQL</th><th>Status tes</th><th></th></tr></thead>
+            <tbody id="srvTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-body">
+          <strong>Sesi online (radacct)</strong>
+          <button class="btn btn-sm btn-secondary" style="margin-left:8px;" onclick="loadSessions()">Refresh</button>
+          <table class="data-table" style="margin-top:10px;">
+            <thead><tr><th>User</th><th>NAS</th><th>IP</th><th>Mulai</th></tr></thead>
+            <tbody id="sessTable"><tr><td colspan="4" style="padding:16px;color:#94a3b8;">Klik refresh setelah tes koneksi berhasil</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <strong>User di radcheck</strong>
+          <table class="data-table" style="margin-top:10px;">
+            <thead><tr><th>Username</th><th>Password</th><th>Auth-Type</th></tr></thead>
+            <tbody id="userTable"><tr><td colspan="3" style="padding:16px;color:#94a3b8;">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<div id="srvModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow:auto;">
+    <h3 style="margin:0 0 12px;">Server RADIUS</h3>
+    <label style="font-size:13px;">Nama</label>
+    <input id="sName" value="daloRADIUS" style="width:100%;margin:6px 0 8px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <label style="font-size:13px;">Host FreeRADIUS</label>
+    <input id="sHost" value="192.168.22.9" style="width:100%;margin:6px 0 8px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <label style="font-size:13px;">MySQL host</label>
+    <input id="sMysql" value="192.168.22.9" style="width:100%;margin:6px 0 8px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <label style="font-size:13px;">Database</label>
+    <input id="sDb" value="radius" style="width:100%;margin:6px 0 8px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <label style="font-size:13px;">User MySQL</label>
+    <input id="sUser" value="radius" style="width:100%;margin:6px 0 8px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <label style="font-size:13px;">Password MySQL (schema radius / daloRADIUS)</label>
+    <input id="sPass" type="password" style="width:100%;margin:6px 0 12px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn btn-secondary" onclick="document.getElementById('srvModal').style.display='none'">Batal</button>
+      <button class="btn btn-primary" onclick="saveSrv()">Simpan</button>
+    </div>
+  </div>
+</div>
+<script src="/js/app.js"></script>
+<script src="/js/radius.js"></script>
+</body>
+</html>
