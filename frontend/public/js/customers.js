@@ -853,6 +853,13 @@ async function _saveCustomerInner() {
   const name = document.getElementById('custName')?.value?.trim();
   if (!name) { App.showToast('Nama customer wajib diisi', 'error'); return; }
 
+  const phoneDup = await _fetchCustomerDuplicate();
+  if (phoneDup && phoneDup.available === false) {
+    App.showToast(phoneDup.message || 'Data ganda ditolak', 'error');
+    _showCustDup(phoneDup);
+    return;
+  }
+
   const custId = document.getElementById('custId')?.value?.trim().toUpperCase() || '';
   if (!_custEditId && custId) {
     const checkD = await App.api('/customers/check-id?customer_id=' + encodeURIComponent(custId));
@@ -1239,6 +1246,8 @@ function _clearForm() {
   _setVal('custInfraParentId', '');
   const mkSel2 = document.getElementById('custMikrotikId');
   if (mkSel2) mkSel2.value = '';
+
+  _hideCustDup();
 
   // Reset flag manual-edit PPPoE → auto-fill dari nama aktif kembali
   _pppoeManuallyEdited = false;
@@ -2249,6 +2258,64 @@ function custUseMyLocation() {
     { enableHighAccuracy: true, timeout: 10000 }
   );
 }
+
+function _setCustDupHint(id, message) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (message) {
+    el.hidden = false;
+    el.textContent = message;
+    el.style.color = '#dc2626';
+  } else {
+    el.hidden = true;
+    el.textContent = '';
+    el.style.color = '';
+  }
+}
+
+function _hideCustDup() {
+  _setCustDupHint('custPhoneDup', '');
+  _setCustDupHint('custNikDup', '');
+}
+
+function _showCustDup(result) {
+  if (!result || result.available !== false) {
+    _hideCustDup();
+    return;
+  }
+  const msg = result.message || 'Data ganda ditolak';
+  if (result.code === 'DUPLICATE_CUSTOMER' && /NIK/i.test(msg)) {
+    _setCustDupHint('custNikDup', msg);
+    _setCustDupHint('custPhoneDup', '');
+  } else {
+    _setCustDupHint('custPhoneDup', msg);
+    _setCustDupHint('custNikDup', '');
+  }
+}
+
+async function _fetchCustomerDuplicate() {
+  const phone = (document.getElementById('custPhone')?.value || '').trim();
+  const nik = (document.getElementById('custNik')?.value || '').trim();
+  if (!phone && !nik) return { success: true, available: true };
+  const qs = new URLSearchParams();
+  if (phone) qs.set('phone', phone);
+  if (nik) qs.set('nik', nik);
+  if (_custEditId) qs.set('exclude_id', String(_custEditId));
+  return App.api('/customers/check-duplicate?' + qs.toString());
+}
+
+window.checkCustomerDuplicate = async function (field) {
+  const phone = (document.getElementById('custPhone')?.value || '').trim();
+  const nik = (document.getElementById('custNik')?.value || '').trim();
+  if (field === 'phone' && !phone) { _setCustDupHint('custPhoneDup', ''); return; }
+  if (field === 'nik' && !nik) { _setCustDupHint('custNikDup', ''); return; }
+  if (!phone && !nik) { _hideCustDup(); return; }
+  try {
+    const result = await _fetchCustomerDuplicate();
+    if (result && result.available === false) _showCustDup(result);
+    else _hideCustDup();
+  } catch (_) { /* ignore live-check errors */ }
+};
 
 window.custInitMap        = custInitMap;
 window.custSetPoint       = custSetPoint;

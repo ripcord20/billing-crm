@@ -14,6 +14,7 @@ const ExcelJS = require('exceljs');
 const path    = require('path');
 const fs      = require('fs');
 const logger  = require('../utils/logger');
+const { normalizePhone } = require('../utils/duplicateGuard');
 
 // Kolom yang ada di Excel (urutan = urutan di sheet)
 // `required: true` = wajib diisi user. `customer_id` boleh kosong → auto-generate.
@@ -463,10 +464,15 @@ exports.importPreview = async (req, res) => {
     // + pppoe_username untuk uniqify saat auto-generate
     // + static_ip untuk uniqueness check IP
     const existingCustomers = await Customer.findAll({
-      attributes: ['id', 'customer_id', 'pppoe_username', 'static_ip'],
+      attributes: ['id', 'customer_id', 'pppoe_username', 'static_ip', 'phone'],
       raw: true,
     });
     const existingMap = new Map(existingCustomers.map(c => [c.customer_id, c.id]));
+    const existingPhoneToCid = new Map();
+    existingCustomers.forEach(c => {
+      const canon = normalizePhone(c.phone);
+      if (canon) existingPhoneToCid.set(canon, c.customer_id);
+    });
 
     // Set semua pppoe_username yang sudah dipakai di DB (non-null, lowercase)
     // + Map pppoe_username → customer_id untuk exclude diri sendiri saat update
@@ -640,6 +646,7 @@ exports.importPreview = async (req, res) => {
     // Parse rows
     const rows = [];
     const seenInFile = new Set();
+    const phonesInFile = new Map(); // canon phone → customer_id atau token baris
     const pppoeTakenInFile = new Set(); // tracking pppoe_username yang sudah dipakai dalam file
     const staticIpTakenInFile = new Set(); // tracking static_ip yang sudah dipakai dalam file
     const macTakenInFile = new Set();      // tracking mac_address yang sudah dipakai dalam file
@@ -758,6 +765,20 @@ exports.importPreview = async (req, res) => {
       let phone = String(rowData.phone || '').trim().replace(/[^\d+]/g, '');
       if (phone.startsWith('+62')) phone = '62' + phone.slice(3);
       else if (phone.startsWith('0')) phone = '62' + phone.slice(1);
+
+      const phoneCanon = normalizePhone(phone);
+      if (phoneCanon) {
+        const ownerCid = existingPhoneToCid.get(phoneCanon);
+        const isSelfUpdate = action === 'update' && ownerCid && ownerCid === customerId;
+        if (ownerCid && !isSelfUpdate) {
+          errors.push(`No. HP sudah dipakai customer ${ownerCid}. Data ganda ditolak.`);
+        }
+        const fileOwner = phonesInFile.get(phoneCanon);
+        if (fileOwner && fileOwner !== (customerId || `__row${rowIndex}`)) {
+          errors.push('No. HP duplikat dalam file ini. Data ganda ditolak.');
+        }
+        phonesInFile.set(phoneCanon, customerId || `__row${rowIndex}`);
+      }
 
       // Format installation_date
       let instDate = null;

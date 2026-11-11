@@ -5,6 +5,7 @@ const { generateUniqueCustomerId, paginateResponse } = require('../utils/helpers
 const { getCompanyName } = require('../utils/companyInfo');
 const InfraSync = require('../services/CustomerInfraSyncService');
 const { applyTenantWhere, getTenantId, assertCustomerTenant, isTenantOwner } = require('../utils/tenantScope');
+const { assertUniqueCustomer, sendDuplicate, normalizePhone, normalizeNik } = require('../utils/duplicateGuard');
 
 class CustomerController {
   async index(req, res) {
@@ -151,6 +152,17 @@ class CustomerController {
         }
       }
 
+      try {
+        await assertUniqueCustomer({
+          phone: data.phone,
+          nik: data.nik,
+          pppoe_username: data.pppoe_username
+        }, { tenant_id: data.tenant_id || ownerTid || null });
+      } catch (dupErr) {
+        if (sendDuplicate(res, dupErr)) return;
+        throw dupErr;
+      }
+
       // Jangan izinkan field internal di-set dari input bebas.
       delete data.public_link_token;
 
@@ -271,6 +283,31 @@ class CustomerController {
       delete sanitized.customer_id;           // hanya boleh diubah via updatePortalCredentials (validasi unique)
       delete sanitized.last_portal_login;     // diset otomatis oleh sistem saat login
       delete sanitized.public_link_token;     // hanya via endpoint payment-link (generate/revoke)
+
+      const phoneChanged = sanitized.phone !== undefined
+        && normalizePhone(sanitized.phone) !== normalizePhone(customer.phone);
+      const nikChanged = sanitized.nik !== undefined
+        && normalizeNik(sanitized.nik) !== normalizeNik(customer.nik);
+      const pppoeNext = sanitized.pppoe_username !== undefined
+        ? String(sanitized.pppoe_username || '').trim()
+        : '';
+      const pppoeChanged = sanitized.pppoe_username !== undefined
+        && pppoeNext !== String(customer.pppoe_username || '').trim();
+      if (phoneChanged || nikChanged || pppoeChanged) {
+        try {
+          await assertUniqueCustomer({
+            phone: phoneChanged ? sanitized.phone : null,
+            nik: nikChanged ? sanitized.nik : null,
+            pppoe_username: pppoeChanged ? sanitized.pppoe_username : null
+          }, {
+            excludeId: customer.id,
+            tenant_id: customer.tenant_id || getTenantId(req) || null
+          });
+        } catch (dupErr) {
+          if (sendDuplicate(res, dupErr)) return;
+          throw dupErr;
+        }
+      }
 
       await customer.update(sanitized);
       const full = await Customer.findByPk(customer.id, {
@@ -741,6 +778,38 @@ class CustomerController {
       if (exclude_id) where.id = { [Op.ne]: exclude_id };
       const exists = await Customer.findOne({ where });
       res.json({ success: true, available: !exists });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async checkDuplicate(req, res) {
+    try {
+      const phone = (req.query.phone || '').trim();
+      const nik = (req.query.nik || '').trim();
+      const pppoe = (req.query.pppoe_username || '').trim();
+      if (!phone && !nik && !pppoe) {
+        return res.json({ success: true, available: true });
+      }
+      const excludeId = req.query.exclude_id ? parseInt(req.query.exclude_id, 10) : null;
+      try {
+        await assertUniqueCustomer(
+          { phone, nik, pppoe_username: pppoe },
+          { excludeId: Number.isFinite(excludeId) ? excludeId : null, tenant_id: getTenantId(req) }
+        );
+        res.json({ success: true, available: true });
+      } catch (dupErr) {
+        if (dupErr && dupErr.status === 409) {
+          return res.json({
+            success: true,
+            available: false,
+            message: dupErr.message,
+            code: dupErr.code,
+            duplicate: dupErr.duplicate || null
+          });
+        }
+        throw dupErr;
+      }
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
