@@ -69,6 +69,11 @@ module.exports = (sequelize) => {
     notes: {
       type: DataTypes.TEXT,
       allowNull: true
+    },
+    payment_method: {
+      type: DataTypes.STRING(32),
+      allowNull: true,
+      comment: 'cash | transfer | ewallet'
     }
   }, {
     tableName: 'keuangan',

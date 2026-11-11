@@ -354,25 +354,25 @@ async function loadPayments() {
 
     // Validation by (recorded_by)
     const recBy = p.recorded_by_name
-      ? '<div style="font-size:12px;font-weight:600;color:#0d1b3e;">' + esc(p.recorded_by_name) + '</div>' +
-        '<div style="font-size:10px;color:#94a3b8;">' +
+      ? '<div class="pay-rec-name">' + esc(p.recorded_by_name) + '</div>' +
+        '<div class="pay-sub">' +
           new Date(p.created_at).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit'}) + ' ' +
           new Date(p.created_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}) +
         '</div>'
-      : '<span style="color:#94a3b8;font-size:12px;">–</span>';
+      : '<span class="pay-sub">–</span>';
 
     return '<tr>' +
-      '<td><div style="font-weight:700;color:#0d1b3e;">' + esc(p.cust_name) + '</div>' +
-        '<div style="font-size:11px;color:#94a3b8;">' + esc(p.cid) + ' · ' + esc(p.pkg_name||'–') + '</div></td>' +
-      '<td style="font-size:12px;color:#374151;">' + payDate +
-        '<div style="font-size:10px;color:#94a3b8;">' + (MONTHS[p.period_month]||'') + ' ' + (p.period_year||'') + '</div></td>' +
+      '<td><div class="pay-cust-name">' + esc(p.cust_name) + '</div>' +
+        '<div class="pay-sub">' + esc(p.cid) + ' · ' + esc(p.pkg_name||'–') + '</div></td>' +
+      '<td class="pay-date">' + payDate +
+        '<div class="pay-sub">' + (MONTHS[p.period_month]||'') + ' ' + (p.period_year||'') + '</div></td>' +
       '<td style="font-weight:700;color:#1a6ef5;font-size:14px;font-family:monospace;">' + fmtAmt + '</td>' +
       '<td><span class="mbadge" style="background:' + color + '18;color:' + color + ';">' +
         '<span style="width:6px;height:6px;border-radius:50%;background:' + color + ';display:inline-block;"></span>' + label + '</span>' + ref + '</td>' +
-      '<td style="font-size:12px;color:#374151;">' + dueDate + '</td>' +
+      '<td class="pay-date">' + dueDate + '</td>' +
       '<td class="col-hide-mobile">' + notifHtml + '</td>' +
       '<td class="col-hide-mobile">' + recBy + '</td>' +
-      '<td class="col-hide-mobile"><div style="font-size:11px;color:#6b7fa8;font-family:monospace;">' + esc(p.invoice_number||'–') + '</div></td>' +
+      '<td class="col-hide-mobile"><div class="pay-inv">' + esc(p.invoice_number||'–') + '</div></td>' +
       '<td><div style="display:flex;gap:5px;flex-wrap:wrap;">' +
         '<button class="inv-btn" onclick="openInvoice(' + p.id + ')">' +
           '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>' +
@@ -454,7 +454,7 @@ window.selectCustomer = async function(id, name, cid, phone, billingDay, price, 
     info.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;">' +
         '<div>' +
-          '<div style="font-weight:700;color:#0d1b3e;">' + esc(name) + '</div>' +
+          '<div class="pay-cust-name">' + esc(name) + '</div>' +
           '<div style="color:#6b7fa8;">' + esc(cid) + ' · ' + esc(phone||'–') + '</div>' +
         '</div>' +
         '<div style="text-align:right;">' +
@@ -663,7 +663,7 @@ window.onFilterChange = function() {
     if (info && _selCust) {
       info.innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-          '<div><div style="font-weight:700;color:#0d1b3e;">' + esc(_selCust.name) + '</div>' +
+          '<div><div class="pay-cust-name">' + esc(_selCust.name) + '</div>' +
           '<div style="color:#6b7fa8;">' + esc(_selCust.cid) + ' · ' + esc(_selCust.phone||'–') + '</div></div>' +
           '<div style="text-align:right;"><div style="font-weight:600;color:#1a6ef5;">' + esc(_selCust.pkgName||'–') + '</div>' +
           '<div style="color:#6b7fa8;">Tgl tagihan: ' + _selCust.billingDay + '</div></div>' +
@@ -763,7 +763,7 @@ function renderProofRows(rows) {
         '</div>';
     }
     return '<tr>' +
-      '<td><div style="font-weight:700;color:#0d1b3e;">' + esc(cust.name||'-') + '</div>' +
+      '<td><div class="pay-cust-name">' + esc(cust.name||'-') + '</div>' +
         '<div style="font-size:11px;color:#94a3b8;">' + esc(cust.customer_id||'-') + '</div></td>' +
       '<td style="font-size:12px;">' + esc(periode.trim()||'-') + '</td>' +
       '<td style="font-size:12px;font-family:monospace;color:#64748b;">' + esc(p.invoice_number||'-') + '</td>' +

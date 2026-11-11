@@ -226,6 +226,49 @@
     .fin-card.fc-active .sp-line   { stroke: rgba(255,255,255,.70) !important; }
     .fin-card.fc-active .sp-fill   { fill: rgba(255,255,255,.12) !important; }
     .fin-card.fc-active .sp-dot    { fill: #fff !important; }
+
+    .cat-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .cat-chip { padding:5px 10px; border-radius:999px; border:1.5px solid var(--d-border); background:#fff; font-size:11px; font-weight:700; color:var(--d-muted); cursor:pointer; font-family:inherit; }
+    .cat-chip.on { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+    .cat-chip.add { border-style:dashed; }
+    .pay-method { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+    .pay-method .mpill { text-align:center; padding:8px 4px; border-radius:10px; border:1.5px solid var(--d-border); font-size:12px; font-weight:700; cursor:pointer; background:#fff; color:var(--d-muted); font-family:inherit; }
+    .pay-method .mpill.on { border-color:#1a6ef5; background:#eff6ff; color:#1a6ef5; }
+    .keu-no { color:var(--d-muted); font-size:12px; font-variant-numeric:tabular-nums; }
+
+    [data-theme="dark"] {
+      --d-bg:#0b1220; --d-card:#121a2b; --d-border:#243049;
+      --d-text:#e8eef9; --d-muted:#7c8ba6;
+    }
+    [data-theme="dark"] .keu-page { background:var(--d-bg) !important; }
+    [data-theme="dark"] .fin-grid, [data-theme="dark"] .fin-grid-4 {
+      background:var(--d-card); border-color:var(--d-border);
+    }
+    [data-theme="dark"] .fin-card { border-color:var(--d-border); }
+    [data-theme="dark"] .fin-card:hover { background:#1a2438; }
+    [data-theme="dark"] .card-val { color:#f8fafc; }
+    [data-theme="dark"] .card-lbl { color:#94a3b8; }
+    [data-theme="dark"] .w-card, [data-theme="dark"] .form-card, [data-theme="dark"] .modal-box {
+      background:var(--d-card); border-color:var(--d-border); color:var(--d-text);
+    }
+    [data-theme="dark"] .keu-table th { background:#0f172a; color:var(--d-muted); }
+    [data-theme="dark"] .keu-table td { border-bottom-color:var(--d-border); color:var(--d-text); }
+    [data-theme="dark"] .keu-table tbody tr:hover td { background:#1a2438; }
+    .keu-table tfoot td, .keu-table tfoot .keu-foot td { background:#eef2f9; color:var(--d-text); }
+    [data-theme="dark"] .keu-table tfoot tr, [data-theme="dark"] .keu-table tfoot td { background:#0f172a !important; color:var(--d-text) !important; }
+    [data-theme="dark"] .form-control, [data-theme="dark"] .filter-select, [data-theme="dark"] .search-input,
+    [data-theme="dark"] .filter-tab, [data-theme="dark"] .type-tab, [data-theme="dark"] .page-btn,
+    [data-theme="dark"] .cat-chip, [data-theme="dark"] .pay-method .mpill {
+      background:#0f172a; color:var(--d-text); border-color:var(--d-border);
+    }
+    [data-theme="dark"] .form-label { color:var(--d-text); }
+    [data-theme="dark"] .cat-chip.on, [data-theme="dark"] .pay-method .mpill.on {
+      background:#16325c; color:#93c5fd; border-color:#1a6ef5;
+    }
+    [data-theme="dark"] .pnbp-item { border-color:var(--d-border) !important; background:#0f172a; }
+    [data-theme="dark"] #pnbp-base { color:var(--d-text) !important; }
+    [data-theme="dark"] .cat-item { border-bottom-color:var(--d-border); }
+    [data-theme="dark"] .keu-no { color:var(--d-muted); }
   </style>
 </head>
 <body>
@@ -499,6 +542,17 @@
             <label class="form-label">Kategori <span>*</span></label>
             <input type="text" id="f-category" class="form-control" placeholder="e.g. Gaji, Operasional, Sewa..." list="cat-suggestions" autocomplete="off">
             <datalist id="cat-suggestions"></datalist>
+            <div class="cat-chips" id="cat-chips"></div>
+          </div>
+
+          <div class="form-group cond-field show" id="cond-paymethod">
+            <label class="form-label">Cara bayar</label>
+            <input type="hidden" id="f-paymethod" value="cash">
+            <div class="pay-method">
+              <button type="button" class="mpill on" data-pay="cash" onclick="setPayMethod('cash')">Cash</button>
+              <button type="button" class="mpill" data-pay="transfer" onclick="setPayMethod('transfer')">Transfer</button>
+              <button type="button" class="mpill" data-pay="ewallet" onclick="setPayMethod('ewallet')">E-Wallet</button>
+            </div>
           </div>
 
           <div class="form-group">
@@ -595,18 +649,21 @@
               <table class="keu-table">
                 <thead>
                   <tr>
+                    <th style="width:40px">No</th>
                     <th>Tgl</th>
                     <th>Tipe</th>
                     <th>Kategori / Deskripsi</th>
                     <th class="col-hide">Pihak / Ref</th>
                     <th>Status</th>
+                    <th>Cara bayar</th>
                     <th style="text-align:right">Jumlah</th>
                     <th style="width:80px;text-align:center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody id="keu-tbody">
-                  <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--d-muted)">Memuat...</td></tr>
+                  <tr><td colspan="9" style="text-align:center;padding:32px;color:var(--d-muted)">Memuat...</td></tr>
                 </tbody>
+                <tfoot id="keu-tfoot"></tfoot>
               </table>
             </div>
             <div class="pagination" id="pagination"></div>
@@ -724,13 +781,48 @@ function setType(t){
   // Conditional fields
   const showParty = ['hutang','piutang'].includes(t);
   const showModal = t === 'modal';
+  const showPay = ['pemasukan','pengeluaran'].includes(t);
   el('cond-party').classList.toggle('show', showParty);
   el('cond-modal').classList.toggle('show', showModal);
+  if (el('cond-paymethod')) el('cond-paymethod').classList.toggle('show', showPay);
 
-  // Update datalist
-  const cats = CAT_DEFAULT[t] || [];
-  el('cat-suggestions').innerHTML = cats.map(c=>`<option value="${c}">`).join('');
+  loadCatChips(t);
 }
+
+function setPayMethod(m){
+  el('f-paymethod').value = m;
+  document.querySelectorAll('.pay-method .mpill').forEach(b=>b.classList.toggle('on', b.dataset.pay===m));
+}
+
+async function loadCatChips(t){
+  let extra = [];
+  try {
+    const r = await api('/api/keuangan/categories?type='+encodeURIComponent(t));
+    if (r && r.success) extra = r.data || [];
+  } catch(e) {}
+  const cats = [...new Set([...(CAT_DEFAULT[t]||[]), ...extra].filter(Boolean))];
+  el('cat-suggestions').innerHTML = cats.map(c=>`<option value="${escHtmlKeu(c)}">`).join('');
+  const box = el('cat-chips');
+  if (!box) return;
+  box.innerHTML = cats.slice(0,14).map(c=>`<button type="button" class="cat-chip" onclick="pickCat(${JSON.stringify(c)})">${escHtmlKeu(c)}</button>`).join('') +
+    `<button type="button" class="cat-chip add" onclick="addCustomCategory()">+ Kategori</button>`;
+}
+
+function pickCat(name){
+  el('f-category').value = name;
+  document.querySelectorAll('.cat-chip').forEach(b=>b.classList.toggle('on', b.textContent===name));
+}
+
+async function addCustomCategory(){
+  const name = prompt('Nama kategori baru:');
+  if (!name || !name.trim()) return;
+  const r = await api('/api/keuangan/categories', { method:'POST', body: JSON.stringify({ type:_type, name:name.trim() }) });
+  if (!r || !r.success) { App.showToast((r&&r.message)||'Gagal menambah kategori','error'); return; }
+  el('f-category').value = name.trim();
+  loadCatChips(_type);
+}
+
+function escHtmlKeu(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 // ─── Filter ───────────────────────────────────────────────────
 function setFilter(f, btn){
@@ -1060,14 +1152,18 @@ async function loadTable(){
 function renderTable(rows, total){
   el('tbl-count').textContent = total + ' data';
   const tbody = el('keu-tbody');
+  const tfoot = el('keu-tfoot');
+  if (tfoot) tfoot.innerHTML = '';
   if(!rows.length){
-    tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:36px;color:var(--d-muted)">
+    tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;padding:36px;color:var(--d-muted)">
       <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 10px;display:block;opacity:.3"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
       <p style="font-size:13px;font-weight:600">Belum ada transaksi</p>
     </td></tr>`;
     return;
   }
-  tbody.innerHTML = rows.map(r=>{
+  const PAY_LBL = {cash:'Cash',transfer:'Transfer',ewallet:'E-Wallet'};
+  tbody.innerHTML = rows.map((r,i)=>{
+    const no = ((_page-1)*LIMIT)+i+1;
     const isDebt = ['hutang','piutang'].includes(r.type);
     const statusHtml = isDebt && r.status
       ? `<span class="status-badge sb-${r.status}">${r.status==='lunas'?'Lunas':r.status==='cicilan'?'↺ Cicilan':'Belum'}</span>`
@@ -1078,6 +1174,7 @@ function renderTable(rows, total){
     const amtColor = r.type==='pemasukan'||r.type==='modal'?'#007a5e':r.type==='pengeluaran'?'#c0183a':r.type==='piutang'?'#0077b6':'#b45309';
     const amtSign  = r.type==='pemasukan'||r.type==='modal'?'+':r.type==='pengeluaran'?'-':'';
     return`<tr>
+      <td class="keu-no">${no}</td>
       <td style="white-space:nowrap;font-size:11.5px;color:var(--d-muted)">${fmtDate(r.date)}</td>
       <td><span class="type-badge tb-${r.type}">${TYPE_LABEL[r.type]||r.type}</span></td>
       <td>
@@ -1089,6 +1186,7 @@ function renderTable(rows, total){
         ${r.due_date?`<div style="font-size:10.5px;color:var(--d-muted)">Due: ${fmtDate(r.due_date)}</div>`:''}
       </td>
       <td>${statusHtml}</td>
+      <td style="font-size:11.5px;color:var(--d-muted)">${PAY_LBL[r.payment_method]||r.payment_method||'—'}</td>
       <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:700;font-size:13px;color:${amtColor}">
         ${amtSign}${fmtRp(+r.amount)}
       </td>
@@ -1105,6 +1203,13 @@ function renderTable(rows, total){
       </td>
     </tr>`;
   }).join('');
+  const pageTotal = rows.reduce((s,r)=>s+(+r.amount||0),0);
+  if (tfoot) tfoot.innerHTML = `<tr class="keu-foot">
+    <td class="keu-no">${rows.length}</td>
+    <td colspan="6" style="font-size:12px;font-weight:700;color:var(--d-muted)">Halaman ini</td>
+    <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:800;color:var(--d-text)">${fmtRp(pageTotal)}</td>
+    <td></td>
+  </tr>`;
 }
 
 function renderPagination(total){
@@ -1137,6 +1242,7 @@ async function submitForm(){
     date:        el('f-date').value,
     ref_number:  el('f-ref').value.trim()||null,
     notes:       el('f-notes').value.trim()||null,
+    payment_method: ['pemasukan','pengeluaran'].includes(type) ? (el('f-paymethod').value||'cash') : null,
   };
   if(['hutang','piutang'].includes(type)){
     body.party_name = el('f-party').value.trim()||null;
@@ -1159,6 +1265,10 @@ async function submitForm(){
     const r = await api(url,{ method, body:JSON.stringify(body) });
     if(!r.success) throw new Error(r.message);
 
+    const catName = body.category;
+    if (catName && ['pemasukan','pengeluaran','hutang','piutang','modal'].includes(type)) {
+      api('/api/keuangan/categories', { method:'POST', body: JSON.stringify({ type, name: catName }) }).catch(()=>{});
+    }
     App.showToast(r.message,'success');
     cancelEdit();
     loadAll();
@@ -1197,6 +1307,7 @@ async function editRecord(id){
     if(d.due_date)   el('f-due').value   = d.due_date;
     if(d.status)     el('f-status').value= d.status;
     if(d.source)     el('f-source').value= d.source;
+    setPayMethod(d.payment_method||'cash');
 
     el('form-card') ? el('form-card').scrollIntoView({behavior:'smooth',block:'start'})
                     : window.scrollTo({top:0,behavior:'smooth'});

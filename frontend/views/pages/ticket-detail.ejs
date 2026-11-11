@@ -3,13 +3,17 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><%= typeof title !== 'undefined' ? title : 'Detail Ticket' %> - <%= appName %></title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
   <style>
-    :root{--nv:#2f6cbb;--nv2:#1e3ecc;}
+    :root{--nv:#1a6ef5;--nv2:#0047cc;--ot-blue:#1a6ef5;--border:#e0e7f3;--text:#0d1b3e;--muted:#6b7fa8;}
+    .ot { font-family:'Plus Jakarta Sans',sans-serif; background:#eef2f9; }
+    .page-content, .ticket-header-card, .card-modern, .sidebar-card, .btn, textarea, input, select {
+      font-family:'Plus Jakarta Sans',sans-serif;
+    }
     /* Header card */
     .ticket-header-card{background:linear-gradient(135deg,var(--nv) 0%,var(--nv2) 100%);color:#fff;padding:28px 36px;border-radius:18px;margin-bottom:20px;box-shadow:0 10px 40px rgba(6,13,154,.3);position:relative;overflow:hidden;}
     .ticket-number{font-size:12px;opacity:.85;font-weight:700;margin-bottom:6px;letter-spacing:.08em;text-transform:uppercase;position:relative;z-index:1;}
@@ -224,6 +228,27 @@
     .lbx{position:absolute;top:18px;right:28px;color:#fff;font-size:38px;cursor:pointer;}
     @keyframes spin{to{transform:rotate(360deg)}}
     @media(max-width:768px){.tkt-ttl{font-size:17px;}.frow{grid-template-columns:1fr;}}
+
+    .ticket-header-card{border-radius:16px;box-shadow:none;background:linear-gradient(135deg,#1a6ef5,#0047cc);}
+    .card-modern,.sidebar-card{background:#fff;border:1.5px solid var(--border);box-shadow:none;border-radius:16px;}
+    .section-title,.sidebar-title{color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;}
+    .info-item,.desc-box,.comment-box,.timeline-container{background:#f8fafc;border-color:var(--border);}
+    .info-value{color:var(--text);}
+    .info-label{color:var(--muted);}
+    .qab{border-radius:10px;font-family:'Plus Jakarta Sans',sans-serif;}
+
+    [data-theme="dark"]{
+      --border:#243049;--text:#e8eef9;--muted:#7c8ba6;
+    }
+    [data-theme="dark"] .page-content, [data-theme="dark"] .ot{background:#0b1220;}
+    [data-theme="dark"] .card-modern,[data-theme="dark"] .sidebar-card{background:#121a2b;border-color:#243049;}
+    [data-theme="dark"] .section-title,[data-theme="dark"] .sidebar-title,[data-theme="dark"] .info-value{color:#e8eef9;}
+    [data-theme="dark"] .info-label{color:#7c8ba6;}
+    [data-theme="dark"] .info-item,[data-theme="dark"] .desc-box,[data-theme="dark"] .comment-box,[data-theme="dark"] .timeline-container{background:#0f172a;border-color:#243049;color:#e8eef9;}
+    [data-theme="dark"] .timeline-item{background:#121a2b;color:#e8eef9;}
+    [data-theme="dark"] .comment-box textarea,[data-theme="dark"] .comment-box input{background:#0f172a;color:#e8eef9;border-color:#243049;}
+    [data-theme="dark"] #loadingDiv{color:#7c8ba6;}
+    [data-theme="dark"] .qab{background:#0f172a;color:#e8eef9;border-color:#243049;}
   </style>
 </head>
 <body>
@@ -232,7 +257,7 @@
   <div class="main-content">
     <%- include('../partials/topbar') %>
 
-    <main class="page-content" id="mainContent" style="display:none;">
+    <main class="page-content ot" id="mainContent" style="display:none;">
 
       <!-- Ticket Header Card -->
       <div class="ticket-header-card">
@@ -481,7 +506,7 @@
 </div>
 
 <script>const TID='<%= ticketId %>';</script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/vendor/leaflet/leaflet.js"></script>
 <script>
 'use strict';
 let tkData=null,leafMap=null,selFiles=[],selStatus=null;

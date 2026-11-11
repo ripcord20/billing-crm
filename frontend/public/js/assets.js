@@ -61,6 +61,158 @@ function conditionBadge(c) {
   return `<span class="badge-condition ${c}">${map[c]||c}</span>`;
 }
 
+function categoryOf(aOrId) {
+  if (aOrId && typeof aOrId === 'object') {
+    if (aOrId.category) return aOrId.category;
+    return categories.find(c => String(c.id) === String(aOrId.category_id)) || null;
+  }
+  return categories.find(c => String(c.id) === String(aOrId)) || null;
+}
+
+function isModemCategory(aOrId) {
+  const c = categoryOf(aOrId);
+  if (!c) return false;
+  const s = ((c.slug || '') + ' ' + (c.name || '')).toLowerCase();
+  return /modem|ont|onu|router|cpe|gpon|hg\d|f6\d{2}/.test(s);
+}
+
+function assetSpecs(a) {
+  let s = a && a.specs;
+  if (!s) return {};
+  if (typeof s === 'string') {
+    try { s = JSON.parse(s); } catch (e) { return {}; }
+  }
+  return s && typeof s === 'object' ? s : {};
+}
+
+function applyAssetFormMode() {
+  const catId = $('fCategory') && $('fCategory').value;
+  const modem = isModemCategory(catId);
+  const form = $('assetForm');
+  if (form) form.classList.toggle('modem-mode', modem);
+}
+
+function readModemSpecs() {
+  const out = {};
+  const adaptor = $('fAdaptor') && $('fAdaptor').value;
+  if (adaptor === 'included') out.adaptor_included = true;
+  if (adaptor === 'none') out.adaptor_included = false;
+  const at = $('fAdaptorType') && $('fAdaptorType').value;
+  if (at) out.adaptor_type = at;
+  const mac = $('fMac') && $('fMac').value.trim();
+  if (mac) out.mac_address = mac;
+  return Object.keys(out).length ? out : null;
+}
+
+function fillModemFields(a) {
+  const sp = assetSpecs(a);
+  if ($('fMac')) $('fMac').value = sp.mac_address || '';
+  if ($('fAdaptor')) {
+    if (sp.adaptor_included === true) $('fAdaptor').value = 'included';
+    else if (sp.adaptor_included === false) $('fAdaptor').value = 'none';
+    else $('fAdaptor').value = '';
+  }
+  if ($('fAdaptorType')) $('fAdaptorType').value = sp.adaptor_type || '';
+}
+
+function adaptorCell(a) {
+  if (!isModemCategory(a)) return '—';
+  const sp = assetSpecs(a);
+  if (sp.adaptor_included === true) return sp.adaptor_type ? '✓ ' + sp.adaptor_type : '✓ Ada';
+  if (sp.adaptor_included === false) return 'Tidak';
+  return '—';
+}
+
+function parseSnMacFromText(text) {
+  const raw = String(text || '').replace(/\r/g, '\n');
+  let mac = '';
+  const macColon = raw.match(/\b([0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}\b/);
+  if (macColon) mac = macColon[0].replace(/-/g, ':').toUpperCase();
+  if (!mac) {
+    const compact = raw.match(/\b[0-9A-Fa-f]{12}\b/);
+    if (compact) mac = compact[0].toUpperCase().match(/.{2}/g).join(':');
+  }
+  let sn = '';
+  const labeled = raw.match(/(?:S\/N|SN|Serial(?:\s*No\.?|\s*Number)?)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-]{4,})/i);
+  if (labeled) sn = labeled[1].toUpperCase();
+  if (!sn) {
+    const lines = raw.split(/\n+/).map(l => l.trim()).filter(Boolean);
+    for (const line of lines) {
+      const m = line.match(/\b([A-Z0-9]{8,})\b/);
+      if (m && m[1].replace(/[^0-9A-F]/gi, '').length !== 12) { sn = m[1].toUpperCase(); break; }
+    }
+  }
+  if (sn && mac && sn.replace(/[^0-9A-F]/g, '') === mac.replace(/[^0-9A-F]/g, '')) sn = '';
+  return { sn, mac };
+}
+
+function scanLabelPhoto() {
+  const inp = $('fScanFile');
+  if (inp) inp.click();
+}
+
+function setScanStatus(msg) {
+  const el = $('scanStatus');
+  if (el) el.textContent = msg || '';
+}
+
+async function onScanLabelFile(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const preview = $('scanPreview');
+  if (preview) {
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = 'block';
+  }
+  setScanStatus('Membaca label…');
+  try {
+    let text = '';
+    if (window.BarcodeDetector) {
+      try {
+        const det = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'data_matrix'] });
+        const bmp = await createImageBitmap(file);
+        const codes = await det.detect(bmp);
+        text = (codes || []).map(c => c.rawValue).filter(Boolean).join('\n');
+      } catch (e) { /* fallback OCR */ }
+    }
+    if (!text) {
+      text = await ocrLabelImage(file);
+    }
+    const parsed = parseSnMacFromText(text);
+    if (parsed.sn && $('fSerial')) $('fSerial').value = parsed.sn;
+    if (parsed.mac && $('fMac')) $('fMac').value = parsed.mac;
+    if (parsed.sn || parsed.mac) {
+      setScanStatus((parsed.sn ? 'SN ' + parsed.sn : '') + (parsed.sn && parsed.mac ? ' · ' : '') + (parsed.mac ? 'MAC ' + parsed.mac : ''));
+      applyAssetFormMode();
+    } else {
+      setScanStatus('Tidak ketemu SN/MAC. Isi manual atau foto lebih dekat.');
+    }
+  } catch (e) {
+    setScanStatus('Gagal baca foto: ' + (e.message || e));
+  }
+  input.value = '';
+}
+
+let _tesseractLoading = null;
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  if (_tesseractLoading) return _tesseractLoading;
+  _tesseractLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload = () => resolve(window.Tesseract);
+    s.onerror = () => reject(new Error('Gagal memuat OCR'));
+    document.head.appendChild(s);
+  });
+  return _tesseractLoading;
+}
+
+async function ocrLabelImage(file) {
+  const Tesseract = await loadTesseract();
+  const result = await Tesseract.recognize(file, 'eng', { logger: () => {} });
+  return (result && result.data && result.data.text) || '';
+}
+
 function debounceSearch() {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => { currentPage = 1; loadAssets(); }, 350);
@@ -216,7 +368,7 @@ async function loadAssets() {
 function renderTable(rows) {
   const tbody = $('assetTableBody');
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted)">Tidak ada asset ditemukan</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text-muted)">Tidak ada asset ditemukan</td></tr>';
     return;
   }
   tbody.innerHTML = rows.map(a => {
@@ -238,7 +390,8 @@ function renderTable(rows) {
       </td>
       <td><span class="cat-dot" style="background:${catColor};"></span>${catName}</td>
       <td style="font-size:12px;">${a.brand || '—'} ${a.model || ''}</td>
-      <td style="font-size:12px;font-family:monospace;">${a.serial_number || '—'}</td>
+      <td style="font-size:12px;font-family:monospace;">${a.serial_number || assetSpecs(a).mac_address || '—'}</td>
+      <td style="font-size:12px;">${adaptorCell(a)}</td>
       <td>${statusBadge(a.status)}</td>
       <td>${conditionBadge(a.condition)}</td>
       <td>${assigned}</td>
@@ -297,8 +450,11 @@ function renderPagination(p) {
 function openAddAsset() {
   $('assetModalTitle').textContent = 'Tambah Asset Baru';
   $('editAssetId').value = '';
-  ['fName', 'fBrand', 'fModel', 'fSerial', 'fPurchaseDate', 'fPrice', 'fVendor', 'fWarranty', 'fLocation', 'fNotes'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+  ['fName', 'fBrand', 'fModel', 'fSerial', 'fMac', 'fPurchaseDate', 'fPrice', 'fVendor', 'fWarranty', 'fLocation', 'fNotes', 'fAdaptor', 'fAdaptorType'].forEach(id => { const el = $(id); if (el) el.value = ''; });
   ['fCategory', 'fStatus', 'fCondition', 'fCustomer', 'fInfra', 'fOnt'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+  setScanStatus('');
+  if ($('scanPreview')) { $('scanPreview').style.display = 'none'; $('scanPreview').src = ''; }
+  applyAssetFormMode();
   openModal('assetModal');
 }
 
@@ -327,6 +483,8 @@ async function openEdit(id) {
     $('fInfra').value = a.infrastructure_id || '';
     $('fOnt').value = a.ont_device_id || '';
     $('fNotes').value = a.notes || '';
+    fillModemFields(a);
+    applyAssetFormMode();
     openModal('assetModal');
   } catch(e) { alert('Gagal memuat data asset'); }
 }
@@ -355,7 +513,8 @@ async function submitAsset(event) {
       customer_id: $('fCustomer').value || null,
       infrastructure_id: $('fInfra').value || null,
       ont_device_id: $('fOnt').value || null,
-      notes: $('fNotes').value || null
+      notes: $('fNotes').value || null,
+      specs: readModemSpecs()
     };
 
     const url    = id ? '/api/assets/' + id : '/api/assets';
@@ -390,6 +549,16 @@ async function viewAsset(id) {
     $('dCat').textContent        = a.category?.name || '—';
     $('dBrandModel').textContent = [a.brand, a.model].filter(Boolean).join(' / ') || '—';
     $('dSerial').textContent     = a.serial_number || '—';
+    const sp = assetSpecs(a);
+    if ($('dMacRow')) {
+      $('dMacRow').style.display = sp.mac_address ? '' : 'none';
+      if ($('dMac')) $('dMac').textContent = sp.mac_address || '—';
+    }
+    if ($('dAdaptorRow')) {
+      const ad = adaptorCell(a);
+      $('dAdaptorRow').style.display = isModemCategory(a) ? '' : 'none';
+      if ($('dAdaptor')) $('dAdaptor').textContent = ad;
+    }
     $('dPurchDate').textContent  = fmtDate(a.purchase_date);
     $('dPrice').textContent      = a.purchase_price > 0 ? fmtRp(a.purchase_price) : '—';
     $('dVendor').textContent     = a.purchase_vendor || '—';

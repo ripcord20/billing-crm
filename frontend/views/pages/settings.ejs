@@ -7,6 +7,16 @@
   <link rel="stylesheet" href="/css/app.css">
   <style>
     :root{--d-bg:#eef2f9;--d-card:#fff;--d-border:#e0e7f3;--d-text:#0d1b3e;--d-muted:#6b7fa8;--d-blue1:#1a6ef5;}
+    .pa-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--d-border);border-radius:12px;margin-bottom:8px;background:var(--d-card);color:var(--d-text);}
+    [data-theme="dark"]{
+      --d-bg:#0b1220;--d-card:#121a2b;--d-border:#243049;--d-text:#e8eef9;--d-muted:#7c8ba6;
+    }
+    [data-theme="dark"] .st-page{background:var(--d-bg);}
+    [data-theme="dark"] .st-nav,[data-theme="dark"] .st-card{background:var(--d-card);border-color:var(--d-border);}
+    [data-theme="dark"] .st-card-hdr{background:linear-gradient(135deg,#151d30,#121a2b);border-color:var(--d-border);}
+    [data-theme="dark"] .st-nav-item:hover,[data-theme="dark"] .st-nav-item.active{background:#16325c;color:#93c5fd;}
+    [data-theme="dark"] .pa-row{background:#0f172a;border-color:var(--d-border);color:var(--d-text);}
+    [data-theme="dark"] #payAcctModal > div{background:var(--d-card)!important;color:var(--d-text);}
     .st-page{font-family:'DM Sans',sans-serif;}
     @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
     .a1{animation:fadeUp .35s ease both}.a2{animation:fadeUp .35s .07s ease both}.a3{animation:fadeUp .35s .14s ease both}
@@ -3295,7 +3305,7 @@ async function loadPayAccounts() {
       const label = (it.provider || '').toUpperCase();
       const badge = typeLabels[it.type] || it.type;
       const color = typeColors[it.type] || '#64748b';
-      return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--d-border);border-radius:12px;margin-bottom:8px;background:#fff">' +
+      return '<div class="pa-row">' +
         '<div style="width:36px;height:36px;border-radius:9px;background:'+color+'22;color:'+color+';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0">'+(it.type==='qris'?'QR':label.substring(0,3))+'</div>' +
         '<div style="flex:1;min-width:0">' +
           '<div style="font-size:13px;font-weight:700;color:var(--d-text);display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
