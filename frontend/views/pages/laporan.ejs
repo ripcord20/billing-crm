@@ -178,6 +178,34 @@
       .period-bar { flex-direction:column; align-items:stretch; }
       .col-hide-sm { display:none !important; }
     }
+    .ov-tbl tfoot td { background:#eef2f9; color:var(--d-text); }
+    [data-theme="dark"] {
+      --d-bg:#0b1220; --d-card:#121a2b; --d-border:#243049;
+      --d-text:#e8eef9; --d-muted:#7c8ba6;
+    }
+    [data-theme="dark"] .lap-page { background:var(--d-bg) !important; }
+    [data-theme="dark"] .fin-grid, [data-theme="dark"] .fin-grid-4 {
+      background:var(--d-card); border-color:var(--d-border);
+    }
+    [data-theme="dark"] .fin-card { border-color:var(--d-border); }
+    [data-theme="dark"] .fin-card:hover { background:#1a2438; }
+    [data-theme="dark"] .card-val { color:#f8fafc; }
+    [data-theme="dark"] .card-lbl, [data-theme="dark"] .card-sub { color:#94a3b8; }
+    [data-theme="dark"] .w-card, [data-theme="dark"] .view-tabs, [data-theme="dark"] .pf-select {
+      background:var(--d-card); border-color:var(--d-border); color:var(--d-text);
+    }
+    [data-theme="dark"] .wc-ttl, [data-theme="dark"] .lap-page h1 { color:var(--d-text); }
+    [data-theme="dark"] .ov-tbl th { background:#0f172a; color:var(--d-muted); }
+    [data-theme="dark"] .ov-tbl td { border-bottom-color:var(--d-border); color:var(--d-text); }
+    [data-theme="dark"] .ov-tbl tbody tr:hover td { background:#1a2438; }
+    [data-theme="dark"] .ov-tbl tfoot td { background:#0f172a !important; color:var(--d-text) !important; }
+    body.lap-home .ov-tbl tfoot td, body.lap-home .keu-foot td {
+      background:#12102a !important; color:#e2e8f0 !important;
+    }
+    [data-theme="dark"] .lr-table td, [data-theme="dark"] .lr-table .lr-lbl, [data-theme="dark"] .lr-table .lr-sub { color:var(--d-text); }
+    [data-theme="dark"] .lr-table .lr-subtotal td { background:#0f172a; color:var(--d-text); }
+    [data-theme="dark"] .met-item, [data-theme="dark"] .pkg-item, [data-theme="dark"] .cat-item { border-bottom-color:var(--d-border); }
+    [data-theme="dark"] .met-bar-bg, [data-theme="dark"] .cat-bar-bg { background:#243049; }
   </style>
 </head>
 <body>
@@ -546,11 +574,11 @@
           <div style="overflow-x:auto">
             <table class="ov-tbl" id="keu-tx-table">
               <thead><tr>
-                <th>Tgl</th><th>Tipe</th><th>Kategori / Deskripsi</th>
+                <th>No</th><th>Tgl</th><th>Tipe</th><th>Kategori / Deskripsi</th>
                 <th>Pihak / Ref</th><th>Status</th><th style="text-align:right">Jumlah</th>
               </tr></thead>
               <tbody id="keu-tx-tbody">
-                <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--d-muted)">Memuat...</td></tr>
+                <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--d-muted)">Memuat...</td></tr>
               </tbody>
               <tfoot id="keu-tx-tfoot"></tfoot>
             </table>
@@ -789,12 +817,13 @@ function renderKeuTx(rows, label) {
   const totalKel = rows.filter(r=>r.type==='pengeluaran').reduce((a,r)=>a+(+r.amount||0),0);
 
   const tbody = document.getElementById('keu-tx-tbody');
-  tbody.innerHTML = rows.map(r => {
+  tbody.innerHTML = rows.map((r,i) => {
     const amtColor = r.type==='pengeluaran'||r.type==='hutang' ? '#c0183a' : r.type==='modal' ? '#007a5e' : '#0077b6';
     const statusHtml = r.status
       ? `<span class="mbadge ${r.status==='lunas'?'green':r.status==='cicilan'?'amber':'red'}" style="font-size:10.5px;padding:2px 7px">${STATUS_LABEL[r.status]||r.status}</span>`
       : '<span style="color:#d0d8e8">—</span>';
     return `<tr>
+      <td style="color:var(--d-muted);font-size:12px">${i+1}</td>
       <td style="white-space:nowrap;font-size:11.5px;color:var(--d-muted)">${fmtDateShort(r.date)}</td>
       <td><span class="keu-badge ${KEU_BADGE[r.type]||''}">${KEU_LABEL[r.type]||r.type}</span></td>
       <td>
@@ -810,8 +839,9 @@ function renderKeuTx(rows, label) {
   }).join('');
 
   document.getElementById('keu-tx-tfoot').innerHTML = `
-    <tr style="background:#f4f8ff">
-      <td colspan="4" style="padding:10px 12px;font-size:12px;color:var(--d-muted)">${rows.length} transaksi</td>
+    <tr class="keu-foot">
+      <td style="padding:10px 12px;font-size:12px;color:var(--d-muted)">${rows.length}</td>
+      <td colspan="4" style="padding:10px 12px;font-size:12px;color:var(--d-muted)">transaksi</td>
       <td style="padding:10px 12px;font-size:11.5px;font-weight:600;text-align:right;color:var(--d-muted)">Total Pengeluaran</td>
       <td style="padding:10px 12px;font-size:14px;font-weight:800;font-family:'DM Mono',monospace;color:#c0183a;text-align:right">-${fmtRp(totalKel)}</td>
     </tr>`;
@@ -1016,11 +1046,12 @@ function renderAll(d,params){
       const TYPE_CLR    = {pengeluaran:'kb-pengeluaran',hutang:'kb-hutang',piutang:'kb-piutang',modal:'kb-modal'};
       const ST_LABEL    = {lunas:'✓ Lunas',belum_lunas:'⏳ Belum',cicilan:'↺ Cicilan'};
       const tbody = document.getElementById('keu-tx-tbody');
-      if(tbody) tbody.innerHTML = keuRows.map(r=>{
+      if(tbody) tbody.innerHTML = keuRows.map((r,i)=>{
         const ac = r.type==='pengeluaran'||r.type==='hutang'?'#c0183a':r.type==='modal'?'#007a5e':'#0077b6';
         const st = r.status ? `<span class="mbadge ${r.status==='lunas'?'green':r.status==='cicilan'?'amber':'red'}" style="font-size:10.5px;padding:2px 7px">${ST_LABEL[r.status]||r.status}</span>` : '<span style="color:#d0d8e8">—</span>';
         const d2 = r.date ? new Date(r.date).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
         return`<tr>
+          <td style="color:var(--d-muted);font-size:12px">${i+1}</td>
           <td style="white-space:nowrap;font-size:11.5px;color:var(--d-muted)">${d2}</td>
           <td><span class="keu-badge ${TYPE_CLR[r.type]||''}">${TYPE_LABEL2[r.type]||r.type}</span></td>
           <td><div style="font-weight:600;font-size:12.5px">${r.description||'—'}</div><div style="font-size:11px;color:var(--d-muted)">${r.category||''}</div></td>
@@ -1031,8 +1062,9 @@ function renderAll(d,params){
       }).join('');
       const totalKel = keuRows.filter(r=>r.type==='pengeluaran').reduce((a,r)=>a+(+r.amount||0),0);
       const tfoot = document.getElementById('keu-tx-tfoot');
-      if(tfoot) tfoot.innerHTML = `<tr style="background:#f4f8ff">
-        <td colspan="4" style="padding:10px 12px;font-size:12px;color:var(--d-muted)">${keuRows.length} transaksi</td>
+      if(tfoot) tfoot.innerHTML = `<tr class="keu-foot">
+        <td style="padding:10px 12px;font-size:12px;color:var(--d-muted)">${keuRows.length}</td>
+        <td colspan="4" style="padding:10px 12px;font-size:12px;color:var(--d-muted)">transaksi</td>
         <td style="padding:10px 12px;font-size:11.5px;font-weight:600;text-align:right;color:var(--d-muted)">Total Pengeluaran</td>
         <td style="padding:10px 12px;font-size:14px;font-weight:800;font-family:'DM Mono',monospace;color:#c0183a;text-align:right">-${fmtRp(totalKel)}</td>
       </tr>`;
@@ -1314,7 +1346,7 @@ function renderTxTable(rows){
     const inv=p.payment_id?`<a href="/invoice/${p.payment_id}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:7px;font-size:11.5px;font-weight:700;background:#eff6ff;color:#1d4ed8;text-decoration:none;border:1px solid #bfdbfe"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>${p.invoice_number||'—'}</a>`:`<span style="color:var(--d-muted);font-size:12px">—</span>`;
     return`<tr class="tx-row" data-search="${(p.cust_name||'').toLowerCase()} ${(p.cid||'').toLowerCase()}"><td style="color:var(--d-muted);font-size:12px">${i+1}</td><td><div style="font-weight:700;font-size:13px">${p.cust_name||'—'}</div><div style="font-size:11px;color:var(--d-muted)">${p.cid||''}</div></td><td class="col-hide-sm" style="font-size:12.5px;color:var(--d-muted)">${p.pkg_name||'—'}</td><td><span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--d-blue1)">${fmtRp(+p.amount)}</span></td><td><span style="display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11.5px;font-weight:700;background:${mc.bg};color:${mc.color}">${MET_NAMES[p.payment_method]||p.payment_method||'—'}</span></td><td class="col-hide-sm" style="font-size:12.5px;white-space:nowrap">${fmtDate(p.payment_date)}</td><td class="col-hide-sm" style="font-size:12.5px;white-space:nowrap;color:#007a5e;font-weight:600">${fmtDate(p.due_date_after)}</td><td>${inv}</td></tr>`;
   }).join('');
-  tfoot.innerHTML=`<tr style="background:#f4f8ff"><td colspan="3" style="padding:10px 14px;font-size:12.5px;font-weight:700;color:var(--d-muted)">TOTAL ${rows.length} TRANSAKSI</td><td style="padding:10px 14px;font-size:13.5px;font-weight:800;font-family:'DM Mono',monospace;color:var(--d-blue1)">${fmtRp(totalAmt)}</td><td colspan="4"></td></tr>`;
+  tfoot.innerHTML=`<tr class="keu-foot"><td style="padding:10px 14px;font-size:12.5px;font-weight:700;color:var(--d-muted)">${rows.length}</td><td colspan="2" style="padding:10px 14px;font-size:12.5px;font-weight:700;color:var(--d-muted)">TOTAL TRANSAKSI</td><td style="padding:10px 14px;font-size:13.5px;font-weight:800;font-family:'DM Mono',monospace;color:var(--d-blue1)">${fmtRp(totalAmt)}</td><td colspan="4"></td></tr>`;
 }
 
 function filterTx(q){

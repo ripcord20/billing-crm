@@ -401,6 +401,19 @@
       background: var(--primary);
       border-radius: 2px;
     }
+    #assetForm:not(.modem-mode) .modem-only { display: none !important; }
+    .scan-row { display:flex; gap:8px; align-items:flex-end; }
+    .scan-row .form-group { flex:1; min-width:0; }
+    .btn-scan {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:8px 12px; border-radius:10px; border:1.5px solid var(--border);
+      background:#fff; color:var(--text); font-size:12px; font-weight:700;
+      cursor:pointer; white-space:nowrap; font-family:inherit;
+    }
+    .btn-scan:hover { border-color:#3b82f6; color:#2563eb; }
+    [data-theme="dark"] .btn-scan { background:#0f172a; color:#e8eef9; border-color:#243049; }
+    .scan-status { font-size:11px; color:var(--text-muted); margin-top:4px; min-height:16px; }
+    .scan-preview { display:none; margin-top:8px; max-width:160px; border-radius:8px; border:1px solid var(--border); }
 
     /* ── Detail panel ─────────────────────────────────────── */
     .detail-layout {
@@ -1260,6 +1273,7 @@
                   <th>Kategori</th>
                   <th>Brand / Model</th>
                   <th>S/N</th>
+                  <th>Adaptor</th>
                   <th>Status</th>
                   <th>Kondisi</th>
                   <th>Lokasi / Customer</th>
@@ -1268,7 +1282,7 @@
                 </tr>
               </thead>
               <tbody id="assetTableBody">
-                <tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted)">Memuat data...</td></tr>
+                <tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text-muted)">Memuat data...</td></tr>
               </tbody>
             </table>
           </div>
@@ -1310,7 +1324,7 @@
         </div>
         <div class="form-group">
           <label>Kategori *</label>
-          <select id="fCategory" required><option value="">Pilih Kategori</option></select>
+          <select id="fCategory" required onchange="applyAssetFormMode()"><option value="">Pilih Kategori</option></select>
         </div>
         <div class="form-group">
           <label>Status</label>
@@ -1335,6 +1349,16 @@
         <div class="form-group">
           <label>Nomor Seri (S/N)</label>
           <input type="text" id="fSerial" placeholder="SN atau MAC Address">
+          <div class="scan-row" style="margin-top:8px;">
+            <button type="button" class="btn-scan" onclick="scanLabelPhoto()">📷 Foto SN / MAC</button>
+            <input type="file" id="fScanFile" accept="image/*" capture="environment" style="display:none" onchange="onScanLabelFile(this)">
+          </div>
+          <div class="scan-status" id="scanStatus"></div>
+          <img id="scanPreview" class="scan-preview" alt="Preview label">
+        </div>
+        <div class="form-group modem-only">
+          <label>MAC Address</label>
+          <input type="text" id="fMac" placeholder="AA:BB:CC:DD:EE:FF">
         </div>
         <div class="form-group">
           <label>Kondisi</label>
@@ -1364,6 +1388,26 @@
         <div class="form-group">
           <label>Garansi s/d</label>
           <input type="date" id="fWarranty">
+        </div>
+        <div class="form-group modem-only">
+          <label>Adaptor</label>
+          <select id="fAdaptor">
+            <option value="">— pilih —</option>
+            <option value="included">Termasuk adaptor</option>
+            <option value="none">Tanpa adaptor</option>
+          </select>
+        </div>
+        <div class="form-group modem-only">
+          <label>Tipe Adaptor</label>
+          <select id="fAdaptorType">
+            <option value="">— pilih —</option>
+            <option value="12V 0.5A">12V 0.5A</option>
+            <option value="12V 1A">12V 1A</option>
+            <option value="12V 1.5A">12V 1.5A</option>
+            <option value="12V 2A">12V 2A</option>
+            <option value="5V 1A">5V 1A</option>
+            <option value="lainnya">Lainnya</option>
+          </select>
         </div>
       </div>
 
@@ -1447,6 +1491,8 @@
           <div class="detail-item"><label>Kategori</label><span id="dCat"></span></div>
           <div class="detail-item"><label>Brand / Model</label><span id="dBrandModel"></span></div>
           <div class="detail-item"><label>Nomor Seri</label><span id="dSerial"></span></div>
+          <div class="detail-item" id="dMacRow" style="display:none"><label>MAC Address</label><span id="dMac"></span></div>
+          <div class="detail-item" id="dAdaptorRow" style="display:none"><label>Adaptor</label><span id="dAdaptor"></span></div>
           <div class="detail-item"><label>Tanggal Beli</label><span id="dPurchDate"></span></div>
           <div class="detail-item"><label>Harga Beli</label><span id="dPrice"></span></div>
           <div class="detail-item"><label>Vendor</label><span id="dVendor"></span></div>
@@ -1522,7 +1568,7 @@
   </div>
 </div>
 
-<script src="/js/assets.js"></script>
+<script src="/js/assets.js?v=adp1"></script>
 
 <script>
 (function(){

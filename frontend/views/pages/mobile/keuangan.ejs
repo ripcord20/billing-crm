@@ -140,6 +140,9 @@
     .ks-catchips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
     .ks-catchip{padding:8px 13px;border:1.5px solid #e2e8f0;border-radius:100px;font-size:12.5px;font-weight:700;color:#6b7a97;cursor:pointer;background:#fff;}
     .ks-catchip.on{border-color:#0ea5e9;background:#e0f2fe;color:#0284c7;}
+    .ks-pay{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+    .ks-paybtn{padding:10px 6px;border:1.5px solid #e2e8f0;border-radius:12px;background:#fff;font-family:inherit;font-size:12px;font-weight:700;color:#6b7a97;cursor:pointer;}
+    .ks-paybtn.on{border-color:#0ea5e9;background:#e0f2fe;color:#0284c7;}
     .ks-actions{display:flex;gap:10px;margin-top:18px;}
     .ks-btn{flex:1;padding:14px;border:none;border-radius:14px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;}
     .ks-btn-cancel{background:#eef1f6;color:#5a6885;}
@@ -295,6 +298,15 @@
       <span class="ks-lbl">Kategori</span>
       <div class="ks-catchips" id="exCatChips"></div>
       <input type="text" class="ks-inp" id="exCategory" placeholder="Atau ketik kategori lain…">
+    </div>
+    <div class="ks-field">
+      <span class="ks-lbl">Cara bayar</span>
+      <input type="hidden" id="exPayMethod" value="cash">
+      <div class="ks-pay">
+        <button type="button" class="ks-paybtn on" data-pay="cash" onclick="setPay(this,'cash')">Cash</button>
+        <button type="button" class="ks-paybtn" data-pay="transfer" onclick="setPay(this,'transfer')">Transfer</button>
+        <button type="button" class="ks-paybtn" data-pay="ewallet" onclick="setPay(this,'ewallet')">E-Wallet</button>
+      </div>
     </div>
     <div class="ks-field">
       <span class="ks-lbl">Keterangan</span>
@@ -522,6 +534,8 @@
       amtInp.value=''; document.getElementById('exCategory').value='';
       document.getElementById('exDesc').value='';
       document.getElementById('exDate').value=new Date().toISOString().slice(0,10);
+      document.getElementById('exPayMethod').value='cash';
+      document.querySelectorAll('.ks-paybtn').forEach(x=>x.classList.toggle('on', x.dataset.pay==='cash'));
       _exCat='';
       await buildCatChips(_exType);
       setTimeout(function(){
@@ -542,13 +556,28 @@
       const seen={}, merged=[];
       cats.concat(defaults).forEach(c=>{ const k=(c||'').trim(); if(k&&!seen[k.toLowerCase()]){ seen[k.toLowerCase()]=1; merged.push(k); } });
       const box=document.getElementById('exCatChips');
-      box.innerHTML=merged.slice(0,10).map(c=>'<div class="ks-catchip" onclick="pickCat(this,\''+esc(c).replace(/'/g,"\\'")+'\')">'+esc(c)+'</div>').join('');
+      box.innerHTML=merged.slice(0,10).map(c=>'<div class="ks-catchip" onclick="pickCat(this,\''+esc(c).replace(/'/g,"\\'")+'\')">'+esc(c)+'</div>').join('')
+        +'<div class="ks-catchip" onclick="addCustomCat()">+ Kategori</div>';
     }
     function pickCat(el,name){
       _exCat=name;
       document.getElementById('exCategory').value='';
       document.querySelectorAll('.ks-catchip').forEach(x=>x.classList.remove('on'));
       el.classList.add('on');
+    }
+    function setPay(el,m){
+      document.getElementById('exPayMethod').value=m;
+      document.querySelectorAll('.ks-paybtn').forEach(x=>x.classList.remove('on'));
+      el.classList.add('on');
+    }
+    async function addCustomCat(){
+      const name=prompt('Nama kategori baru:');
+      if(!name||!name.trim()) return;
+      const r=await api('/api/keuangan/categories',{ method:'POST', body:JSON.stringify({ type:_exType, name:name.trim() }) });
+      if(!r||!r.success){ toast((r&&r.message)||'Gagal menambah kategori','err'); return; }
+      document.getElementById('exCategory').value=name.trim();
+      _exCat=name.trim();
+      await buildCatChips(_exType);
     }
     function fmtAmount(el){
       let v=el.value.replace(/[^0-9]/g,'');
@@ -568,7 +597,9 @@
       if(!description){ toast('Isi keterangan '+label,'err'); return; }
       if(!date){ toast('Pilih tanggal','err'); return; }
       const btn=document.getElementById('exSaveBtn'); btn.disabled=true; btn.textContent='Menyimpan…';
-      const d=await api('/api/keuangan',{ method:'POST', body:JSON.stringify({ type:_exType, category, description, amount, date }) });
+      const payment_method=document.getElementById('exPayMethod').value||'cash';
+      const d=await api('/api/keuangan',{ method:'POST', body:JSON.stringify({ type:_exType, category, description, amount, date, payment_method }) });
+      if(typed) api('/api/keuangan/categories',{ method:'POST', body:JSON.stringify({ type:_exType, name:typed }) });
       btn.disabled=false; btn.textContent='Simpan';
       if(d&&d.success){
         toast((isOut?'Pengeluaran':'Pemasukan')+' berhasil dicatat','ok');
