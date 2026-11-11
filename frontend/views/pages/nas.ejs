@@ -135,8 +135,10 @@
     [data-theme="dark"] .nas-m-k { color: #94a3b8; }
     @media (max-width: 768px) {
       .nas-swipe-hint { display: none !important; }
-      .nas-page .table-scroll { display: none; }
-      .nas-mobile-list { display: flex; flex-direction: column; gap: 10px; }
+      .nas-page .table-scroll,
+      .nas-page #nasTableScroll { display: none !important; overflow: hidden !important; }
+      .nas-page #nasTableScroll .data-table { min-width: 0 !important; }
+      .nas-mobile-list { display: flex !important; flex-direction: column; gap: 10px; }
       .nas-page .page-header-right { width: 100%; }
       .nas-page .page-header-right .btn { flex: 1 1 auto; }
     }
