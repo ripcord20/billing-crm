@@ -8,7 +8,7 @@ const { mergeSettings } = require('../utils/qosSla');
 class QosSlaController {
   async overview(req, res) {
     try {
-      const data = await QosSlaService.overview();
+      const data = await QosSlaService.overview(req.query.device_id);
       res.json({ success: true, data });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
@@ -21,6 +21,7 @@ class QosSlaController {
       if (req.query.status) where.status = req.query.status;
       if (req.query.type) where.type = req.query.type;
       if (req.query.audience) where.audience = req.query.audience;
+      if (req.query.device_id) where.device_id = parseInt(req.query.device_id, 10);
       const rows = await QosAlert.findAll({
         where,
         order: [['status', 'ASC'], ['last_seen_at', 'DESC'], ['id', 'DESC']],
@@ -68,8 +69,10 @@ class QosSlaController {
   async authFails(req, res) {
     try {
       const minutes = Math.min(parseInt(req.query.minutes, 10) || 60, 24 * 60);
+      const where = { created_at: { [Op.gte]: new Date(Date.now() - minutes * 60 * 1000) } };
+      if (req.query.device_id) where.device_id = parseInt(req.query.device_id, 10);
       const rows = await AuthFailEvent.findAll({
-        where: { created_at: { [Op.gte]: new Date(Date.now() - minutes * 60 * 1000) } },
+        where,
         order: [['id', 'DESC']],
         limit: 200
       });

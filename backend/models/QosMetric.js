@@ -15,6 +15,10 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(40),
       allowNull: false
     },
+    device_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
     target: {
       type: DataTypes.STRING(160),
       allowNull: true
@@ -46,7 +50,8 @@ module.exports = (sequelize) => {
     indexes: [
       { fields: ['kind', 'recorded_at'] },
       { fields: ['source', 'target'] },
-      { fields: ['recorded_at'] }
+      { fields: ['recorded_at'] },
+      { fields: ['device_id'] }
     ]
   });
 
