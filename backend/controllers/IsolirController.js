@@ -301,6 +301,20 @@ class IsolirController {
     } catch(e) { res.json({ success:false, message:e.message }); }
   }
 
+  async setupIp(req, res) {
+    try {
+      const result = await IsolirService.setupIsolirIp(req.params.id);
+      res.json(result);
+    } catch(e) { res.json({ success:false, message:e.message }); }
+  }
+
+  async inspectIp(req, res) {
+    try {
+      const result = await IsolirService.inspectIsolirIp(req.params.id);
+      res.json(result);
+    } catch(e) { res.json({ success:false, message:e.message }); }
+  }
+
   async listIsolated(req, res) {
     try {
       const rows = await sequelize.query(
@@ -507,7 +521,9 @@ class IsolirController {
            'isolir_grace_days','isolir_notify_wa','isolir_page_url','isolir_auto_enable',
            'isolir_auto_hour','isolir_wa_message',
            'isolir_page_title','isolir_page_subtitle','isolir_page_color',
-           'isolir_page_footer','isolir_page_help_text','isolir_page_show_invoices'
+           'isolir_page_footer','isolir_page_help_text','isolir_page_show_invoices',
+           'isolir_pppoe_profile_name','isolir_pppoe_pool_name',
+           'isolir_pppoe_pool_range','isolir_pppoe_local_addr','isolir_pppoe_rate_limit'
          )`,
         { type: sequelize.QueryTypes.SELECT }
       ).catch(() => []);
@@ -551,8 +567,38 @@ class IsolirController {
         'isolir_page_color',        // warna utama hex (default: #1a6ef5)
         'isolir_page_footer',       // teks footer tambahan
         'isolir_page_help_text',    // teks bantuan setelah daftar tagihan
-        'isolir_page_show_invoices' // '1'/'0' tampilkan rincian tagihan atau tidak
+        'isolir_page_show_invoices', // '1'/'0' tampilkan rincian tagihan atau tidak
+        'isolir_pppoe_profile_name',
+        'isolir_pppoe_pool_name',
+        'isolir_pppoe_pool_range',
+        'isolir_pppoe_local_addr',
+        'isolir_pppoe_rate_limit'
       ];
+
+      const pppoeTouched = [
+        'isolir_pppoe_profile_name','isolir_pppoe_pool_name',
+        'isolir_pppoe_pool_range','isolir_pppoe_local_addr','isolir_pppoe_rate_limit'
+      ].some(k => req.body[k] !== undefined);
+      if (pppoeTouched) {
+        const IsolirPPPoE = require('../services/IsolirPPPoE');
+        const current = await IsolirPPPoE.getPPPoESettings(sequelize);
+        const next = {
+          profileName: req.body.isolir_pppoe_profile_name !== undefined
+            ? String(req.body.isolir_pppoe_profile_name) : current.profileName,
+          poolName: req.body.isolir_pppoe_pool_name !== undefined
+            ? String(req.body.isolir_pppoe_pool_name) : current.poolName,
+          poolRange: req.body.isolir_pppoe_pool_range !== undefined
+            ? String(req.body.isolir_pppoe_pool_range) : current.poolRange,
+          localAddr: req.body.isolir_pppoe_local_addr !== undefined
+            ? String(req.body.isolir_pppoe_local_addr) : current.localAddr,
+          rateLimit: req.body.isolir_pppoe_rate_limit !== undefined
+            ? String(req.body.isolir_pppoe_rate_limit) : current.rateLimit,
+        };
+        const valid = IsolirPPPoE.validateIsolirNetwork(next);
+        if (!valid.ok) {
+          return res.status(400).json({ success: false, message: valid.error });
+        }
+      }
       for (const key of allowed) {
         if (req.body[key] !== undefined) {
           const { AppSetting } = require('../models');

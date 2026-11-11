@@ -13,7 +13,9 @@
  *   1. Set profile kembali ke original (dari customers.pppoe_profile_original)
  *   2. Kick session lagi → reconnect dengan profile normal
  *
- * Setup MikroTik (auto saat Setup Firewall di IsolirFirewallV2):
+ * Setup MikroTik (auto saat Setup Firewall / tombol Buat IP Isolir):
+ *   /interface dummy|bridge add name=fiberix-isolir
+ *   /ip address add address=10.255.255.1/24 interface=fiberix-isolir
  *   /ip pool add name=isolir-pool ranges=10.255.255.2-10.255.255.254
  *   /ppp profile add name=isolir-profile
  *     local-address=10.255.255.1
@@ -29,6 +31,11 @@ const DEFAULT_ISOLIR_POOL    = 'isolir-pool';
 const DEFAULT_POOL_RANGES    = '10.255.255.2-10.255.255.254';
 const DEFAULT_LOCAL_ADDR     = '10.255.255.1';
 const DEFAULT_RATE_LIMIT     = '128k/128k';
+const DEFAULT_ISOLIR_IFACE   = 'fiberix-isolir';
+const ISOLIR_IFACE_COMMENT   = 'FIBERIX isolir gateway';
+const ISOLIR_PREFIX_LEN      = 24;
+// Overlay WireGuard Fiberix — jangan dipakai sebagai subnet isolir.
+const BLOCKED_ISOLIR_NETS    = ['10.10.0.0/24'];
 
 // Runner dengan retry (sama seperti di IsolirFirewallV2)
 async function runWithRetry(api, words, maxRetry = 2) {
@@ -36,7 +43,9 @@ async function runWithRetry(api, words, maxRetry = 2) {
   for (let attempt = 0; attempt <= maxRetry; attempt++) {
     try {
       const result = await api.run(words);
-      await new Promise(r => setTimeout(r, 80));
+      if (!api.skipIsolirDelay) {
+        await new Promise(r => setTimeout(r, 80));
+      }
       return result;
     } catch (e) {
       lastErr = e;
@@ -73,9 +82,320 @@ async function getPPPoESettings(sequelize) {
   };
 }
 
+function ipv4ToInt(ip) {
+  const m = String(ip || '').trim().match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!m) return null;
+  const oct = m.slice(1).map(Number);
+  if (oct.some(n => n > 255)) return null;
+  return ((oct[0] << 24) >>> 0) + (oct[1] << 16) + (oct[2] << 8) + oct[3];
+}
+
+function intToIpv4(n) {
+  return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join('.');
+}
+
+function parseCidr(cidr) {
+  const [net, bitsStr] = String(cidr || '').split('/');
+  const bits = Number(bitsStr);
+  const netInt = ipv4ToInt(net);
+  if (netInt == null || !Number.isInteger(bits) || bits < 0 || bits > 32) return null;
+  const mask = bits === 0 ? 0 : (~0 << (32 - bits)) >>> 0;
+  return { netInt: netInt & mask, bits, mask };
+}
+
+function ipInCidr(ip, cidr) {
+  const ipInt = typeof ip === 'number' ? ip : ipv4ToInt(ip);
+  const parsed = parseCidr(cidr);
+  if (ipInt == null || !parsed) return false;
+  return (ipInt & parsed.mask) === parsed.netInt;
+}
+
+function isPrivateRfc1918(ipInt) {
+  return ipInCidr(ipInt, '10.0.0.0/8')
+    || ipInCidr(ipInt, '172.16.0.0/12')
+    || ipInCidr(ipInt, '192.168.0.0/16');
+}
+
+function parsePoolRange(range) {
+  const m = String(range || '').trim().match(
+    /^(\d{1,3}(?:\.\d{1,3}){3})\s*-\s*(\d{1,3}(?:\.\d{1,3}){3})$/
+  );
+  if (!m) return null;
+  const start = ipv4ToInt(m[1]);
+  const end = ipv4ToInt(m[2]);
+  if (start == null || end == null) return null;
+  return { startIp: m[1], endIp: m[2], start, end };
+}
+
+function slash24Cidr(localAddr) {
+  const ipInt = ipv4ToInt(localAddr);
+  if (ipInt == null) return null;
+  return intToIpv4(ipInt & 0xffffff00) + '/' + ISOLIR_PREFIX_LEN;
+}
+
+function gatewayAddressCidr(localAddr) {
+  return String(localAddr || '').trim() + '/' + ISOLIR_PREFIX_LEN;
+}
+
+function addressHost(address) {
+  return String(address || '').split('/')[0].trim();
+}
+
+function isSafeMikrotikName(name) {
+  return /^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$/.test(String(name || '').trim());
+}
+
+function isSafeRateLimit(rate) {
+  return /^\d+(?:[kmg])?\/\d+(?:[kmg])?$/i.test(String(rate || '').trim());
+}
+
+/**
+ * Validasi gateway + pool isolir. Dipakai di save settings dan sebelum push ke MikroTik.
+ */
+function validateIsolirNetwork(cfg = {}) {
+  const localAddr = String(cfg.localAddr || '').trim();
+  const poolRange = String(cfg.poolRange || '').trim();
+  const profileName = String(cfg.profileName || '').trim();
+  const poolName = String(cfg.poolName || '').trim();
+  const rateLimit = String(cfg.rateLimit || '').trim();
+
+  if (profileName && !isSafeMikrotikName(profileName)) {
+    return { ok: false, error: 'Nama PPP profile isolir tidak valid' };
+  }
+  if (poolName && !isSafeMikrotikName(poolName)) {
+    return { ok: false, error: 'Nama IP pool isolir tidak valid' };
+  }
+  if (rateLimit && !isSafeRateLimit(rateLimit)) {
+    return { ok: false, error: 'Rate-limit isolir harus format rx/tx, contoh 128k/128k' };
+  }
+
+  const gwInt = ipv4ToInt(localAddr);
+  if (gwInt == null) {
+    return { ok: false, error: 'Gateway isolir harus IPv4, contoh 10.255.255.1' };
+  }
+  if (!isPrivateRfc1918(gwInt)) {
+    return { ok: false, error: 'Gateway isolir harus IP private (RFC1918), bukan IP publik' };
+  }
+  const hostOctet = gwInt & 255;
+  if (hostOctet === 0 || hostOctet === 255) {
+    return { ok: false, error: 'Gateway isolir tidak boleh alamat jaringan (.0) atau broadcast (.255)' };
+  }
+  for (const net of BLOCKED_ISOLIR_NETS) {
+    if (ipInCidr(gwInt, net)) {
+      return { ok: false, error: `Gateway isolir bentrok dengan ${net} (overlay WireGuard Fiberix)` };
+    }
+  }
+
+  const pool = parsePoolRange(poolRange);
+  if (!pool) {
+    return { ok: false, error: 'Range pool isolir harus format start-end, contoh 10.255.255.2-10.255.255.254' };
+  }
+  if (pool.start > pool.end) {
+    return { ok: false, error: 'Range pool isolir: IP awal harus lebih kecil dari IP akhir' };
+  }
+  const net24 = slash24Cidr(localAddr);
+  if (!ipInCidr(pool.start, net24) || !ipInCidr(pool.end, net24)) {
+    return { ok: false, error: `Pool isolir harus satu subnet /24 dengan gateway (${net24})` };
+  }
+  if (gwInt >= pool.start && gwInt <= pool.end) {
+    return { ok: false, error: 'Gateway isolir tidak boleh masuk ke range pool pelanggan' };
+  }
+  for (const net of BLOCKED_ISOLIR_NETS) {
+    if (ipInCidr(pool.start, net) || ipInCidr(pool.end, net)) {
+      return { ok: false, error: `Pool isolir bentrok dengan ${net}` };
+    }
+  }
+
+  return {
+    ok: true,
+    localAddr,
+    poolRange: pool.startIp + '-' + pool.endIp,
+    cidr: gatewayAddressCidr(localAddr),
+    network: net24,
+    iface: DEFAULT_ISOLIR_IFACE,
+  };
+}
+
+function findAddressRow(rows, localAddr) {
+  const host = String(localAddr || '').trim();
+  return (rows || []).find(r => addressHost(r.address) === host) || null;
+}
+
+async function findNamedInterface(api, name) {
+  try {
+    const rows = await runWithRetry(api, ['/interface/print', '?name=' + name]);
+    return rows[0] || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Pastikan interface fiberix-isolir ada. Dummy (ROS7) dulu, fallback bridge (ROS6/7).
+ */
+async function ensureIsolirInterface(api, results) {
+  const existing = await findNamedInterface(api, DEFAULT_ISOLIR_IFACE);
+  if (existing) {
+    const type = String(existing.type || existing['type'] || '').toLowerCase() || 'interface';
+    results.push(`• Interface "${DEFAULT_ISOLIR_IFACE}" sudah ada (${type})`);
+    return { ok: true, name: DEFAULT_ISOLIR_IFACE, created: false, type };
+  }
+
+  try {
+    await runWithRetry(api, [
+      '/interface/dummy/add',
+      '=name=' + DEFAULT_ISOLIR_IFACE,
+      '=comment=' + ISOLIR_IFACE_COMMENT
+    ]);
+    results.push(`✓ Interface dummy "${DEFAULT_ISOLIR_IFACE}" dibuat`);
+    return { ok: true, name: DEFAULT_ISOLIR_IFACE, created: true, type: 'dummy' };
+  } catch (dummyErr) {
+    try {
+      await runWithRetry(api, [
+        '/interface/bridge/add',
+        '=name=' + DEFAULT_ISOLIR_IFACE,
+        '=protocol-mode=none',
+        '=comment=' + ISOLIR_IFACE_COMMENT
+      ]);
+      results.push(`✓ Interface bridge "${DEFAULT_ISOLIR_IFACE}" dibuat (RouterOS tanpa dummy)`);
+      return { ok: true, name: DEFAULT_ISOLIR_IFACE, created: true, type: 'bridge' };
+    } catch (bridgeErr) {
+      return {
+        ok: false,
+        error: `Gagal buat interface ${DEFAULT_ISOLIR_IFACE}: dummy=${dummyErr.message}; bridge=${bridgeErr.message}`
+      };
+    }
+  }
+}
+
+/**
+ * Pasang 10.255.255.1/24 di fiberix-isolir. Tidak memindah IP yang sudah ada di interface lain.
+ */
+async function ensureIsolirGateway(api, cfg, results) {
+  const iface = await ensureIsolirInterface(api, results);
+  if (!iface.ok) return iface;
+
+  let addrs = [];
+  try {
+    addrs = await runWithRetry(api, ['/ip/address/print']);
+  } catch (e) {
+    return { ok: false, error: 'Gagal baca /ip address: ' + e.message };
+  }
+
+  const match = findAddressRow(addrs, cfg.localAddr);
+  const cidr = gatewayAddressCidr(cfg.localAddr);
+  if (match) {
+    const onIface = String(match.interface || '');
+    if (onIface && onIface !== DEFAULT_ISOLIR_IFACE) {
+      results.push(`• IP ${match.address} sudah ada di interface "${onIface}" — tidak dipindah`);
+    } else {
+      results.push(`• IP ${match.address} sudah ada di "${DEFAULT_ISOLIR_IFACE}"`);
+    }
+    return { ok: true, address: match.address, interface: onIface || DEFAULT_ISOLIR_IFACE, created: false };
+  }
+
+  try {
+    await runWithRetry(api, [
+      '/ip/address/add',
+      '=address=' + cidr,
+      '=interface=' + DEFAULT_ISOLIR_IFACE,
+      '=comment=' + ISOLIR_IFACE_COMMENT
+    ]);
+    results.push(`✓ IP ${cidr} dipasang di "${DEFAULT_ISOLIR_IFACE}"`);
+    return { ok: true, address: cidr, interface: DEFAULT_ISOLIR_IFACE, created: true };
+  } catch (e) {
+    return { ok: false, error: 'Gagal pasang IP isolir: ' + e.message };
+  }
+}
+
+async function inspectIsolirIp(api, sequelize) {
+  const cfg = await getPPPoESettings(sequelize);
+  const data = {
+    cfg,
+    interface: { name: DEFAULT_ISOLIR_IFACE, exists: false, type: null },
+    address: { address: null, interface: null, exists: false },
+    pool: { name: cfg.poolName, ranges: null, exists: false },
+    profile: { name: cfg.profileName, localAddress: null, remoteAddress: null, exists: false },
+  };
+
+  const iface = await findNamedInterface(api, DEFAULT_ISOLIR_IFACE);
+  if (iface) {
+    data.interface.exists = true;
+    data.interface.type = String(iface.type || '') || null;
+  }
+
+  try {
+    const addrs = await runWithRetry(api, ['/ip/address/print']);
+    const match = findAddressRow(addrs, cfg.localAddr);
+    if (match) {
+      data.address.exists = true;
+      data.address.address = match.address || null;
+      data.address.interface = match.interface || null;
+    }
+  } catch (_) { /* inspect best-effort */ }
+
+  try {
+    const pools = await runWithRetry(api, ['/ip/pool/print', '?name=' + cfg.poolName]);
+    if (pools[0]) {
+      data.pool.exists = true;
+      data.pool.ranges = pools[0].ranges || null;
+    }
+  } catch (_) { /* inspect best-effort */ }
+
+  try {
+    const profiles = await runWithRetry(api, ['/ppp/profile/print', '?name=' + cfg.profileName]);
+    if (profiles[0]) {
+      data.profile.exists = true;
+      data.profile.localAddress = profiles[0]['local-address'] || profiles[0].localAddress || null;
+      data.profile.remoteAddress = profiles[0]['remote-address'] || profiles[0].remoteAddress || null;
+      data.profile.rateLimit = profiles[0]['rate-limit'] || profiles[0].rateLimit || null;
+    }
+  } catch (_) { /* inspect best-effort */ }
+
+  const ready = data.address.exists && data.pool.exists && data.profile.exists;
+  return { success: true, ready, data };
+}
+
+/**
+ * Buat IP isolir lengkap: interface + gateway + pool + PPP profile. Idempotent.
+ * Tidak menyentuh firewall/NAT (itu Setup Firewall).
+ */
+async function setupIsolirIp(api, sequelize) {
+  const cfg = await getPPPoESettings(sequelize);
+  const valid = validateIsolirNetwork(cfg);
+  if (!valid.ok) {
+    return { success: false, error: valid.error, details: [] };
+  }
+
+  const results = [];
+  const gw = await ensureIsolirGateway(api, cfg, results);
+  if (!gw.ok) {
+    return { success: false, error: gw.error, details: results };
+  }
+
+  const ppp = await setupIsolirProfile(api, sequelize);
+  results.push(...(ppp.details || []));
+  if (!ppp.success) {
+    return { success: false, error: ppp.error, details: results };
+  }
+
+  let inspect = null;
+  try {
+    inspect = await inspectIsolirIp(api, sequelize);
+  } catch (_) { /* inspect tidak wajib */ }
+
+  results.push(`✓ IP Isolir siap — gateway ${cfg.localAddr}/24, pool ${cfg.poolRange}`);
+  return {
+    success: true,
+    details: results,
+    cfg,
+    inspect: inspect && inspect.data ? inspect.data : null,
+  };
+}
+
 /**
  * Setup IP pool & PPP profile isolir di MikroTik. Idempotent.
- * Dipanggil dari setupFirewallV2.
+ * Dipanggil dari setupFirewallV2 dan setupIsolirIp.
  */
 async function setupIsolirProfile(api, sequelize) {
   const cfg = await getPPPoESettings(sequelize);
@@ -247,8 +567,17 @@ async function restorePPPoEUser(api, pppoeUsername, originalProfile) {
 module.exports = {
   DEFAULT_ISOLIR_PROFILE,
   DEFAULT_ISOLIR_POOL,
+  DEFAULT_POOL_RANGES,
+  DEFAULT_LOCAL_ADDR,
+  DEFAULT_RATE_LIMIT,
+  DEFAULT_ISOLIR_IFACE,
   getPPPoESettings,
+  validateIsolirNetwork,
+  slash24Cidr,
+  gatewayAddressCidr,
   setupIsolirProfile,
+  setupIsolirIp,
+  inspectIsolirIp,
   isolirPPPoEUser,
   restorePPPoEUser,
 };
