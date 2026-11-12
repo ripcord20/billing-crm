@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-theme="light">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><%= typeof title !== 'undefined' ? title : 'Detail Ticket' %> - <%= appName %></title>
@@ -10,16 +10,23 @@
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
   <style>
     :root{--nv:#1a6ef5;--nv2:#0047cc;--ot-blue:#1a6ef5;--border:#e0e7f3;--text:#0d1b3e;--muted:#6b7fa8;}
-    .ot { font-family:'Plus Jakarta Sans',sans-serif; background:#eef2f9; }
-    .page-content, .ticket-header-card, .card-modern, .sidebar-card, .btn, textarea, input, select {
+    *{box-sizing:border-box;}
+    html,body{overflow-x:hidden;max-width:100%;}
+    .ot { font-family:'Plus Jakarta Sans',sans-serif; background:#eef2f9; max-width:100%; }
+    .app-layout,.main-content,.page-content,.detail-grid,.card-modern,.sidebar-card{max-width:100%;min-width:0;}
+    .page-content, .tkt-head, .card-modern, .sidebar-card, .btn, textarea, input, select {
       font-family:'Plus Jakarta Sans',sans-serif;
     }
-    /* Header card */
-    .ticket-header-card{background:linear-gradient(135deg,var(--nv) 0%,var(--nv2) 100%);color:#fff;padding:28px 36px;border-radius:18px;margin-bottom:20px;box-shadow:0 10px 40px rgba(6,13,154,.3);position:relative;overflow:hidden;}
-    .ticket-number{font-size:12px;opacity:.85;font-weight:700;margin-bottom:6px;letter-spacing:.08em;text-transform:uppercase;position:relative;z-index:1;}
-    .ticket-title{font-size:26px;font-weight:800;margin-bottom:14px;line-height:1.3;position:relative;z-index:1;letter-spacing:-.3px;}
-    .ticket-meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:4px;position:relative;z-index:1;}
-    .meta-item{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;padding:6px 14px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:20px;letter-spacing:.01em;color:#fff;}
+    /* Header — same language as tickets.ejs */
+    .tkt-head{background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:16px 20px;margin-bottom:16px;}
+    .tkt-back{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--ot-blue);text-decoration:none;margin-bottom:10px;}
+    .tkt-back:hover{color:var(--nv2);}
+    .tkt-head-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+    .tkt-head-l{min-width:0;flex:1;}
+    .ticket-number{font-size:11px;font-weight:800;margin-bottom:4px;letter-spacing:.08em;text-transform:uppercase;color:var(--ot-blue);}
+    .ticket-title{font-size:22px;font-weight:800;margin:0;line-height:1.3;letter-spacing:-.3px;color:var(--text);overflow-wrap:anywhere;word-break:break-word;}
+    .ticket-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px;}
+    .meta-item{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 11px;background:#f1f5f9;border:1px solid var(--border);border-radius:20px;letter-spacing:.01em;color:var(--text);}
     /* Layout */
     .detail-grid{display:grid;grid-template-columns:1fr 380px;gap:20px;}
     @media(max-width:1000px){.detail-grid{grid-template-columns:1fr;}}
@@ -29,9 +36,9 @@
     .info-section:last-child{border-bottom:none;}
     .section-title{font-size:16px;font-weight:700;color:#2d3748;margin-bottom:15px;display:flex;align-items:center;gap:10px;} .section-title svg{color:var(--nv);flex-shrink:0;}
     .info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
-    .info-item{padding:14px;background:#f7fafc;border-radius:10px;}
+    .info-item{padding:14px;background:#f7fafc;border-radius:10px;min-width:0;max-width:100%;}
     .info-label{font-size:11px;font-weight:700;color:#718096;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;}
-    .info-value{font-size:14px;font-weight:600;color:#2d3748;word-break:break-word;}
+    .info-value{font-size:14px;font-weight:600;color:#2d3748;word-break:break-word;overflow-wrap:anywhere;min-width:0;}
     .info-value a{color:#667eea;text-decoration:none;}
     .desc-box{padding:18px;background:#f7fafc;border-radius:10px;line-height:1.8;color:#4a5568;font-size:14px;}
     /* Map */
@@ -227,9 +234,26 @@
     .lb img{max-width:90%;max-height:90%;border-radius:12px;}
     .lbx{position:absolute;top:18px;right:28px;color:#fff;font-size:38px;cursor:pointer;}
     @keyframes spin{to{transform:rotate(360deg)}}
-    @media(max-width:768px){.tkt-ttl{font-size:17px;}.frow{grid-template-columns:1fr;}}
+    @media(max-width:768px){
+      .page-content.ot{padding:12px 12px 88px !important;overflow-x:hidden;}
+      .tkt-head{padding:14px;}
+      .tkt-head-row{flex-direction:column;align-items:stretch;}
+      .ticket-title{font-size:18px;}
+      .info-section{padding:14px;}
+      .sidebar-card{padding:14px;}
+      .info-grid{grid-template-columns:1fr !important;}
+      .frow{grid-template-columns:1fr;}
+      #map{height:220px;margin-top:10px;}
+      .leaflet-popup-content{width:min(240px,calc(100vw - 72px)) !important;}
+      .timeline-item:hover{transform:none;}
+      .timeline-foto{max-width:100%;height:auto;}
+      .sla-gauge-wrap{flex-direction:column;align-items:stretch;}
+      .detail-grid{gap:12px;}
+      .map-buttons{flex-direction:column;}
+      .map-buttons .btn,.map-buttons a{width:100%;}
+      .comment-box{padding:14px;}
+    }
 
-    .ticket-header-card{border-radius:16px;box-shadow:none;background:linear-gradient(135deg,#1a6ef5,#0047cc);}
     .card-modern,.sidebar-card{background:#fff;border:1.5px solid var(--border);box-shadow:none;border-radius:16px;}
     .section-title,.sidebar-title{color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;}
     .info-item,.desc-box,.comment-box,.timeline-container{background:#f8fafc;border-color:var(--border);}
@@ -241,6 +265,11 @@
       --border:#243049;--text:#e8eef9;--muted:#7c8ba6;
     }
     [data-theme="dark"] .page-content, [data-theme="dark"] .ot{background:#0b1220;}
+    [data-theme="dark"] .tkt-head{background:#121a2b;border-color:#243049;}
+    [data-theme="dark"] .ticket-title{color:#e8eef9;}
+    [data-theme="dark"] .ticket-number{color:#7ab0ff;}
+    [data-theme="dark"] .tkt-back{color:#7ab0ff;}
+    [data-theme="dark"] .meta-item{background:#0f172a;color:#e8eef9;border-color:#243049;}
     [data-theme="dark"] .card-modern,[data-theme="dark"] .sidebar-card{background:#121a2b;border-color:#243049;}
     [data-theme="dark"] .section-title,[data-theme="dark"] .sidebar-title,[data-theme="dark"] .info-value{color:#e8eef9;}
     [data-theme="dark"] .info-label{color:#7c8ba6;}
@@ -259,16 +288,19 @@
 
     <main class="page-content ot" id="mainContent" style="display:none;">
 
-      <!-- Ticket Header Card -->
-      <div class="ticket-header-card">
-        <div class="ticket-number" id="hNum">Memuat...</div>
-        <div class="ticket-title" id="hTitle">—</div>
-        <div class="ticket-meta" id="hMeta"></div>
+      <div class="tkt-head">
+        <a href="/tickets" class="tkt-back">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Kembali ke Daftar Ticket
+        </a>
+        <div class="tkt-head-row">
+          <div class="tkt-head-l">
+            <div class="ticket-number" id="hNum">Memuat...</div>
+            <div class="ticket-title" id="hTitle">—</div>
+          </div>
+          <div class="ticket-meta" id="hMeta"></div>
+        </div>
       </div>
-
-      <a href="/tickets" class="btn btn-secondary" style="width:auto;display:inline-flex;margin-bottom:20px;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Kembali ke Daftar Ticket
-      </a>
 
       <div class="detail-grid">
         <!-- LEFT: Main content -->
