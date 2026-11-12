@@ -14,6 +14,8 @@ body.tk-home .page-content.ot,
 body.tk-home .ot {
   background: transparent !important;
   color: #f8fafc;
+  overflow-x: hidden !important;
+  max-width: 100% !important;
 }
 
 body.tk-home .tkt-head,
