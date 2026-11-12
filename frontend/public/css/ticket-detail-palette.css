@@ -1,0 +1,138 @@
+/* Kulit detail tiket — sama dengan daftar tiket. Hanya tampilan. */
+
+html:has(body.tk-home) { background: #100c22; color-scheme: dark; }
+body.tk-home {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+body.tk-home .app-layout,
+body.tk-home .main-content,
+body.tk-home .page-content.ot,
+body.tk-home .ot {
+  background: transparent !important;
+  color: #f8fafc;
+}
+
+body.tk-home .tkt-head,
+body.tk-home .card-modern,
+body.tk-home .sidebar-card,
+body.tk-home .mbox {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+  color: #f8fafc !important;
+}
+
+body.tk-home .ticket-title,
+body.tk-home .section-title,
+body.tk-home .sidebar-title,
+body.tk-home .info-value,
+body.tk-home .sla-stat-val,
+body.tk-home .desc-box,
+body.tk-home .form-label,
+body.tk-home .fl,
+body.tk-home .stop-lbl {
+  color: #ffffff !important;
+}
+
+body.tk-home .ticket-number,
+body.tk-home .tkt-back {
+  color: #67e8f9 !important;
+}
+
+body.tk-home .info-label,
+body.tk-home .sla-stat-lbl,
+body.tk-home .sla-due-row,
+body.tk-home .stop-desc {
+  color: #cbd5e1 !important;
+}
+
+body.tk-home .meta-item {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #f8fafc !important;
+}
+
+body.tk-home .info-item,
+body.tk-home .sla-stat-row,
+body.tk-home .desc-box,
+body.tk-home .comment-box,
+body.tk-home .timeline-container,
+body.tk-home .sfi,
+body.tk-home .stop {
+  background: #100c22 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #f8fafc !important;
+}
+
+body.tk-home .timeline-item {
+  background: #141028 !important;
+  color: #f8fafc !important;
+}
+
+body.tk-home .comment-box textarea,
+body.tk-home .comment-box input,
+body.tk-home .fc,
+body.tk-home .form-control {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+
+body.tk-home .qab-gray {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+
+body.tk-home #loadingDiv { color: #cbd5e1 !important; }
+
+body.tk-home .mhd { background: linear-gradient(135deg, #1e1b4b, #0891b2) !important; }
+
+/* Kunci ke layar HP: jangan 2 kolom 380px */
+@media (max-width: 1100px) {
+  html, body, body.tk-home .app-layout, body.tk-home .main-content {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+  }
+  body.tk-home .page-content.ot {
+    padding: 12px 12px 96px !important;
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  body.tk-home .detail-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 12px !important;
+  }
+  body.tk-home .detail-grid > * {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+  body.tk-home .tkt-head,
+  body.tk-home .card-modern,
+  body.tk-home .sidebar-card,
+  body.tk-home .info-item,
+  body.tk-home .qab,
+  body.tk-home .btn {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  body.tk-home .qab { width: 100% !important; }
+  body.tk-home .info-grid,
+  body.tk-home .frow {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  body.tk-home .info-section,
+  body.tk-home .sidebar-card { padding: 14px !important; }
+  body.tk-home .sla-gauge-wrap { flex-direction: column !important; align-items: stretch !important; }
+  body.tk-home .sidebar-title { flex-wrap: wrap; }
+}

@@ -5,6 +5,8 @@
   <title><%= typeof title !== 'undefined' ? title : 'Detail Ticket' %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/tickets-palette.css?v=tk2hp">
+  <link rel="stylesheet" href="/css/ticket-detail-palette.css?v=tdhp1">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
@@ -28,14 +30,17 @@
     .ticket-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px;}
     .meta-item{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 11px;background:#f1f5f9;border:1px solid var(--border);border-radius:20px;letter-spacing:.01em;color:var(--text);}
     /* Layout */
-    .detail-grid{display:grid;grid-template-columns:1fr 380px;gap:20px;}
-    @media(max-width:1000px){.detail-grid{grid-template-columns:1fr;}}
+    .detail-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,380px);gap:20px;width:100%;max-width:100%;}
+    @media(max-width:1100px){
+      .detail-grid{display:flex!important;flex-direction:column!important;grid-template-columns:none!important;width:100%!important;max-width:100%!important;}
+      .detail-grid>*{width:100%!important;max-width:100%!important;min-width:0!important;}
+    }
     /* Cards */
     .card-modern{background:#fff;border-radius:15px;box-shadow:0 5px 20px rgba(0,0,0,.08);border:1px solid #f0f0f0;margin-bottom:20px;}
     .info-section{padding:25px 30px;border-bottom:1px solid #f0f0f0;}
     .info-section:last-child{border-bottom:none;}
     .section-title{font-size:16px;font-weight:700;color:#2d3748;margin-bottom:15px;display:flex;align-items:center;gap:10px;} .section-title svg{color:var(--nv);flex-shrink:0;}
-    .info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
+    .info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px;}
     .info-item{padding:14px;background:#f7fafc;border-radius:10px;min-width:0;max-width:100%;}
     .info-label{font-size:11px;font-weight:700;color:#718096;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;}
     .info-value{font-size:14px;font-weight:600;color:#2d3748;word-break:break-word;overflow-wrap:anywhere;min-width:0;}
@@ -234,20 +239,23 @@
     .lb img{max-width:90%;max-height:90%;border-radius:12px;}
     .lbx{position:absolute;top:18px;right:28px;color:#fff;font-size:38px;cursor:pointer;}
     @keyframes spin{to{transform:rotate(360deg)}}
-    @media(max-width:768px){
-      .page-content.ot{padding:12px 12px 88px !important;overflow-x:hidden;}
-      .tkt-head{padding:14px;}
+    @media(max-width:1100px){
+      html,body,.app-layout,.main-content{overflow-x:hidden!important;max-width:100%!important;}
+      .page-content.ot{padding:12px 12px 96px !important;overflow-x:hidden;width:100%;max-width:100%;box-sizing:border-box;}
+      .tkt-head{padding:14px;max-width:100%;}
       .tkt-head-row{flex-direction:column;align-items:stretch;}
       .ticket-title{font-size:18px;}
       .info-section{padding:14px;}
-      .sidebar-card{padding:14px;}
-      .info-grid{grid-template-columns:1fr !important;}
-      .frow{grid-template-columns:1fr;}
+      .sidebar-card{padding:14px;max-width:100%;}
+      .card-modern,.qab,.btn,.info-item{max-width:100%;min-width:0;box-sizing:border-box;}
+      .qab{width:100%;}
+      .info-grid,.frow{grid-template-columns:minmax(0,1fr)!important;}
       #map{height:220px;margin-top:10px;}
       .leaflet-popup-content{width:min(240px,calc(100vw - 72px)) !important;}
       .timeline-item:hover{transform:none;}
       .timeline-foto{max-width:100%;height:auto;}
       .sla-gauge-wrap{flex-direction:column;align-items:stretch;}
+      .sidebar-title{flex-wrap:wrap;}
       .detail-grid{gap:12px;}
       .map-buttons{flex-direction:column;}
       .map-buttons .btn,.map-buttons a{width:100%;}
@@ -280,7 +288,7 @@
     [data-theme="dark"] .qab{background:#0f172a;color:#e8eef9;border-color:#243049;}
   </style>
 </head>
-<body>
+<body class="tk-home">
 <div class="app-layout">
   <%- include('../partials/sidebar') %>
   <div class="main-content">
