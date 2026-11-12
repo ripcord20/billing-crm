@@ -259,6 +259,36 @@
     body.keu-home .keu-table tfoot td, body.keu-home .keu-foot td {
       background:#12102a !important; color:#e2e8f0 !important;
     }
+    body.keu-home .cat-chip,
+    body.keu-home .pay-method .mpill {
+      background:#fff !important;
+      color:#0d1b3e !important;
+      -webkit-text-fill-color:#0d1b3e;
+      border-color:#cbd5e1 !important;
+    }
+    body.keu-home .cat-chip.on,
+    body.keu-home .pay-method .mpill.on {
+      background:#dbeafe !important;
+      color:#1e3a8a !important;
+      -webkit-text-fill-color:#1e3a8a;
+      border-color:#93c5fd !important;
+    }
+    body.keu-home .page-content .pnbp-base-box {
+      background:linear-gradient(120deg,#eff6ff,#f0fdfa) !important;
+      border-color:#dbeafe !important;
+    }
+    body.keu-home .page-content .pnbp-base-box,
+    body.keu-home .page-content .pnbp-base-box [style*="color:#64748b"],
+    body.keu-home .page-content .pnbp-base-box [style*="color:#94a3b8"],
+    body.keu-home .page-content .pnbp-base-box [style*="color:#0d1b3e"],
+    body.keu-home .page-content #pnbp-base {
+      color:#0d1b3e !important;
+      -webkit-text-fill-color:#0d1b3e;
+    }
+    body.keu-home .page-content #pnbp-base-note {
+      color:#334155 !important;
+      -webkit-text-fill-color:#334155;
+    }
     [data-theme="dark"] .form-control, [data-theme="dark"] .filter-select, [data-theme="dark"] .search-input,
     [data-theme="dark"] .filter-tab, [data-theme="dark"] .type-tab, [data-theme="dark"] .page-btn,
     [data-theme="dark"] .cat-chip, [data-theme="dark"] .pay-method .mpill {
@@ -443,7 +473,7 @@
         </div>
 
         <!-- Dasar penghitungan -->
-        <div style="background:linear-gradient(120deg,#eff6ff,#f0fdfa);border:1px solid #dbeafe;border-radius:12px;padding:13px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <div class="pnbp-base-box" style="background:linear-gradient(120deg,#eff6ff,#f0fdfa);border:1px solid #dbeafe;border-radius:12px;padding:13px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
           <div>
             <div style="font-size:11.5px;color:#64748b;font-weight:600;">Dasar Penghitungan (Pendapatan Kotor)</div>
             <div style="font-size:11px;color:#94a3b8;margin-top:2px;" id="pnbp-base-note">100% dari pemasukan kotor</div>
