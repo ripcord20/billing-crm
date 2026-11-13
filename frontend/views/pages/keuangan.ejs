@@ -289,6 +289,7 @@
         </div>
         <div style="display:flex;gap:8px;align-items:center">
           <select id="filterMonth" class="filter-select" onchange="loadAll()">
+            <option value="">Semua bulan</option>
             <option value="1">Januari</option><option value="2">Februari</option>
             <option value="3">Maret</option><option value="4">April</option>
             <option value="5">Mei</option><option value="6">Juni</option>
@@ -647,6 +648,7 @@
               <button class="filter-tab" data-filter="piutang"     onclick="setFilter('piutang',this)"><span style="width:7px;height:7px;border-radius:50%;background:#0096c7;display:inline-block;margin-right:5px;vertical-align:middle"></span>Piutang</button>
               <button class="filter-tab" data-filter="modal"       onclick="setFilter('modal',this)"><span style="width:7px;height:7px;border-radius:50%;background:#1a6ef5;display:inline-block;margin-right:5px;vertical-align:middle"></span>Modal</button>
             </div>
+            <div id="tbl-scope-hint" style="display:none;font-size:11.5px;color:var(--d-muted);margin:-4px 0 12px;line-height:1.45"></div>
 
             <div style="overflow-x:auto">
               <table class="keu-table">
@@ -831,8 +833,51 @@ function escHtmlKeu(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;'
 function setFilter(f, btn){
   _filter = f; _page = 1;
   document.querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
+  else document.querySelectorAll('.filter-tab').forEach(b=>b.classList.toggle('active', b.dataset.filter===f));
   loadTable();
+}
+
+function ensureYearOption(y){
+  const sel = el('filterYear');
+  if (!sel || !y) return;
+  const val = String(y);
+  if (![...sel.options].some(o => o.value === val)) {
+    const opt = document.createElement('option');
+    opt.value = val; opt.textContent = val;
+    sel.insertBefore(opt, sel.firstChild);
+  }
+}
+
+function showSavedInTable(type, dateStr){
+  _page = 1;
+  if (el('tbl-search')) el('tbl-search').value = '';
+  if (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr) && !['hutang','piutang'].includes(type)) {
+    const parts = dateStr.split('-');
+    ensureYearOption(parts[0]);
+    if (el('filterYear')) el('filterYear').value = parts[0];
+    if (el('filterMonth')) el('filterMonth').value = String(parseInt(parts[1], 10));
+  }
+  _filter = type || 'semua';
+  document.querySelectorAll('.filter-tab').forEach(b=>b.classList.toggle('active', b.dataset.filter===_filter));
+}
+
+function updateScopeHint(scope){
+  const hint = el('tbl-scope-hint');
+  if (!hint) return;
+  if (_filter === 'hutang' || _filter === 'piutang') {
+    hint.style.display = 'block';
+    hint.textContent = 'Tab ' + (TYPE_LABEL[_filter]||_filter) + ' menampilkan semua periode, tidak hanya bulan yang dipilih.';
+  } else if ((el('tbl-search')||{}).value && String(el('tbl-search').value).trim()) {
+    hint.style.display = 'block';
+    hint.textContent = 'Pencarian mencakup semua bulan.';
+  } else if (scope === 'all') {
+    hint.style.display = 'block';
+    hint.textContent = 'Menampilkan semua periode.';
+  } else {
+    hint.style.display = 'none';
+    hint.textContent = '';
+  }
 }
 
 function debounceSearch(){
@@ -1141,7 +1186,10 @@ async function loadTable(){
   const month  = el('filterMonth').value;
   const year   = el('filterYear').value;
   const search = el('tbl-search').value.trim();
-  const params = new URLSearchParams({ month, year, page:_page, limit:LIMIT, search });
+  const params = new URLSearchParams({ page:_page, limit:LIMIT, search });
+  if (year) params.set('year', year);
+  if (month) params.set('month', month);
+  if (_filter === 'hutang' || _filter === 'piutang' || search) params.set('all_months', '1');
   if(_filter !== 'semua') params.set('type', _filter);
 
   try {
@@ -1149,6 +1197,7 @@ async function loadTable(){
     if(!r.success) return;
     renderTable(r.data||[], r.total||0);
     renderPagination(r.total||0);
+    updateScopeHint(r.scope);
   } catch(e){ console.error('[Keuangan table]',e.message); }
 }
 
@@ -1160,7 +1209,7 @@ function renderTable(rows, total){
   if(!rows.length){
     tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;padding:36px;color:var(--d-muted)">
       <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 10px;display:block;opacity:.3"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-      <p style="font-size:13px;font-weight:600">Belum ada transaksi</p>
+      <p style="font-size:13px;font-weight:600">${_filter==='hutang'?'Belum ada hutang':_filter==='piutang'?'Belum ada piutang':'Belum ada transaksi'}</p>
     </td></tr>`;
     return;
   }
@@ -1273,7 +1322,9 @@ async function submitForm(){
       api('/api/keuangan/categories', { method:'POST', body: JSON.stringify({ type, name: catName }) }).catch(()=>{});
     }
     App.showToast(r.message,'success');
+    showSavedInTable(type, body.date);
     cancelEdit();
+    setType(type);
     loadAll();
   } catch(e){
     App.showToast(e.message,'error');
