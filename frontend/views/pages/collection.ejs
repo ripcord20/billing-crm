@@ -10,16 +10,23 @@
   <style>
     .coll-page { font-family:'DM Sans',sans-serif; }
     /* ── STAT CARDS ── */
-    .coll-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
-    @media(max-width:1100px){ .coll-grid{ grid-template-columns:repeat(2,1fr); } }
-    @media(max-width:560px){ .coll-grid{ grid-template-columns:1fr; } }
-    .coll-card { position:relative; background:#fff; border:1px solid #eef2f9; border-radius:18px; padding:17px 19px; overflow:hidden; transition:box-shadow .18s,transform .18s,border-color .18s; cursor:pointer; }
+    .coll-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-bottom:20px; }
+    .coll-grid-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    @media(max-width:1100px){ .coll-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media(max-width:820px){
+      .coll-grid, .coll-grid-3 { grid-template-columns:1fr !important; }
+    }
+    .coll-card { position:relative; background:#fff; border:1px solid #eef2f9; border-radius:18px; padding:17px 19px; overflow:hidden; min-width:0; transition:box-shadow .18s,transform .18s,border-color .18s; cursor:pointer; }
     .coll-card:hover { box-shadow:0 12px 30px rgba(20,40,90,.1); transform:translateY(-3px); }
     .coll-card:active { transform:translateY(-1px); }
     .coll-card .lbl { font-size:11.5px; font-weight:600; color:#64748b; margin-bottom:12px; display:flex; align-items:center; gap:9px; }
     .coll-card .lbl .ic { width:34px; height:34px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .coll-card .lbl .ic svg { width:17px; height:17px; }
-    .coll-card .val { font-size:27px; font-weight:800; color:#0d1b3e; letter-spacing:-.7px; line-height:1; }
+    .coll-card .val {
+      font-size:clamp(16px, 5.2vw, 27px); font-weight:800; color:#0d1b3e;
+      letter-spacing:-.7px; line-height:1.15; max-width:100%;
+      overflow-wrap:anywhere; word-break:break-word; white-space:normal;
+    }
     .coll-card .sub { font-size:11.5px; color:#94a3b8; margin-top:7px; }
     .coll-card .arrow { position:absolute; top:16px; right:16px; color:#cbd5e1; opacity:0; transform:translateX(-4px); transition:opacity .18s,transform .18s; }
     .coll-card:hover .arrow { opacity:1; transform:translateX(0); }
@@ -188,6 +195,7 @@
     .pm-st { display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:7px;font-size:11.5px;font-weight:700;background:rgba(255,255,255,.2);color:#fff; }
     /* ── Mobile card transform ── */
     @media(max-width:820px){
+      .coll-card .val { font-size:22px; letter-spacing:-.3px; }
       table.coll thead { display:none; }
       table.coll, table.coll tbody, table.coll tr, table.coll td { display:block; width:100%; }
       table.coll tr { border:1px solid #eef2f9; border-radius:12px; margin-bottom:10px; padding:6px 4px; }
@@ -330,7 +338,7 @@
             </button>
           </div>
         </div>
-        <div class="coll-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="coll-grid coll-grid-3">
           <div class="coll-card teal"><div class="lbl">Total Terkumpul</div><div class="val money" id="repTotCollected">—</div><div class="sub" id="repTotPaid">&nbsp;</div></div>
           <div class="coll-card blue"><div class="lbl">Total Komisi</div><div class="val money" id="repTotComm">—</div><div class="sub">untuk dibayarkan ke kolektor</div></div>
           <div class="coll-card amber"><div class="lbl">Kolektor Aktif</div><div class="val" id="repTotCollectors">—</div><div class="sub" id="repTotTask">&nbsp;</div></div>
