@@ -1,6 +1,7 @@
 const { Keuangan, User, RecurringExpense, sequelize } = require('../models');
 const { Op }   = require('sequelize');
 const moment   = require('moment');
+const { buildKeuanganListWhere } = require('../utils/keuanganList');
 
 const TYPE_LABEL = {
   pemasukan:  'Pemasukan',
@@ -394,27 +395,11 @@ class KeuanganController {
   // ── GET /api/keuangan ──────────────────────────────────────
   async index(req, res) {
     try {
-      const { type, month, year, page=1, limit=50, search='' } = req.query;
-      const where = {};
-
-      if (type && type !== 'semua') where.type = type;
-
-      if (month && year) {
-        const start = moment(`${year}-${String(month).padStart(2,'0')}-01`).startOf('month').format('YYYY-MM-DD');
-        const end   = moment(start).endOf('month').format('YYYY-MM-DD');
-        where.date  = { [Op.between]: [start, end] };
-      } else if (year) {
-        where.date = { [Op.between]: [`${year}-01-01`, `${year}-12-31`] };
-      }
-
-      if (search) {
-        where[Op.or] = [
-          { description: { [Op.like]: `%${search}%` } },
-          { category:    { [Op.like]: `%${search}%` } },
-          { party_name:  { [Op.like]: `%${search}%` } },
-          { ref_number:  { [Op.like]: `%${search}%` } }
-        ];
-      }
+      const { type, month, year, page=1, limit=50, search='', all_months } = req.query;
+      const { where, skipPeriod } = buildKeuanganListWhere(
+        { type, month, year, search, all_months },
+        { Op, moment }
+      );
 
       const offset = (parseInt(page)-1) * parseInt(limit);
       const { count, rows } = await Keuangan.findAndCountAll({
@@ -425,7 +410,14 @@ class KeuanganController {
         offset
       });
 
-      res.json({ success:true, data:rows, total:count, page:parseInt(page), limit:parseInt(limit) });
+      res.json({
+        success:true,
+        data:rows,
+        total:count,
+        page:parseInt(page),
+        limit:parseInt(limit),
+        scope: skipPeriod ? 'all' : 'period'
+      });
     } catch(e) {
       console.error('[Keuangan.index]', e.message);
       res.status(500).json({ success:false, message:e.message });
