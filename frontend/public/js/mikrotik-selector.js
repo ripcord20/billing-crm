@@ -17,15 +17,16 @@
 
 (function () {
   const STORAGE_KEY = 'flaynet:dashboard:mikrotik_id';
+  let activeStorageKey = STORAGE_KEY;
 
   function getStored() {
-    try { return localStorage.getItem(STORAGE_KEY) || ''; } catch (_) { return ''; }
+    try { return localStorage.getItem(activeStorageKey) || ''; } catch (_) { return ''; }
   }
 
   function setStored(id) {
     try {
-      if (id) localStorage.setItem(STORAGE_KEY, id);
-      else    localStorage.removeItem(STORAGE_KEY);
+      if (id) localStorage.setItem(activeStorageKey, id);
+      else    localStorage.removeItem(activeStorageKey);
     } catch (_) {}
   }
 
@@ -52,8 +53,13 @@
       selectId = 'mikrotikSelector', // id select kalau sudah ada di view
       onChange = () => {},
       onReady  = () => {},
-      title    = 'Pilih MikroTik untuk monitoring'
+      title    = 'Pilih MikroTik untuk monitoring',
+      storageKey = STORAGE_KEY,
+      includeAll = false,
+      allLabel = 'Semua MikroTik',
+      defaultAll = false
     } = opts;
+    activeStorageKey = storageKey || STORAGE_KEY;
 
     // 1) Pakai existing <select> kalau ada (kasus dashboard.ejs lama)
     let sel = document.getElementById(selectId);
@@ -94,13 +100,22 @@
 
       const list = data.data;
       const ids  = list.map(d => String(d.id));
+      if (includeAll) ids.push('all');
       const stored = getStored();
-      let activeId = (stored && ids.includes(stored))
-        ? stored
-        : String(list.find(d => d.is_primary)?.id ?? list[0].id);
+      let activeId;
+      if (stored && ids.includes(stored)) {
+        activeId = stored;
+      } else if (defaultAll && includeAll) {
+        activeId = 'all';
+      } else {
+        activeId = String(list.find(d => d.is_primary)?.id ?? list[0].id);
+      }
       setStored(activeId);
 
-      sel.innerHTML = list.map(d => {
+      const allOpt = includeAll
+        ? `<option value="all" ${activeId === 'all' ? 'selected' : ''}>${escHtml(allLabel)}</option>`
+        : '';
+      sel.innerHTML = allOpt + list.map(d => {
         const dot  = d.status === 'online' ? '' : (d.status === 'warning' ? '' : '');
         const star = d.is_primary ? ' ★' : '';
         return `<option value="${d.id}" ${String(d.id) === activeId ? 'selected' : ''}>${dot} ${escHtml(d.name)}${star}</option>`;

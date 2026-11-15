@@ -394,7 +394,7 @@
               <span class="card-val" id="statOffline">0</span>
               <div class="card-meta">
                 <span class="card-pill pill-amber" id="pp-pill-offline">— akun</span>
-                <span class="card-sub">Aktif &amp; tidak online</span>
+                <span class="card-sub" id="pp-offline-sub">Aktif &amp; tidak online</span>
               </div>
             </div>
             <div class="card-spark">
@@ -460,6 +460,7 @@
               <tr>
                 <th>#</th>
                 <th>Username</th>
+                <th>Router</th>
                 <th>Service</th>
                 <th>IP Address</th>
                 <th>Caller ID / MAC</th>
@@ -469,7 +470,7 @@
             </thead>
             <tbody id="pppoeTbody" data-session-count="true">
               <tr>
-                <td colspan="7">
+                <td colspan="8">
                   <div class="tbl-empty">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
                     <p>Memuat sesi...</p>
@@ -594,7 +595,7 @@
   </div>
 </div>
 <script src="/js/app.js"></script>
-<script src="/js/mikrotik-selector.js"></script>
+  <script src="/js/mikrotik-selector.js?v=pppoeall1"></script>
 <script src="/js/pppoe-bulk.js"></script>
 <script>
 (function(){
@@ -614,6 +615,8 @@
   // State
   var _sessions  = [];
   var _secrets   = [];
+  var _fleet     = false;
+  var _customerOffline = null;
   var _onlineNamesLower = {};            // map username (lowercase) → true, dari sesi aktif
   var _secretsStatusFilter = '';         // '' | 'enabled' | 'disabled' | 'offline'
   var _profiles  = [];
@@ -783,11 +786,14 @@
     });
     _onlineNamesLower = onlineSet;
 
-    // Offline = secret enabled yg TIDAK ada di onlineSet
+    // Offline = secret enabled yg TIDAK ada di onlineSet.
+    // Mode Semua MikroTik: hitung pelanggan Fiberix aktif yang tidak ada di /ppp/active
+    // mana pun (CORE 2 RADIUS tidak punya /ppp/secret lokal).
     var offlineCount = enabledList.filter(function(s){
       var nm = (s.name || '').toLowerCase();
       return nm && !onlineSet[nm];
     }).length;
+    if (_fleet && _customerOffline != null) offlineCount = _customerOffline;
 
     var vals = {
       total:    totalSessions,
@@ -814,6 +820,12 @@
     document.getElementById('statEnabled').textContent  = vals.enabled;
     document.getElementById('statDisabled').textContent = vals.disabled;
     document.getElementById('statOffline').textContent  = vals.offline;
+    var offSub = document.getElementById('pp-offline-sub');
+    if (offSub) {
+      offSub.textContent = (_fleet && _customerOffline != null)
+        ? 'Pelanggan Fiberix, tidak di CORE 1/2'
+        : 'Secret aktif & tidak online';
+    }
 
     // Tab badge sessions
     var tb = document.getElementById('tb-sessions');
@@ -916,14 +928,14 @@
         }
       } else {
         document.getElementById('pppoeTbody').innerHTML =
-          '<tr><td colspan="7"><div class="tbl-empty">' +
+          '<tr><td colspan="8"><div class="tbl-empty">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>' +
             '<p style="color:#dc2626">' + esc((data && data.message) || 'Gagal memuat sesi') + '</p>' +
           '</div></td></tr>';
       }
     } catch (e) {
       document.getElementById('pppoeTbody').innerHTML =
-        '<tr><td colspan="7"><div class="tbl-empty"><p style="color:#dc2626">Error: ' + esc(e.message) + '</p></div></td></tr>';
+        '<tr><td colspan="8"><div class="tbl-empty"><p style="color:#dc2626">Error: ' + esc(e.message) + '</p></div></td></tr>';
     }
   }
 
@@ -946,7 +958,7 @@
 
     if (!list.length) {
       tbody.innerHTML =
-        '<tr><td colspan="7"><div class="tbl-empty">' +
+        '<tr><td colspan="8"><div class="tbl-empty">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>' +
           '<p>' + (_sessions.length ? 'Tidak ada sesi yang cocok dengan filter' : 'Tidak ada sesi aktif') + '</p>' +
         '</div></td></tr>';
@@ -959,6 +971,7 @@
       return '<tr data-session-id="' + esc(s.id) + '" data-session-name="' + esc(s.name) + '">' +
         '<td class="num-cell">' + (i+1) + '</td>' +
         '<td class="username-cell" data-label="Username">' + esc(s.name) + '</td>' +
+        '<td data-label="Router">' + esc(s.router || '—') + '</td>' +
         '<td data-label="Service"><span class="svc-badge ' + svcClass + '">' + esc(svc.toUpperCase()) + '</span></td>' +
         '<td data-label="IP Address"><span class="ip-badge">' + (esc(s.address) || '—') + '</span></td>' +
         '<td class="mac-cell" data-label="Caller ID / MAC">' + (esc(s.callerID) || '—') + '</td>' +
@@ -1031,17 +1044,19 @@
         var data = await App.api(_withDev(url));
         if (data && data.success) {
           _sessions = data.data || [];
+          _fleet = !!data.fleet;
+          _customerOffline = (typeof data.customer_offline === 'number') ? data.customer_offline : null;
           if (data.warning) console.warn('[PPPoE]', data.warning);
         } else {
           document.getElementById('pppoeTbody').innerHTML =
-            '<tr><td colspan="7"><div class="tbl-empty">' +
+            '<tr><td colspan="8"><div class="tbl-empty">' +
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>' +
               '<p style="color:#dc2626">' + esc((data && data.message) || 'Gagal memuat sesi') + '</p>' +
             '</div></td></tr>';
         }
       } catch (e) {
         document.getElementById('pppoeTbody').innerHTML =
-          '<tr><td colspan="7"><div class="tbl-empty"><p style="color:#dc2626">Error: ' + esc(e.message) + '</p></div></td></tr>';
+          '<tr><td colspan="8"><div class="tbl-empty"><p style="color:#dc2626">Error: ' + esc(e.message) + '</p></div></td></tr>';
       }
     })();
 
@@ -1450,6 +1465,11 @@
     if (window.MikrotikSelector) {
       window.MikrotikSelector.init({
         selectId: 'mikrotikSelector',
+        storageKey: 'flaynet:pppoe:mikrotik_id',
+        includeAll: true,
+        defaultAll: true,
+        allLabel: 'Semua MikroTik',
+        title: 'Pilih MikroTik — CORE 1 dan CORE 2 terpisah',
         onChange: function(){
           // Reload semua data ke device baru
           _reloadAllForDevice();
