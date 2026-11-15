@@ -152,6 +152,16 @@
         <div class="fg"><label>Model</label><input type="text" id="fModel" placeholder="RB5009"></div>
       </div>
       <div class="fg"><label>Serial Number</label><input type="text" id="fSerial" placeholder="Opsional"></div>
+      <div class="fg"><label>MAC Address</label><input type="text" id="fMac" placeholder="AA:BB:CC:DD:EE:FF"></div>
+      <button type="button" class="save-btn" style="background:#eef6ff;color:#1d4ed8;box-shadow:none;margin:0 0 14px;" onclick="document.getElementById('fPhoto').click();_scanAfterPhoto=true;">📷 Foto isi SN &amp; MAC</button>
+      <div class="fg-row">
+        <div class="fg"><label>Adaptor</label>
+          <select id="fAdaptor"><option value="">—</option><option value="included">Termasuk</option><option value="none">Tidak ada</option></select>
+        </div>
+        <div class="fg"><label>Tipe Adaptor</label>
+          <select id="fAdaptorType"><option value="">—</option><option value="12V 0.5A">12V 0.5A</option><option value="12V 1A">12V 1A</option><option value="12V 1.5A">12V 1.5A</option><option value="12V 2A">12V 2A</option></select>
+        </div>
+      </div>
       <div class="fg-row">
         <div class="fg"><label>Status</label><select id="fStatus"><option value="active">Terpasang</option><option value="storage">Gudang</option><option value="repair">Servis</option><option value="damaged">Rusak</option><option value="inactive">Nonaktif</option><option value="disposed">Dibuang</option><option value="lost">Hilang</option></select></div>
         <div class="fg"><label>Kondisi</label><select id="fCond"><option value="new">Baru</option><option value="good">Baik</option><option value="fair">Cukup</option><option value="poor">Buruk</option></select></div>
@@ -181,7 +191,7 @@
     function fmtRp(n){ n=Number(n)||0; return 'Rp '+n.toLocaleString('id-ID'); }
     function fmtRpShort(n){ n=Number(n)||0; if(n>=1000000000)return 'Rp '+(n/1000000000).toFixed(1).replace('.0','')+'M'; if(n>=1000000)return 'Rp '+(n/1000000).toFixed(1).replace('.0','')+'jt'; if(n>=1000)return 'Rp '+Math.round(n/1000)+'rb'; return 'Rp '+n.toLocaleString('id-ID'); }
     function toast(m,t){ const el=document.getElementById('toast'); el.textContent=m; el.className='toast show'+(t?' '+t:''); setTimeout(()=>el.classList.remove('show'),2400); }
-    let _status='', _search='', _editId=null, _cats=[], _allById={}, _photoFile=null;
+    let _status='', _search='', _editId=null, _cats=[], _allById={}, _photoFile=null, _scanAfterPhoto=false;
 
     const ST_LABEL={active:'Terpasang',storage:'Gudang',repair:'Servis',damaged:'Rusak',inactive:'Nonaktif',disposed:'Dibuang',lost:'Hilang'};
     const ST_COLOR={active:'#0f9d63',storage:'#0ea5e9',repair:'#f5a623',damaged:'#f2545b',inactive:'#94a0b8',disposed:'#64748b',lost:'#8b7cf6'};
@@ -291,8 +301,13 @@
       document.getElementById('fPrice').value=a?(a.purchase_price||''):'';
       document.getElementById('fLoc').value=a?(a.location||''):'';
       document.getElementById('fNotes').value=a?(a.notes||''):'';
+      const sp=(a&&a.specs&&typeof a.specs==='object')?a.specs:{};
+      document.getElementById('fMac').value=sp.mac_address||'';
+      document.getElementById('fAdaptor').value=sp.adaptor_included===true?'included':(sp.adaptor_included===false?'none':'');
+      document.getElementById('fAdaptorType').value=sp.adaptor_type||'';
       // Foto: tampilkan yang tersimpan (edit) atau kosong (tambah)
       _photoFile=null;
+      _scanAfterPhoto=false;
       setPhotoPreview(a&&a.photo_url?a.photo_url:'');
       document.getElementById('fPhoto').value='';
       document.getElementById('sheetOv').classList.add('open');
@@ -310,6 +325,28 @@
       if(f.size>5*1024*1024){ toast('Foto maksimal 5 MB','err'); inp.value=''; return; }
       _photoFile=f;
       const rd=new FileReader(); rd.onload=e=>setPhotoPreview(e.target.result); rd.readAsDataURL(f);
+      if(_scanAfterPhoto){ _scanAfterPhoto=false; scanMobileLabel(f); }
+    }
+    function parseSnMac(text){
+      const raw=String(text||'');
+      let mac=''; const mc=raw.match(/\b([0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}\b/);
+      if(mc) mac=mc[0].replace(/-/g,':').toUpperCase();
+      let sn=''; const sl=raw.match(/(?:S\/N|SN|Serial)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-]{4,})/i);
+      if(sl) sn=sl[1].toUpperCase();
+      return {sn,mac};
+    }
+    async function scanMobileLabel(file){
+      toast('Membaca label…');
+      try{
+        if(!window.Tesseract){
+          await new Promise(function(res,rej){ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+        }
+        const r=await window.Tesseract.recognize(file,'eng');
+        const p=parseSnMac(r&&r.data&&r.data.text);
+        if(p.sn) document.getElementById('fSerial').value=p.sn;
+        if(p.mac) document.getElementById('fMac').value=p.mac;
+        toast(p.sn||p.mac?'SN/MAC terisi dari foto':'Tidak ketemu SN/MAC', p.sn||p.mac?'ok':'err');
+      }catch(e){ toast('Gagal baca foto','err'); }
     }
     function clearPhoto(){ _photoFile=null; document.getElementById('fPhoto').value=''; setPhotoPreview(''); }
     async function uploadPhoto(assetId){
@@ -338,7 +375,8 @@
         condition:document.getElementById('fCond').value,
         purchase_price:parseInt(document.getElementById('fPrice').value)||null,
         location:document.getElementById('fLoc').value.trim()||null,
-        notes:document.getElementById('fNotes').value.trim()||null };
+        notes:document.getElementById('fNotes').value.trim()||null,
+        specs: (function(){ const o={}; const ad=document.getElementById('fAdaptor').value; if(ad==='included')o.adaptor_included=true; if(ad==='none')o.adaptor_included=false; const at=document.getElementById('fAdaptorType').value; if(at)o.adaptor_type=at; const mac=document.getElementById('fMac').value.trim(); if(mac)o.mac_address=mac; return Object.keys(o).length?o:null; })() };
       const btn=document.getElementById('saveBtn'); btn.disabled=true; btn.textContent='Menyimpan…';
       const url=_editId?('/api/assets/'+_editId):'/api/assets';
       const j=await api(url,{ method:_editId?'PUT':'POST', body:JSON.stringify(body) });

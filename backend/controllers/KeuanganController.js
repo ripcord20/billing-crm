@@ -438,7 +438,7 @@ class KeuanganController {
       const {
         type, category, description, amount, date,
         due_date, party_name, status, source,
-        ref_number, notes
+        ref_number, notes, payment_method
       } = req.body;
 
       if (!type || !category || !description || !amount || !date)
@@ -458,6 +458,7 @@ class KeuanganController {
         source:     source     || null,
         ref_number: ref_number || null,
         notes:      notes      || null,
+        payment_method: ['cash','transfer','ewallet'].includes(String(payment_method||'')) ? payment_method : null,
         recorded_by: req.user?.id || null
       });
 
@@ -477,7 +478,7 @@ class KeuanganController {
       const {
         type, category, description, amount, date,
         due_date, party_name, status, source,
-        ref_number, notes
+        ref_number, notes, payment_method
       } = req.body;
 
       await record.update({
@@ -491,7 +492,10 @@ class KeuanganController {
         status:      status      !== undefined ? (status||null)      : record.status,
         source:      source      !== undefined ? (source||null)      : record.source,
         ref_number:  ref_number  !== undefined ? (ref_number||null)  : record.ref_number,
-        notes:       notes       !== undefined ? (notes||null)       : record.notes
+        notes:       notes       !== undefined ? (notes||null)       : record.notes,
+        payment_method: payment_method !== undefined
+          ? (['cash','transfer','ewallet'].includes(String(payment_method||'')) ? payment_method : null)
+          : record.payment_method
       });
 
       res.json({ success:true, message:'Data berhasil diperbarui', data:record });
@@ -570,16 +574,45 @@ class KeuanganController {
     }
   }
 
+  async _extraCats() {
+    const { AppSetting } = require('../models');
+    const row = await AppSetting.findOne({ where: { key: 'keuangan_extra_categories' } });
+    if (!row || !row.value) return {};
+    try { return JSON.parse(row.value) || {}; } catch (e) { return {}; }
+  }
+
   // ── GET /api/keuangan/categories ──────────────────────────
   async categories(req, res) {
     try {
+      const type = req.query.type || null;
       const rows = await Keuangan.findAll({
         attributes: [[sequelize.fn('DISTINCT', sequelize.col('category')), 'category']],
-        where: req.query.type ? { type: req.query.type } : {},
+        where: type ? { type } : {},
         raw: true
       });
-      const cats = rows.map(r => r.category).filter(Boolean).sort();
+      const extra = await this._extraCats();
+      const extraList = type ? (extra[type] || []) : Object.values(extra).flat();
+      const cats = [...new Set([...rows.map(r => r.category), ...extraList].filter(Boolean))].sort();
       res.json({ success:true, data:cats });
+    } catch(e) {
+      res.status(500).json({ success:false, message:e.message });
+    }
+  }
+
+  // ── POST /api/keuangan/categories ─────────────────────────
+  async addCategory(req, res) {
+    try {
+      const { AppSetting } = require('../models');
+      const type = String(req.body.type || '').trim();
+      const name = String(req.body.name || '').trim().slice(0, 80);
+      if (!Object.keys(TYPE_LABEL).includes(type) || !name)
+        return res.status(400).json({ success:false, message:'type dan name wajib' });
+      const extra = await this._extraCats();
+      const list = Array.isArray(extra[type]) ? extra[type] : [];
+      if (!list.some(c => String(c).toLowerCase() === name.toLowerCase())) list.push(name);
+      extra[type] = list;
+      await AppSetting.upsert({ key: 'keuangan_extra_categories', value: JSON.stringify(extra), type: 'string' });
+      res.json({ success:true, data: list, message:'Kategori ditambahkan' });
     } catch(e) {
       res.status(500).json({ success:false, message:e.message });
     }

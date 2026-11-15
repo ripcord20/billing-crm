@@ -2232,6 +2232,7 @@ router.put ('/keuangan/recurring/:id', authenticate, demoGuard, (r,s)=>KeuanganC
 router.delete('/keuangan/recurring/:id', authenticate, demoGuard, (r,s)=>KeuanganController.recurringDestroy(r,s));
 router.post('/keuangan/sync-payments', authenticate, demoGuard, (r,s)=>KeuanganController.syncPayments(r,s));
 router.get ('/keuangan/categories', authenticate, demoGuard, (r,s)=>KeuanganController.categories(r,s));
+router.post('/keuangan/categories', authenticate, demoGuard, (r,s)=>KeuanganController.addCategory(r,s));
 router.get ('/keuangan/pnbp-settings', authenticate, demoGuard, (r,s)=>KeuanganController.pnbpSettings(r,s));
 router.put ('/keuangan/pnbp-settings', authenticate, demoGuard, (r,s)=>KeuanganController.pnbpSettingsUpdate(r,s));
 router.get ('/keuangan/:id',        authenticate, demoGuard, (r,s)=>KeuanganController.show ? KeuanganController.show(r,s) : s.json({success:false,message:'Not implemented'}));

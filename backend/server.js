@@ -479,6 +479,20 @@ const startServer = async () => {
     }
 
     try {
+      const [keuPay] = await db.sequelize.query(
+        `SELECT COUNT(*) AS c FROM information_schema.columns
+          WHERE table_schema = DATABASE() AND table_name = 'keuangan' AND column_name = 'payment_method'`,
+        { type: db.sequelize.QueryTypes.SELECT }
+      );
+      if (!keuPay || !parseInt(keuPay.c, 10)) {
+        await db.sequelize.query(`ALTER TABLE keuangan ADD COLUMN payment_method VARCHAR(32) NULL`);
+        logger.info('Migrated: keuangan.payment_method column added');
+      }
+    } catch (e) {
+      logger.warn('Failed to ensure keuangan.payment_method: ' + (e.message || e));
+    }
+
+    try {
       if (db.QosMetric) await db.QosMetric.sync();
       if (db.QosAlert) await db.QosAlert.sync();
       if (db.AuthFailEvent) await db.AuthFailEvent.sync();
