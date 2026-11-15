@@ -18,7 +18,7 @@ const CORE1_HUB = {
   subnetOctetPrefix: '10.201.0.',
   fallbackPublicKey: 'm0lijnuhLy91YcnDNrnqavNti9X5s9AO7jtu07LIS3g=',
   clientIface: 'wg-neva',
-  clientAllowedAddress: '10.201.0.0/24,192.168.22.99/32,192.168.22.9/32,192.168.91.1/32,192.168.81.0/24,192.168.94.0/24,192.168.53.0/24,192.168.99.0/24,192.168.93.0/24',
+  clientAllowedAddress: '10.201.0.0/24,192.168.22.0/24,192.168.22.99/32,192.168.22.9/32,192.168.91.1/32,192.168.81.0/24,192.168.94.0/24,192.168.53.0/24,192.168.99.0/24,192.168.93.0/24',
   keepalive: '25s',
   fiberixLan: '192.168.22.99',
   radiusHost: DEFAULT_RADIUS_HOST,
@@ -26,7 +26,13 @@ const CORE1_HUB = {
   reservedHosts: [1, 2, 19, 22],
   sshUser: 'root',
   sshHost: '103.169.206.24',
-  sshKey: '/home/skynet/.ssh/id_ed25519'
+  sshKey: '/home/skynet/.ssh/id_ed25519',
+  officeDeviceName: 'CORE 1',
+  officeDeviceIp: '192.168.91.1',
+  officePublicKey: 'v+H+oPcWUc/oyZRROvSEDCGkhjQC7vuYcSKm/8ZhO00=',
+  officeToVpsAllowedAddress: '10.201.0.0/24',
+  vpsOfficeAllowedIps: '10.201.0.19/32,192.168.22.0/24,192.168.17.0/30,192.168.81.0/24,192.168.94.0/24,192.168.53.0/24,192.168.91.0/24,192.168.99.0/24,192.168.93.0/24',
+  officeLanRoutes: ['192.168.22.0/24', '192.168.17.0/30']
 };
 
 function getHubConfig(env = process.env) {
@@ -174,6 +180,72 @@ function rosSafeName(name) {
   return String(name || 'CABANG').replace(/[\r\n"]+/g, ' ').trim().slice(0, 60) || 'CABANG';
 }
 
+function splitPrefixes(text) {
+  return String(text || '').split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+function mergePrefixes(existing, extras) {
+  const seen = new Set();
+  const out = [];
+  for (const p of [...splitPrefixes(existing), ...splitPrefixes(extras)]) {
+    if (seen.has(p)) continue;
+    seen.add(p);
+    out.push(p);
+  }
+  return out.join(',');
+}
+
+function allowedHasPrefix(existing, prefix) {
+  return splitPrefixes(existing).includes(String(prefix || '').trim());
+}
+
+function planOfficeToVpsAllowed(existing, desired) {
+  const want = String(desired || CORE1_HUB.officeToVpsAllowedAddress).trim();
+  if (!want) return { patch: false, next: String(existing || '') };
+  if (allowedHasPrefix(existing, want)) return { patch: false, next: String(existing || '') };
+  return { patch: true, next: mergePrefixes(existing, want) };
+}
+
+function isVpsHubPeer(peer, hub = CORE1_HUB) {
+  const ep = String((peer && (peer['endpoint-address'] || peer.endpointAddress)) || '');
+  const pub = peerPublicKey(peer);
+  return ep.includes(hub.endpointHost) || pub === hub.fallbackPublicKey;
+}
+
+function buildVpsEnsureOfficeRemote(hub = CORE1_HUB) {
+  const pub = hub.officePublicKey;
+  const allowed = String(hub.vpsOfficeAllowedIps || '').replace(/\s+/g, '');
+  const iface = hub.iface;
+  const routes = (hub.officeLanRoutes || [])
+    .map((cidr) => `ip -4 route replace ${cidr} dev ${iface}`)
+    .join(' && ');
+  const py = [
+    'from pathlib import Path',
+    'p=Path("/etc/wireguard/wg0.conf")',
+    `pub=${JSON.stringify(pub)}`,
+    `want="AllowedIPs = "+${JSON.stringify(allowed)}`,
+    'lines=p.read_text().splitlines(True)',
+    'out=[]; i=0; hit=False',
+    'while i < len(lines):',
+    '    line=lines[i]',
+    '    if "PublicKey" in line and pub in line:',
+    '        out.append(line); i+=1',
+    '        if i < len(lines) and lines[i].lstrip().startswith("AllowedIPs"):',
+    '            out.append(want+"\\n"); i+=1',
+    '        else:',
+    '            out.append(want+"\\n")',
+    '        hit=True; continue',
+    '    out.append(line); i+=1',
+    'if hit: p.write_text("".join(out))',
+    'print("conf", "updated" if hit else "peer-missing")'
+  ].join('\n');
+  return [
+    `wg set ${iface} peer ${pub} allowed-ips ${allowed}`,
+    routes,
+    `python3 -c ${JSON.stringify(py)}`
+  ].filter(Boolean).join(' && ');
+}
+
 function isCore1TunnelHost(ip) {
   const host = String(stripCidr(ip) || '');
   const m = host.match(/^10\.201\.0\.(\d+)$/) || host.match(/^10\.202\.0\.(\d+)$/);
@@ -276,5 +348,11 @@ module.exports = {
   findExistingPeer,
   rosSafeName,
   isCore1TunnelHost,
+  splitPrefixes,
+  mergePrefixes,
+  allowedHasPrefix,
+  planOfficeToVpsAllowed,
+  isVpsHubPeer,
+  buildVpsEnsureOfficeRemote,
   buildCore1RemoteClientScript
 };

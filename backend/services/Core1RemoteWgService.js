@@ -26,6 +26,9 @@ const {
   findExistingPeer,
   rosSafeName,
   isCore1TunnelHost,
+  planOfficeToVpsAllowed,
+  isVpsHubPeer,
+  buildVpsEnsureOfficeRemote,
   buildCore1RemoteClientScript
 } = require('../utils/core1RemoteWg');
 const { stripCidr } = require('../utils/nasRouterOsScript');
@@ -206,17 +209,10 @@ async function usedHostsFromDbAndHub(mt) {
   });
 }
 
-async function addPeerOnVps({ publicKey, allowedAddress, comment }) {
+async function sshVps(remote, timeout = 20000) {
   const hub = getHubConfig();
-  const ip = stripCidr(allowedAddress);
-  const pub = String(publicKey || '').trim();
-  if (!pub || !ip) throw new Error('Peer VPS butuh public key dan IP');
   const key = process.env.WG_HUB_SSH_KEY || hub.sshKey;
   const target = `${hub.sshUser}@${hub.sshHost}`;
-  const remote = [
-    `wg set ${hub.iface} peer ${pub} allowed-ips ${ip}/32`,
-    `grep -qF "${pub}" /etc/wireguard/wg0.conf || printf '\\n[Peer]\\n# ${String(comment || ip).replace(/"/g, '')}\\nPublicKey = ${pub}\\nAllowedIPs = ${ip}/32\\n' >> /etc/wireguard/wg0.conf`
-  ].join(' && ');
   await execFileAsync('ssh', [
     '-i', key,
     '-o', 'IdentitiesOnly=yes',
@@ -225,8 +221,70 @@ async function addPeerOnVps({ publicKey, allowedAddress, comment }) {
     '-o', 'ConnectTimeout=12',
     target,
     remote
-  ], { timeout: 20000 });
+  ], { timeout });
+}
+
+async function addPeerOnVps({ publicKey, allowedAddress, comment }) {
+  const hub = getHubConfig();
+  const ip = stripCidr(allowedAddress);
+  const pub = String(publicKey || '').trim();
+  if (!pub || !ip) throw new Error('Peer VPS butuh public key dan IP');
+  const remote = [
+    `wg set ${hub.iface} peer ${pub} allowed-ips ${ip}/32`,
+    `grep -qF "${pub}" /etc/wireguard/wg0.conf || printf '\\n[Peer]\\n# ${String(comment || ip).replace(/"/g, '')}\\nPublicKey = ${pub}\\nAllowedIPs = ${ip}/32\\n' >> /etc/wireguard/wg0.conf`
+  ].join(' && ');
+  await sshVps(remote);
   return { created: true, hub: 'vps' };
+}
+
+async function findOfficeCoreDevice(hub = getHubConfig()) {
+  const name = hub.officeDeviceName || 'CORE 1';
+  const ip = hub.officeDeviceIp || '192.168.91.1';
+  const byName = await Device.findOne({ where: { name } });
+  if (byName) return byName;
+  const byIp = await Device.findOne({ where: { ip_address: ip } });
+  if (byIp) return byIp;
+  const like = await Device.findOne({ where: { name: { [Op.like]: '%CORE 1%' } } });
+  if (like) return like;
+  throw new Error('Device CORE 1 tidak ditemukan di Device Management.');
+}
+
+/**
+ * CORE 1 harus mengirim 10.201.0.0/24 ke VPS (bukan hanya .1/.22),
+ * dan VPS harus punya route LAN Fiberix/RADIUS lewat peer CORE 1.
+ */
+async function ensureOfficeSpokeRouting() {
+  const hub = getHubConfig();
+  const out = { core1Patched: false, vpsUpdated: false };
+  try {
+    const device = await findOfficeCoreDevice(hub);
+    const mt = await getMikrotikInstanceByDevice(device.id);
+    if (!mt) throw new Error('Tidak bisa API CORE 1');
+    const peers = asList(await mt.get('/interface/wireguard/peers'));
+    const peer = peers.find((p) => isVpsHubPeer(p, hub));
+    if (!peer) throw new Error('Peer VPS di CORE 1 tidak ketemu');
+    const plan = planOfficeToVpsAllowed(peer['allowed-address'] || peer.allowedAddress, hub.officeToVpsAllowedAddress);
+    if (plan.patch) {
+      const id = peerRestId(peer);
+      if (!id) throw new Error('ID peer CORE 1 kosong');
+      await mt.patch(`/interface/wireguard/peers/${encodeURIComponent(id)}`, {
+        'allowed-address': plan.next
+      });
+      out.core1Patched = true;
+      logger.info(`[core1-wg] CORE 1 allowed-address -> ${plan.next}`);
+    }
+  } catch (e) {
+    logger.warn(`[core1-wg] ensure CORE 1 allowed-address: ${e.message}`);
+    out.core1Error = e.message;
+  }
+  try {
+    await sshVps(buildVpsEnsureOfficeRemote(hub), 25000);
+    out.vpsUpdated = true;
+  } catch (e) {
+    logger.warn(`[core1-wg] ensure VPS office LAN: ${e.message}`);
+    out.vpsError = e.message;
+  }
+  return out;
 }
 
 async function createLinkedDevice({ name, tunnelIp, location, apiPort, apiUsername, apiPassword }) {
@@ -347,6 +405,12 @@ async function provision(input = {}) {
   } catch (e) {
     logger.warn(`[core1-wg] gagal pasang peer VPS (lanjutkan script): ${e.message}`);
     peerResult = { created: false, error: e.message };
+  }
+
+  try {
+    await ensureOfficeSpokeRouting();
+  } catch (e) {
+    logger.warn(`[core1-wg] ensure office spoke: ${e.message}`);
   }
 
   let row;
@@ -471,9 +535,11 @@ async function scriptForNas(row) {
 
 module.exports = {
   findCore1Device,
+  findOfficeCoreDevice,
   addPeerOnHub,
   removePeerByPublicKey,
   ensureHubInterface,
+  ensureOfficeSpokeRouting,
   provision,
   scriptForNas,
   listHubPeers,

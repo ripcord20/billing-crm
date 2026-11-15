@@ -10,6 +10,10 @@ const {
   findExistingPeer,
   isCore1TunnelHost,
   getHubConfig,
+  mergePrefixes,
+  planOfficeToVpsAllowed,
+  isVpsHubPeer,
+  buildVpsEnsureOfficeRemote,
   buildCore1RemoteClientScript
 } = require('../utils/core1RemoteWg');
 
@@ -84,6 +88,7 @@ assert.ok(script.includes('/radius add'));
 assert.ok(script.includes('secret="s3cret"'));
 assert.ok(script.includes('src-address=10.201.0.1'));
 assert.ok(script.includes('src-address=192.168.22.99'));
+assert.ok(script.includes('192.168.22.0/24'), 'allowed CORE 2 harus cover LAN Fiberix/RADIUS');
 assert.ok(!script.includes('10.10.0.1'), 'bukan alamat Fiberix WG Ubuntu');
 assert.ok(!script.includes('103.195.65.216'), 'bukan host CORE 1');
 assert.ok(!script.includes('endpoint-port=51823'));
@@ -93,5 +98,31 @@ assert.ok(!script.includes('name=wg-core2'));
 assert.ok(script.includes('name=FIBERIX'));
 assert.ok(script.includes('remote-address=FIBERIX'));
 assert.ok(!/BILLINGRADIUS/i.test(script), 'script cabang tanpa BillingRadius');
+
+assert.strictEqual(
+  mergePrefixes('10.201.0.1/32,10.201.0.22/32', '10.201.0.0/24'),
+  '10.201.0.1/32,10.201.0.22/32,10.201.0.0/24'
+);
+const skip = planOfficeToVpsAllowed('10.201.0.0/24,10.201.0.22/32', '10.201.0.0/24');
+assert.strictEqual(skip.patch, false);
+const need = planOfficeToVpsAllowed('10.201.0.1/32,10.201.0.22/32', '10.201.0.0/24');
+assert.strictEqual(need.patch, true);
+assert.ok(need.next.includes('10.201.0.0/24'));
+assert.ok(isVpsHubPeer({
+  'endpoint-address': '103.169.206.24',
+  'public-key': 'other='
+}));
+assert.ok(isVpsHubPeer({
+  'endpoint-address': '',
+  'public-key': CORE1_HUB.fallbackPublicKey
+}));
+assert.ok(!isVpsHubPeer({ 'endpoint-address': '1.2.3.4', 'public-key': 'x=' }));
+
+const vpsRemote = buildVpsEnsureOfficeRemote();
+assert.ok(vpsRemote.includes(`wg set wg0 peer ${CORE1_HUB.officePublicKey} allowed-ips`));
+assert.ok(vpsRemote.includes('192.168.22.0/24'));
+assert.ok(vpsRemote.includes('ip -4 route replace 192.168.22.0/24 dev wg0'));
+assert.ok(CORE1_HUB.clientAllowedAddress.includes('192.168.22.0/24'));
+assert.ok(CORE1_HUB.vpsOfficeAllowedIps.includes('192.168.22.0/24'));
 
 console.log('core1RemoteWg.test.js OK');
