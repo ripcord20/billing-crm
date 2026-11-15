@@ -1,0 +1,548 @@
+'use strict';
+
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+const execFileAsync = promisify(execFile);
+const { Op } = require('sequelize');
+const { NasDevice, Device } = require('../models');
+const Wireguard = require('./WireguardService');
+const RadiusProv = require('./RadiusProvisionService');
+const RadiusSQL = require('./RadiusSqlService');
+const { getMikrotikInstanceByDevice } = require('./MikrotikService');
+const { encryptSecret, decryptSecret } = require('../utils/secretBox');
+const { getTenantId } = require('../middleware/tenantContext');
+const logger = require('../utils/logger');
+const {
+  CORE1_HUB,
+  DEFAULT_PPP_POOL,
+  DEFAULT_PPP_LOCAL,
+  getHubConfig,
+  collectUsedHosts,
+  nextTunnelIp,
+  asList,
+  ifaceByName,
+  ifacePublicKey,
+  planHubEnsure,
+  findExistingPeer,
+  rosSafeName,
+  isCore1TunnelHost,
+  planOfficeToVpsAllowed,
+  isVpsHubPeer,
+  buildVpsEnsureOfficeRemote,
+  buildCore1RemoteClientScript
+} = require('../utils/core1RemoteWg');
+const { stripCidr } = require('../utils/nasRouterOsScript');
+
+async function findCore1Device(hub = getHubConfig()) {
+  if (hub.deviceId) {
+    const byId = await Device.findByPk(hub.deviceId);
+    if (byId) return byId;
+  }
+  const exact = await Device.findOne({ where: { name: hub.deviceName } });
+  if (exact) return exact;
+  const byIp = await Device.findOne({ where: { ip_address: hub.deviceIp } });
+  if (byIp) return byIp;
+  const like = await Device.findOne({
+    where: { name: { [Op.like]: '%CORE 1%' } }
+  });
+  if (like) return like;
+  throw new Error('Device CORE 1 tidak ditemukan di Device Management. Tambah dulu router CORE 1.');
+}
+
+async function core1Mikrotik(hub = getHubConfig()) {
+  const device = await findCore1Device(hub);
+  const mt = await getMikrotikInstanceByDevice(device.id);
+  if (!mt) throw new Error('Tidak bisa membuat koneksi API ke CORE 1');
+  return { device, mt };
+}
+
+async function listHubIfaces(mt) {
+  return asList(await mt.get('/interface/wireguard'));
+}
+
+async function listHubPeers(mt) {
+  return asList(await mt.get('/interface/wireguard/peers'));
+}
+
+async function readHubInterface(mt, hub = getHubConfig()) {
+  const iface = ifaceByName(await listHubIfaces(mt), hub.iface);
+  if (!iface) {
+    throw new Error(`Interface ${hub.iface} tidak ada di CORE 1. Buat dulu WireGuard hub di CORE 1.`);
+  }
+  return iface;
+}
+
+async function listIpAddresses(mt) {
+  return asList(await mt.get('/ip/address'));
+}
+
+async function listInputFilters(mt) {
+  try {
+    return asList(await mt.get('/ip/firewall/filter'));
+  } catch (_) {
+    return [];
+  }
+}
+
+/**
+ * BillingRadius-style: platform menyiapkan hub VPN sendiri.
+ * Jika wg-core2 hilang (sisa IP 10.202.0.1 di interface mati), buat ulang.
+ */
+async function ensureHubInterface(mt, hub = getHubConfig()) {
+  const ifaces = await listHubIfaces(mt);
+  const addrs = await listIpAddresses(mt);
+  const filters = await listInputFilters(mt);
+  const plan = planHubEnsure({ ifaces, addrs, filters, hub });
+  const out = {
+    created: false,
+    addressCreated: false,
+    addressMoved: false,
+    firewallAdded: false,
+    iface: ifaceByName(ifaces, hub.iface)
+  };
+
+  if (plan.createIface) {
+    await mt.put('/interface/wireguard', {
+      name: hub.iface,
+      'listen-port': String(hub.listenPort),
+      comment: 'FIBERIX cabang remote'
+    });
+    out.created = true;
+    logger.info(`[core1-wg] buat hub ${hub.iface} listen-port=${hub.listenPort}`);
+    out.iface = ifaceByName(await listHubIfaces(mt), hub.iface);
+    if (!out.iface) {
+      throw new Error(`Gagal membuat interface ${hub.iface} di CORE 1`);
+    }
+  }
+
+  if (plan.createAddress) {
+    await mt.put('/ip/address', {
+      address: `${hub.serverTunnelIp}/24`,
+      interface: hub.iface,
+      comment: 'FIBERIX'
+    });
+    out.addressCreated = true;
+    logger.info(`[core1-wg] alamat ${hub.serverTunnelIp}/24 -> ${hub.iface}`);
+  } else if (plan.moveAddress) {
+    const id = plan.addressId;
+    if (!id) {
+      throw new Error(`IP tunnel ${hub.serverTunnelIp} ada tapi id REST kosong`);
+    }
+    try {
+      await mt.patch(`/ip/address/${encodeURIComponent(id)}`, { interface: hub.iface });
+      out.addressMoved = true;
+    } catch (e) {
+      logger.warn(`[core1-wg] pindah ${hub.serverTunnelIp} gagal (${e.message}), buat ulang`);
+      try { await mt.delete(`/ip/address/${encodeURIComponent(id)}`); } catch (_) {}
+      await mt.put('/ip/address', {
+        address: `${hub.serverTunnelIp}/24`,
+        interface: hub.iface,
+        comment: 'FIBERIX'
+      });
+      out.addressCreated = true;
+    }
+    logger.info(`[core1-wg] pindah ${hub.serverTunnelIp} ke ${hub.iface}`);
+  }
+
+  if (plan.addFirewall) {
+    try {
+      await mt.put('/ip/firewall/filter', {
+        chain: 'input',
+        action: 'accept',
+        protocol: 'udp',
+        'dst-port': String(hub.listenPort),
+        comment: 'FIBERIX-WG-HUB'
+      });
+      out.firewallAdded = true;
+      logger.info(`[core1-wg] firewall input UDP ${hub.listenPort}`);
+    } catch (e) {
+      logger.warn(`[core1-wg] tidak bisa tambah firewall UDP ${hub.listenPort}: ${e.message}`);
+    }
+  }
+
+  return out;
+}
+
+function peerRestId(peer) {
+  return peer && (peer['.id'] || peer.id || peer['.ret'] || null);
+}
+
+async function addPeerOnHub(mt, { iface, publicKey, allowedAddress, comment, keepalive }) {
+  const peers = (await listHubPeers(mt)).filter((p) => (p.interface || '') === iface);
+  const existing = findExistingPeer(peers, { publicKey, allowedHost: allowedAddress });
+  if (existing) {
+    return { created: false, existing: true, peer: existing };
+  }
+  await mt.put('/interface/wireguard/peers', {
+    interface: iface,
+    'public-key': publicKey,
+    'allowed-address': allowedAddress,
+    'persistent-keepalive': keepalive || '25s',
+    comment
+  });
+  return { created: true, existing: false };
+}
+
+async function removePeerByPublicKey(publicKey) {
+  if (!publicKey) return { removed: false };
+  const hub = getHubConfig();
+  const { mt } = await core1Mikrotik(hub);
+  const peers = (await listHubPeers(mt)).filter((p) => (p.interface || '') === hub.iface);
+  const peer = findExistingPeer(peers, { publicKey });
+  const id = peerRestId(peer);
+  if (!id) return { removed: false };
+  await mt.delete(`/interface/wireguard/peers/${encodeURIComponent(id)}`);
+  return { removed: true };
+}
+
+async function usedHostsFromDbAndHub(mt) {
+  const hub = getHubConfig();
+  const [nasRows, devices, peers] = await Promise.all([
+    NasDevice.findAll({ attributes: ['nasname', 'tunnel_address'] }),
+    Device.findAll({ attributes: ['ip_address'] }),
+    mt ? listHubPeers(mt).then((rows) => rows.filter((p) => (p.interface || '') === hub.iface)) : Promise.resolve([])
+  ]);
+  return collectUsedHosts({
+    nasRows: nasRows.map((r) => r.get({ plain: true })),
+    devices: devices.map((r) => r.get({ plain: true })),
+    peers
+  });
+}
+
+async function sshVps(remote, timeout = 20000) {
+  const hub = getHubConfig();
+  const key = process.env.WG_HUB_SSH_KEY || hub.sshKey;
+  const target = `${hub.sshUser}@${hub.sshHost}`;
+  await execFileAsync('ssh', [
+    '-i', key,
+    '-o', 'IdentitiesOnly=yes',
+    '-o', 'BatchMode=yes',
+    '-o', 'StrictHostKeyChecking=accept-new',
+    '-o', 'ConnectTimeout=12',
+    target,
+    remote
+  ], { timeout });
+}
+
+async function addPeerOnVps({ publicKey, allowedAddress, comment }) {
+  const hub = getHubConfig();
+  const ip = stripCidr(allowedAddress);
+  const pub = String(publicKey || '').trim();
+  if (!pub || !ip) throw new Error('Peer VPS butuh public key dan IP');
+  const remote = [
+    `wg set ${hub.iface} peer ${pub} allowed-ips ${ip}/32`,
+    `grep -qF "${pub}" /etc/wireguard/wg0.conf || printf '\\n[Peer]\\n# ${String(comment || ip).replace(/"/g, '')}\\nPublicKey = ${pub}\\nAllowedIPs = ${ip}/32\\n' >> /etc/wireguard/wg0.conf`
+  ].join(' && ');
+  await sshVps(remote);
+  return { created: true, hub: 'vps' };
+}
+
+async function findOfficeCoreDevice(hub = getHubConfig()) {
+  const name = hub.officeDeviceName || 'CORE 1';
+  const ip = hub.officeDeviceIp || '192.168.91.1';
+  const byName = await Device.findOne({ where: { name } });
+  if (byName) return byName;
+  const byIp = await Device.findOne({ where: { ip_address: ip } });
+  if (byIp) return byIp;
+  const like = await Device.findOne({ where: { name: { [Op.like]: '%CORE 1%' } } });
+  if (like) return like;
+  throw new Error('Device CORE 1 tidak ditemukan di Device Management.');
+}
+
+/**
+ * CORE 1 harus mengirim 10.201.0.0/24 ke VPS (bukan hanya .1/.22),
+ * dan VPS harus punya route LAN Fiberix/RADIUS lewat peer CORE 1.
+ */
+async function ensureOfficeSpokeRouting() {
+  const hub = getHubConfig();
+  const out = { core1Patched: false, vpsUpdated: false };
+  try {
+    const device = await findOfficeCoreDevice(hub);
+    const mt = await getMikrotikInstanceByDevice(device.id);
+    if (!mt) throw new Error('Tidak bisa API CORE 1');
+    const peers = asList(await mt.get('/interface/wireguard/peers'));
+    const peer = peers.find((p) => isVpsHubPeer(p, hub));
+    if (!peer) throw new Error('Peer VPS di CORE 1 tidak ketemu');
+    const plan = planOfficeToVpsAllowed(peer['allowed-address'] || peer.allowedAddress, hub.officeToVpsAllowedAddress);
+    if (plan.patch) {
+      const id = peerRestId(peer);
+      if (!id) throw new Error('ID peer CORE 1 kosong');
+      await mt.patch(`/interface/wireguard/peers/${encodeURIComponent(id)}`, {
+        'allowed-address': plan.next
+      });
+      out.core1Patched = true;
+      logger.info(`[core1-wg] CORE 1 allowed-address -> ${plan.next}`);
+    }
+  } catch (e) {
+    logger.warn(`[core1-wg] ensure CORE 1 allowed-address: ${e.message}`);
+    out.core1Error = e.message;
+  }
+  try {
+    await sshVps(buildVpsEnsureOfficeRemote(hub), 25000);
+    out.vpsUpdated = true;
+  } catch (e) {
+    logger.warn(`[core1-wg] ensure VPS office LAN: ${e.message}`);
+    out.vpsError = e.message;
+  }
+  return out;
+}
+
+async function createLinkedDevice({ name, tunnelIp, location, apiPort, apiUsername, apiPassword }) {
+  const fields = {
+    name: `${name} (WG)`,
+    ip_address: tunnelIp,
+    type: 'router',
+    brand: 'MikroTik',
+    monitoring_type: 'api',
+    api_port: apiPort,
+    api_protocol: 'rest-http',
+    api_username: apiUsername || 'admin',
+    api_password: apiPassword || '',
+    status: 'offline',
+    is_active: true,
+    location: location || null,
+    notes: `Tunnel VPS ${CORE1_HUB.iface} ${CORE1_HUB.endpointHost} — IP ${tunnelIp}. Jangan generate VPN Fiberix.`
+  };
+  try {
+    return await Device.create({ ...fields, winbox_port: 8291 });
+  } catch (_) {
+    return Device.create(fields);
+  }
+}
+
+async function pushNasRow(row) {
+  try {
+    const server = await RadiusProv.resolveServer(row.radius_server_id);
+    if (!server) return { success: false, message: 'Server RADIUS belum dikonfigurasi' };
+    await RadiusSQL.upsertNas(server, {
+      nasname: row.nasname,
+      shortname: row.shortname,
+      type: row.type,
+      ports: row.ports,
+      secret: row.secret,
+      community: row.community,
+      description: row.description
+    });
+    const patch = { last_sync_at: new Date(), last_error: null };
+    if (!row.radius_server_id && server.id) patch.radius_server_id = server.id;
+    await row.update(patch);
+    return { success: true, server_id: server.id };
+  } catch (e) {
+    await row.update({ last_error: String(e.message).slice(0, 250) });
+    return { success: false, message: e.message };
+  }
+}
+
+function buildScriptFor({
+  name, privateKey, serverPublicKey, tunnelIp, endpointHost, endpointPort, secret, pppPool, pppLocal, hub
+}) {
+  return buildCore1RemoteClientScript({
+    hub,
+    name,
+    privateKey,
+    serverPublicKey,
+    tunnelIp,
+    endpointHost,
+    endpointPort,
+    secret,
+    pppPool,
+    pppLocal
+  });
+}
+
+async function provision(input = {}) {
+  const hub = getHubConfig();
+  const name = rosSafeName(input.name);
+  const secret = String(input.secret || '').trim();
+  if (!input.name || !String(input.name).trim()) {
+    throw new Error('Nama cabang wajib');
+  }
+  if (!secret || secret === '********') {
+    throw new Error('Secret RADIUS wajib');
+  }
+
+  const existingName = await NasDevice.findOne({
+    where: { shortname: name }
+  });
+  if (existingName) {
+    throw new Error(`NAS dengan nama "${name}" sudah ada (id ${existingName.id})`);
+  }
+
+  const apiPort = parseInt(input.apiPort, 10) || 80;
+  const location = String(input.location || '').trim() || null;
+  const apiUsername = String(input.apiUsername || 'admin').trim() || 'admin';
+  const apiPassword = String(input.apiPassword || '');
+  const pppPool = String(input.pppPool || DEFAULT_PPP_POOL).trim();
+  const pppLocal = String(input.pppLocal || DEFAULT_PPP_LOCAL).trim();
+
+  const serverPublicKey = hub.fallbackPublicKey;
+  if (!serverPublicKey) {
+    throw new Error('Public key hub VPS WireGuard kosong');
+  }
+  const endpointPort = hub.listenPort;
+  const hubDevice = { id: null };
+
+  const used = await usedHostsFromDbAndHub(null);
+  const tunnelIp = nextTunnelIp(used);
+  if (!isCore1TunnelHost(tunnelIp)) {
+    throw new Error('Alokasi IP tunnel tidak valid');
+  }
+
+  const takenNas = await NasDevice.findOne({ where: { nasname: tunnelIp } });
+  if (takenNas) {
+    throw new Error(`IP tunnel ${tunnelIp} sudah dipakai NAS id ${takenNas.id}`);
+  }
+
+  const kp = Wireguard.generateKeypair();
+  const comment = name;
+  let peerResult = { created: false };
+  try {
+    peerResult = await addPeerOnVps({
+      publicKey: kp.publicKey,
+      allowedAddress: `${tunnelIp}/32`,
+      comment
+    });
+  } catch (e) {
+    logger.warn(`[core1-wg] gagal pasang peer VPS (lanjutkan script): ${e.message}`);
+    peerResult = { created: false, error: e.message };
+  }
+
+  try {
+    await ensureOfficeSpokeRouting();
+  } catch (e) {
+    logger.warn(`[core1-wg] ensure office spoke: ${e.message}`);
+  }
+
+  let row;
+  let device;
+  try {
+    row = await NasDevice.create({
+      tenant_id: input.tenantId || getTenantId() || null,
+      nasname: tunnelIp,
+      shortname: name,
+      type: 'mikrotik',
+      conn_mode: 'public',
+      vpn_type: null,
+      tunnel_address: `${tunnelIp}/32`,
+      ppp_pool_ranges: pppPool || null,
+      ppp_local_address: pppLocal || null,
+      secret,
+      description: `Remote WG VPS ${hub.iface} ${tunnelIp}`,
+      is_active: true,
+      wg_public_key: kp.publicKey,
+      wg_private_key: encryptSecret(kp.privateKey),
+      wg_endpoint: `${hub.endpointHost}:${endpointPort}`,
+      wg_allowed_ips: hub.clientAllowedAddress,
+      wg_keepalive: 25,
+      wg_last_applied_at: new Date()
+    });
+    device = await createLinkedDevice({
+      name,
+      tunnelIp,
+      location,
+      apiPort,
+      apiUsername,
+      apiPassword
+    });
+    await row.update({ device_id: device.id });
+  } catch (e) {
+    if (peerResult.created) {
+      try { await removePeerByPublicKey(kp.publicKey); } catch (_) {}
+    }
+    throw e;
+  }
+
+  const radiusSync = await pushNasRow(row);
+  await row.reload();
+
+  const script = buildScriptFor({
+    name,
+    privateKey: kp.privateKey,
+    serverPublicKey,
+    tunnelIp,
+    endpointHost: hub.endpointHost,
+    endpointPort,
+    secret,
+    pppPool,
+    pppLocal,
+    hub
+  });
+
+  logger.info(`[core1-wg] cabang ${name} tunnel=${tunnelIp} nas=${row.id} device=${device.id} hub_peer=${peerResult.created ? 'created' : 'exists'} hub_device=${hubDevice.id}`);
+
+  return {
+    nas_id: row.id,
+    device_id: device.id,
+    device_name: device.name,
+    tunnel_ip: tunnelIp,
+    tunnel_address: `${tunnelIp}/32`,
+    endpoint: `${hub.endpointHost}:${endpointPort}`,
+    hub_iface: hub.iface,
+    hub_peer_created: !!peerResult.created,
+    hub_public_key: serverPublicKey,
+    radius_sync: radiusSync,
+    mikrotik_script: script,
+    notes: [
+      'Tempel script di New Terminal MikroTik cabang (sekali). Private key hanya tampil sekarang.',
+      peerResult.created
+        ? `Peer VPS ${hub.iface} sudah ditambah untuk ${tunnelIp}/32.`
+        : `Peer VPS belum terpasang otomatis${peerResult.error ? ` (${peerResult.error})` : ''}. Tambah di 103.169.206.24: wg set wg0 peer <pubkey> allowed-ips ${tunnelIp}/32.`,
+      'Mode NAS = LAN / langsung. Jangan tombol VPN Fiberix.',
+      'Script isolir/proxy lengkap: buka Detail NAS setelah handshake.'
+    ]
+  };
+}
+
+async function scriptForNas(row) {
+  if (!row) throw new Error('NAS tidak ditemukan');
+  if (!isCore1TunnelHost(row.nasname) && !isCore1TunnelHost(row.tunnel_address)) {
+    throw new Error('NAS ini bukan cabang remote VPS (10.201.0.x)');
+  }
+  if (!row.wg_private_key || !row.wg_public_key) {
+    throw new Error('Kunci tunnel tidak tersimpan. Buat ulang dari tombol Cabang remote.');
+  }
+  const hub = getHubConfig();
+  let serverPublicKey = hub.fallbackPublicKey;
+  let endpointPort = hub.listenPort;
+  const ep = String(row.wg_endpoint || '');
+  const port = parseInt(ep.split(':')[1], 10);
+  if (port > 0) endpointPort = port;
+  const privateKey = decryptSecret(row.wg_private_key);
+  const tunnelIp = stripCidr(row.tunnel_address || row.nasname);
+  return {
+    nas_id: row.id,
+    tunnel_ip: tunnelIp,
+    endpoint: `${hub.endpointHost}:${endpointPort}`,
+    hub_public_key: serverPublicKey,
+    mikrotik_script: buildScriptFor({
+      name: row.shortname || 'CABANG',
+      privateKey,
+      serverPublicKey,
+      tunnelIp,
+      endpointHost: hub.endpointHost,
+      endpointPort,
+      secret: row.secret,
+      pppPool: row.ppp_pool_ranges,
+      pppLocal: row.ppp_local_address,
+      hub
+    }),
+    notes: [
+      'Private key diambil dari data NAS yang tersimpan (terenkripsi).',
+      'Tempel di New Terminal MikroTik cabang.'
+    ]
+  };
+}
+
+module.exports = {
+  findCore1Device,
+  findOfficeCoreDevice,
+  addPeerOnHub,
+  removePeerByPublicKey,
+  ensureHubInterface,
+  ensureOfficeSpokeRouting,
+  provision,
+  scriptForNas,
+  listHubPeers,
+  readHubInterface,
+  addPeerOnVps
+};

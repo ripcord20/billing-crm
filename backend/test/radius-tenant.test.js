@@ -77,6 +77,8 @@ const ros = buildNasRouterOsScript({
   tunnelAddress: '10.10.0.2/32',
   vpnType: 'wireguard',
   vpsHost: 'vpn.example.com',
+  pppPool: '10.2.64.2-10.2.79.254',
+  pppLocal: '10.2.64.1',
   wireguard: {
     privateKey: 'PRIV',
     serverPublicKey: 'PUB',
@@ -88,13 +90,14 @@ const ros = buildNasRouterOsScript({
     keepalive: 25
   }
 });
-assert.ok(ros.v7.includes('/radius/add'));
+assert.ok(ros.v7.includes('/radius add'));
 assert.ok(ros.v7.includes('address=192.168.22.9'));
 assert.ok(ros.v7.includes('secret="sec\\"ret"'));
 assert.ok(ros.v7.includes('comment="FIBERIX"'));
-assert.ok(!/comment~"BILLINGRADIUS"/.test(ros.v7));
-assert.ok(ros.v7.includes('Tidak menghapus object BILLINGRADIUS'));
+assert.ok(ros.v7.includes('name=FIBERIX'));
 assert.ok(ros.v7.includes('EXPIRED_FIBERIX'));
+assert.ok(!/BILLINGRADIUS/i.test(ros.v7), 'script otomatis tanpa BillingRadius');
+assert.ok(!/BILLINGRADIUS/i.test(ros.v6), 'script v6 tanpa BillingRadius');
 assert.ok(ros.v7.includes(EXPIRED_NET));
 assert.ok(ros.v7.includes('wg-fiberix'));
 assert.ok(ros.v6.includes('/radius add'));

@@ -1,6 +1,8 @@
 function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
 let __wgLastConfig = null; // {nas, client_config, filename}
+let __nasRows = [];
+let __previewTimer = null;
 
 function fmtSyncAt(s){
   if(!s) return 'belum';
@@ -14,8 +16,8 @@ function modeBadge(n){
   const link = n.link || {};
   const state = link.state === 'up' || link.state === 'pending' || link.state === 'down' ? link.state : 'down';
   const kind = n.conn_mode === 'vpn'
-    ? `VPN · ${String(n.vpn_type || 'wireguard').toUpperCase()}`
-    : 'Public IP';
+    ? `Tunnel · ${String(n.vpn_type || 'wireguard').toUpperCase()}`
+    : 'LAN / langsung';
   const label = link.label || (state === 'up' ? 'Terhubung' : 'Belum terhubung');
   const age = link.age_label
     ? `<span class="nas-link-age">${esc(link.age_label)}</span>`
@@ -34,21 +36,16 @@ function modeBadge(n){
 
 function nasActionButtons(n){
   const label=esc(n.shortname||n.nasname);
-  return `<button class="btn btn-sm btn-primary" onclick="openRosScript(${n.id},'${label}')" title="Script RouterOS: VPN + RADIUS + isolir">Script</button>
+  return `<button class="btn btn-sm btn-primary" onclick="openNasDetail(${n.id})" title="Detail NAS + script RouterOS">Detail</button>
+      ${isRemoteCore1Nas(n)?`<button class="btn btn-sm btn-secondary" onclick="reprintRemoteWg(${n.id})" title="Salin ulang script tunnel VPS WireGuard">Script WG</button>`:''}
       ${n.conn_mode==='vpn'?`<button class="btn btn-sm btn-secondary" onclick="wgGen(${n.id},'${label}')" title="Generate/regenerate config VPN saja">VPN</button>`:''}
       <button class="btn btn-sm btn-secondary" onclick="syncNas(${n.id})">Sync</button>
       <button class="btn btn-sm btn-danger" onclick="delNas(${n.id})">Hapus</button>`;
 }
-
-function nasIpCell(n){
-  return `${esc(n.nasname)}${n.tunnel_address?`<br><span style="font-size:11px;color:#64748b;">tunnel: ${esc(n.tunnel_address)}</span>`:''}${n.device?`<br><span style="font-size:11px;color:#166534;">Device: ${esc(n.device.name)}</span>`:''}`;
-}
-
 function renderNasMobile(html){
   const box=document.getElementById('nasMobileList');
   if(box) box.innerHTML=html;
 }
-
 async function loadNas(){
   const tb=document.getElementById('nasTable');
   const d=await App.api('/nas');
@@ -61,12 +58,14 @@ async function loadNas(){
     return;
   }
   if(!d.data.length){
+    __nasRows=[];
     tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:#94a3b8;">Belum ada NAS. Tambah router yang auth ke FreeRADIUS.</td></tr>';
     renderNasMobile('<div class="nas-m-empty">Belum ada NAS. Tambah router yang auth ke FreeRADIUS.</div>');
     return;
   }
+  __nasRows=d.data;
   tb.innerHTML=d.data.map(n=>`<tr>
-    <td class="mono">${nasIpCell(n)}</td>
+    <td class="mono">${esc(n.nasname)}${n.tunnel_address?`<br><span style="font-size:11px;color:#64748b;">tunnel: ${esc(n.tunnel_address)}</span>`:''}${n.device?`<br><span style="font-size:11px;color:#166534;">Device: ${esc(n.device.name)}</span>`:''}</td>
     <td>${esc(n.shortname||'—')}</td>
     <td>${esc(n.type)}</td>
     <td>${modeBadge(n)}</td>
@@ -86,9 +85,39 @@ async function loadNas(){
 
 window.onConnModeChange=()=>{
   const vpn=document.getElementById('nasConnMode').value==='vpn';
-  document.getElementById('nasVpnHint').style.display=vpn?'block':'none';
-  document.getElementById('nasVpnTypeWrap').style.display=vpn?'block':'none';
+  const lanHint=document.getElementById('nasLanHint');
+  if(lanHint) lanHint.style.display=vpn?'none':'block';
+  const hint=document.getElementById('nasVpnHint');
+  const wrap=document.getElementById('nasVpnTypeWrap');
+  if(hint) hint.style.display=vpn?'block':'none';
+  if(wrap) wrap.style.display=vpn?'block':'none';
 };
+
+function showNasDetail(show){
+  const list=document.getElementById('nasListView');
+  const det=document.getElementById('nasDetailView');
+  if(list) list.style.display=show?'none':'block';
+  if(det) det.style.display=show?'block':'none';
+}
+
+window.closeNasDetail=()=>{
+  showNasDetail(false);
+};
+
+function nasFormBody(){
+  const secret=document.getElementById('nasSecret').value;
+  const body={
+    nasname:document.getElementById('nasIp').value.trim(),
+    shortname:document.getElementById('nasShort').value.trim(),
+    type:document.getElementById('nasType').value.trim()||'mikrotik',
+    conn_mode:document.getElementById('nasConnMode').value,
+    vpn_type:document.getElementById('nasVpnType').value,
+    ppp_pool_ranges:document.getElementById('nasPppPool').value.trim(),
+    ppp_local_address:document.getElementById('nasPppLocal').value.trim()
+  };
+  if(secret && secret!=='********') body.secret=secret;
+  return body;
+}
 
 window.openNas=()=>{
   document.getElementById('nasId').value='';
@@ -99,29 +128,58 @@ window.openNas=()=>{
   document.getElementById('nasType').value='mikrotik';
   document.getElementById('nasConnMode').value='public';
   document.getElementById('nasVpnType').value='wireguard';
+  document.getElementById('nasPppPool').value='10.2.64.2-10.2.79.254';
+  document.getElementById('nasPppLocal').value='10.2.64.1';
+  __rosTab='v7';
   onConnModeChange();
-  document.getElementById('nasModal').style.display='flex';
+  showNasDetail(true);
+  const pre=document.getElementById('rosScript');
+  if(pre) pre.textContent='Isi IP NAS dan secret, lalu script muncul di sini.';
+  document.getElementById('rosNotes').textContent='Pilih versi RouterOS, lalu salin dan tempel di New Terminal MikroTik.';
+  window.scrollTo({top:0,behavior:'smooth'});
 };
+
+window.openNasDetail=async(id)=>{
+  let n=(__nasRows||[]).find(x=>String(x.id)===String(id));
+  if(!n){
+    await loadNas();
+    n=(__nasRows||[]).find(x=>String(x.id)===String(id));
+  }
+  if(!n) return App.showToast('NAS tidak ditemukan','error');
+  document.getElementById('nasId').value=String(n.id);
+  document.getElementById('nasTitle').textContent='Detail NAS';
+  document.getElementById('nasIp').value=n.nasname||'';
+  document.getElementById('nasShort').value=n.shortname||'';
+  document.getElementById('nasSecret').value='';
+  document.getElementById('nasSecret').placeholder='kosongkan jika tidak diubah';
+  document.getElementById('nasType').value=n.type||'mikrotik';
+  document.getElementById('nasConnMode').value=n.conn_mode==='vpn'?'vpn':'public';
+  document.getElementById('nasVpnType').value=n.vpn_type||'wireguard';
+  document.getElementById('nasPppPool').value=n.ppp_pool_ranges||'10.2.64.2-10.2.79.254';
+  document.getElementById('nasPppLocal').value=n.ppp_local_address||'10.2.64.1';
+  __rosTab='v7';
+  onConnModeChange();
+  showNasDetail(true);
+  window.scrollTo({top:0,behavior:'smooth'});
+  await openRosScript(n.id, n.shortname||n.nasname);
+};
+
 window.saveNas=async()=>{
-  const body={
-    nasname:document.getElementById('nasIp').value.trim(),
-    shortname:document.getElementById('nasShort').value.trim(),
-    secret:document.getElementById('nasSecret').value,
-    type:document.getElementById('nasType').value.trim()||'mikrotik',
-    conn_mode:document.getElementById('nasConnMode').value,
-    vpn_type:document.getElementById('nasVpnType').value
-  };
+  const body=nasFormBody();
   const id=document.getElementById('nasId').value;
+  if(!body.nasname) return App.showToast('IP NAS wajib','error');
+  if(!id && !body.secret) return App.showToast('Secret wajib','error');
   const r=await App.api(id?'/nas/'+id:'/nas',{method:id?'PUT':'POST',body:JSON.stringify(body)});
   if(!r?.success) return App.showToast(r?.message||'Gagal','error');
-  document.getElementById('nasModal').style.display='none';
   const linked=r.device_linked?' (sudah tertaut Device Management)':'';
   const reused=r.reused?'NAS sudah ada, data diperbarui':'Tersimpan';
   App.showToast(
     (r.radius_sync?.success?(reused+' & ter-sync ke FreeRADIUS'):(reused+' di billing: '+(r.radius_sync?.message||'')))+linked,
     r.radius_sync?.success?'success':'error'
   );
-  loadNas();
+  const newId=(r.data&&r.data.id)||id;
+  await loadNas();
+  if(newId) await openNasDetail(newId);
 };
 window.syncNas=async(id)=>{
   const r=await App.api('/nas/'+id+'/sync',{method:'POST'});
@@ -153,6 +211,14 @@ window.openWgServer=async()=>{
     document.getElementById('wgSubnet').value=c.tunnelSubnet||'10.10.0.0/24';
     document.getElementById('wgServerAddr').value=c.serverAddress||'10.10.0.1';
     document.getElementById('wgServerPub').value=c.serverPublicKey||'';
+    const rt=document.getElementById('wgRuntime');
+    if(rt){
+      const r=c.runtime||{};
+      rt.textContent=r.up
+        ? ('Interface '+ (r.iface||'') +' hidup, UDP '+(r.listen_port||'51820'))
+        : (r.message||'Interface belum hidup. Klik Aktifkan interface setelah install wireguard-tools.');
+      rt.style.color=r.up?'#166534':'#9a3412';
+    }
   }
   document.getElementById('wgServerModal').style.display='flex';
 };
@@ -167,8 +233,23 @@ window.saveWgServer=async()=>{
   };
   const r=await App.api('/nas/wireguard/server',{method:'PUT',body:JSON.stringify(body)});
   if(!r?.success) return App.showToast(r?.message||'Gagal simpan','error');
-  App.showToast('Pengaturan WireGuard tersimpan','success');
+  if(r.applied && r.applied.ok) App.showToast('Tersimpan. Interface WireGuard hidup.','success');
+  else if(r.applied && r.applied.message) App.showToast(r.applied.message,'error');
+  else App.showToast('Pengaturan WireGuard tersimpan','success');
   document.getElementById('wgServerModal').style.display='none';
+};
+window.wgApplyServer=async()=>{
+  const r=await App.api('/nas/wireguard/server/apply',{method:'POST',body:JSON.stringify({})});
+  if(!r?.success) return App.showToast(r?.message||'Gagal mengaktifkan interface','error');
+  const rt=document.getElementById('wgRuntime');
+  const run=r.data && r.data.runtime;
+  if(rt && run){
+    rt.textContent=run.up
+      ? ('Interface '+ (run.iface||'') +' hidup, UDP '+(run.listen_port||'51820'))
+      : (run.message||'');
+    rt.style.color=run.up?'#166534':'#9a3412';
+  }
+  App.showToast(r.message||'Interface WireGuard diaktifkan','success');
 };
 window.wgInitKeys=async()=>{
   const r=await App.api('/nas/wireguard/server/init-keys',{method:'POST',body:JSON.stringify({})});
@@ -260,7 +341,7 @@ function showWgQr(d, enabled){
     if(warn){
       if(d.endpoint_is_private){
         warn.style.display='block';
-        warn.textContent='Endpoint masih IP LAN. HP di data seluler tidak handshake. Isi dulu IP/DNS publik concentrator Fiberix.';
+        warn.textContent='Endpoint masih IP LAN server Fiberix (bukan VPN sewa). HP di data seluler tidak handshake. Untuk tes di kantor, sambungkan HP ke Wi-Fi LAN yang sama.';
       }else{
         warn.style.display='none';
         warn.textContent='';
@@ -304,28 +385,67 @@ window.openPhoneQr=async()=>{
 let __rosLast=null;
 let __rosTab='v7';
 window.openRosScript=async(id,label)=>{
-  const r=await App.api('/nas/'+id+'/routeros-script',{method:'POST',body:JSON.stringify({})});
+  const r=await App.api('/nas/'+id+'/routeros-script',{method:'POST',body:JSON.stringify(nasFormBody())});
   if(!r?.success) return App.showToast(r?.message||'Gagal membuat script','error');
-  __rosLast={id,label,data:r.data};
-  __rosTab='v7';
-  document.getElementById('rosNas').textContent=label||('#'+id);
-  const apiHost=r.data.recommended_api_host||'—';
-  document.getElementById('rosHint').textContent='API/sync MikroTik: '+apiHost+':8728 (IP tunnel WireGuard). Bukan sewa VPN cloud. Radius: '+(r.data.radius_host||'192.168.22.9')+'.';
-  document.getElementById('rosNotes').textContent=(r.data.notes||[]).join(' ');
-  const pf=r.data.port_forward_example||{};
+  applyRosData(r.data, label||('#'+id));
+  if(r.data.generated) App.showToast('Peer WireGuard baru digenerate untuk script ini','success');
+};
+
+function applyRosData(data, label){
+  __rosLast={id:document.getElementById('nasId').value,label,data};
+  const apiHost=data.recommended_api_host||'—';
+  const radius=' Radius: '+(data.radius_host||'192.168.22.9')+'.';
+  const lanDirect=data.conn_mode!=='vpn';
+  document.getElementById('rosHint').textContent=lanDirect
+    ? 'API/sync: '+apiHost+':8728.'+radius+' Mode LAN: tempel script, tanpa VPN dan tanpa port-forward.'
+    : (data.endpoint_is_lan
+      ? 'API/sync: '+apiHost+':8728 (tunnel ke IP LAN Fiberix).'+radius+' Bukan VPN sewa. Port-forward tidak dipakai.'
+      : 'API/sync: '+apiHost+':8728 (IP tunnel).'+radius+' Server tunnel = Fiberix, bukan VPN sewa.');
+  const usage=(data.usage&&data.usage.length)?data.usage.join(' '):(data.notes||[]).join(' ');
+  document.getElementById('rosNotes').textContent=usage;
+  if(data.radius_host){
+    const rh=document.getElementById('nasRadiusHost');
+    if(rh) rh.value=data.radius_host;
+  }
+  const pf=data.port_forward_example||{};
+  const pfBox=document.getElementById('rosPfBox');
+  const showPf=!pf.skipped && Array.isArray(pf.rules) && pf.rules.length>0;
+  if(pfBox) pfBox.style.display=showPf?'block':'none';
   document.getElementById('rosPfNote').textContent=pf.note||'';
   document.getElementById('rosPfTable').innerHTML=(pf.rules||[]).map(x=>`<tr><td>${esc(x.use)}</td><td class="mono">${esc(x.public)}</td><td class="mono">${esc(x.internal)}</td></tr>`).join('');
   document.getElementById('rosPfNft').textContent=pf.nft_example||'';
-  showRosTab('v7');
-  document.getElementById('rosModal').style.display='flex';
-  if(r.data.generated) App.showToast('Peer WireGuard baru digenerate untuk script ini','success');
-  loadNas();
+  showRosTab(__rosTab||'v7');
+}
+
+window.previewNasScript=()=>{
+  clearTimeout(__previewTimer);
+  __previewTimer=setTimeout(runNasPreview, 400);
 };
+
+async function runNasPreview(){
+  const det=document.getElementById('nasDetailView');
+  if(!det || det.style.display==='none') return;
+  const id=document.getElementById('nasId').value;
+  const secret=document.getElementById('nasSecret').value.trim();
+  const nasname=document.getElementById('nasIp').value.trim();
+  if(id && (!secret || secret==='********')){
+    return openRosScript(id, document.getElementById('nasShort').value||nasname);
+  }
+  if(!nasname || !secret) return;
+  const r=await App.api('/nas/routeros-preview',{method:'POST',body:JSON.stringify(nasFormBody())});
+  if(!r?.success) return;
+  applyRosData(r.data, document.getElementById('nasShort').value||nasname);
+}
+
 window.showRosTab=(tab)=>{
   __rosTab=tab;
   const d=__rosLast&&__rosLast.data;
   if(!d) return;
   document.getElementById('rosScript').textContent=tab==='v6'?d.v6:d.v7;
+  const lab=document.getElementById('rosScriptLabel');
+  if(lab) lab.textContent=tab==='v7'?'RouterOS v7 Script':'RouterOS v6 Script';
+  const fmt=document.getElementById('rosScriptFormat');
+  if(fmt) fmt.textContent=tab==='v7'?'(Format action-data)':'(Format redirect-to)';
   document.getElementById('rosTabV7').className='btn btn-sm '+(tab==='v7'?'btn-primary':'btn-secondary');
   document.getElementById('rosTabV6').className='btn btn-sm '+(tab==='v6'?'btn-primary':'btn-secondary');
 };
@@ -352,6 +472,91 @@ window.downloadRos=()=>{
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download='fiberix-'+(__rosLast.label||'nas')+'-'+__rosTab+'.rsc';
+  document.body.appendChild(a);a.click();a.remove();
+  URL.revokeObjectURL(a.href);
+};
+
+function isRemoteCore1Nas(n){
+  const ip=String((n&&n.nasname)||'')+' '+String((n&&n.tunnel_address)||'');
+  return /10\.201\.0\.(?:[2-9]|\d{2}|1\d{2}|2[0-4]\d|25[0-4])/.test(ip)
+    || /10\.202\.0\.(?:[2-9]|\d{2}|1\d{2}|2[0-4]\d|25[0-4])/.test(ip);
+}
+
+let __rwgLast=null;
+function showRemoteWgPanel(result){
+  const form=document.getElementById('remoteWgForm');
+  const res=document.getElementById('remoteWgResult');
+  if(form) form.style.display=result?'none':'block';
+  if(res) res.style.display=result?'block':'none';
+}
+window.openRemoteWg=()=>{
+  showRemoteWgPanel(false);
+  const err=document.getElementById('rwgFormErr');
+  if(err){ err.style.display='none'; err.textContent=''; }
+  const name=document.getElementById('rwgName');
+  if(name) name.value='';
+  const secret=document.getElementById('rwgSecret');
+  if(secret) secret.value='';
+  document.getElementById('remoteWgModal').style.display='flex';
+};
+window.closeRemoteWg=()=>{
+  document.getElementById('remoteWgModal').style.display='none';
+};
+function applyRemoteWgResult(d){
+  __rwgLast=d;
+  document.getElementById('rwgTunnelIp').textContent=d.tunnel_ip||'—';
+  document.getElementById('rwgEndpoint').textContent=d.endpoint||'—';
+  document.getElementById('rwgNasId').textContent=d.nas_id||'—';
+  document.getElementById('rwgScript').textContent=d.mikrotik_script||'';
+  document.getElementById('rwgNotes').textContent=(d.notes||[]).join(' ');
+  showRemoteWgPanel(true);
+}
+window.submitRemoteWg=async()=>{
+  const err=document.getElementById('rwgFormErr');
+  const btn=document.getElementById('rwgSubmit');
+  const name=(document.getElementById('rwgName').value||'').trim();
+  const secret=(document.getElementById('rwgSecret').value||'').trim();
+  if(!name||!secret){
+    if(err){ err.style.display='block'; err.textContent='Nama cabang dan secret RADIUS wajib.'; }
+    return;
+  }
+  if(btn){ btn.disabled=true; btn.textContent='Memasang peer VPS…'; }
+  if(err){ err.style.display='none'; }
+  const r=await App.api('/nas/remote-wg/provision',{method:'POST',body:JSON.stringify({
+    name,
+    secret,
+    location:(document.getElementById('rwgLocation').value||'').trim(),
+    api_port:document.getElementById('rwgApiPort').value,
+    api_username:document.getElementById('rwgApiUser').value,
+    api_password:document.getElementById('rwgApiPass').value,
+    ppp_pool_ranges:document.getElementById('rwgPppPool').value,
+    ppp_local_address:document.getElementById('rwgPppLocal').value
+  })});
+  if(btn){ btn.disabled=false; btn.textContent='Buat & salin script'; }
+  if(!r?.success){
+    if(err){ err.style.display='block'; err.textContent=r?.message||'Gagal membuat cabang remote'; }
+    return App.showToast(r?.message||'Gagal','error');
+  }
+  applyRemoteWgResult(r.data||{});
+  App.showToast('Peer VPS siap. Salin script, tempel di MikroTik cabang.','success');
+  loadNas();
+};
+window.reprintRemoteWg=async(id)=>{
+  const r=await App.api('/nas/'+id+'/remote-wg/script',{method:'POST',body:JSON.stringify({})});
+  if(!r?.success) return App.showToast(r?.message||'Gagal mengambil script','error');
+  document.getElementById('remoteWgModal').style.display='flex';
+  applyRemoteWgResult(r.data||{});
+};
+window.copyRemoteWg=()=>{
+  const el=document.getElementById('rwgScript');
+  copyText(el&&el.textContent);
+};
+window.downloadRemoteWg=()=>{
+  if(!__rwgLast||!__rwgLast.mikrotik_script) return;
+  const blob=new Blob([__rwgLast.mikrotik_script],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='fiberix-vps-'+( __rwgLast.tunnel_ip||'cabang')+'.rsc';
   document.body.appendChild(a);a.click();a.remove();
   URL.revokeObjectURL(a.href);
 };

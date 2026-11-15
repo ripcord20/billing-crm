@@ -9,6 +9,7 @@ const { getTenantId } = require('../middleware/tenantContext');
 const { decryptSecret } = require('../utils/secretBox');
 const { buildNasRouterOsScript, radiusAllowedIps } = require('../utils/nasRouterOsScript');
 const { attachNasLinkStatus } = require('../utils/nasLinkStatus');
+const Core1RemoteWg = require('../services/Core1RemoteWgService');
 
 // Push konfigurasi NAS ke server FreeRADIUS (tabel `nas`). Fungsi modul-level
 // supaya tidak bergantung pada `this` (handler dipasang unbound di router).
@@ -288,6 +289,39 @@ class NasController {
         reallocate: !!(req.body && req.body.reallocate),
         allowedIps: req.body && req.body.allowed_ips
       });
+      res.json({ success: true, data: out });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  async provisionRemoteWg(req, res) {
+    try {
+      const b = req.body || {};
+      const out = await Core1RemoteWg.provision({
+        name: b.name || b.shortname,
+        secret: b.secret,
+        location: b.location,
+        apiPort: b.api_port,
+        apiUsername: b.api_username,
+        apiPassword: b.api_password,
+        pppPool: b.ppp_pool_ranges,
+        pppLocal: b.ppp_local_address,
+        tenantId: getTenantId() || b.tenant_id || null
+      });
+      res.status(201).json({ success: true, data: out });
+    } catch (e) {
+      const msg = e.message || 'Gagal membuat cabang remote';
+      const status = /wajib|tidak ditemukan|penuh|sudah ada|tidak valid|tidak ada di CORE/i.test(msg) ? 400 : 500;
+      res.status(status).json({ success: false, message: msg });
+    }
+  }
+
+  async remoteWgScript(req, res) {
+    try {
+      const row = await NasDevice.findByPk(req.params.id);
+      if (!row) return res.status(404).json({ success: false, message: 'NAS tidak ditemukan' });
+      const out = await Core1RemoteWg.scriptForNas(row);
       res.json({ success: true, data: out });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });

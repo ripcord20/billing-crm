@@ -3,9 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="theme-color" content="#100c22">
+  <meta name="color-scheme" content="dark">
   <title><%= title %> - <%= appName %></title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/nas-palette.css?v=nas3hpf">
   <style>
     .nas-page .page-content { min-width: 0; max-width: 100%; overflow-x: hidden; }
     .nas-page .page-header { align-items: flex-start; gap: 12px; flex-wrap: wrap; }
@@ -109,6 +115,38 @@
     }
     .nas-legend .nas-link { pointer-events:none; }
     .nas-legend-note { margin:8px 2px 0; font-size:12px; color:var(--text-secondary); }
+    .nas-easy {
+      margin: 0 0 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid #bbf7d0;
+      background: linear-gradient(180deg,#f0fdf4 0%,#ecfdf5 100%);
+    }
+    .nas-easy h2 { margin:0 0 6px; font-size:15px; color:#065f46; }
+    .nas-easy ol { margin:0; padding-left:18px; color:#14532d; font-size:13px; line-height:1.55; }
+    .nas-easy .nas-easy-note { margin:8px 0 0; font-size:12px; color:#3f6212; }
+    .nas-remote {
+      margin: 0 0 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid #fdba74;
+      background: linear-gradient(180deg,#fff7ed 0%,#ffedd5 100%);
+    }
+    .nas-remote h2 { margin:0 0 6px; font-size:15px; color:#9a3412; }
+    .nas-remote ol { margin:0; padding-left:18px; color:#9a3412; font-size:13px; line-height:1.55; }
+    .nas-remote .nas-easy-note { margin:8px 0 0; font-size:12px; color:#b45309; }
+    [data-theme="dark"] .nas-easy {
+      border-color:#166534; background:linear-gradient(180deg,#052e16,#14532d);
+    }
+    [data-theme="dark"] .nas-easy h2 { color:#bbf7d0; }
+    [data-theme="dark"] .nas-easy ol { color:#d1fae5; }
+    [data-theme="dark"] .nas-easy .nas-easy-note { color:#a3e635; }
+    [data-theme="dark"] .nas-remote {
+      border-color:#9a3412; background:linear-gradient(180deg,#431407,#7c2d12);
+    }
+    [data-theme="dark"] .nas-remote h2 { color:#fed7aa; }
+    [data-theme="dark"] .nas-remote ol { color:#ffedd5; }
+    [data-theme="dark"] .nas-remote .nas-easy-note { color:#fdba74; }
     .nas-swipe-hint {
       display: none;
       margin: 8px 2px 0;
@@ -135,32 +173,64 @@
     [data-theme="dark"] .nas-m-k { color: #94a3b8; }
     @media (max-width: 768px) {
       .nas-swipe-hint { display: none !important; }
-      .nas-page .table-scroll,
+      .nas-page .nas-table-card .table-scroll,
       .nas-page #nasTableScroll { display: none !important; overflow: hidden !important; }
-      .nas-page #nasTableScroll .data-table { min-width: 0 !important; }
       .nas-mobile-list { display: flex !important; flex-direction: column; gap: 10px; }
       .nas-page .page-header-right { width: 100%; }
       .nas-page .page-header-right .btn { flex: 1 1 auto; }
     }
+    .nas-detail-grid { display:grid; gap:14px; }
+    @media (min-width: 960px) {
+      .nas-detail-grid { grid-template-columns: 1fr 1fr; }
+    }
+    .nas-detail-card { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:16px 18px; }
+    .nas-detail-card h2 { margin:0 0 4px; font-size:15px; }
+    .nas-detail-card .sub { margin:0 0 12px; font-size:12px; color:var(--text-secondary); }
+    .nas-detail-card label { font-size:13px; display:block; }
+    .nas-detail-card input, .nas-detail-card select {
+      width:100%; margin:6px 0 10px; padding:8px; border:1px solid #e2e8f0; border-radius:8px; background:var(--bg-input); color:var(--text);
+    }
+    .nas-script-card { grid-column: 1 / -1; }
+    .nas-usage { margin:12px 0 0; padding:12px; border-radius:10px; background:var(--bg-hover); font-size:12px; color:var(--text-secondary); line-height:1.55; }
   </style>
 </head>
-<body class="nas-page">
+<body class="nas-page nas-home">
 <div class="app-layout">
   <%- include('../partials/sidebar') %>
   <div class="main-content">
     <%- include('../partials/topbar') %>
     <main class="page-content">
+      <div id="nasListView">
       <div class="page-header">
         <div class="page-header-left">
           <h1>Modul NAS</h1>
-          <p style="margin:4px 0 0;color:var(--text-secondary);font-size:13px;">Tombol <b>QR HP</b> = barcode untuk aplikasi WireGuard di HP (tes handshake). Tombol <b>Script</b> = tempelan RouterOS. IP tunnel = WireGuard Fiberix, bukan sewa VPN cloud.</p>
+          <p style="margin:4px 0 0;color:var(--text-secondary);font-size:13px;">Cara mudah: jika MikroTik dan Fiberix <b>satu jaringan</b>, pilih mode <b>LAN / langsung</b> — WireGuard tidak perlu. Tunnel hanya untuk router di lokasi lain. Tombol <b>Detail</b> / <b>+ NAS</b> membuka script RouterOS v6/v7. Tombol <b>QR HP</b> = tes handshake di HP.</p>
         </div>
         <div class="page-header-right" style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-secondary" onclick="openPhoneQr()">QR HP</button>
           <button class="btn btn-secondary" onclick="openWgServer()">⚙ WireGuard Server</button>
           <button class="btn btn-secondary" onclick="importNas()">Import dari RADIUS</button>
+          <button class="btn btn-secondary" onclick="openRemoteWg()" style="background:#fff7ed;border-color:#fdba74;color:#9a3412;">Cabang remote</button>
           <button class="btn btn-primary" onclick="openNas()">+ NAS</button>
         </div>
+      </div>
+      <div class="nas-easy">
+        <h2>Cara paling mudah (tanpa VPN, tanpa WireGuard)</h2>
+        <ol>
+          <li>Pastikan MikroTik bisa ping server Fiberix / RADIUS (biasanya <code>192.168.22.9</code>).</li>
+          <li>Klik <b>+ NAS</b> → isi Informasi NAS + Profile PPP → <b>Simpan &amp; sync</b>.</li>
+          <li>Salin tab RouterOS v7 di bawah, tempel di New Terminal MikroTik.</li>
+        </ol>
+        <p class="nas-easy-note">WireGuard hanya untuk router yang <em>tidak</em> satu LAN. Hub tunnel = VPS Nevacloud <code>103.169.206.24:51820</code>, bukan CORE 1 dan bukan VPN Fiberix <code>10.10.0.x</code>.</p>
+      </div>
+      <div class="nas-remote">
+        <h2>MikroTik di luar jaringan lokal (beda kota / CGNAT)</h2>
+        <ol>
+          <li>Klik <b>Cabang remote</b> → isi nama + secret RADIUS → <b>Buat &amp; salin script</b>.</li>
+          <li>Hub VPN ada di VPS Nevacloud (<code>wg0</code> / <code>10.201.0.1</code>). CORE 2 memakai <code>10.201.0.2</code>. Cabang baru mendapat <code>10.201.0.x</code>.</li>
+          <li>Salin script, tempel di <b>New Terminal</b> MikroTik cabang. Handshake ke <code>103.169.206.24:51820</code>.</li>
+        </ol>
+        <p class="nas-easy-note">Ini VPN platform lewat VPS. Jangan tombol VPN Fiberix (<code>10.10.0.x</code> di Ubuntu billing). Mode NAS = <b>LAN / satu jaringan</b>, IP NAS = tunnel <code>10.201.0.x</code> (CORE 2 = <code>10.201.0.2</code>). Public key hub VPS: <code>m0lijnuhLy91YcnDNrnqavNti9X5s9AO7jtu07LIS3g=</code>.</p>
       </div>
       <div class="card nas-table-card"><div class="card-body">
         <div class="table-scroll" id="nasTableScroll">
@@ -178,43 +248,97 @@
         </div>
         <p class="nas-legend-note">Mode VPN hijau hanya jika tunnel WireGuard handshake / IP tunnel merespons. Router online di Device Management tidak dihitung.</p>
       </div></div>
+      </div>
+
+      <div id="nasDetailView" style="display:none;">
+        <div class="page-header">
+          <div class="page-header-left">
+            <button class="btn btn-sm btn-secondary" type="button" onclick="closeNasDetail()" style="margin-bottom:8px;">← Kembali</button>
+            <h1 id="nasTitle">Detail NAS</h1>
+            <p style="margin:4px 0 0;color:var(--text-secondary);font-size:13px;">Informasi detail dan script konfigurasi perangkat NAS</p>
+          </div>
+          <div class="page-header-right" style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-secondary" type="button" onclick="closeNasDetail()">Batal</button>
+            <button class="btn btn-primary" type="button" onclick="saveNas()">Simpan &amp; sync</button>
+          </div>
+        </div>
+        <input type="hidden" id="nasId">
+        <div class="nas-detail-grid">
+          <div class="nas-detail-card">
+            <h2>Informasi Koneksi</h2>
+            <p class="sub">Cara MikroTik mencapai RADIUS Fiberix. LAN jika satu jaringan — tanpa VPN.</p>
+            <label>Mode Koneksi</label>
+            <select id="nasConnMode" onchange="onConnModeChange(); previewNasScript();">
+              <option value="public">LAN / satu jaringan (disarankan)</option>
+              <option value="vpn">Tunnel WireGuard (router beda jaringan)</option>
+            </select>
+            <p id="nasLanHint" style="margin:-4px 0 12px;font-size:12px;color:#166534;line-height:1.45;">Disarankan jika MikroTik bisa ping server Fiberix. Cukup IP NAS + secret. Tidak perlu VPN dan tidak perlu WireGuard.</p>
+            <div id="nasVpnTypeWrap" style="display:none;">
+              <label>Tipe VPN</label>
+              <select id="nasVpnType" onchange="previewNasScript();">
+                <option value="wireguard">WireGuard</option>
+                <option value="openvpn">OpenVPN</option>
+                <option value="l2tp">L2TP / IPsec</option>
+              </select>
+            </div>
+            <div id="nasVpnHint" style="display:none;background:#fff7ed;border:1px dashed #fdba74;border-radius:8px;padding:10px;font-size:12px;color:#9a3412;margin:0 0 12px;">
+              Router luar LAN: peer ke VPS Nevacloud <code>wg0</code> (<code>103.169.206.24:51820</code>), lalu di form ini pilih <b>LAN / satu jaringan</b> dengan IP tunnel <code>10.201.0.x</code> (CORE 2 = <code>10.201.0.2</code>). Jangan generate VPN Fiberix.
+            </div>
+            <label>Host RADIUS Fiberix</label>
+            <input id="nasRadiusHost" value="192.168.22.9" readonly>
+          </div>
+          <div class="nas-detail-card">
+            <h2>Informasi Profile PPP</h2>
+            <label>Range IP Pool PPP</label>
+            <input id="nasPppPool" placeholder="10.2.64.2-10.2.79.254" oninput="previewNasScript();">
+            <label>Local address (gateway PPP)</label>
+            <input id="nasPppLocal" placeholder="10.2.64.1" oninput="previewNasScript();">
+          </div>
+          <div class="nas-detail-card">
+            <h2>Informasi NAS</h2>
+            <p class="sub">Identitas router di FreeRADIUS (nasname = IP sumber paket RADIUS).</p>
+            <label>IP NAS (nasname) *</label>
+            <input id="nasIp" placeholder="192.168.22.1" oninput="previewNasScript();">
+            <label>Shortname / nama</label>
+            <input id="nasShort" placeholder="contoh: NAGA" oninput="previewNasScript();">
+            <label>Secret *</label>
+            <input id="nasSecret" type="password" placeholder="secret RADIUS" oninput="previewNasScript();">
+            <label>Tipe</label>
+            <input id="nasType" value="mikrotik">
+          </div>
+          <div class="nas-detail-card nas-script-card">
+            <h2>Script Otomatis</h2>
+            <p class="sub">Script Konfigurasi RouterOS — disesuaikan dengan NAS Anda. Tanpa L2TP/PPTP ke server cloud.</p>
+            <p id="rosHint" style="margin:0 0 12px;color:var(--text-secondary);font-size:13px;"></p>
+            <div style="display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap;align-items:center;">
+              <span style="font-size:12px;color:var(--text-secondary);margin-right:4px;">Script Konfigurasi RouterOS:</span>
+              <button class="btn btn-sm btn-secondary" type="button" id="rosTabV6" onclick="showRosTab('v6')">RouterOS v6</button>
+              <button class="btn btn-sm btn-primary" type="button" id="rosTabV7" onclick="showRosTab('v7')">RouterOS v7</button>
+              <button class="btn btn-sm btn-secondary" type="button" onclick="copyRos()">Salin Script</button>
+              <button class="btn btn-sm btn-secondary" type="button" onclick="downloadRos()">Unduh .rsc</button>
+            </div>
+            <div style="font-size:12px;font-weight:600;margin:0 0 6px;" id="rosScriptLabel">RouterOS v7 Script</div>
+            <div style="font-size:11px;color:var(--text-secondary);margin:-2px 0 8px;" id="rosScriptFormat">(Format action-data)</div>
+            <pre id="rosScript" class="radius-guide-pre" style="max-height:420px;background:#0f172a;color:#e2e8f0;border:none;">Isi IP NAS dan secret, lalu script muncul di sini.</pre>
+            <div id="rosPfBox" style="display:none;margin-top:14px;padding:12px;border:1px dashed var(--border);border-radius:10px;background:var(--bg-hover);">
+              <strong style="font-size:13px;">Lanjutan: contoh port-forward (opsional)</strong>
+              <p id="rosPfNote" style="margin:6px 0 8px;font-size:12px;color:var(--text-secondary);"></p>
+              <div class="table-scroll">
+              <table class="data-table" style="margin:0;">
+                <thead><tr><th>Kegunaan</th><th>Publik (server Fiberix)</th><th>Internal (tunnel)</th></tr></thead>
+                <tbody id="rosPfTable"></tbody>
+              </table>
+              </div>
+              <pre id="rosPfNft" style="margin:10px 0 0;font-size:11px;white-space:pre-wrap;color:var(--text-secondary);"></pre>
+            </div>
+            <div class="nas-usage" id="rosUsage">
+              <b>Petunjuk Penggunaan</b>
+              <p id="rosNotes" style="margin:8px 0 0;"></p>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
-  </div>
-</div>
-<div id="nasModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:460px;">
-    <h3 style="margin:0 0 12px;" id="nasTitle">NAS baru</h3>
-    <input type="hidden" id="nasId">
-    <label style="font-size:13px;">IP NAS (nasname) *</label>
-    <input id="nasIp" placeholder="192.168.22.1" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-    <label style="font-size:13px;">Shortname</label>
-    <input id="nasShort" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-    <label style="font-size:13px;">Secret *</label>
-    <input id="nasSecret" type="password" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-    <label style="font-size:13px;">Tipe</label>
-    <input id="nasType" value="mikrotik" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-    <label style="font-size:13px;">Mode Koneksi</label>
-    <select id="nasConnMode" onchange="onConnModeChange()" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-      <option value="public">Public IP (langsung)</option>
-      <option value="vpn">VPN (tunnel)</option>
-    </select>
-    <div id="nasVpnTypeWrap" style="display:none;">
-      <label style="font-size:13px;">Tipe VPN</label>
-      <select id="nasVpnType" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-        <option value="wireguard">WireGuard</option>
-        <option value="openvpn">OpenVPN</option>
-        <option value="l2tp">L2TP / IPsec</option>
-      </select>
-    </div>
-    <div id="nasVpnHint" style="display:none;background:#f0f6ff;border:1px dashed #9cc2ff;border-radius:8px;padding:10px;font-size:12px;color:#334155;margin:0 0 12px;">
-      Alamat tunnel dialokasikan otomatis. Setelah disimpan, klik tombol
-      <b>VPN</b> pada baris NAS untuk auto-generate credential/peer + config yang siap
-      ditempel ke MikroTik.
-    </div>
-    <div style="display:flex;justify-content:flex-end;gap:8px;">
-      <button class="btn btn-secondary" onclick="document.getElementById('nasModal').style.display='none'">Batal</button>
-      <button class="btn btn-primary" onclick="saveNas()">Simpan &amp; sync</button>
-    </div>
   </div>
 </div>
 
@@ -222,14 +346,16 @@
 <div id="wgServerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:520px;max-height:90vh;overflow:auto;">
     <h3 style="margin:0 0 4px;">Pengaturan WireGuard Server</h3>
-    <p style="margin:0 0 14px;color:#64748b;font-size:12px;">Server tunnel tempat MikroTik terhubung. Endpoint host harus dijangkau router (IP publik server, atau DNS).</p>
+    <p style="margin:0 0 14px;color:#64748b;font-size:12px;line-height:1.5;">Ini proses di <b>server Fiberix yang sama</b> (kantor/LAN), <b>bukan VPN sewa</b>. Lewati seluruh pengaturan ini jika MikroTik sudah satu jaringan dengan Fiberix — pakai mode LAN. Isi endpoint hanya jika router di lokasi lain harus menembus ke server ini.</p>
+    <p id="wgRuntime" style="margin:0 0 12px;font-size:12px;color:#64748b;"></p>
     <label style="font-size:13px;">Aktifkan WireGuard</label>
     <select id="wgEnabled" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
       <option value="true">Aktif</option>
       <option value="false">Nonaktif</option>
     </select>
-    <label style="font-size:13px;">Endpoint Host (IP publik / domain server) *</label>
-    <input id="wgEndpointHost" placeholder="vpn.isp-anda.com atau 203.0.113.10" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <label style="font-size:13px;">Endpoint Host (IP server Fiberix / DNS) *</label>
+    <input id="wgEndpointHost" placeholder="192.168.22.9 atau fiberix.my.id" style="width:100%;margin:6px 0 4px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <p style="margin:0 0 10px;font-size:11px;color:#64748b;">IP LAN (192.168.x / 10.x) = benar untuk jaringan lokal. IP publik/DNS hanya jika router di luar LAN.</p>
     <div style="display:flex;gap:8px;">
       <div style="flex:1;"><label style="font-size:13px;">Listen Port</label>
         <input id="wgListenPort" value="51820" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;"></div>
@@ -244,7 +370,8 @@
     </div>
     <label style="font-size:13px;">Public Key Server</label>
     <input id="wgServerPub" readonly placeholder="(belum digenerate)" style="width:100%;margin:6px 0 6px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;font-family:monospace;font-size:11px;">
-    <button class="btn btn-sm btn-secondary" onclick="wgInitKeys()" style="margin:0 0 14px;">Generate/keys server</button>
+    <button class="btn btn-sm btn-secondary" onclick="wgInitKeys()" style="margin:0 0 8px;">Generate/keys server</button>
+    <button class="btn btn-sm btn-primary" onclick="wgApplyServer()" style="margin:0 0 14px;">Aktifkan interface di server ini</button>
     <div style="display:flex;justify-content:flex-end;gap:8px;">
       <button class="btn btn-secondary" onclick="document.getElementById('wgServerModal').style.display='none'">Tutup</button>
       <button class="btn btn-primary" onclick="saveWgServer()">Simpan</button>
@@ -302,38 +429,68 @@
   </div>
 </div>
 
-<div id="rosModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1002;align-items:center;justify-content:center;">
-  <div style="background:var(--bg-card);border-radius:12px;padding:24px;width:100%;max-width:720px;max-height:92vh;overflow:auto;color:var(--text);">
-    <h3 style="margin:0 0 4px;">Script RouterOS — <span id="rosNas"></span></h3>
-    <p id="rosHint" style="margin:0 0 12px;color:var(--text-secondary);font-size:13px;"></p>
-    <div style="display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap;">
-      <button class="btn btn-sm btn-primary" type="button" id="rosTabV7" onclick="showRosTab('v7')">RouterOS v7</button>
-      <button class="btn btn-sm btn-secondary" type="button" id="rosTabV6" onclick="showRosTab('v6')">RouterOS v6</button>
-      <button class="btn btn-sm btn-secondary" type="button" onclick="copyRos()">Salin</button>
-      <button class="btn btn-sm btn-secondary" type="button" onclick="downloadRos()">Unduh .rsc</button>
-    </div>
-    <pre id="rosScript" class="radius-guide-pre" style="max-height:320px;background:#0f172a;color:#e2e8f0;border:none;"></pre>
-    <div style="margin-top:14px;padding:12px;border:1px dashed var(--border);border-radius:10px;background:var(--bg-hover);">
-      <strong style="font-size:13px;">Contoh Port Forward (belum dipasang)</strong>
-      <p id="rosPfNote" style="margin:6px 0 8px;font-size:12px;color:var(--text-secondary);"></p>
-      <div class="table-scroll">
-      <table class="data-table" style="margin:0;">
-        <thead><tr><th>Kegunaan</th><th>Publik (VPS)</th><th>Internal (tunnel)</th></tr></thead>
-        <tbody id="rosPfTable"></tbody>
-      </table>
+<!-- Cabang remote: auto peer CORE 1 + script tempel MikroTik -->
+<div id="remoteWgModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1002;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:640px;max-height:92vh;overflow:auto;">
+    <h3 style="margin:0 0 4px;">Cabang remote — peer VPS Nevacloud</h3>
+    <p style="margin:0 0 14px;color:#9a3412;font-size:12px;line-height:1.5;">Satu klik: Fiberix pasang peer di VPS <code>103.169.206.24:51820</code>, lalu Anda tempel script di terminal MikroTik cabang. Bukan VPN Fiberix dan bukan CORE 1.</p>
+
+    <div id="remoteWgForm">
+      <label style="font-size:13px;">Nama cabang *</label>
+      <input id="rwgName" placeholder="contoh: CORE 3 PINRANG" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+      <label style="font-size:13px;">Secret RADIUS *</label>
+      <input id="rwgSecret" type="password" placeholder="secret yang sama di /radius add" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+      <label style="font-size:13px;">Lokasi (Device Management)</label>
+      <input id="rwgLocation" placeholder="opsional" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;"><label style="font-size:13px;">API port</label>
+          <input id="rwgApiPort" value="80" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;"></div>
+        <div style="flex:1;"><label style="font-size:13px;">API user</label>
+          <input id="rwgApiUser" value="admin" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;"></div>
       </div>
-      <pre id="rosPfNft" style="margin:10px 0 0;font-size:11px;white-space:pre-wrap;color:var(--text-secondary);"></pre>
+      <label style="font-size:13px;">API password (Device Management)</label>
+      <input id="rwgApiPass" type="password" placeholder="opsional, bisa diisi nanti" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;"><label style="font-size:13px;">PPP pool</label>
+          <input id="rwgPppPool" value="10.2.64.2-10.2.79.254" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;"></div>
+        <div style="flex:1;"><label style="font-size:13px;">PPP local</label>
+          <input id="rwgPppLocal" value="10.2.64.1" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;"></div>
+      </div>
+      <p id="rwgFormErr" style="display:none;margin:0 0 10px;font-size:12px;color:#b91c1c;"></p>
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-secondary" type="button" onclick="closeRemoteWg()">Batal</button>
+        <button class="btn btn-primary" type="button" id="rwgSubmit" onclick="submitRemoteWg()">Buat &amp; salin script</button>
+      </div>
     </div>
-    <p id="rosNotes" style="margin:12px 0 0;font-size:12px;color:var(--text-secondary);"></p>
-    <div style="display:flex;justify-content:flex-end;margin-top:14px;">
-      <button class="btn btn-primary" onclick="document.getElementById('rosModal').style.display='none'">Selesai</button>
+
+    <div id="remoteWgResult" style="display:none;">
+      <p style="margin:0 0 10px;font-size:13px;color:#14532d;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;">
+        Peer VPS siap. IP tunnel: <b id="rwgTunnelIp" class="mono"></b>
+        · endpoint <span id="rwgEndpoint" class="mono"></span>
+        · NAS #<span id="rwgNasId"></span>
+      </p>
+      <p style="margin:0 0 8px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px;">Private key ada di script ini. Simpan / tempel sekarang. Generate ulang membuat kunci baru.</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 4px;">
+        <b style="font-size:13px;">Script MikroTik (tempel di New Terminal)</b>
+        <span>
+          <button class="btn btn-sm btn-secondary" type="button" onclick="copyRemoteWg()">Salin</button>
+          <button class="btn btn-sm btn-secondary" type="button" onclick="downloadRemoteWg()">Unduh .rsc</button>
+        </span>
+      </div>
+      <pre id="rwgScript" style="background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:360px;overflow:auto;"></pre>
+      <p id="rwgNotes" style="margin:8px 0 12px;font-size:12px;color:#64748b;"></p>
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-secondary" type="button" onclick="openRemoteWg()">Cabang lain</button>
+        <button class="btn btn-primary" type="button" onclick="closeRemoteWg()">Selesai</button>
+      </div>
     </div>
   </div>
 </div>
+
 <style>
   .radius-guide-pre{margin:0;padding:12px;border-radius:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.45;white-space:pre-wrap;word-break:break-all;overflow:auto;}
 </style>
-<script src="/js/app.js"></script>
-<script src="/js/nas.js?v=hpf1"></script>
+<script src="/js/app.js?v=spd1"></script>
+<script src="/js/nas.js?v=wgvps1"></script>
 </body>
 </html>
