@@ -282,6 +282,27 @@ class PPPoEController {
     }
   }
 
+  // GET /api/mikrotik/pppoe/acct-log  (live Fiberix route — must exist so overlay tidak crash)
+  async acctLog(req, res) {
+    try {
+      let RadiusProv = null;
+      let RadiusSQL = null;
+      try { RadiusProv = require('../services/RadiusProvisionService'); } catch (_) { /* optional on git */ }
+      try { RadiusSQL = require('../services/RadiusSqlService'); } catch (_) { /* optional on git */ }
+      if (!RadiusProv?.resolveServer || !RadiusSQL?.listOnline) {
+        return res.json({ success: true, data: [], total: 0 });
+      }
+      const server = await RadiusProv.resolveServer(req.query && req.query.server_id);
+      if (!server) return res.json({ success: true, data: [], total: 0 });
+      const limit = Math.min(parseInt(req.query && req.query.limit, 10) || 200, 500);
+      const rows = await RadiusSQL.listOnline(server, limit);
+      return res.json({ success: true, data: rows || [], total: (rows || []).length });
+    } catch (err) {
+      logger.error(`PPPoE acctLog error: ${err.message}`);
+      res.json({ success: true, data: [], total: 0, warning: err.message });
+    }
+  }
+
   // POST /api/mikrotik/pppoe/secrets/:id/disable
   async disableSecret(req, res) {
     try {

@@ -36,6 +36,7 @@ router.get('/queues/:queue_name/history',     authenticate, getQueueHistory);
 router.get('/pppoe/active',                authenticate, PPPoEController.activeSessions.bind(PPPoEController));
 router.get('/pppoe/secrets',               authenticate, PPPoEController.secrets.bind(PPPoEController));
 router.get('/pppoe/stats',                 authenticate, PPPoEController.stats.bind(PPPoEController));
+router.get('/pppoe/acct-log',              authenticate, PPPoEController.acctLog.bind(PPPoEController));
 router.get('/pppoe/profiles',              authenticate, PPPoEController.getProfiles.bind(PPPoEController));
 router.post('/pppoe/disconnect/:id',       authenticate, authorize('superadmin','admin'), logActivity('disconnect','pppoe'), PPPoEController.disconnect.bind(PPPoEController));
 router.post('/pppoe/secrets',              authenticate, authorize('superadmin','admin'), logActivity('create','pppoe_secret'), PPPoEController.createSecret.bind(PPPoEController));
