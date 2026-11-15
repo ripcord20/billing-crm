@@ -44,6 +44,37 @@ async function listRouterDevices() {
   });
 }
 
+function stampRouter(rows, device) {
+  if (!device) return rows || [];
+  return (rows || []).map((r) => ({
+    ...r,
+    router: device.name,
+    device_id: device.id,
+    id: `${device.id}:${r.id}`
+  }));
+}
+
+async function lookupSelectedDevice(req) {
+  const { Device } = require('../models');
+  const id = resolveDeviceId(req);
+  if (id) {
+    const d = await Device.findByPk(id, { attributes: ['id', 'name'] });
+    if (d) return d;
+  }
+  try {
+    const primary = await Device.findOne({
+      where: { is_primary: true, type: 'router', is_active: true },
+      attributes: ['id', 'name']
+    });
+    if (primary) return primary;
+  } catch (_) { /* kolom is_primary belum ada di live */ }
+  return Device.findOne({
+    where: { type: 'router', is_active: true },
+    attributes: ['id', 'name'],
+    order: [['id', 'ASC']]
+  });
+}
+
 async function collectFromRouters(kind) {
   const devices = await listRouterDevices();
   const rows = [];
@@ -110,7 +141,8 @@ class PPPoEController {
         skipped = collected.skipped;
       } else {
         const mt = await getMt(req);
-        sessions = await mt.getPPPoESessions();
+        const device = await lookupSelectedDevice(req);
+        sessions = stampRouter(await mt.getPPPoESessions(), device);
       }
       const { search, service } = req.query;
 
@@ -122,7 +154,8 @@ class PPPoEController {
         filtered = filtered.filter(s =>
           (s.name     || '').toLowerCase().includes(q) ||
           (s.address  || '').toLowerCase().includes(q) ||
-          (s.callerID || '').toLowerCase().includes(q)
+          (s.callerID || '').toLowerCase().includes(q) ||
+          (s.router   || '').toLowerCase().includes(q)
         );
       }
 
@@ -166,8 +199,8 @@ class PPPoEController {
         });
       }
       const mt = await getMt(req);
-      const secrets = await mt.getPPPoESecrets();
-      const data = secrets || [];
+      const device = await lookupSelectedDevice(req);
+      const data = stampRouter(await mt.getPPPoESecrets(), device);
       res.json({ success: true, data, total: data.length });
     } catch (err) {
       logger.error(`PPPoE secrets error: ${err.message}`);

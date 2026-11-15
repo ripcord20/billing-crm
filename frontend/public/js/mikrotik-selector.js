@@ -169,6 +169,11 @@
         min-width:160px; cursor:pointer;
       }
       .mt-selector:disabled { color:#94a3b8; cursor:not-allowed; }
+      [data-theme="dark"] .mt-selector-wrap {
+        background: var(--bg-card, #121a2b); border-color: var(--border, #243049);
+      }
+      [data-theme="dark"] .mt-selector { color: var(--text, #e8eef9); }
+      [data-theme="dark"] .mt-selector option { background: #121a2b; color: #e8eef9; }
       @media (max-width: 640px) {
         .mt-selector-wrap { min-width:140px; padding:5px 10px; }
         .mt-selector { min-width:110px; font-size:12px; }
