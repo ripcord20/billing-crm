@@ -90,5 +90,8 @@ assert.ok(!script.includes('endpoint-port=51823'));
 assert.ok(!/listen-port=51820/.test(script.split('\n').find((l) => l.includes('wireguard add')) || ''), 'client tidak listen 51820');
 assert.ok(!script.includes('interface=wg-core2'));
 assert.ok(!script.includes('name=wg-core2'));
+assert.ok(script.includes('name=FIBERIX'));
+assert.ok(script.includes('remote-address=FIBERIX'));
+assert.ok(!/BILLINGRADIUS/i.test(script), 'script cabang tanpa BillingRadius');
 
 console.log('core1RemoteWg.test.js OK');
