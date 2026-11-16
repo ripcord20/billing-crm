@@ -12,6 +12,8 @@
 
   let overview = null;
   let audience = '';
+  let pollTimer = null;
+  let settingsTouched = false;
 
   function fmt(n, unit, digits) {
     if (n == null || Number.isNaN(Number(n))) return '—';
@@ -70,13 +72,26 @@
       + '</tbody></table>';
   }
 
-  function renderDns(list) {
+  function renderDns(list, compare) {
+    const hint = document.getElementById('qosDnsCompare');
+    if (hint && compare) {
+      const pub = compare.public_avg != null ? compare.public_avg + ' ms' : '—';
+      const isp = compare.isp_avg != null ? compare.isp_avg + ' ms' : 'belum diukur';
+      hint.textContent = 'Publik rata-rata ' + pub + ' · ISP ' + isp + (compare.winner === 'public' ? ' · publik lebih cepat' : (compare.winner === 'isp' ? ' · ISP lebih cepat' : ''));
+    }
     if (!list || !list.length) {
       document.getElementById('qosDns').innerHTML = '<div class="qos-empty">Belum ada hasil probe. Klik Jalankan probe.</div>';
       return;
     }
+    const seen = {};
+    const unique = list.filter((d) => {
+      const k = (d.group || '') + ':' + (d.server || '');
+      if (seen[k]) return false;
+      seen[k] = true;
+      return true;
+    });
     document.getElementById('qosDns').innerHTML = '<table class="qos-table"><thead><tr><th>Resolver</th><th>Waktu</th><th>Status</th></tr></thead><tbody>'
-      + list.map((d) => '<tr><td><strong>' + esc(d.server || '-') + '</strong><div style="color:var(--text-secondary)">' + (d.group === 'public' ? 'Publik' : (d.group === 'isp' ? 'ISP' : esc(d.group || ''))) + '</div></td><td>' + fmt(d.value, ' ms') + '</td><td>' + badge(d.status) + '</td></tr>').join('')
+      + unique.map((d) => '<tr><td><strong>' + esc(d.server || '-') + '</strong><div style="color:var(--text-secondary)">' + (d.group === 'public' ? 'Publik' : (d.group === 'isp' ? 'ISP' : esc(d.group || ''))) + '</div></td><td>' + fmt(d.value, ' ms') + '</td><td>' + badge(d.status) + '</td></tr>').join('')
       + '</tbody></table>';
   }
 
@@ -127,18 +142,22 @@
     }[c]));
   }
 
-  async function load() {
+  async function load(opts) {
+    const silent = opts && opts.silent;
     const res = await App.api('/qos/overview');
     if (!res || !res.success) return;
     overview = res.data;
     renderSla(overview.settings);
     renderCards(overview);
     renderAlerts(overview.alerts);
-    renderDns(overview.dns);
+    renderDns(overview.dns, overview.dns_compare);
     renderUpsell(overview.upsell);
-    fillSettings(overview.settings);
+    const settingsOpen = document.getElementById('qosSettings') && document.getElementById('qosSettings').classList.contains('open');
+    if (!silent && !settingsOpen && !settingsTouched) fillSettings(overview.settings);
     const auth = await App.api('/qos/auth-fails?minutes=' + (overview.settings.authWindowMin || 15));
     renderAuth(auth && auth.success ? auth.data : []);
+    const live = document.getElementById('qosLiveHint');
+    if (live) live.textContent = 'Live · ' + new Date().toLocaleTimeString('id-ID');
   }
 
   document.addEventListener('click', async (e) => {
@@ -159,6 +178,7 @@
   document.getElementById('qosSettingsBtn').addEventListener('click', () => {
     document.getElementById('qosSettings').classList.toggle('open');
   });
+  document.getElementById('qosSettings').addEventListener('input', () => { settingsTouched = true; });
 
   document.getElementById('qosSaveSettings').addEventListener('click', async () => {
     const body = {
@@ -191,6 +211,11 @@
     }
   });
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load);
-  else load();
+  function startPoll() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(() => { load({ silent: true }).catch(() => {}); }, 15000);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { load(); startPoll(); });
+  else { load(); startPoll(); }
 })();

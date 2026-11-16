@@ -153,6 +153,8 @@ class CustomerController {
 
       // Jangan izinkan field internal di-set dari input bebas.
       delete data.public_link_token;
+      const radiusPassword = data.radius_password;
+      delete data.radius_password;
 
       // Auto-generate token link pembayaran permanen untuk pelanggan baru.
       try {
@@ -168,6 +170,15 @@ class CustomerController {
       const full = await Customer.findByPk(customer.id, {
         include: [{ model: Package, as: 'package' }]
       });
+
+      if (full.pppoe_username && radiusPassword) {
+        try {
+          await require('../services/RadiusProvisionService').syncCustomer(full, {
+            password: radiusPassword,
+            requirePassword: true
+          });
+        } catch (e) { console.warn('[Customer] radius provision:', e.message); }
+      }
 
       // Auto-sync ke InfrastructurePoint type='customer' kalau ada lat/lng.
       // Best-effort — gagal sync di sini tidak membatalkan create customer.
@@ -271,11 +282,22 @@ class CustomerController {
       delete sanitized.customer_id;           // hanya boleh diubah via updatePortalCredentials (validasi unique)
       delete sanitized.last_portal_login;     // diset otomatis oleh sistem saat login
       delete sanitized.public_link_token;     // hanya via endpoint payment-link (generate/revoke)
+      const radiusPassword = sanitized.radius_password;
+      delete sanitized.radius_password;
 
       await customer.update(sanitized);
       const full = await Customer.findByPk(customer.id, {
         include: [{ model: Package, as: 'package' }]
       });
+
+      if (full.pppoe_username && radiusPassword) {
+        try {
+          await require('../services/RadiusProvisionService').syncCustomer(full, {
+            password: radiusPassword,
+            requirePassword: true
+          });
+        } catch (e) { console.warn('[Customer] radius provision:', e.message); }
+      }
 
       // Auto-sync ke InfrastructurePoint. Full sync mode:
       //   - lat/lng ada → create / update point

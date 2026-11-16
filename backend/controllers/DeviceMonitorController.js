@@ -8,6 +8,14 @@ const { Device, DeviceLog, TrafficData, sequelize } = require('../models');
 const { Op }   = require('sequelize');
 const { getMikrotikInstance } = require('../services/MikrotikService');
 const { SNMP_OIDS } = require('../config/constants');
+const {
+  normalizeCpuPercent,
+  normalizeMemPercent,
+  presentDeviceMetrics,
+  aggregateDeviceTraffic,
+  isCustomerTunnelIface,
+  isUplinkIface
+} = require('../utils/deviceMetrics');
 
 let snmp;
 try { snmp = require('net-snmp'); } catch(e) {}
@@ -30,7 +38,7 @@ exports.listDevices = async (req, res) => {
                    'snmp_port','location'],
       order: [['name','ASC']]
     });
-    res.json({ success: true, data: devices });
+    res.json({ success: true, data: devices.map(presentDeviceMetrics) });
   } catch(e) {
     res.status(500).json({ success: false, message: e.message });
   }
@@ -76,8 +84,8 @@ exports.realtimeMetrics = async (req, res) => {
 
     // Update device status
     await device.update({
-      cpu_load:     metrics.cpu,
-      memory_usage: metrics.memPercent,
+      cpu_load:     normalizeCpuPercent(metrics.cpu),
+      memory_usage: normalizeMemPercent(metrics.memPercent),
       uptime:       metrics.uptime,
       status:       metrics.reachable ? (metrics.cpu > 90 ? 'warning' : 'online') : 'offline',
       last_polled:  new Date()
@@ -208,7 +216,7 @@ exports.summary = async (req, res) => {
     if (!device) return res.status(404).json({ success: false, message: 'Device not found' });
 
     const cached = realtimeCache.get(device.id) || {};
-    res.json({ success: true, data: { ...device.toJSON(), ...cached } });
+    res.json({ success: true, data: { ...presentDeviceMetrics(device), ...cached } });
   } catch(e) {
     res.status(500).json({ success: false, message: e.message });
   }
@@ -248,41 +256,45 @@ async function _pollMikrotikApi(device) {
     const sysRes   = resResult.status === 'fulfilled'   ? resResult.value   : {};
     const ifaceRaw = ifaceResult.status === 'fulfilled' ? ifaceResult.value : [];
 
-    // CPU — langsung dari system resource
-    const cpuLoad = sysRes.cpuLoad ?? 0;
+    // CPU — hanya cpu-load 0–100 dari /system/resource
+    const cpuLoad = normalizeCpuPercent(sysRes.cpuLoad);
 
     // Memory
     const totalMem = sysRes.totalMemory || 0;
     const freeMem  = sysRes.freeMemory  || 0;
     const usedMem  = Math.max(0, totalMem - freeMem);
-    const memPct   = totalMem > 0 ? Math.round((usedMem / totalMem) * 100) : 0;
+    const memPct   = totalMem > 0 ? normalizeMemPercent((usedMem / totalMem) * 100) : 0;
 
-    // Interfaces — ambil yang running, max 12
-    const runningIfaces = ifaceRaw.filter(i => !i.disabled).slice(0, 12);
+    // Poll uplink/physical only — summing WAN + all PPPoE makes RX/TX look symmetric.
+    const monitorIfaces = ifaceRaw
+      .filter((i) => !i.disabled && i.running && !isCustomerTunnelIface(i.name, i.type))
+      .filter((i) => isUplinkIface(i.name, i.type) || !['bridge', 'vlan', 'vrrp'].includes(String(i.type || '').toLowerCase()))
+      .sort((a, b) => {
+        const aw = isUplinkIface(a.name, a.type) ? 0 : 1;
+        const bw = isUplinkIface(b.name, b.type) ? 0 : 1;
+        return aw - bw;
+      })
+      .slice(0, 8);
     const ifaceStats = await Promise.allSettled(
-      runningIfaces.map(i => mt.getInterfaceStats(i.name).catch(() => null))
+      monitorIfaces.map(i => mt.getInterfaceStats(i.name).catch(() => null))
     );
 
-    let totalRx = 0, totalTx = 0;
     const interfaces = ifaceStats
       .map((r, idx) => {
         const s = r.status === 'fulfilled' ? r.value : null;
         if (!s) return null;
         const rxMbps = ((s.rxBitsPerSecond || 0) / 1e6);
         const txMbps = ((s.txBitsPerSecond || 0) / 1e6);
-        if (runningIfaces[idx]?.running) {
-          totalRx += rxMbps;
-          totalTx += txMbps;
-        }
         return {
-          name:    runningIfaces[idx]?.name || s.name || '',
-          type:    runningIfaces[idx]?.type || 'ether',
-          running: runningIfaces[idx]?.running || false,
+          name:    monitorIfaces[idx]?.name || s.name || '',
+          type:    monitorIfaces[idx]?.type || 'ether',
+          running: monitorIfaces[idx]?.running || false,
           rxMbps:  parseFloat(rxMbps.toFixed(3)),
           txMbps:  parseFloat(txMbps.toFixed(3))
         };
       })
       .filter(Boolean);
+    const traffic = aggregateDeviceTraffic(interfaces);
 
     // Disk — ambil langsung dari /system/resource raw
     let diskPct = 0;
@@ -308,8 +320,10 @@ async function _pollMikrotikApi(device) {
       firmware:     sysRes.version   || '',
       boardName:    sysRes.boardName || '',
       interfaces,
-      totalRxMbps:  parseFloat(totalRx.toFixed(3)),
-      totalTxMbps:  parseFloat(totalTx.toFixed(3))
+      totalRxMbps:  traffic.totalRxMbps,
+      totalTxMbps:  traffic.totalTxMbps,
+      trafficScope: traffic.trafficScope,
+      trafficIfaces: traffic.trafficIfaces
     };
   } catch(e) {
     console.error('[DevMon API]', e.message);
@@ -371,7 +385,7 @@ async function _pollSnmp(device) {
       const ifColumns = [1, 2, 8, 10, 16]; // index, descr, oper, in, out
       session.tableColumns(SNMP_OIDS.IF_TABLE, ifColumns, 50, (ifErr, table) => {
         session.close();
-        let interfaces = [], totalRx = 0, totalTx = 0;
+        let interfaces = [];
 
         if (!ifErr && table) {
           Object.values(table).forEach(row => {
@@ -379,8 +393,6 @@ async function _pollSnmp(device) {
             const txOctets = parseInt(row[16]) || 0;
             const rxMbps   = (rxOctets * 8) / 1e6;
             const txMbps   = (txOctets * 8) / 1e6;
-            totalRx += rxMbps;
-            totalTx += txMbps;
             interfaces.push({
               name:    row[2]?.toString() || '',
               running: row[8] === 1,
@@ -390,19 +402,22 @@ async function _pollSnmp(device) {
           });
         }
 
+        const traffic = aggregateDeviceTraffic(interfaces);
         resolve({
           reachable:   true,
           protocol:    'snmp',
-          cpu:         cpuLoad,
-          memPercent:  memPct,
+          cpu:         normalizeCpuPercent(cpuLoad),
+          memPercent:  normalizeMemPercent(memPct),
           memUsed:     Math.round(usedMem / 1024 / 1024),
           memTotal:    Math.round(totalMem / 1024 / 1024),
           diskPercent: 0,
           uptime:      get(SNMP_OIDS.SYSTEM_UPTIME)?.toString() || '',
           firmware:    get(SNMP_OIDS.MT_FIRMWARE)?.toString() || '',
           interfaces,
-          totalRxMbps: parseFloat(totalRx.toFixed(3)),
-          totalTxMbps: parseFloat(totalTx.toFixed(3))
+          totalRxMbps: traffic.totalRxMbps,
+          totalTxMbps: traffic.totalTxMbps,
+          trafficScope: traffic.trafficScope,
+          trafficIfaces: traffic.trafficIfaces
         });
       });
     });
@@ -442,8 +457,8 @@ async function _saveLog(deviceId, metrics) {
   try {
     await DeviceLog.create({
       device_id:    deviceId,
-      cpu_load:     metrics.cpu,
-      memory_usage: metrics.memPercent,
+      cpu_load:     normalizeCpuPercent(metrics.cpu),
+      memory_usage: normalizeMemPercent(metrics.memPercent),
       uptime:       metrics.uptime,
       status:       metrics.reachable ? (metrics.cpu > 90 ? 'warning' : 'online') : 'offline',
       interfaces:   metrics.interfaces,

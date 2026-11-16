@@ -2,6 +2,7 @@ const logger = require('../utils/logger');
 const { Device, DeviceLog, TrafficData, Notification, User } = require('../models');
 const { SNMP_OIDS, DEVICE_STATUS } = require('../config/constants');
 const { formatUptime, sanitizeSnmpValue } = require('../utils/helpers');
+const { normalizeCpuPercent, normalizeMemPercent } = require('../utils/deviceMetrics');
 
 let snmp;
 try {
@@ -84,24 +85,27 @@ class SNMPService {
 
     try {
       const data = await this.getDeviceData(session, device);
+      const cpu = data.cpuKnown ? normalizeCpuPercent(data.cpu) : null;
+      const mem = data.memoryKnown ? normalizeMemPercent(data.memory) : null;
 
       // Update device status
       const prevStatus = device.status;
-      await Device.update({
+      const patch = {
         status: DEVICE_STATUS.ONLINE,
-        cpu_load: data.cpu || 0,
-        memory_usage: data.memory || 0,
-        uptime: data.uptime || '',
-        firmware: data.firmware || device.firmware,
         last_polled: new Date()
-      }, { where: { id: device.id } });
+      };
+      if (data.uptime) patch.uptime = data.uptime;
+      if (data.firmware) patch.firmware = data.firmware;
+      if (cpu != null) patch.cpu_load = cpu;
+      if (mem != null) patch.memory_usage = mem;
+      await Device.update(patch, { where: { id: device.id } });
 
       // Log
       try {
         await DeviceLog.create({
           device_id: device.id,
-          cpu_load: data.cpu || 0,
-          memory_usage: data.memory || 0,
+          cpu_load: cpu == null ? 0 : cpu,
+          memory_usage: mem == null ? 0 : mem,
           uptime: data.uptime || '',
           status: 'online',
           interfaces: data.interfaces || null,
@@ -119,8 +123,8 @@ class SNMPService {
         this.io.to(`device_${device.id}`).emit('device:update', {
           device_id: device.id,
           status: 'online',
-          cpu_load: data.cpu,
-          memory_usage: data.memory,
+          cpu_load: cpu == null ? 0 : cpu,
+          memory_usage: mem == null ? 0 : mem,
           uptime: data.uptime,
           interfaces: data.interfaces,
           timestamp: new Date()
@@ -130,8 +134,8 @@ class SNMPService {
           device_id: device.id,
           name: device.name,
           status: 'online',
-          cpu_load: data.cpu,
-          memory_usage: data.memory
+          cpu_load: cpu == null ? 0 : cpu,
+          memory_usage: mem == null ? 0 : mem
         });
       }
 
@@ -142,9 +146,9 @@ class SNMPService {
       }
 
       // CPU overload alert
-      if (data.cpu > 90) {
+      if (cpu != null && cpu > 90) {
         await this.createAlert(device, 'cpu_overload', 'warning',
-          `CPU load on ${device.name}: ${data.cpu}%`);
+          `CPU load on ${device.name}: ${cpu}%`);
       }
 
     } catch (error) {
@@ -190,9 +194,7 @@ class SNMPService {
         SNMP_OIDS.SYSTEM_DESCR
       ];
 
-      // Add Mikrotik specific OIDs
       if (device.brand?.toLowerCase() === 'mikrotik') {
-        oids.push(SNMP_OIDS.MT_CPU_LOAD);
         oids.push(SNMP_OIDS.MT_TOTAL_MEMORY);
         oids.push(SNMP_OIDS.MT_USED_MEMORY);
         oids.push(SNMP_OIDS.MT_FIRMWARE);
@@ -201,27 +203,56 @@ class SNMPService {
       session.get(oids, (error, varbinds) => {
         if (error) return reject(error);
 
-        const data = { cpu: 0, memory: 0, uptime: '', firmware: '', interfaces: [] };
+        const data = {
+          cpu: 0, memory: 0, uptime: '', firmware: '', interfaces: [],
+          cpuKnown: false, memoryKnown: false
+        };
+        let totalMem = 0;
+        let usedMem = 0;
 
         for (const vb of varbinds) {
           if (snmp.isVarbindError(vb)) continue;
-
           const oid = vb.oid.join ? vb.oid.join('.') : vb.oid;
-          
           if (oid === SNMP_OIDS.SYSTEM_UPTIME) {
             data.uptime = formatUptime(vb.value);
-          } else if (oid === SNMP_OIDS.MT_CPU_LOAD) {
-            data.cpu = parseInt(vb.value) || 0;
           } else if (oid === SNMP_OIDS.MT_FIRMWARE) {
             data.firmware = sanitizeSnmpValue(vb) || '';
+          } else if (oid === SNMP_OIDS.MT_TOTAL_MEMORY) {
+            totalMem = parseInt(vb.value) || 0;
+          } else if (oid === SNMP_OIDS.MT_USED_MEMORY) {
+            usedMem = parseInt(vb.value) || 0;
           }
         }
+        if (totalMem > 0) {
+          data.memory = Math.round((usedMem / totalMem) * 100);
+          data.memoryKnown = true;
+        }
 
-        // Get interface data
-        this.getInterfaces(session).then(interfaces => {
-          data.interfaces = interfaces;
-          resolve(data);
-        }).catch(() => resolve(data));
+        const finish = () => {
+          this.getInterfaces(session).then((interfaces) => {
+            data.interfaces = interfaces;
+            resolve(data);
+          }).catch(() => resolve(data));
+        };
+
+        // hrProcessorLoad is 0–100 per core. Do not use mtxr health .14
+        // (on RB4011/ROS7 that OID often returns CPU MHz, e.g. 1400).
+        const loads = [];
+        try {
+          session.subtree(SNMP_OIDS.CPU_LOAD, 16, (vb) => {
+            if (!vb || snmp.isVarbindError(vb)) return;
+            const v = parseInt(vb.value);
+            if (Number.isFinite(v) && v >= 0 && v <= 100) loads.push(v);
+          }, () => {
+            if (loads.length) {
+              data.cpu = Math.round(loads.reduce((a, b) => a + b, 0) / loads.length);
+              data.cpuKnown = true;
+            }
+            finish();
+          });
+        } catch (_) {
+          finish();
+        }
       });
     });
   }
