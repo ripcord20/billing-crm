@@ -24,6 +24,29 @@ body.pp-home .page-content {
   max-width: 100%;
 }
 
+@media (max-width: 900px) {
+  body.pp-home .app-layout,
+  body.pp-home .main-content,
+  body.pp-home .page-content,
+  body.pp-home .pp-tbl-wrap,
+  body.pp-home .pp-table-scroll,
+  body.pp-home .pp-toolbar,
+  body.pp-home .pp-tabbar,
+  body.pp-home .pp-hdr,
+  body.pp-home .pp-cards {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  body.pp-home .page-content {
+    overflow-x: hidden;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  body.pp-home .pp-table tbody tr {
+    max-width: 100%;
+  }
+}
+
 body.pp-home .sidebar {
   background: rgba(16, 12, 34, 0.96);
   border-right-color: rgba(34, 211, 238, 0.28);
@@ -269,3 +292,75 @@ body.pp-home .pb-tb tbody tr:nth-child(8n+5) td { background: #ea580c !important
 body.pp-home .pb-tb tbody tr:nth-child(8n+6) td { background: #e11d48 !important; }
 body.pp-home .pb-tb tbody tr:nth-child(8n+7) td { background: #db2777 !important; }
 body.pp-home .pb-tb tbody tr:nth-child(8n+8) td { background: #7c3aed !important; }
+
+body.pp-home .pp-user-link { color: #67e8f9 !important; }
+body.pp-home .rad-banner {
+  background: rgba(8, 145, 178, 0.18) !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+  color: #e0f2fe !important;
+}
+body.pp-home .rad-banner.warn {
+  background: rgba(217, 119, 6, 0.2) !important;
+  border-color: rgba(251, 191, 36, 0.45) !important;
+  color: #fde68a !important;
+}
+body.pp-home .rad-banner.err {
+  background: rgba(225, 29, 72, 0.2) !important;
+  border-color: rgba(251, 113, 133, 0.45) !important;
+  color: #fecdd3 !important;
+}
+body.pp-home .rad-userbar h3,
+body.pp-home .rad-sid,
+body.pp-home .rad-v,
+body.pp-home .rad-kv-row b,
+body.pp-home .rad-kv-row span { color: #ffffff !important; }
+body.pp-home .rad-userbar p,
+body.pp-home .rad-k { color: #e2e8f0 !important; }
+body.pp-home .rad-card,
+body.pp-home .rad-sess {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.pp-home .rad-sid { border-bottom-color: rgba(255, 255, 255, 0.16) !important; }
+body.pp-home .rad-cause { color: #fbbf24 !important; }
+body.pp-home .rad-copy {
+  background: #100c22 !important;
+  color: #e2e8f0 !important;
+}
+
+body.pp-home .act-ico.on {
+  background: rgba(34, 211, 238, 0.22) !important;
+  border-color: #67e8f9 !important;
+  color: #67e8f9 !important;
+}
+
+body.pp-home .pp-table tbody tr.rad-inline,
+body.pp-home .pp-table tbody tr.rad-inline td {
+  background: transparent !important;
+}
+
+body.pp-home .rad-inline-box {
+  background: rgba(16, 12, 34, 0.92) !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+
+body.pp-home .rad-inline-hd strong { color: #f8fafc !important; }
+body.pp-home .rad-inline-hd span,
+body.pp-home .rad-inline-empty { color: #e2e8f0 !important; }
+
+body.pp-home .rad-inline-x {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(34, 211, 238, 0.4);
+}
+
+@media (max-width: 900px) {
+  body.pp-home .pp-table tbody tr.rad-inline {
+    background: #141028 !important;
+    border-color: rgba(34, 211, 238, 0.35) !important;
+  }
+  body.pp-home .rad-inline-box {
+    background: transparent !important;
+    border-color: transparent !important;
+  }
+}

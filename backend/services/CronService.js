@@ -115,6 +115,17 @@ class CronService {
       setTimeout(() => PppoeBulk.purgeOldPasswords(RETENSI_HARI).catch(() => {}), 20000);
     } catch (e) { console.error('[Cron] purge password pppoe:', e.message); }
 
+    // Accounting RADIUS: hapus sesi yang sudah stop > 90 hari supaya radacct
+    // tidak menuh-menuhin disk. Sesi yang masih online (acctstoptime NULL) tidak dihapus.
+    try {
+      const RadiusAcct = require('./RadiusAcctService');
+      cron.schedule('40 3 * * *', () =>
+        RadiusAcct.pruneStoppedOlderThanDays()
+          .then((r) => { if (r.deleted) console.log(`[Cron] radacct prune: ${r.deleted} sesi`); })
+          .catch((e) => console.error('[Cron] radacct prune:', e.message))
+      );
+    } catch (e) { console.error('[Cron] radacct prune:', e.message); }
+
     // Scheduler bulk PPPoE — jalankan job yang dijadwalkan (status 'scheduled')
     // begitu waktunya tiba. Tanpa ini, job yang dijadwalkan lewat opsi
     // "jalankan nanti" tidak pernah dieksekusi dan menggantung selamanya.
