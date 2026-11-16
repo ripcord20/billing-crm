@@ -71,22 +71,27 @@ async function keepAwake() {
   try { wakeLock = await navigator.wakeLock.request('screen'); } catch (_) {}
 }
 
+function formatIdInput(el) {
+  const d = String(el.value || '').replace(/\D/g, '').slice(0, 9);
+  el.value = d.replace(/(\d{3})(?=\d)/g, '$1 ');
+}
+
 function connectViewer() {
   sessionId = document.getElementById('sid').value.replace(/\D/g, '');
   password = document.getElementById('spw').value.trim();
   err.textContent = '';
   const relay = wsUrl();
-  if (!relay) { err.textContent = 'Isi alamat server relay'; return; }
+  if (!relay) { err.textContent = 'Enter server IP:port'; return; }
   localStorage.setItem('fiberix_relay', relay);
   try {
     if (window.FiberixNative && window.FiberixNative.saveRelay) window.FiberixNative.saveRelay(relay);
   } catch (_) {}
-  if (sessionId.length < 6) { err.textContent = 'ID tidak valid'; return; }
+  if (sessionId.length < 6) { err.textContent = 'Invalid ID'; return; }
   wantOpen = true;
   retry = 0;
   login.classList.add('hidden');
   desk.classList.remove('hidden');
-  deskId.textContent = sessionId;
+  deskId.textContent = sessionId.replace(/(\d{3})(?=\d)/g, '$1 ');
   openSocket();
   keepAwake();
 }
@@ -103,7 +108,7 @@ function disconnectViewer() {
 
 function openSocket() {
   if (!wantOpen) return;
-  setStatus('menyambung…');
+  setStatus('Connecting…');
   ws = new WebSocket(wsUrl());
   ws.onopen = () => {
     retry = 0;
@@ -120,10 +125,10 @@ function openSocket() {
       return;
     }
     if (msg.type === 'auth_ok') {
-      setStatus(msg.hostOnline ? 'terhubung' : 'menunggu host', msg.hostOnline ? 'ok' : 'warn');
+      setStatus(msg.hostOnline ? 'Connected' : 'Waiting for host', msg.hostOnline ? 'ok' : 'warn');
     }
     if (msg.type === 'status') {
-      setStatus(msg.hostOnline ? ('terhubung · ' + (msg.viewers || 1) + ' viewer') : 'host putus, menunggu…', msg.hostOnline ? 'ok' : 'warn');
+      setStatus(msg.hostOnline ? 'Connected' : 'Host offline, waiting…', msg.hostOnline ? 'ok' : 'warn');
     }
     if (msg.type === 'frame' && msg.data) {
       remoteW = msg.w || remoteW;
@@ -135,7 +140,7 @@ function openSocket() {
   ws.onclose = () => {
     stopPing();
     if (!wantOpen) return;
-    setStatus('putus, menyambung ulang…', 'warn');
+    setStatus('Reconnecting…', 'warn');
     const delay = Math.min(8000, 700 + retry * 500);
     retry += 1;
     reconnectTimer = setTimeout(openSocket, delay);
@@ -176,6 +181,8 @@ window.addEventListener('keyup', (e) => {
   const saved = localStorage.getItem('fiberix_relay') || nativeRelay();
   if (saved && window.displayRelay) el.value = window.displayRelay(saved);
   else if (location.protocol !== 'file:' && location.host) el.value = location.host;
+  const sid = document.getElementById('sid');
+  if (sid) sid.addEventListener('input', () => formatIdInput(sid));
 })();
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
