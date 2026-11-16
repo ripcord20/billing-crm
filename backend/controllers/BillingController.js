@@ -1,6 +1,7 @@
-const { Invoice, Payment, Customer, Package, FinancialReport, sequelize } = require('../models');
+const { Invoice, Payment, Customer, Package, FinancialReport, Wilayah, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const { generateInvoiceNumber, paginateResponse, formatCurrency } = require('../utils/helpers');
+const { parseIdList, applyCustomerScope } = require('../utils/billingScope');
 const moment = require('moment');
 const { getCompanyName } = require('../utils/companyInfo');
 
@@ -115,20 +116,33 @@ class BillingController {
   // Generate monthly invoices (HTTP endpoint)
   async generateInvoices(req, res) {
     try {
-      const { month, year, customer_ids } = req.body;
+      const { month, year, customer_ids, wilayah_ids } = req.body;
       const targetMonth = month || moment().month() + 1;
       const targetYear  = year  || moment().year();
 
-      // Generate selektif: bila customer_ids dikirim, hanya pelanggan itu yang
-      // diproses untuk periode terpilih. Kosong/absen = generate semua (lama).
-      const customerIds = Array.isArray(customer_ids)
-        ? customer_ids.map(Number).filter(Boolean)
-        : null;
-      const selective = !!(customerIds && customerIds.length);
+      // Generate selektif: customer_ids dan/atau wilayah_ids. Kosong = semua.
+      const customerIds = parseIdList(customer_ids);
+      const wilayahIds  = parseIdList(wilayah_ids);
+      const selectiveCust = !!(customerIds && customerIds.length);
+      const selectiveArea = !!(wilayahIds && wilayahIds.length);
+      const selective = selectiveCust || selectiveArea;
+
+      let wilayahLabel = '';
+      if (selectiveArea && Wilayah) {
+        try {
+          const rows = await Wilayah.findAll({
+            where: { id: { [Op.in]: wilayahIds } },
+            attributes: ['name'],
+            order: [['name', 'ASC']]
+          });
+          wilayahLabel = rows.map((w) => w.name).filter(Boolean).join(', ');
+        } catch (_) {}
+      }
 
       const result = await BillingController.generateInvoicesForPeriod(targetMonth, targetYear, {
         source: 'manual',
         customerIds: customerIds || undefined,
+        wilayahIds: wilayahIds || undefined,
       });
 
       // Bangun pesan yang lebih informatif — terutama saat hasil = 0,
@@ -138,20 +152,22 @@ class BillingController {
       let message;
       if (result.created > 0) {
         message = `Berhasil generate ${result.created} invoice` +
-          (selective ? ` untuk pelanggan terpilih (periode ${periodeLabel})` : '') +
+          (selectiveArea && wilayahLabel ? ` untuk wilayah ${wilayahLabel}` : '') +
+          (selectiveCust && !selectiveArea ? ` untuk pelanggan terpilih (periode ${periodeLabel})` : '') +
           (result.skipped > 0 ? `, ${result.skipped} dilewati (sudah ada/tanpa paket)` : '');
       } else if (selective) {
-        // Pesan khusus mode selektif — fokus ke alasan per-pelanggan terpilih.
+        // Pesan khusus mode selektif — fokus ke alasan per-pelanggan / wilayah.
         const d = result.diagnostics || {};
         const det = (d.skipped_details || []);
+        const who = selectiveArea ? (wilayahLabel ? `wilayah ${wilayahLabel}` : 'wilayah terpilih') : 'pelanggan terpilih';
         if (d.processed === 0 && det.length === 0) {
-          message = `Pelanggan terpilih tidak ditemukan / tidak eligible untuk periode ${periodeLabel}.`;
+          message = `${who.charAt(0).toUpperCase() + who.slice(1)} tidak ditemukan / tidak eligible untuk periode ${periodeLabel}.`;
         } else if (det.length) {
           const first = det[0];
-          message = `Tidak ada invoice ter-generate untuk pelanggan terpilih. ` +
+          message = `Tidak ada invoice ter-generate untuk ${who}. ` +
             `Contoh alasan: ${first.name || first.customer_id} — ${first.detail || first.reason}.`;
         } else {
-          message = `Tidak ada invoice ter-generate untuk pelanggan terpilih di periode ${periodeLabel}.`;
+          message = `Tidak ada invoice ter-generate untuk ${who} di periode ${periodeLabel}.`;
         }
       } else {
         const d = result.diagnostics || {};
@@ -198,12 +214,9 @@ class BillingController {
   static async generateInvoicesForPeriod(targetMonth, targetYear, opts = {}) {
     const source = opts.source || 'manual';
 
-    // Filter opsional ke pelanggan TERTENTU (generate selektif). Bila diisi,
-    // hanya pelanggan dengan id di daftar ini yang diproses — dipakai fitur
-    // "Generate invoice pelanggan tertentu sesuai periode".
-    const customerIdFilter = Array.isArray(opts.customerIds) && opts.customerIds.length
-      ? opts.customerIds.map(Number).filter(Boolean)
-      : null;
+    // Filter opsional: pelanggan tertentu dan/atau wilayah operasional (kampung).
+    const customerIdFilter = parseIdList(opts.customerIds);
+    const wilayahIdFilter  = parseIdList(opts.wilayahIds);
 
     // Load PPN settings sekali untuk seluruh batch generate
     const { loadTaxSettings, computeTax } = require('../utils/taxHelper');
@@ -212,19 +225,22 @@ class BillingController {
     // Diagnostic: hitung customer di DB by status untuk troubleshooting
     // kalau hasil generate = 0 (mis-konfigurasi paling sering: status tidak eligible
     // atau customer belum dipasangkan ke package)
-    const allCustomersCount = await Customer.count();
+    const scopeOpts = { customerIds: customerIdFilter, wilayahIds: wilayahIdFilter };
+    const allCustomersCount = await Customer.count({ where: applyCustomerScope({}, scopeOpts) });
     const eligibleCount     = await Customer.count({
-      where: { status: { [Op.in]: INVOICE_ELIGIBLE_STATUSES } }
+      where: applyCustomerScope({ status: { [Op.in]: INVOICE_ELIGIBLE_STATUSES } }, scopeOpts)
     });
     // Breakdown per-status untuk transparansi (mis. user lihat ada berapa yg isolated)
-    const activeCount       = await Customer.count({ where: { status: 'active'    } });
-    const isolatedCount     = await Customer.count({ where: { status: 'isolated'  } });
-    const suspendedCount    = await Customer.count({ where: { status: 'suspended' } });
-    const inactiveCount     = await Customer.count({ where: { status: 'inactive'  } });
+    const activeCount       = await Customer.count({ where: applyCustomerScope({ status: 'active'    }, scopeOpts) });
+    const isolatedCount     = await Customer.count({ where: applyCustomerScope({ status: 'isolated'  }, scopeOpts) });
+    const suspendedCount    = await Customer.count({ where: applyCustomerScope({ status: 'suspended' }, scopeOpts) });
+    const inactiveCount     = await Customer.count({ where: applyCustomerScope({ status: 'inactive'  }, scopeOpts) });
 
     // Get eligible customers (active + isolated + suspended; inactive tidak digenerate)
-    const eligibleWhere = { status: { [Op.in]: INVOICE_ELIGIBLE_STATUSES } };
-    if (customerIdFilter) eligibleWhere.id = { [Op.in]: customerIdFilter };
+    const eligibleWhere = applyCustomerScope(
+      { status: { [Op.in]: INVOICE_ELIGIBLE_STATUSES } },
+      scopeOpts
+    );
     const customers = await Customer.findAll({
       where: eligibleWhere,
       include: [{ model: Package, as: 'package' }]
@@ -243,8 +259,10 @@ class BillingController {
     const skippedDetails = [];
 
     // Customer yang TIDAK eligible (inactive) juga dilaporkan agar transparan.
-    const ineligibleWhere = { status: { [Op.notIn]: INVOICE_ELIGIBLE_STATUSES } };
-    if (customerIdFilter) ineligibleWhere.id = { [Op.in]: customerIdFilter };
+    const ineligibleWhere = applyCustomerScope(
+      { status: { [Op.notIn]: INVOICE_ELIGIBLE_STATUSES } },
+      scopeOpts
+    );
     const ineligibleCustomers = await Customer.findAll({
       where: ineligibleWhere,
       attributes: ['id', 'customer_id', 'name', 'status'],
@@ -445,7 +463,9 @@ class BillingController {
         skipped_not_started:    skippedNotStarted,
         skipped_failed:         skippedFailed,
         // Daftar lengkap customer yang dilewati + alasannya (untuk UI)
-        skipped_details:        skippedDetails
+        skipped_details:        skippedDetails,
+        wilayah_ids:            wilayahIdFilter || null,
+        customer_ids:           customerIdFilter || null
       }
     };
   }
@@ -2567,6 +2587,54 @@ class BillingController {
   }
 
   /**
+   * Daftar wilayah operasional untuk picker Generate Invoice.
+   */
+  async listGenerateWilayah(req, res) {
+    try {
+      if (!Wilayah) {
+        return res.json({ success: true, data: [] });
+      }
+      const rows = await Wilayah.findAll({
+        where: { status: 'active' },
+        attributes: ['id', 'name', 'code'],
+        order: [['name', 'ASC']]
+      });
+      const counts = await Customer.findAll({
+        attributes: [
+          'wilayah_id',
+          [sequelize.fn('COUNT', sequelize.col('id')), 'eligible']
+        ],
+        where: {
+          status: { [Op.in]: INVOICE_ELIGIBLE_STATUSES },
+          wilayah_id: { [Op.ne]: null }
+        },
+        group: ['wilayah_id'],
+        raw: true
+      });
+      const countMap = {};
+      counts.forEach((r) => { countMap[r.wilayah_id] = parseInt(r.eligible, 10) || 0; });
+      const unassigned = await Customer.count({
+        where: {
+          status: { [Op.in]: INVOICE_ELIGIBLE_STATUSES },
+          wilayah_id: { [Op.is]: null }
+        }
+      });
+      res.json({
+        success: true,
+        data: rows.map((w) => ({
+          id: w.id,
+          name: w.name,
+          code: w.code,
+          eligible: countMap[w.id] || 0
+        })),
+        unassigned_eligible: unassigned
+      });
+    } catch (e) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  }
+
+  /**
    * Preview untuk modal Generate Invoice — kembalikan jumlah customer eligible,
    * berapa di antaranya yang punya package, dan berapa yang sudah punya invoice
    * di periode bulan/tahun yang diminta.
@@ -2574,39 +2642,47 @@ class BillingController {
    * Eligible status = INVOICE_ELIGIBLE_STATUSES (active + isolated + suspended).
    * Customer 'inactive' tidak ikut karena dianggap sudah berhenti berlangganan.
    *
-   * Berguna agar user tahu sebelum klik Generate apakah ada customer yang
-   * akan diproses, dan jika hasilnya 0 mereka tahu kenapa.
-   *
    * Query:
    *   - month, year (opsional, kalau ada akan hitung skipped_existing untuk periode itu)
+   *   - wilayah_ids (opsional, filter kampung operasional)
    */
   async previewGenerate(req, res) {
     try {
       const month = req.query.month ? parseInt(req.query.month) : null;
       const year  = req.query.year  ? parseInt(req.query.year)  : null;
+      const wilayahIds = parseIdList(req.query.wilayah_ids);
+      const scopeOpts = { wilayahIds };
 
-      const totalCustomers    = await Customer.count();
+      const totalCustomers    = await Customer.count({ where: applyCustomerScope({}, scopeOpts) });
       // Breakdown per-status untuk tampilan rinci di modal
-      const activeCount       = await Customer.count({ where: { status: 'active'    } });
-      const isolatedCount     = await Customer.count({ where: { status: 'isolated'  } });
-      const suspendedCount    = await Customer.count({ where: { status: 'suspended' } });
-      const inactiveCount     = await Customer.count({ where: { status: 'inactive'  } });
+      const activeCount       = await Customer.count({ where: applyCustomerScope({ status: 'active'    }, scopeOpts) });
+      const isolatedCount     = await Customer.count({ where: applyCustomerScope({ status: 'isolated'  }, scopeOpts) });
+      const suspendedCount    = await Customer.count({ where: applyCustomerScope({ status: 'suspended' }, scopeOpts) });
+      const inactiveCount     = await Customer.count({ where: applyCustomerScope({ status: 'inactive'  }, scopeOpts) });
 
       const eligibleCustomers = await Customer.count({
-        where: { status: { [Op.in]: INVOICE_ELIGIBLE_STATUSES } }
+        where: applyCustomerScope({ status: { [Op.in]: INVOICE_ELIGIBLE_STATUSES } }, scopeOpts)
       });
       const eligibleWithPkg   = await Customer.count({
-        where: {
+        where: applyCustomerScope({
           status: { [Op.in]: INVOICE_ELIGIBLE_STATUSES },
           package_id: { [Op.not]: null }
-        }
+        }, scopeOpts)
       });
 
       let existingInPeriod = 0;
       if (month && year) {
-        existingInPeriod = await Invoice.count({
-          where: { period_month: month, period_year: year }
-        });
+        const invWhere = { period_month: month, period_year: year };
+        if (wilayahIds) {
+          const custs = await Customer.findAll({
+            where: applyCustomerScope({}, scopeOpts),
+            attributes: ['id'],
+            raw: true
+          });
+          const ids = custs.map((c) => c.id);
+          invWhere.customer_id = { [Op.in]: ids.length ? ids : [0] };
+        }
+        existingInPeriod = await Invoice.count({ where: invWhere });
       }
 
       // Estimasi: eligible-with-package dikurangi yang sudah punya invoice di
@@ -2639,6 +2715,7 @@ class BillingController {
 
           existing_in_period:     existingInPeriod,
           estimated_to_generate:  estimatedToGenerate,
+          wilayah_ids:            wilayahIds || null,
           period: (month && year) ? `${month}/${year}` : null
         }
       });
