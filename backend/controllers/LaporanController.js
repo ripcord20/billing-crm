@@ -1,5 +1,6 @@
 const { sequelize } = require('../models');
 const moment = require('moment');
+const { computeOutstanding } = require('../utils/keuanganSisa');
 
 class LaporanController {
 
@@ -347,19 +348,15 @@ class LaporanController {
           { replacements:{start,end}, type: sequelize.QueryTypes.SELECT }
         );
 
-        // Outstanding hutang & piutang all-time
-        const [hOut] = await sequelize.query(
-          `SELECT COALESCE(SUM(amount),0) AS total FROM keuangan
-           WHERE type='hutang' AND (status='belum_lunas' OR status='cicilan')`,
+        // Outstanding hutang & piutang all-time (pokok − cicilan pihak yang sama)
+        const debtRows = await sequelize.query(
+          `SELECT id, type, category, description, amount, party_name, status, notes
+           FROM keuangan WHERE type IN ('hutang','piutang')`,
           { type: sequelize.QueryTypes.SELECT }
         );
-        const [pOut] = await sequelize.query(
-          `SELECT COALESCE(SUM(amount),0) AS total FROM keuangan
-           WHERE type='piutang' AND (status='belum_lunas' OR status='cicilan')`,
-          { type: sequelize.QueryTypes.SELECT }
-        );
-        keuData.hutangOutstanding  = parseFloat(hOut?.total||0);
-        keuData.piutangOutstanding = parseFloat(pOut?.total||0);
+        const outstanding = computeOutstanding(debtRows);
+        keuData.hutangOutstanding  = outstanding.hutang.remaining;
+        keuData.piutangOutstanding = outstanding.piutang.remaining;
       } catch(keuErr) {
         // Tabel keuangan mungkin belum ada, skip
         console.warn('[LaporanController] keuangan table not available:', keuErr.message);

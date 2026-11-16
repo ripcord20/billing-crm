@@ -205,6 +205,34 @@
       .main-layout { grid-template-columns:1fr !important; }
       .form-card { position:static !important; }
       .charts-row { grid-template-columns:1fr !important; }
+      .keu-table-wrap { overflow-x:hidden !important; }
+      .keu-table thead, .keu-table tfoot { display:none; }
+      .keu-table, .keu-table tbody, .keu-table tr, .keu-table td {
+        display:block; width:100%; box-sizing:border-box;
+      }
+      .keu-table tbody tr {
+        border:1px solid var(--d-border); border-radius:14px;
+        margin-bottom:10px; padding:6px 4px; background:#fff;
+      }
+      .keu-table tbody tr:hover td { background:transparent; }
+      .keu-table td {
+        border:none; padding:7px 14px;
+        display:flex; align-items:center; justify-content:space-between; gap:12px;
+        text-align:right; min-width:0;
+      }
+      .keu-table td::before {
+        content:attr(data-label); font-size:10.5px; font-weight:700;
+        color:var(--d-muted); text-transform:uppercase; letter-spacing:.04em;
+        text-align:left; flex-shrink:0;
+      }
+      .keu-table td > * { min-width:0; }
+      .keu-table td[data-label="Kategori / Deskripsi"] { align-items:flex-start; }
+      .keu-table td[data-label="Aksi"] { justify-content:flex-end; }
+      .keu-table td[data-label=""] { justify-content:center; text-align:center; }
+      .keu-table td[data-label=""]::before,
+      .keu-table td[colspan]::before { display:none; }
+      .keu-table td[colspan] { display:block; text-align:center; }
+      .keu-table tbody tr:has(td[colspan]) { border:none; margin:0; padding:0; background:transparent; }
     }
     @media(max-width:640px){
       .fin-grid { grid-template-columns:1fr !important;gap:0 !important; }
@@ -235,6 +263,17 @@
     .pay-method .mpill { text-align:center; padding:8px 4px; border-radius:10px; border:1.5px solid var(--d-border); font-size:12px; font-weight:700; cursor:pointer; background:#fff; color:var(--d-muted); font-family:inherit; }
     .pay-method .mpill.on { border-color:#1a6ef5; background:#eff6ff; color:#1a6ef5; }
     .keu-no { color:var(--d-muted); font-size:12px; font-variant-numeric:tabular-nums; }
+    .keu-sisa {
+      display:inline-flex; align-items:center;
+      padding:2px 8px; border-radius:999px;
+      background:rgba(196,80,9,.14); color:#c2410c;
+      font-family:'DM Mono',monospace; font-weight:800; font-size:12px;
+    }
+    .keu-sisa.done { background:rgba(0,122,94,.14); color:#007a5e; }
+    body.keu-home .keu-sisa {
+      background:rgba(255,255,255,.22) !important;
+      color:#fff !important; -webkit-text-fill-color:#fff;
+    }
 
     [data-theme="dark"] {
       --d-bg:#0b1220; --d-card:#121a2b; --d-border:#243049;
@@ -587,6 +626,7 @@
             <div class="form-group">
               <label class="form-label">Nama Pihak <span>*</span></label>
               <input type="text" id="f-party" class="form-control" placeholder="Nama vendor / pelanggan...">
+              <div style="font-size:11px;color:var(--d-muted);margin-top:6px;line-height:1.4">Cicilan: pilih kategori Cicil hutang, isi nama pihak sama dengan pinjaman. Sisa hutang dihitung otomatis.</div>
             </div>
             <div class="form-row">
               <div class="form-group">
@@ -648,7 +688,7 @@
               <button class="filter-tab" data-filter="modal"       onclick="setFilter('modal',this)"><span style="width:7px;height:7px;border-radius:50%;background:#1a6ef5;display:inline-block;margin-right:5px;vertical-align:middle"></span>Modal</button>
             </div>
 
-            <div style="overflow-x:auto">
+            <div class="keu-table-wrap" style="overflow-x:auto">
               <table class="keu-table">
                 <thead>
                   <tr>
@@ -660,11 +700,12 @@
                     <th>Status</th>
                     <th>Cara bayar</th>
                     <th style="text-align:right">Jumlah</th>
+                    <th style="text-align:right">Sisa hutang</th>
                     <th style="width:80px;text-align:center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody id="keu-tbody">
-                  <tr><td colspan="9" style="text-align:center;padding:32px;color:var(--d-muted)">Memuat...</td></tr>
+                  <tr><td colspan="10" data-label="" style="text-align:center;padding:32px;color:var(--d-muted)">Memuat...</td></tr>
                 </tbody>
                 <tfoot id="keu-tfoot"></tfoot>
               </table>
@@ -748,7 +789,7 @@ const MONTHS_ID  = ['','Januari','Februari','Maret','April','Mei','Juni','Juli',
 const CAT_DEFAULT = {
   pemasukan:   ['Pembayaran Pelanggan','Jasa','Lain-lain'],
   pengeluaran: ['Operasional','Gaji','Sewa','Listrik','Internet','Peralatan','Transportasi','Lain-lain'],
-  hutang:      ['Pinjaman Bank','Pinjaman Vendor','Lain-lain'],
+  hutang:      ['Pinjaman Bank','Pinjaman Vendor','Cicil hutang','Lain-lain'],
   piutang:     ['Tagihan Pelanggan','Deposit','Lain-lain'],
   modal:       ['Modal Awal','Investasi','Lain-lain']
 };
@@ -1152,13 +1193,20 @@ async function loadTable(){
   } catch(e){ console.error('[Keuangan table]',e.message); }
 }
 
+function sisaCell(r, isDebt){
+  if(!isDebt || r.remaining_amount==null) return '<span style="color:#d0d8e8">—</span>';
+  const left = +r.remaining_amount;
+  const cls = left>0 ? 'keu-sisa' : 'keu-sisa done';
+  return `<span class="${cls}">${left>0?fmtRp(left):'Lunas'}</span>`;
+}
+
 function renderTable(rows, total){
   el('tbl-count').textContent = total + ' data';
   const tbody = el('keu-tbody');
   const tfoot = el('keu-tfoot');
   if (tfoot) tfoot.innerHTML = '';
   if(!rows.length){
-    tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;padding:36px;color:var(--d-muted)">
+    tbody.innerHTML=`<tr><td colspan="10" data-label="" style="text-align:center;padding:36px;color:var(--d-muted)">
       <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 10px;display:block;opacity:.3"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
       <p style="font-size:13px;font-weight:600">Belum ada transaksi</p>
     </td></tr>`;
@@ -1176,24 +1224,33 @@ function renderTable(rows, total){
       : '';
     const amtColor = r.type==='pemasukan'||r.type==='modal'?'#007a5e':r.type==='pengeluaran'?'#c0183a':r.type==='piutang'?'#0077b6':'#b45309';
     const amtSign  = r.type==='pemasukan'||r.type==='modal'?'+':r.type==='pengeluaran'?'-':'';
+    const paidHint = isDebt && +r.paid_amount>0
+      ? `<div style="font-size:10.5px;margin-top:3px;font-weight:700">Terbayar ${fmtRp(+r.paid_amount)} · sisa ${fmtRp(+r.remaining_amount||0)}</div>`
+      : '';
     return`<tr>
-      <td class="keu-no">${no}</td>
-      <td style="white-space:nowrap;font-size:11.5px;color:var(--d-muted)">${fmtDate(r.date)}</td>
-      <td><span class="type-badge tb-${r.type}">${TYPE_LABEL[r.type]||r.type}</span></td>
-      <td>
-        <div style="font-weight:600;font-size:12.5px">${r.description||'—'}</div>
-        <div style="font-size:11px;color:var(--d-muted)">${r.category||''}</div>
+      <td class="keu-no" data-label="No">${no}</td>
+      <td data-label="Tgl" style="white-space:nowrap;font-size:11.5px;color:var(--d-muted)">${fmtDate(r.date)}</td>
+      <td data-label="Tipe"><span class="type-badge tb-${r.type}">${TYPE_LABEL[r.type]||r.type}</span></td>
+      <td data-label="Kategori / Deskripsi">
+        <div style="text-align:right;min-width:0">
+          <div style="font-weight:600;font-size:12.5px;overflow-wrap:anywhere">${r.description||'—'}</div>
+          <div style="font-size:11px;color:var(--d-muted)">${r.category||''}</div>
+          ${paidHint}
+        </div>
       </td>
-      <td class="col-hide">
-        <div style="font-size:12px">${r.party_name||r.ref_number||'—'}</div>
-        ${r.due_date?`<div style="font-size:10.5px;color:var(--d-muted)">Due: ${fmtDate(r.due_date)}</div>`:''}
+      <td class="col-hide" data-label="Pihak / Ref">
+        <div style="text-align:right;min-width:0">
+          <div style="font-size:12px">${r.party_name||r.ref_number||'—'}</div>
+          ${r.due_date?`<div style="font-size:10.5px;color:var(--d-muted)">Due: ${fmtDate(r.due_date)}</div>`:''}
+        </div>
       </td>
-      <td>${statusHtml}</td>
-      <td style="font-size:11.5px;color:var(--d-muted)">${PAY_LBL[r.payment_method]||r.payment_method||'—'}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:700;font-size:13px;color:${amtColor}">
+      <td data-label="Status">${statusHtml}</td>
+      <td data-label="Cara bayar" style="font-size:11.5px;color:var(--d-muted)">${PAY_LBL[r.payment_method]||r.payment_method||'—'}</td>
+      <td data-label="Jumlah" style="text-align:right;font-family:'DM Mono',monospace;font-weight:700;font-size:13px;color:${amtColor}">
         ${amtSign}${fmtRp(+r.amount)}
       </td>
-      <td style="text-align:center">
+      <td data-label="Sisa hutang" style="text-align:right">${sisaCell(r, isDebt)}</td>
+      <td data-label="Aksi" style="text-align:center">
         <div style="display:flex;gap:4px;justify-content:center;align-items:center">
           ${lunasBtn}
           <button class="btn-icon btn-edit" onclick="editRecord(${r.id})" title="Edit">
@@ -1208,9 +1265,10 @@ function renderTable(rows, total){
   }).join('');
   const pageTotal = rows.reduce((s,r)=>s+(+r.amount||0),0);
   if (tfoot) tfoot.innerHTML = `<tr class="keu-foot">
-    <td class="keu-no">${rows.length}</td>
-    <td colspan="6" style="font-size:12px;font-weight:700;color:var(--d-muted)">Halaman ini</td>
-    <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:800;color:var(--d-text)">${fmtRp(pageTotal)}</td>
+    <td class="keu-no" data-label="No">${rows.length}</td>
+    <td colspan="6" data-label="" style="font-size:12px;font-weight:700;color:var(--d-muted)">Halaman ini</td>
+    <td data-label="Jumlah" style="text-align:right;font-family:'DM Mono',monospace;font-weight:800;color:var(--d-text)">${fmtRp(pageTotal)}</td>
+    <td data-label="Sisa hutang"></td>
     <td></td>
   </tr>`;
 }
