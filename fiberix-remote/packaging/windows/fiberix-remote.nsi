@@ -1,21 +1,24 @@
 Unicode true
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
+!include "nsDialogs.nsh"
 
 Name "Fiberix Remote"
+BrandingText "Skynet"
 OutFile "..\..\dist\FiberixRemote-Setup.exe"
 InstallDir "$PROGRAMFILES64\Fiberix Remote"
 InstallDirRegKey HKLM "Software\FiberixRemote" "InstallDir"
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
+SetOverwrite on
 
-VIProductVersion "1.0.0.0"
+VIProductVersion "1.0.1.0"
 VIAddVersionKey /LANG=1033 "ProductName" "Fiberix Remote"
-VIAddVersionKey /LANG=1033 "CompanyName" "Fiberix"
+VIAddVersionKey /LANG=1033 "CompanyName" "Skynet"
 VIAddVersionKey /LANG=1033 "FileDescription" "Fiberix Remote Host Setup"
-VIAddVersionKey /LANG=1033 "FileVersion" "1.0.0"
-VIAddVersionKey /LANG=1033 "ProductVersion" "1.0.0"
-VIAddVersionKey /LANG=1033 "LegalCopyright" "Copyright (C) Fiberix"
+VIAddVersionKey /LANG=1033 "FileVersion" "1.0.1"
+VIAddVersionKey /LANG=1033 "ProductVersion" "1.0.1"
+VIAddVersionKey /LANG=1033 "LegalCopyright" "Copyright (C) Skynet"
 VIAddVersionKey /LANG=1033 "OriginalFilename" "FiberixRemote-Setup.exe"
 
 !define MUI_ABORTWARNING
@@ -33,7 +36,21 @@ VIAddVersionKey /LANG=1033 "OriginalFilename" "FiberixRemote-Setup.exe"
 !insertmacro MUI_LANGUAGE "Indonesian"
 !insertmacro MUI_LANGUAGE "English"
 
+!macro StopRunningHost
+  InitPluginsDir
+  SetOutPath "$PLUGINSDIR"
+  File "stop-fiberix.cmd"
+  nsExec::ExecToLog '"$PLUGINSDIR\stop-fiberix.cmd"'
+  Sleep 1500
+!macroend
+
+Function .onInit
+  !insertmacro StopRunningHost
+FunctionEnd
+
 Section "Host" SecHost
+  !insertmacro StopRunningHost
+
   SetOutPath "$INSTDIR\runtime"
   File "..\..\dist\win\runtime\node.exe"
 
@@ -73,12 +90,13 @@ Section "Host" SecHost
   WriteRegStr HKLM "Software\FiberixRemote" "InstallDir" "$INSTDIR"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FiberixRemote" "DisplayName" "Fiberix Remote"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FiberixRemote" "UninstallString" "$INSTDIR\Uninstall.exe"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FiberixRemote" "DisplayVersion" "1.0.0"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FiberixRemote" "Publisher" "Fiberix"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FiberixRemote" "DisplayVersion" "1.0.1"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FiberixRemote" "Publisher" "Skynet"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 SectionEnd
 
 Section "Uninstall"
+  !insertmacro StopRunningHost
   Delete "$DESKTOP\Fiberix Remote.lnk"
   Delete "$SMPROGRAMS\Fiberix Remote\Fiberix Remote.lnk"
   RMDir "$SMPROGRAMS\Fiberix Remote"

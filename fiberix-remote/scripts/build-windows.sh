@@ -24,11 +24,17 @@ rm -rf dist/win/stage/node_modules/ws
 cp -a node_modules/ws dist/win/stage/node_modules/ws
 
 CERT_DIR="packaging/windows/certs"
-if [[ ! -f "$CERT_DIR/codesign.key" ]]; then
+NEED_CERT=1
+if [[ -f "$CERT_DIR/codesign.crt" ]]; then
+  subj=$(openssl x509 -in "$CERT_DIR/codesign.crt" -noout -subject 2>/dev/null || true)
+  if echo "$subj" | grep -q "Skynet"; then NEED_CERT=0; fi
+fi
+if [[ "$NEED_CERT" = 1 ]]; then
+  rm -f "$CERT_DIR/codesign.key" "$CERT_DIR/codesign.crt"
   openssl req -new -x509 -newkey rsa:4096 -sha256 -days 825 -nodes \
     -keyout "$CERT_DIR/codesign.key" \
     -out "$CERT_DIR/codesign.crt" \
-    -subj "/CN=Fiberix Remote/O=Fiberix/C=ID" \
+    -subj "/CN=Skynet/O=Skynet/C=ID" \
     -addext "extendedKeyUsage=codeSigning" \
     -addext "keyUsage=digitalSignature"
 fi
@@ -40,7 +46,7 @@ mv -f "$SIGNED" "$UNSIGNED"
 
 SIGN_ARGS=(
   sign -certs "$CERT_DIR/codesign.crt" -key "$CERT_DIR/codesign.key"
-  -n "Fiberix Remote" -i "https://github.com/ripcord20/billing-crm"
+  -n "Fiberix Remote" -i "https://skynet"
   -in "$UNSIGNED" -out "$SIGNED"
 )
 if osslsigncode "${SIGN_ARGS[@]}" -t http://timestamp.digicert.com; then
@@ -50,5 +56,5 @@ else
   osslsigncode "${SIGN_ARGS[@]}"
 fi
 rm -f "$UNSIGNED"
-osslsigncode verify -in "$SIGNED" || true
+timeout 20 osslsigncode verify -in "$SIGNED" || true
 ls -lh "$SIGNED" dist/win/runtime/node.exe
