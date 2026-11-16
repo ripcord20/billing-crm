@@ -109,6 +109,7 @@ app.use(helmet({
       connectSrc: [
         "'self'", "ws:", "wss:",
         "cdn.jsdelivr.net", "unpkg.com",
+        "tessdata.projectnaptha.com",
         "*.tile.openstreetmap.org", "*.basemaps.cartocdn.com",
         "server.arcgisonline.com", "*.arcgisonline.com",
         "nominatim.openstreetmap.org",
@@ -124,7 +125,8 @@ app.use(helmet({
         "passport.duitku.com", "sandbox.duitku.com",
         // Halaman checkout Tripay (bila dibuka via iframe/redirect).
         "*.tripay.co.id", "tripay.co.id"
-      ]
+      ],
+      workerSrc: ["'self'", "blob:", "cdn.jsdelivr.net"]
     }
   } : false
 }));

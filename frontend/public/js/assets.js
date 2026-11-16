@@ -215,7 +215,15 @@ function loadTesseract() {
 
 async function ocrLabelImage(file) {
   const Tesseract = await loadTesseract();
-  const result = await Tesseract.recognize(file, 'eng', { logger: () => {} });
+  const result = await Promise.race([
+    Tesseract.recognize(file, 'eng', {
+      logger: () => {},
+      workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+      corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
+      langPath: 'https://tessdata.projectnaptha.com/4.0.0'
+    }),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('OCR timeout')), 25000))
+  ]);
   return (result && result.data && result.data.text) || '';
 }
 
