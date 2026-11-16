@@ -1,11 +1,25 @@
 /**
  * HotspotService.js
- * Semua operasi MikroTik Hotspot via REST API (RouterOS v7+)
- * Dipanggil oleh HotspotController
+ * Hotspot voucher/user: FreeRADIUS (radcheck) — bukan /ip/hotspot/user.
+ * Server, profile, host, cookie, IP binding, walled-garden tetap di MikroTik.
+ * Isolir captive portal (isolir-guest) tidak dikelola di sini.
  */
 
 const { getMikrotikInstance, MikrotikService } = require('./MikrotikService');
 const logger = require('../utils/logger');
+const HotspotRadiusStore = require('./HotspotRadiusStore');
+const {
+  isIsolirHotspotUser,
+  isIsolirHotspotProfile,
+  mergeRadiusService,
+  shouldAddHotspotToRadiusClient,
+  canEnableHotspotRadius,
+  mergeUsage,
+  toApiUser
+} = require('../utils/hotspotRadius');
+
+const _radiusReadyHosts = new Set();
+const _migrateLocks = new Map();
 
 class HotspotService {
   /**
@@ -14,10 +28,14 @@ class HotspotService {
    *   - MikrotikService instance (dari getMikrotikInstanceByDevice / getMikrotikInstance)
    *   - Config object { host, port, username, password, useSSL }
    *   - null → pakai default instance dari env
+   * @param {object} [opts]
+   *   - radiusStore: inject untuk tes
    */
-  constructor(configOrInstance = null) {
+  constructor(configOrInstance = null, opts = {}) {
     if (configOrInstance instanceof MikrotikService) {
       // Reuse instance — paling efisien, kalau caller sudah resolve instance
+      this.mt = configOrInstance;
+    } else if (configOrInstance && typeof configOrInstance.get === 'function' && typeof configOrInstance.put === 'function') {
       this.mt = configOrInstance;
     } else if (configOrInstance) {
       // Config object → buat instance baru
@@ -26,6 +44,137 @@ class HotspotService {
       // Fallback ke default
       this.mt = getMikrotikInstance();
     }
+    this.radiusStore = (opts && opts.radiusStore) || HotspotRadiusStore.shared();
+  }
+
+  _deviceId() {
+    const id = this.mt && this.mt.deviceId;
+    return id != null && id !== '' ? Number(id) : null;
+  }
+
+  _hostKey() {
+    return String((this.mt && this.mt.host) || 'default');
+  }
+
+  async _prepareRadius() {
+    await this.radiusStore.ensureSchema();
+    await this.ensureHotspotRadiusOnRouter();
+    await this.migrateLocalHotspotUsers();
+  }
+
+  /**
+   * Nyalakan use-radius di profile hotspot voucher (bukan isolir) dan
+   * tambah service=hotspot pada client RADIUS yang sudah dipakai PPPoE.
+   * Tidak menambah server RADIUS baru, tidak mengubah /ppp aaa.
+   */
+  async ensureHotspotRadiusOnRouter() {
+    const key = this._hostKey();
+    if (_radiusReadyHosts.has(key)) return { skipped: true };
+
+    const rads = await this.mt.get('/radius').catch(() => []);
+    const list = Array.isArray(rads) ? rads : [];
+    if (!canEnableHotspotRadius(list)) {
+      throw new Error(
+        'RADIUS client belum ada di MikroTik (butuh /radius dengan service ppp atau hotspot). ' +
+        'Hotspot full RADIUS memakai client RADIUS yang sama dengan PPPoE — tidak membuat server baru.'
+      );
+    }
+    for (const r of list) {
+      if (!shouldAddHotspotToRadiusClient(r) || !r['.id']) continue;
+      const next = mergeRadiusService(r.service);
+      await this.mt.patch(`/radius/${r['.id']}`, { service: next });
+      logger.info(`[Hotspot] RADIUS client ${r['.id']} service → ${next}`);
+    }
+
+    const profiles = await this.mt.get('/ip/hotspot/profile').catch(() => []);
+    for (const p of Array.isArray(profiles) ? profiles : []) {
+      if (!p['.id'] || isIsolirHotspotProfile(p)) continue;
+      const already = p['use-radius'] === 'yes' && p['radius-accounting'] === 'yes';
+      if (already) continue;
+      const body = { 'use-radius': 'yes', 'radius-accounting': 'yes' };
+      try {
+        await this.mt.patch(`/ip/hotspot/profile/${p['.id']}`, {
+          ...body,
+          'radius-interim-update': '00:04:00'
+        });
+      } catch (_) {
+        await this.mt.patch(`/ip/hotspot/profile/${p['.id']}`, body);
+      }
+    }
+
+    _radiusReadyHosts.add(key);
+    return { ok: true };
+  }
+
+  /**
+   * Impor /ip/hotspot/user lokal ke RADIUS lalu hapus dari router,
+   * kecuali isolir-guest / profile isolir.
+   */
+  async migrateLocalHotspotUsers() {
+    const key = this._hostKey();
+    const inflight = _migrateLocks.get(key);
+    if (inflight && typeof inflight.then === 'function') return inflight;
+    const job = this._migrateLocalHotspotUsersNow().finally(() => {
+      if (_migrateLocks.get(key) === job) _migrateLocks.delete(key);
+    });
+    _migrateLocks.set(key, job);
+    return job;
+  }
+
+  async _migrateLocalHotspotUsersNow() {
+    const locals = await this.mt.get('/ip/hotspot/user').catch(() => []);
+    const list = Array.isArray(locals) ? locals : [];
+    let imported = 0;
+    let skipped = 0;
+    let removed = 0;
+    for (const u of list) {
+      const mapped = {
+        name: u.name || '',
+        password: u.password || '',
+        profile: u.profile || 'default',
+        server: u.server || 'all',
+        address: u.address || '',
+        macAddress: u['mac-address'] || '',
+        limitUptime: u['limit-uptime'] || '',
+        limitBytesIn: parseInt(u['limit-bytes-in'], 10) || 0,
+        limitBytesOut: parseInt(u['limit-bytes-out'], 10) || 0,
+        limitBytesTotal: parseInt(u['limit-bytes-total'], 10) || 0,
+        comment: u.comment || '',
+        disabled: u.disabled === 'true' || u.disabled === true,
+        deviceId: this._deviceId()
+      };
+      if (isIsolirHotspotUser(mapped)) { skipped++; continue; }
+      try {
+        const existing = await this.radiusStore.get(mapped.name);
+        if (!existing) {
+          await this.radiusStore.create(mapped);
+          imported++;
+        }
+        if (u['.id']) {
+          await this.mt.delete(`/ip/hotspot/user/${u['.id']}`);
+          removed++;
+        }
+      } catch (e) {
+        skipped++;
+        logger.warn(`[Hotspot] skip migrate "${mapped.name}": ${e.message}`);
+      }
+    }
+    return { imported, removed, skipped, total: list.length };
+  }
+
+  async _kickUsername(username) {
+    const name = String(username || '').trim();
+    if (!name) return 0;
+    let kicked = 0;
+    try {
+      const active = await this.getActiveSessions();
+      for (const s of active) {
+        if ((s.user || '') === name && s.id) {
+          try { await this.disconnectSession(s.id); kicked++; } catch (_) {}
+        }
+      }
+    } catch (_) {}
+    return kicked;
   }
 
   // ─── HOTSPOT SERVER ──────────────────────────────────────────
@@ -115,15 +264,24 @@ class HotspotService {
     const hasProfile = (Array.isArray(existingProfiles) ? existingProfiles : []).some(p => p.name === profileName);
     const dnsServers = (data.dnsServers || '').trim(); // mis. "8.8.8.8,1.1.1.1"
     if (!hasProfile) {
-      const pbody = { name: profileName, 'login-by': 'http-chap,http-pap' };
+      const pbody = {
+        name: profileName,
+        'login-by': 'http-chap,http-pap',
+        'use-radius': 'yes',
+        'radius-accounting': 'yes'
+      };
       if (data.dnsName) pbody['dns-name'] = data.dnsName;
       await this.mt.put('/ip/hotspot/profile', pbody);
-      steps.push(`Server profile "${profileName}" dibuat`);
+      steps.push(`Server profile "${profileName}" dibuat (RADIUS)`);
     } else {
       // profile sudah ada → update dns-name kalau diisi
-      if (data.dnsName) {
-        const prof = (Array.isArray(existingProfiles) ? existingProfiles : []).find(p => p.name === profileName);
-        if (prof && prof['.id']) await this.mt.patch(`/ip/hotspot/profile/${prof['.id']}`, { 'dns-name': data.dnsName });
+      const prof = (Array.isArray(existingProfiles) ? existingProfiles : []).find(p => p.name === profileName);
+      if (prof && prof['.id'] && !isIsolirHotspotProfile(prof)) {
+        const patch = { 'use-radius': 'yes', 'radius-accounting': 'yes' };
+        if (data.dnsName) patch['dns-name'] = data.dnsName;
+        await this.mt.patch(`/ip/hotspot/profile/${prof['.id']}`, patch);
+      } else if (data.dnsName && prof && prof['.id']) {
+        await this.mt.patch(`/ip/hotspot/profile/${prof['.id']}`, { 'dns-name': data.dnsName });
       }
       steps.push(`Server profile "${profileName}" sudah ada`);
     }
@@ -170,6 +328,8 @@ class HotspotService {
       sessionTimeout: p['session-timeout'] || '',
       idleTimeout:  p['idle-timeout'] || '',
       macCookieTimeout: p['mac-cookie-timeout'] || '3d',
+      useRadius:        p['use-radius'] === 'yes',
+      radiusAccounting: p['radius-accounting'] === 'yes',
     }));
   }
 
@@ -183,6 +343,10 @@ class HotspotService {
     if (data.loginBy)            body['login-by']             = data.loginBy;        // mis. "cookie,http-chap"
     if (data.httpCookieLifetime) body['http-cookie-lifetime'] = data.httpCookieLifetime;
     if (data.rateLimit)          body['rate-limit']           = data.rateLimit;
+    if (!isIsolirHotspotProfile({ name: data.name, htmlDirectory: data.htmlDirectory })) {
+      body['use-radius'] = 'yes';
+      body['radius-accounting'] = 'yes';
+    }
     return body;
   }
 
@@ -253,118 +417,123 @@ class HotspotService {
     return this.mt.delete(`/ip/hotspot/user/profile/${id}`);
   }
 
-  // ─── USERS (voucher / permanent) ─────────────────────────────
+  // ─── USERS (voucher / permanent) via FreeRADIUS ─────────────
+  // Auth: radcheck/radreply. Metadata: hotspot_radius_users.
+  // Tidak dual-write ke /ip/hotspot/user (kecuali isolir-guest, yang tidak
+  // dikelola di sini).
 
   async getUsers(params = {}) {
-    const list = await this.mt.get('/ip/hotspot/user');
-    let users = (Array.isArray(list) ? list : []).map(u => ({
-      id:        u['.id'],
-      name:      u.name     || '',
-      password:  u.password || '',
-      profile:   u.profile  || 'default',
-      server:    u.server   || 'all',
-      address:   u.address  || '',
-      macAddress: u['mac-address'] || '',
-      limitUptime: u['limit-uptime']    || '',
-      limitBytesIn:  parseInt(u['limit-bytes-in'])  || 0,
-      limitBytesOut: parseInt(u['limit-bytes-out']) || 0,
-      limitBytesTotal: parseInt(u['limit-bytes-total']) || 0,
-      bytesIn:   parseInt(u['bytes-in'])  || 0,
-      bytesOut:  parseInt(u['bytes-out']) || 0,
-      uptime:    u.uptime   || '0s',
-      disabled:  u.disabled === 'true',
-      comment:   u.comment  || '',
-    }));
-    if (params.profile) users = users.filter(u => u.profile === params.profile);
-    if (params.server)  users = users.filter(u => u.server  === params.server || u.server === 'all');
+    try {
+      await this._prepareRadius();
+    } catch (e) {
+      logger.warn('[Hotspot] prepare RADIUS skipped: ' + e.message);
+    }
+    const rows = await this.radiusStore.list(params);
+    const names = rows.map((r) => r.username);
+    const [acctMap, active] = await Promise.all([
+      this.radiusStore.usageByUsernames(names),
+      this.getActiveSessions().catch(() => [])
+    ]);
+    const activeByUser = {};
+    for (const s of active) {
+      const k = s.user || '';
+      if (!k) continue;
+      const prev = activeByUser[k];
+      if (!prev) {
+        activeByUser[k] = s;
+      } else {
+        activeByUser[k] = {
+          ...s,
+          bytesIn: (prev.bytesIn || 0) + (s.bytesIn || 0),
+          bytesOut: (prev.bytesOut || 0) + (s.bytesOut || 0)
+        };
+      }
+    }
+    let users = rows.map((r) =>
+      toApiUser(r, mergeUsage(acctMap[r.username], activeByUser[r.username]))
+    );
+    if (params.profile) users = users.filter((u) => u.profile === params.profile);
+    if (params.server) {
+      users = users.filter((u) => u.server === params.server || u.server === 'all');
+    }
     return users;
   }
 
   async createUser(data) {
-    const body = {
-      name:     data.name,
-      password: data.password || '',
-      profile:  data.profile  || 'default',
-      server:   data.server   || 'all',
-      comment:  data.comment  || '',
-    };
-    if (data.address)    body.address     = data.address;
-    if (data.macAddress) body['mac-address'] = data.macAddress;
-    if (data.limitUptime)      body['limit-uptime']      = data.limitUptime;
-    if (data.limitBytesIn)     body['limit-bytes-in']    = String(data.limitBytesIn);
-    if (data.limitBytesOut)    body['limit-bytes-out']   = String(data.limitBytesOut);
-    if (data.limitBytesTotal)  body['limit-bytes-total'] = String(data.limitBytesTotal);
-    return this.mt.put('/ip/hotspot/user', body);
+    await this._prepareRadius();
+    const row = await this.radiusStore.create({
+      ...data,
+      deviceId: data.deviceId != null ? data.deviceId : this._deviceId()
+    });
+    return toApiUser(row, {});
   }
 
   async updateUser(id, data) {
-    const body = {};
-    if (data.name     !== undefined) body.name     = data.name;
-    if (data.password !== undefined) body.password = data.password;
-    if (data.profile  !== undefined) body.profile  = data.profile;
-    if (data.server   !== undefined) body.server   = data.server || 'all';
-    if (data.comment  !== undefined) body.comment  = data.comment;
-    if (data.disabled !== undefined) body.disabled = data.disabled ? 'true' : 'false';
-    // Field opsional: hanya kirim kalau ADA isinya. RouterOS menolak string
-    // kosong utk address/mac-address/limit, jadi field kosong di-skip
-    // (artinya: tidak mengubah nilai yang sudah ada di router).
-    if (data.address)         body.address           = data.address;
-    if (data.macAddress)      body['mac-address']    = data.macAddress;
-    if (data.limitUptime)     body['limit-uptime']   = data.limitUptime;
-    if (data.limitBytesIn)    body['limit-bytes-in'] = String(data.limitBytesIn);
-    if (data.limitBytesOut)   body['limit-bytes-out']= String(data.limitBytesOut);
-    if (data.limitBytesTotal) body['limit-bytes-total'] = String(data.limitBytesTotal);
-    return this.mt.patch(`/ip/hotspot/user/${id}`, body);
+    await this._prepareRadius();
+    const before = await this.radiusStore.get(id);
+    const row = await this.radiusStore.update(id, data);
+    if (before && before.username && row.username !== before.username) {
+      await this._kickUsername(before.username);
+    }
+    if (data.disabled) await this._kickUsername(row.username);
+    return toApiUser(row, {});
   }
 
   async deleteUser(id) {
-    return this.mt.delete(`/ip/hotspot/user/${id}`);
+    await this._prepareRadius();
+    const row = await this.radiusStore.get(id);
+    if (row) await this._kickUsername(row.username);
+    return this.radiusStore.remove(id);
   }
 
   async deleteUserBatch(ids) {
-    const results = await Promise.allSettled(ids.map(id => this.mt.delete(`/ip/hotspot/user/${id}`)));
-    const ok  = results.filter(r => r.status === 'fulfilled').length;
-    const err = results.filter(r => r.status === 'rejected').length;
+    const results = await Promise.allSettled(ids.map((id) => this.deleteUser(id)));
+    const ok = results.filter((r) => r.status === 'fulfilled').length;
+    const err = results.filter((r) => r.status === 'rejected').length;
     return { deleted: ok, failed: err };
   }
 
-  async enableUser(id)  { return this.mt.patch(`/ip/hotspot/user/${id}`, { disabled: 'false' }); }
-  async disableUser(id) { return this.mt.patch(`/ip/hotspot/user/${id}`, { disabled: 'true'  }); }
+  async enableUser(id) {
+    await this._prepareRadius();
+    return this.radiusStore.setDisabled(id, false);
+  }
 
-  // Bulk generate vouchers — chunked parallel agar batch besar tidak butuh
-  // 200+ detik. RouterOS REST handle baik concurrency 5-10 PUT bersamaan.
-  // Chunk default 8 — di-tune untuk kompromi antara kecepatan & beban MikroTik.
+  async disableUser(id) {
+    await this._prepareRadius();
+    const row = await this.radiusStore.get(id);
+    const out = await this.radiusStore.setDisabled(id, true);
+    if (row) await this._kickUsername(row.username);
+    return out;
+  }
+
+  // Bulk generate vouchers ke RADIUS (bukan /ip/hotspot/user).
   async generateVouchers(options) {
     const {
       count = 10, profile = 'default', server = 'all',
       prefix = 'vc', passwordLength = 8, comment = '',
       limitUptime = '', limitBytesTotal = 0,
-      price = 0, soldTo = '',  // metadata untuk audit trail di comment
+      price = 0, soldTo = '',
     } = options;
+
+    await this._prepareRadius();
 
     const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
     const genRandom = (len) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 
-    // Pre-generate username/password supaya unique check bisa dilakukan
-    // sebelum kirim ke MikroTik. Pakai Set untuk pastikan dalam batch ini
-    // tidak ada duplikat (kalau pakai prefix sama + length kecil).
+    const existing = new Set(await this.radiusStore.listUsernames());
     const items = [];
-    const seen  = new Set();
-    while (items.length < count) {
+    const seen = new Set();
+    let guard = 0;
+    while (items.length < count && guard < count * 20) {
+      guard++;
       const username = `${prefix}-${genRandom(passwordLength)}`;
-      if (seen.has(username)) continue;
+      if (seen.has(username) || existing.has(username)) continue;
       seen.add(username);
       items.push({ username, password: genRandom(passwordLength) });
     }
 
-    // Build comment informatif sekali di luar loop — semua voucher dalam
-    // batch ini punya metadata yang sama. Format pipe-separated supaya
-    // mudah di-parse balik di tab Laporan/Histori. Field opsional di-skip
-    // kalau tidak ada nilai (output tetap clean kalau cuma sebagian terisi).
-    //
-    // Format: "Generated DD/MM/YYYY | Profile: xxx | Rp NNNN | Sold-to: 08xxx"
     const buildComment = () => {
-      if (comment) return comment;  // user override eksplisit
+      if (comment) return comment;
       const parts = [`Generated ${new Date().toLocaleDateString('id-ID')}`];
       if (profile) parts.push(`Profile: ${profile}`);
       if (Number(price) > 0) parts.push(`Rp ${Number(price).toLocaleString('id-ID')}`);
@@ -372,21 +541,25 @@ class HotspotService {
       return parts.join(' | ');
     };
     const finalComment = buildComment();
+    const deviceId = this._deviceId();
 
     const vouchers = [];
-    const errors   = [];
-    const CHUNK    = 8;  // concurrent PUT per batch
+    const errors = [];
+    const CHUNK = 10;
 
     for (let i = 0; i < items.length; i += CHUNK) {
       const chunk = items.slice(i, i + CHUNK);
       const results = await Promise.allSettled(chunk.map(async ({ username, password }) => {
-        const body = {
-          name: username, password, profile, server,
+        await this.radiusStore.create({
+          name: username,
+          password,
+          profile,
+          server,
           comment: finalComment,
-        };
-        if (limitUptime)         body['limit-uptime']      = limitUptime;
-        if (limitBytesTotal > 0) body['limit-bytes-total'] = String(limitBytesTotal);
-        await this.mt.put('/ip/hotspot/user', body);
+          limitUptime,
+          limitBytesTotal,
+          deviceId
+        });
         return { username, password, profile, server };
       }));
       results.forEach((r, idx) => {
@@ -704,4 +877,10 @@ class HotspotService {
   }
 }
 
+function resetHotspotRadiusCacheForTests() {
+  _radiusReadyHosts.clear();
+  _migrateLocks.clear();
+}
+
 module.exports = HotspotService;
+module.exports.resetHotspotRadiusCacheForTests = resetHotspotRadiusCacheForTests;
