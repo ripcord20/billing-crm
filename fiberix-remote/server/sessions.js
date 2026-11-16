@@ -61,6 +61,15 @@ class SessionStore {
     return sess;
   }
 
+  setPassword(sess, password) {
+    const p = String(password || '').trim();
+    if (!/^\d{4,8}$/.test(p)) return false;
+    sess.salt = crypto.randomBytes(8).toString('hex');
+    sess.passHash = hashPass(p, sess.salt);
+    sess.lastSeen = Date.now();
+    return true;
+  }
+
   joinViewer(id, password) {
     const sess = this.get(id);
     if (!sess) return { error: 'ID tidak ditemukan' };

@@ -3,93 +3,136 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Fiberix Remote — Host</title>
+  <title>Allow Remote Control</title>
   <style>
-    :root { --g:#16a34a; --gd:#14532d; --bg:#0b1220; --card:#111827; --line:#1f2937; --muted:#94a3b8; }
     * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; font-family:Segoe UI,system-ui,sans-serif; background:radial-gradient(1200px 500px at 20% -10%, #14532d55, transparent), var(--bg); color:#f8fafc; }
-    .wrap { max-width:520px; margin:0 auto; padding:36px 20px; }
-    h1 { margin:0 0 6px; font-size:22px; }
-    .sub { color:var(--muted); font-size:13px; margin-bottom:22px; }
-    .card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:22px; }
-    .row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
-    .row:last-child { border-bottom:0; }
-    .lbl { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
-    .val { font-size:28px; font-weight:800; letter-spacing:.12em; font-family:ui-monospace,Consolas,monospace; }
-    .pill { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; padding:5px 10px; border-radius:999px; }
-    .on { background:#052e16; color:#86efac; }
-    .off { background:#3f1d1d; color:#fecaca; }
-    .dot { width:8px; height:8px; border-radius:50%; background:currentColor; }
-    button { background:var(--g); color:#fff; border:0; border-radius:10px; padding:8px 12px; font-weight:700; cursor:pointer; }
-    button.ghost { background:transparent; border:1px solid var(--line); color:#e2e8f0; }
-    .hint { margin-top:16px; font-size:12.5px; color:var(--muted); line-height:1.5; }
+    body {
+      margin:0; background:#f3f1ea; color:#222;
+      font-family:"Segoe UI",Tahoma,sans-serif; font-size:14px;
+    }
+    .head {
+      display:flex; align-items:center; gap:10px;
+      background:linear-gradient(#fff,#e8eef7); border-bottom:1px solid #b9c7dc;
+      padding:10px 14px; color:#1d4f91; font-size:20px; font-weight:700;
+    }
+    .dish {
+      width:28px; height:28px; border-radius:50%;
+      background:#2f6fbf; color:#fff; display:flex; align-items:center; justify-content:center;
+      font-size:16px;
+    }
+    .box { padding:16px 22px 18px; }
+    .intro { margin:0 0 18px; line-height:1.45; color:#333; }
+    .form { display:grid; grid-template-columns:110px 1fr auto; gap:10px 12px; align-items:center; max-width:420px; }
+    .form label { text-align:right; color:#333; }
+    .field {
+      height:28px; border:1px solid #7a9cc6; background:#fff; padding:2px 8px;
+      font-size:16px; letter-spacing:.04em; font-family:Consolas,"Courier New",monospace;
+    }
+    .iconbtn {
+      width:28px; height:28px; border:1px solid #9bb3d0; background:#f7fafc; cursor:pointer;
+      border-radius:2px; font-size:14px;
+    }
+    .pw-actions { display:flex; gap:4px; }
+    h2 {
+      margin:22px 0 12px; text-align:center; font-size:16px; font-weight:700; color:#222;
+    }
+    .opts { max-width:420px; margin:0 auto; display:flex; flex-direction:column; gap:8px; }
+    .opts label { display:flex; align-items:center; gap:8px; cursor:pointer; }
+    .custom { display:grid; grid-template-columns:110px 1fr auto; gap:10px 12px; align-items:center; max-width:420px; margin:16px auto 0; }
+    .status { display:flex; align-items:center; gap:8px; margin-top:18px; color:#2e7d32; font-size:13px; }
+    .status.off { color:#b45309; }
+    .dot { width:10px; height:10px; border-radius:50%; background:#3ddc5a; box-shadow:0 0 0 2px #c8f0d0; }
+    .status.off .dot { background:#f59e0b; box-shadow:0 0 0 2px #fde68a; }
+    .relay { margin-top:14px; font-size:12px; color:#555; display:flex; gap:8px; align-items:center; }
+    .relay input { flex:1; height:26px; border:1px solid #bbb; padding:0 8px; }
+    .relay button { height:26px; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Fiberix Remote</h1>
-    <p class="sub">Biarkan jendela ini terbuka. ID tidak berubah meski internet sempat putus.</p>
-    <div class="card">
-      <div class="row">
-        <div>
-          <div class="lbl">Status</div>
-          <div id="st" class="pill off"><span class="dot"></span> menyambung…</div>
-        </div>
-        <div style="text-align:right">
-          <div class="lbl">Viewer</div>
-          <div id="vw" style="font-size:22px;font-weight:800;">0</div>
-        </div>
-      </div>
-      <div class="row">
-        <div>
-          <div class="lbl">ID Anda</div>
-          <div class="val" id="id">--------</div>
-        </div>
-        <button class="ghost" onclick="copy('id')">Salin</button>
-      </div>
-      <div class="row">
-        <div>
-          <div class="lbl">Password</div>
-          <div class="val" id="pw">----</div>
-        </div>
-        <button class="ghost" onclick="copy('pw')">Salin</button>
-      </div>
-      <div class="row" style="display:block">
-        <div class="lbl">Server relay (IP:port)</div>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <input id="relay" style="flex:1;padding:8px 10px;border-radius:10px;border:1px solid #1f2937;background:#0b1220;color:#fff;font-size:14px" placeholder="192.168.22.99:18789">
-          <button type="button" onclick="saveRelay()">Simpan</button>
-        </div>
+  <div class="head"><span class="dish">📡</span> Allow Remote Control</div>
+  <div class="box">
+    <p class="intro">Please tell your partner the following ID and Password if you would like to allow remote control</p>
+    <div class="form">
+      <label>Your ID</label>
+      <input class="field" id="id" readonly>
+      <button class="iconbtn" title="Salin ID" onclick="copy('id')">📋</button>
+      <label>Password</label>
+      <input class="field" id="pw" readonly>
+      <div class="pw-actions">
+        <button class="iconbtn" title="Salin password" onclick="copy('pw')">📋</button>
+        <button class="iconbtn" title="Password baru" onclick="rotatePw()">↻</button>
       </div>
     </div>
-    <p class="hint" id="hint">Beri ID dan password ini ke teknisi. Mereka buka aplikasi Android Fiberix Remote, lalu masukkan ID.</p>
+
+    <h2>Unattended access</h2>
+    <div class="opts">
+      <label><input type="checkbox" id="autostart" onchange="saveOpts()"> Run Fiberix Remote with Windows</label>
+      <label><input type="checkbox" id="preventSleep" onchange="saveOpts()"> Prevent Windows from going to sleep</label>
+      <label><input type="checkbox" id="wol" onchange="saveOpts()"> Allow turn on computer remotely</label>
+    </div>
+    <div class="custom">
+      <label>Custom<br>Password</label>
+      <input class="field" id="custom" maxlength="8" placeholder="" inputmode="numeric">
+      <button class="iconbtn" title="Set password" onclick="customPw()">🔑</button>
+    </div>
+
+    <div class="status" id="st"><span class="dot"></span> <span id="stt">Connecting…</span></div>
+    <div class="relay">
+      <span>Server</span>
+      <input id="relay" placeholder="192.168.22.99:18789">
+      <button type="button" onclick="saveRelay()">OK</button>
+    </div>
   </div>
   <script>
+    function formatId(id) {
+      const d = String(id || '').replace(/\D/g, '');
+      if (!d) return '';
+      return d.replace(/(\d{3})(?=\d)/g, '$1 ');
+    }
     function copy(id) {
-      const t = document.getElementById(id).textContent.trim();
-      navigator.clipboard.writeText(t);
+      navigator.clipboard.writeText(document.getElementById(id).value.replace(/\s/g, ''));
+    }
+    async function post(url, body) {
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      return r.json();
     }
     async function saveRelay() {
-      const url = document.getElementById('relay').value;
-      await fetch('/api/relay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+      await post('/api/relay', { url: document.getElementById('relay').value });
+    }
+    async function saveOpts() {
+      await post('/api/options', {
+        autostart: document.getElementById('autostart').checked,
+        preventSleep: document.getElementById('preventSleep').checked,
+        wol: document.getElementById('wol').checked
+      });
+    }
+    async function rotatePw() { await post('/api/password', { rotate: true }); }
+    async function customPw() {
+      const p = document.getElementById('custom').value.trim();
+      if (!p) return;
+      await post('/api/password', { password: p });
     }
     async function tick() {
       try {
         const s = await (await fetch('/api/state')).json();
-        document.getElementById('id').textContent = s.id || '--------';
-        document.getElementById('pw').textContent = s.password || '----';
-        document.getElementById('vw').textContent = s.viewers || 0;
+        const idEl = document.getElementById('id');
+        const pwEl = document.getElementById('pw');
+        if (document.activeElement !== idEl) idEl.value = formatId(s.id);
+        if (document.activeElement !== pwEl) pwEl.value = s.password || '';
         const relay = document.getElementById('relay');
         if (document.activeElement !== relay) relay.value = s.relayDisplay || '';
-        const el = document.getElementById('st');
+        document.getElementById('autostart').checked = !!s.autostart;
+        document.getElementById('preventSleep').checked = !!s.preventSleep;
+        document.getElementById('wol').checked = !!s.wol;
+        const st = document.getElementById('st');
+        const stt = document.getElementById('stt');
         if (s.online) {
-          el.className = 'pill on';
-          el.innerHTML = '<span class="dot"></span> siap menerima';
+          st.className = 'status';
+          stt.textContent = s.viewers ? ('Ready to connect · ' + s.viewers + ' viewer') : 'Ready to connect';
         } else {
-          el.className = 'pill off';
-          el.innerHTML = '<span class="dot"></span> menyambung ulang…';
+          st.className = 'status off';
+          stt.textContent = s.error || 'Connecting…';
         }
-        if (s.error) document.getElementById('hint').textContent = s.error;
       } catch (_) {}
     }
     tick();

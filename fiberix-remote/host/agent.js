@@ -34,12 +34,16 @@ let viewers = 0;
 let hostOnline = false;
 let lastError = '';
 let connecting = false;
+let options = { autostart: false, preventSleep: false, wol: false };
 
 function loadState() {
   try {
     const j = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
     if (j.id && j.token) session = { id: j.id, token: j.token, password: j.password || null };
     if (!process.env.REMOTE_RELAY && !process.argv[2] && j.relay) relayUrl = normalizeRelay(j.relay);
+    options.autostart = !!j.autostart;
+    options.preventSleep = !!j.preventSleep;
+    options.wol = !!j.wol;
   } catch (_) {}
   if (!relayUrl) relayUrl = 'ws://127.0.0.1:18789/ws';
 }
@@ -47,11 +51,58 @@ function loadState() {
 function saveState() {
   try {
     fs.writeFileSync(STATE_FILE, JSON.stringify({
-      id: session.id, token: session.token, password: session.password, relay: relayUrl
+      id: session.id, token: session.token, password: session.password, relay: relayUrl,
+      autostart: options.autostart, preventSleep: options.preventSleep, wol: options.wol
     }, null, 2));
   } catch (e) {
     console.warn('Tidak bisa simpan sesi:', e.message);
   }
+}
+
+function randomPassword() {
+  return String(1000 + Math.floor(Math.random() * 9000));
+}
+
+function winCmd(args) {
+  if (!IS_WIN) return;
+  spawn('cmd.exe', ['/c', ...args], { windowsHide: true, stdio: 'ignore' });
+}
+
+function applyAutostart() {
+  if (!IS_WIN) return;
+  const vbs = path.join(HERE, '..', 'FiberixRemote.vbs');
+  const name = 'FiberixRemote';
+  if (options.autostart && fs.existsSync(vbs)) {
+    winCmd(['reg', 'add', 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run', '/v', name, '/t', 'REG_SZ', '/d', 'wscript.exe "' + vbs + '"', '/f']);
+  } else {
+    winCmd(['reg', 'delete', 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run', '/v', name, '/f']);
+  }
+}
+
+function keepAwake() {
+  if (!IS_WIN || !options.preventSleep) return;
+  spawn('powershell.exe', ['-NoProfile', '-Command',
+    'Add-Type -TypeDefinition @"\nusing System.Runtime.InteropServices;\npublic class K { [DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint s); }\n"@; [K]::SetThreadExecutionState(2147483651)'
+  ], { windowsHide: true, stdio: 'ignore' });
+}
+
+function applyWol() {
+  if (!IS_WIN || !options.wol) return;
+  spawn('powershell.exe', ['-NoProfile', '-Command',
+    'Get-NetAdapter -Physical -ErrorAction SilentlyContinue | ForEach-Object { try { Enable-NetAdapterPowerManagement -Name $_.Name -WakeOnMagicPacket Enabled -ErrorAction SilentlyContinue } catch {} }'
+  ], { windowsHide: true, stdio: 'ignore' });
+}
+
+function applyPassword(next) {
+  const p = String(next || '').trim();
+  if (!/^\d{4,8}$/.test(p)) {
+    lastError = 'Password kustom 4–8 digit';
+    return false;
+  }
+  session.password = p;
+  saveState();
+  send({ type: 'set_password', password: p });
+  return true;
 }
 
 function send(obj) {
@@ -272,7 +323,10 @@ function stateJson() {
     viewers,
     error: lastError,
     platform: process.platform,
-    hostname: os.hostname()
+    hostname: os.hostname(),
+    autostart: options.autostart,
+    preventSleep: options.preventSleep,
+    wol: options.wol
   };
 }
 
@@ -294,6 +348,35 @@ const uiServer = http.createServer((req, res) => {
     });
     return;
   }
+  if (url.startsWith('/api/options') && req.method === 'POST') {
+    readBody(req).then((body) => {
+      options.autostart = !!body.autostart;
+      options.preventSleep = !!body.preventSleep;
+      options.wol = !!body.wol;
+      saveState();
+      applyAutostart();
+      if (options.preventSleep) keepAwake();
+      applyWol();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, ...stateJson() }));
+    }).catch(() => {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false }));
+    });
+    return;
+  }
+  if (url.startsWith('/api/password') && req.method === 'POST') {
+    readBody(req).then((body) => {
+      const p = body.rotate ? randomPassword() : body.password;
+      const ok = applyPassword(p);
+      res.writeHead(ok ? 200 : 400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok, ...stateJson() }));
+    }).catch(() => {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false }));
+    });
+    return;
+  }
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(uiHtml);
 });
@@ -304,9 +387,12 @@ function openLocalUi() {
 }
 
 loadState();
+setInterval(keepAwake, 40000);
 uiServer.listen(UI_PORT, '127.0.0.1', () => {
   console.log(`Panel host: http://127.0.0.1:${UI_PORT}`);
   openLocalUi();
+  if (options.autostart) applyAutostart();
+  if (options.preventSleep) keepAwake();
   connect();
   startCapture();
 });

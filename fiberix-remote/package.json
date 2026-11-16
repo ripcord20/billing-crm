@@ -4,7 +4,6 @@
   "private": true,
   "description": "Remote support Fiberix — host Windows (installer EXE), viewer Android (APK), koneksi auto-reconnect",
   "main": "server/index.js",
-  "bin": "host/agent.js",
   "scripts": {
     "start": "node server/index.js",
     "relay": "node server/index.js",
@@ -15,19 +14,6 @@
   },
   "engines": {
     "node": ">=18"
-  },
-  "pkg": {
-    "assets": [
-      "host/ui.html"
-    ],
-    "scripts": [
-      "lib/**/*.js",
-      "viewer/relayUrl.js"
-    ],
-    "targets": [
-      "node22-win-x64"
-    ],
-    "outputPath": "dist/win"
   },
   "dependencies": {
     "ws": "^8.18.3"

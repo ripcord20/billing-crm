@@ -17,6 +17,9 @@ assert.strictEqual(session.host, fake);
 store.detach(fake);
 assert.strictEqual(session.host, null);
 
+assert.ok(store.setPassword(session, '86777'));
+assert.ok(store.joinViewer(session.id, '86777').session);
+assert.strictEqual(store.joinViewer(session.id, password).error, 'Password salah');
 assert.ok(store.resumeHost(session.id, session.token));
 assert.strictEqual(store.resumeHost(session.id, 'salah'), null);
 assert.strictEqual(store.joinViewer('999999999', password).error, 'ID tidak ditemukan');

@@ -2,14 +2,12 @@
 
 Aplikasi remote support mirip UltraViewer untuk **PC Windows** (yang dikendalikan) dan **HP Android** (yang mengendalikan).
 
-- Windows: installer `dist/FiberixRemote-Setup.exe`
+- Windows: installer `dist/FiberixRemote-Setup.exe` (ditandatangani Authenticode)
 - Android: APK `dist/FiberixRemote.apk`
-- ID + password tampil di jendela host (bukan RAT tersembunyi)
+- Panel host sederhana: ID, Password, Unattended access
 - Auto-reconnect, ID tidak berganti setelah internet putus
 
 ## 1. Relay (server, wajib nyala)
-
-Di VPS atau PC yang IP-nya bisa diakses HP dan PC host:
 
 ```bash
 cd fiberix-remote
@@ -17,11 +15,9 @@ npm install
 npm start
 ```
 
-Default port **18789**. Buka firewall port itu.
+Port **18789**. Buka firewall.
 
-## 2. Windows — file installer EXE
-
-Bangun di mesin Linux/Windows (butuh Node.js + [NSIS](https://nsis.sourceforge.io)):
+## 2. Windows
 
 ```bash
 cd fiberix-remote
@@ -31,42 +27,35 @@ npm run build:win
 
 Hasil: `dist/FiberixRemote-Setup.exe`
 
-Di PC pelanggan:
+Installer memakai **Node.js resmi** (bukan packer `pkg`, yang sering kena antivirus) + tanda tangan Authenticode.
 
-1. Jalankan installer (Next → Install)
-2. Buka **Fiberix Remote** dari Desktop
-3. Isi **Server relay** misalnya `192.168.22.99:18789` lalu **Simpan**
-4. Berikan **ID** dan **Password** ke teknisi
+Di PC pelanggan: Next → Install → panel **Allow Remote Control** muncul. Isi Server `IP:18789`, beri **Your ID** dan **Password** ke teknisi.
 
-Tidak perlu install Node.js di PC pelanggan. Capture layar memakai PowerShell; jalankan sebagai user yang sedang login.
+Opsi Unattended:
 
-## 3. Android — file APK
+- Run Fiberix Remote with Windows
+- Prevent Windows from going to sleep
+- Allow turn on computer remotely (Wake-on-LAN, butuh BIOS)
+- Custom Password (4–8 digit)
 
-Bangun (butuh JDK 17+ dan Android SDK):
+## Tanda tangan & antivirus
+
+Installer ditandatangani sertifikat kode Fiberix (self-signed) + timestamp jika jaringan mengizinkan.
+
+Tanpa sertifikat **EV/OV** berbayar dari DigiCert/Sectigo, Windows SmartScreen tetap bisa menampilkan “Unknown publisher” di **pertama kali** buka. Setelah pelanggan pilih **More info → Run anyway**, reputasi file biasanya naik.
+
+Runtime di dalam installer adalah `node.exe` resmi Node.js (sudah ditandatangani OpenJS), bukan executable yang dikompresi packer.
+
+Untuk lolos SmartScreen penuh di semua PC baru: pasang sertifikat kode berbayar, lalu:
 
 ```bash
-cd fiberix-remote
-npm run build:apk
+osslsigncode sign -pkcs12 Fiberix-EV.pfx -pass "..." -n "Fiberix Remote" \
+  -t http://timestamp.digicert.com -in dist/FiberixRemote-Setup.exe -out dist/FiberixRemote-Setup.exe
 ```
 
-Hasil: `dist/FiberixRemote.apk`
+## 3. Android
 
-Di HP teknisi:
-
-1. Izinkan **Sumber tidak dikenal** / install APK
-2. Buka **Fiberix Remote**
-3. Isi server `IP:18789`, ID, dan password dari panel Windows
-4. Kontrol layar dengan sentuhan
-
-APK memakai WebView + WebSocket ke relay (boleh HTTP/IP lokal).
-
-## Koneksi tahan putus
-
-- Host dan viewer: WebSocket + heartbeat
-- Putus → menyambung ulang sendiri
-- Token host di `%USERPROFILE%\.fiberix-remote-host.json` (Windows) atau `~/.fiberix-remote-host.json`
-
-Ini JPEG/BMP lewat WebSocket, bukan codec UltraViewer/RustDesk. Prioritas: **stabil dan mudah di-install**.
+`npm run build:apk` → `dist/FiberixRemote.apk`
 
 ## Tes
 

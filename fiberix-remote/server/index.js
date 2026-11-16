@@ -147,6 +147,21 @@ wss.on('connection', (ws) => {
       return;
     }
 
+    if (type === 'set_password' && ws.role === 'host') {
+      if (!store.setPassword(sess, msg.password)) {
+        send(ws, { type: 'error', message: 'Password kustom 4–8 digit' });
+        return;
+      }
+      send(ws, {
+        type: 'session',
+        id: sess.id,
+        password: String(msg.password).trim(),
+        token: sess.token,
+        resumed: true
+      });
+      return;
+    }
+
     if (type === 'input' && ws.role === 'viewer') {
       if (sess.host) send(sess.host, msg);
       return;
