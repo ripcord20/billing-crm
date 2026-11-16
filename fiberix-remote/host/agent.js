@@ -6,6 +6,7 @@
  * - Auto-reconnect tanpa ganti ID (token disimpan di disk)
  * - Menampilkan jendela lokal di http://127.0.0.1:18080
  * - Di Windows: capture layar + klik/ketik
+ * - Bisa dikemas jadi .exe (pkg): skrip PowerShell di folder yang sama dengan exe
  */
 
 const http = require('http');
@@ -14,13 +15,16 @@ const path = require('path');
 const os = require('os');
 const { spawn, execFile } = require('child_process');
 const { WebSocket } = require('ws');
+const { normalizeRelay, displayRelay } = require('../lib/relayUrl');
 
-const RELAY = process.env.REMOTE_RELAY || process.argv[2] || 'ws://127.0.0.1:18789/ws';
-const UI_PORT = parseInt(process.env.REMOTE_HOST_UI || '18080', 10);
-const STATE_FILE = path.join(os.homedir(), '.fiberix-remote-host.json');
 const IS_WIN = process.platform === 'win32';
 const FPS = Math.max(1, Math.min(8, parseInt(process.env.REMOTE_FPS || '4', 10)));
+const UI_PORT = parseInt(process.env.REMOTE_HOST_UI || '18080', 10);
+const STATE_FILE = path.join(os.homedir(), '.fiberix-remote-host.json');
+const HERE = process.pkg ? path.dirname(process.execPath) : __dirname;
+const SNAPSHOT = __dirname;
 
+let relayUrl = normalizeRelay(process.env.REMOTE_RELAY || process.argv[2] || '');
 let session = { id: null, password: null, token: null };
 let ws = null;
 let reconnectTimer = null;
@@ -35,13 +39,15 @@ function loadState() {
   try {
     const j = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
     if (j.id && j.token) session = { id: j.id, token: j.token, password: j.password || null };
+    if (!process.env.REMOTE_RELAY && !process.argv[2] && j.relay) relayUrl = normalizeRelay(j.relay);
   } catch (_) {}
+  if (!relayUrl) relayUrl = 'ws://127.0.0.1:18789/ws';
 }
 
 function saveState() {
   try {
     fs.writeFileSync(STATE_FILE, JSON.stringify({
-      id: session.id, token: session.token, password: session.password, relay: RELAY
+      id: session.id, token: session.token, password: session.password, relay: relayUrl
     }, null, 2));
   } catch (e) {
     console.warn('Tidak bisa simpan sesi:', e.message);
@@ -50,6 +56,19 @@ function saveState() {
 
 function send(obj) {
   if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
+
+function dropSocket() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  if (ws) {
+    try { ws.removeAllListeners(); ws.close(); } catch (_) {}
+    ws = null;
+  }
+  connecting = false;
+  hostOnline = false;
 }
 
 function scheduleReconnect() {
@@ -61,12 +80,25 @@ function scheduleReconnect() {
   }, 1200);
 }
 
+function setRelay(next) {
+  const url = normalizeRelay(next);
+  if (!url) {
+    lastError = 'Alamat server kosong';
+    return false;
+  }
+  relayUrl = url;
+  saveState();
+  dropSocket();
+  connect();
+  return true;
+}
+
 function connect() {
   if (connecting) return;
   connecting = true;
   lastError = '';
   try {
-    ws = new WebSocket(RELAY, { handshakeTimeout: 8000 });
+    ws = new WebSocket(relayUrl, { handshakeTimeout: 8000 });
   } catch (e) {
     connecting = false;
     lastError = e.message;
@@ -148,8 +180,14 @@ function bmpClockFrame() {
   return { mime: 'image/bmp', data: buf.toString('base64'), w, h };
 }
 
+function scriptPath(name) {
+  const beside = path.join(HERE, name);
+  if (fs.existsSync(beside)) return beside;
+  return path.join(SNAPSHOT, name);
+}
+
 function captureWindows(cb) {
-  const script = path.join(__dirname, 'capture.ps1');
+  const script = scriptPath('capture.ps1');
   execFile('powershell.exe', [
     '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', script
   ], { windowsHide: true, maxBuffer: 12 * 1024 * 1024, timeout: 4000 }, (err, stdout) => {
@@ -187,7 +225,7 @@ function startCapture() {
 function applyInput(msg) {
   if (!IS_WIN) return;
   const kind = msg.kind;
-  const script = path.join(__dirname, 'input.ps1');
+  const script = scriptPath('input.ps1');
   const args = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, kind];
   if (kind === 'mouse') {
     args.push(String(msg.action || 'move'), String(msg.x || 0), String(msg.y || 0), String(msg.button || 'left'));
@@ -199,30 +237,76 @@ function applyInput(msg) {
   spawn('powershell.exe', args, { windowsHide: true, stdio: 'ignore' });
 }
 
-const uiHtml = fs.readFileSync(path.join(__dirname, 'ui.html'), 'utf8');
+function readUi() {
+  const candidates = [
+    path.join(SNAPSHOT, 'ui.html'),
+    path.join(HERE, 'ui.html')
+  ];
+  for (const f of candidates) {
+    try { return fs.readFileSync(f, 'utf8'); } catch (_) {}
+  }
+  return '<p>ui.html tidak ditemukan</p>';
+}
+
+const uiHtml = readUi();
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => {
+      try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); }
+      catch (e) { reject(e); }
+    });
+    req.on('error', reject);
+  });
+}
+
+function stateJson() {
+  return {
+    id: session.id,
+    password: session.password,
+    relay: relayUrl,
+    relayDisplay: displayRelay(relayUrl),
+    online: hostOnline,
+    viewers,
+    error: lastError,
+    platform: process.platform,
+    hostname: os.hostname()
+  };
+}
 
 const uiServer = http.createServer((req, res) => {
-  if ((req.url || '').startsWith('/api/state')) {
+  const url = req.url || '';
+  if (url.startsWith('/api/state') && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-    res.end(JSON.stringify({
-      id: session.id,
-      password: session.password,
-      relay: RELAY,
-      online: hostOnline,
-      viewers,
-      error: lastError,
-      platform: process.platform,
-      hostname: os.hostname()
-    }));
+    res.end(JSON.stringify(stateJson()));
+    return;
+  }
+  if (url.startsWith('/api/relay') && req.method === 'POST') {
+    readBody(req).then((body) => {
+      const ok = setRelay(body.url || body.relay || '');
+      res.writeHead(ok ? 200 : 400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok, ...stateJson() }));
+    }).catch(() => {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: 'JSON tidak valid' }));
+    });
     return;
   }
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(uiHtml);
 });
 
+function openLocalUi() {
+  const page = `http://127.0.0.1:${UI_PORT}`;
+  if (IS_WIN) spawn('cmd', ['/c', 'start', '', page], { windowsHide: true, stdio: 'ignore' });
+}
+
 loadState();
 uiServer.listen(UI_PORT, '127.0.0.1', () => {
   console.log(`Panel host: http://127.0.0.1:${UI_PORT}`);
+  openLocalUi();
   connect();
   startCapture();
 });

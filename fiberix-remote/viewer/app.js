@@ -19,9 +19,19 @@ let reconnectTimer = null;
 let pingTimer = null;
 let wakeLock = null;
 
+function nativeRelay() {
+  try {
+    if (window.FiberixNative && typeof window.FiberixNative.getWsUrl === 'function') {
+      return window.FiberixNative.getWsUrl() || '';
+    }
+  } catch (_) {}
+  return '';
+}
+
 function wsUrl() {
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return proto + '//' + location.host + '/ws';
+  const typed = (document.getElementById('relay') && document.getElementById('relay').value) || '';
+  const saved = localStorage.getItem('fiberix_relay') || nativeRelay();
+  return window.normalizeRelay(typed || saved, location);
 }
 
 function setStatus(text, cls) {
@@ -65,6 +75,12 @@ function connectViewer() {
   sessionId = document.getElementById('sid').value.replace(/\D/g, '');
   password = document.getElementById('spw').value.trim();
   err.textContent = '';
+  const relay = wsUrl();
+  if (!relay) { err.textContent = 'Isi alamat server relay'; return; }
+  localStorage.setItem('fiberix_relay', relay);
+  try {
+    if (window.FiberixNative && window.FiberixNative.saveRelay) window.FiberixNative.saveRelay(relay);
+  } catch (_) {}
   if (sessionId.length < 6) { err.textContent = 'ID tidak valid'; return; }
   wantOpen = true;
   retry = 0;
@@ -154,8 +170,16 @@ window.addEventListener('keyup', (e) => {
   }
 });
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
+(function restoreRelay() {
+  const el = document.getElementById('relay');
+  if (!el) return;
+  const saved = localStorage.getItem('fiberix_relay') || nativeRelay();
+  if (saved && window.displayRelay) el.value = window.displayRelay(saved);
+  else if (location.protocol !== 'file:' && location.host) el.value = location.host;
+})();
+
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
 window.connectViewer = connectViewer;

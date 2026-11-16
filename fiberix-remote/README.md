@@ -1,23 +1,15 @@
 # Fiberix Remote
 
-Aplikasi remote support mirip UltraViewer untuk **PC Windows** (yang dikendalikan) dan **HP Android / PC lain** (yang mengendalikan).
+Aplikasi remote support mirip UltraViewer untuk **PC Windows** (yang dikendalikan) dan **HP Android** (yang mengendalikan).
 
-Bukan RAT tersembunyi: ID + password tampil di jendela host, dan status “siap menerima” selalu kelihatan.
+- Windows: installer `dist/FiberixRemote-Setup.exe`
+- Android: APK `dist/FiberixRemote.apk`
+- ID + password tampil di jendela host (bukan RAT tersembunyi)
+- Auto-reconnect, ID tidak berganti setelah internet putus
 
-## Yang membuat koneksi tidak gampang putus
+## 1. Relay (server, wajib nyala)
 
-- Host dan viewer memakai **WebSocket + heartbeat**
-- Jika internet putus, keduanya **menyambung ulang sendiri**
-- ID host **tidak berganti** (token disimpan di `~/.fiberix-remote-host.json`)
-- Kalau host sempat offline, viewer menunggu lalu lanjut tanpa isi ID lagi
-
-Ini cukup untuk bantuan teknisi lewat jaringan yang sering putus. Bukan pengganti codec UltraViewer/RustDesk (H.264 + UDP). Untuk kualitas video tinggi, RustDesk lebih unggul; Fiberix Remote diutamakan **stabil dan sederhana**.
-
-## Cara jalan
-
-### 1. Relay (server yang selalu nyala)
-
-Di VPS atau PC billing yang IP-nya bisa diakses HP:
+Di VPS atau PC yang IP-nya bisa diakses HP dan PC host:
 
 ```bash
 cd fiberix-remote
@@ -25,37 +17,60 @@ npm install
 npm start
 ```
 
-Default port **18789**. Buka firewall port itu. Viewer: `http://IP-SERVER:18789/`
+Default port **18789**. Buka firewall port itu.
 
-### 2. Host di Windows (PC yang dibantu)
+## 2. Windows — file installer EXE
 
-1. Install [Node.js LTS](https://nodejs.org)
-2. Copy folder `fiberix-remote` ke PC Windows
-3. Set alamat relay, lalu jalankan agen:
+Bangun di mesin Linux/Windows (butuh Node.js + [NSIS](https://nsis.sourceforge.io)):
 
-```bat
-set REMOTE_RELAY=ws://IP-SERVER:18789/ws
-host\start-windows.bat
+```bash
+cd fiberix-remote
+npm install
+npm run build:win
 ```
 
-4. Jendela `http://127.0.0.1:18080` menampilkan **ID** dan **Password**
-5. Berikan ID + password ke teknisi
+Hasil: `dist/FiberixRemote-Setup.exe`
 
-### 3. Android (yang mengendalikan)
+Di PC pelanggan:
 
-1. Buka Chrome: `http://IP-SERVER:18789/`
-2. Menu Chrome → **Tambahkan ke layar utama** (jadi aplikasi)
-3. Ketik ID + password, lalu kontrol layar dengan sentuhan
+1. Jalankan installer (Next → Install)
+2. Buka **Fiberix Remote** dari Desktop
+3. Isi **Server relay** misalnya `192.168.22.99:18789` lalu **Simpan**
+4. Berikan **ID** dan **Password** ke teknisi
 
-Viewer yang sama juga jalan di Windows/Linux lewat browser.
+Tidak perlu install Node.js di PC pelanggan. Capture layar memakai PowerShell; jalankan sebagai user yang sedang login.
 
-## Catatan Windows
+## 3. Android — file APK
 
-- Capture layar memakai PowerShell (`System.Drawing`). Kualitas sedang, hemat CPU.
-- Mouse/keyboard dikirim ke PC host.
-- Jalankan host sebagai user yang sedang login (bukan service sesi 0).
-- Antivirus kadang menahan simulasi input; izinkan Node.js jika diminta.
+Bangun (butuh JDK 17+ dan Android SDK):
 
-## Mode demo (bukan Windows)
+```bash
+cd fiberix-remote
+npm run build:apk
+```
 
-`node host/agent.js` di Linux tetap menyambung ke relay dan mengirim frame uji, supaya viewer/reconnect bisa dites tanpa PC Windows.
+Hasil: `dist/FiberixRemote.apk`
+
+Di HP teknisi:
+
+1. Izinkan **Sumber tidak dikenal** / install APK
+2. Buka **Fiberix Remote**
+3. Isi server `IP:18789`, ID, dan password dari panel Windows
+4. Kontrol layar dengan sentuhan
+
+APK memakai WebView + WebSocket ke relay (boleh HTTP/IP lokal).
+
+## Koneksi tahan putus
+
+- Host dan viewer: WebSocket + heartbeat
+- Putus → menyambung ulang sendiri
+- Token host di `%USERPROFILE%\.fiberix-remote-host.json` (Windows) atau `~/.fiberix-remote-host.json`
+
+Ini JPEG/BMP lewat WebSocket, bukan codec UltraViewer/RustDesk. Prioritas: **stabil dan mudah di-install**.
+
+## Tes
+
+```bash
+cd fiberix-remote
+npm test
+```

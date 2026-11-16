@@ -54,13 +54,24 @@
         </div>
         <button class="ghost" onclick="copy('pw')">Salin</button>
       </div>
+      <div class="row" style="display:block">
+        <div class="lbl">Server relay (IP:port)</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="relay" style="flex:1;padding:8px 10px;border-radius:10px;border:1px solid #1f2937;background:#0b1220;color:#fff;font-size:14px" placeholder="192.168.22.99:18789">
+          <button type="button" onclick="saveRelay()">Simpan</button>
+        </div>
+      </div>
     </div>
-    <p class="hint" id="hint">Beri ID dan password ini ke teknisi. Mereka buka viewer di HP Android atau PC, lalu masukkan ID.</p>
+    <p class="hint" id="hint">Beri ID dan password ini ke teknisi. Mereka buka aplikasi Android Fiberix Remote, lalu masukkan ID.</p>
   </div>
   <script>
     function copy(id) {
       const t = document.getElementById(id).textContent.trim();
       navigator.clipboard.writeText(t);
+    }
+    async function saveRelay() {
+      const url = document.getElementById('relay').value;
+      await fetch('/api/relay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
     }
     async function tick() {
       try {
@@ -68,6 +79,8 @@
         document.getElementById('id').textContent = s.id || '--------';
         document.getElementById('pw').textContent = s.password || '----';
         document.getElementById('vw').textContent = s.viewers || 0;
+        const relay = document.getElementById('relay');
+        if (document.activeElement !== relay) relay.value = s.relayDisplay || '';
         const el = document.getElementById('st');
         if (s.online) {
           el.className = 'pill on';

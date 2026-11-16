@@ -1,0 +1,37 @@
+name: Fiberix Remote packages
+on:
+  push:
+    paths:
+      - 'fiberix-remote/**'
+      - '.github/workflows/fiberix-remote-packages.yml'
+  pull_request:
+    paths:
+      - 'fiberix-remote/**'
+      - '.github/workflows/fiberix-remote-packages.yml'
+jobs:
+  packages:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fiberix-remote
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: NSIS
+        run: sudo apt-get update && sudo apt-get install -y nsis
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:win
+      - run: npm run build:apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fiberix-remote-packages
+          path: |
+            fiberix-remote/dist/FiberixRemote-Setup.exe
+            fiberix-remote/dist/FiberixRemote.apk

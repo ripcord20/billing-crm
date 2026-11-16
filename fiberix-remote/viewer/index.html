@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#14532d">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Fiberix Remote</title>
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="stylesheet" href="/app.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="app.css">
 </head>
 <body>
   <div id="login" class="screen">
@@ -17,13 +17,15 @@
       <p>Kontrol PC Windows dari HP Android atau komputer lain. Koneksi otomatis menyambung ulang jika putus.</p>
     </div>
     <form class="card" onsubmit="event.preventDefault();connectViewer()">
+      <label>Server relay (IP:port)</label>
+      <input id="relay" inputmode="url" placeholder="192.168.22.99:18789" autocomplete="off">
       <label>ID remote</label>
       <input id="sid" inputmode="numeric" maxlength="12" placeholder="123456789" required>
       <label>Password</label>
       <input id="spw" inputmode="numeric" maxlength="8" placeholder="1234" required>
       <button type="submit">Hubungkan</button>
       <p class="err" id="err"></p>
-      <p class="install" id="installHint">Di Android: buka menu Chrome → <b>Tambahkan ke layar utama</b> agar jadi aplikasi.</p>
+      <p class="install" id="installHint">Install APK Fiberix Remote di HP, atau buka halaman ini di Chrome.</p>
     </form>
   </div>
 
@@ -40,6 +42,7 @@
       <div id="wait">Menunggu layar host…</div>
     </div>
   </div>
-  <script src="/app.js"></script>
+  <script src="relayUrl.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
