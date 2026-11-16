@@ -404,6 +404,7 @@ router.post('/nas', authenticate, demoGuard, tenantContextMiddleware, radiusStaf
 router.post('/nas/:id/sync', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.syncOne(r, s));
 router.post('/nas/:id/wg/generate', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.wgGenerate(r, s));
 router.post('/nas/:id/vpn/generate', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.vpnGenerate(r, s));
+router.post('/nas/routeros-preview', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.routerosPreview(r, s));
 router.post('/nas/:id/routeros-script', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.routerosScript(r, s));
 router.post('/nas/:id/remote-wg/script', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.remoteWgScript(r, s));
 router.put('/nas/:id', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.update(r, s));

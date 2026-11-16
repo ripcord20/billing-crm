@@ -106,6 +106,8 @@ window.onConnModeChange=()=>{
   const wrap=document.getElementById('nasVpnTypeWrap');
   if(hint) hint.style.display=vpn?'block':'none';
   if(wrap) wrap.style.display=vpn?'block':'none';
+  const rh=document.getElementById('nasRadiusHost');
+  if(rh) rh.value=mode==='public'?'103.195.65.216':'192.168.22.99';
 };
 
 function showNasDetail(show){
@@ -497,9 +499,22 @@ window.openPhoneQr=async()=>{
 
 let __rosLast=null;
 let __rosTab='v7';
+window.reloadNasScript=()=>{
+  const id=document.getElementById('nasId').value;
+  const nasname=(document.getElementById('nasIp').value||'').trim();
+  if(id) return openRosScript(id, document.getElementById('nasShort').value||nasname);
+  return runNasPreview();
+};
+
 window.openRosScript=async(id,label)=>{
+  const pre=document.getElementById('rosScript');
+  if(pre && !(__rosLast && __rosLast.data && __rosLast.data.v7)) pre.textContent='Menyusun script…';
   const r=await App.api('/nas/'+id+'/routeros-script',{method:'POST',body:JSON.stringify(nasFormBody())});
-  if(!r?.success) return App.showToast(r?.message||'Gagal membuat script','error');
+  if(!r?.success){
+    const msg=r?.message||'Gagal membuat script';
+    if(pre) pre.textContent=msg;
+    return App.showToast(msg,'error');
+  }
   applyRosData(r.data, label||('#'+id));
   if(r.data.generated) App.showToast('Peer WireGuard baru digenerate untuk script ini','success');
 };
@@ -507,7 +522,7 @@ window.openRosScript=async(id,label)=>{
 function applyRosData(data, label){
   __rosLast={id:document.getElementById('nasId').value,label,data};
   const apiHost=data.recommended_api_host||'—';
-  const radius=' Radius: '+(data.radius_host||'192.168.22.9')+'.';
+  const radius=' Radius: '+(data.radius_host||'192.168.22.99')+'.';
   const lanDirect=data.conn_mode!=='vpn';
   document.getElementById('rosHint').textContent=lanDirect
     ? 'API/sync: '+apiHost+':8728.'+radius+' Mode LAN: tempel script, tanpa VPN dan tanpa port-forward.'
@@ -539,14 +554,20 @@ async function runNasPreview(){
   const det=document.getElementById('nasDetailView');
   if(!det || det.style.display==='none') return;
   const id=document.getElementById('nasId').value;
-  const secret=document.getElementById('nasSecret').value.trim();
-  const nasname=document.getElementById('nasIp').value.trim();
-  if(id && (!secret || secret==='********')){
+  const nasname=(document.getElementById('nasIp').value||'').trim();
+  const pre=document.getElementById('rosScript');
+  if(id){
     return openRosScript(id, document.getElementById('nasShort').value||nasname);
   }
-  if(!nasname || !secret) return;
+  if(!nasname){
+    if(pre) pre.textContent='Isi IP / Domain NAS, lalu script muncul di sini.';
+    return;
+  }
   const r=await App.api('/nas/routeros-preview',{method:'POST',body:JSON.stringify(nasFormBody())});
-  if(!r?.success) return;
+  if(!r?.success){
+    if(pre) pre.textContent=r?.message||'Gagal membuat script.';
+    return;
+  }
   applyRosData(r.data, document.getElementById('nasShort').value||nasname);
 }
 

@@ -17,6 +17,29 @@ const Core1RemoteWg = require('../services/Core1RemoteWgService');
 
 // Push konfigurasi NAS ke server FreeRADIUS (tabel `nas`). Fungsi modul-level
 // supaya tidak bergantung pada `this` (handler dipasang unbound di router).
+function emptyWgCfg() {
+  return {
+    endpointHost: '',
+    listenPort: 51820,
+    serverPublicKey: '',
+    serverAddress: '',
+    hasServerKeys: false
+  };
+}
+
+async function safeWgConfig() {
+  try {
+    return await Wireguard.getServerConfig();
+  } catch (_) {
+    return emptyWgCfg();
+  }
+}
+
+function pickRadiusHost(connMode, server) {
+  if (connMode === 'public') return process.env.RADIUS_PUBLIC_HOST || '103.195.65.216';
+  return (server && server.host) || process.env.RADIUS_HOST || '192.168.22.99';
+}
+
 async function pushNas(row) {
   try {
     const server = await RadiusProv.resolveServer(row.radius_server_id);
@@ -236,18 +259,55 @@ class NasController {
     }
   }
 
+  async routerosPreview(req, res) {
+    try {
+      const b = req.body || {};
+      if (!b.nasname) {
+        return res.status(400).json({ success: false, message: 'IP atau domain NAS wajib' });
+      }
+      const nasname = normalizeNasname(b.nasname);
+      const connMode = normalizeConnMode(b.conn_mode);
+      const vpnType = connMode === 'vpn' ? normalizeVpnType(b.vpn_type, nasname, connMode) : null;
+      const secret = (b.secret && b.secret !== '********') ? String(b.secret).trim() : 'secret-otomatis';
+      let server = null;
+      try { server = await RadiusProv.resolveServer(b.radius_server_id); } catch (_) { server = null; }
+      const wgCfg = await safeWgConfig();
+      const data = buildNasRouterOsScript({
+        nasname,
+        shortname: b.shortname || nasname,
+        secret,
+        radiusHost: pickRadiusHost(connMode, server),
+        tunnelAddress: b.tunnel_address,
+        connMode,
+        vpnType,
+        pppPool: b.ppp_pool_ranges,
+        pppLocal: b.ppp_local_address,
+        vpsHost: wgCfg.endpointHost
+      });
+      res.json({ success: true, data: { ...data, generated: false, vpn_type: vpnType, conn_mode: connMode } });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
   async routerosScript(req, res) {
     try {
       const row = await NasDevice.findByPk(req.params.id);
       if (!row) return res.status(404).json({ success: false, message: 'NAS tidak ditemukan' });
+      const b = req.body || {};
       const server = await RadiusProv.resolveServer(row.radius_server_id);
-      const radiusHost = (server && server.host) || process.env.RADIUS_HOST || '192.168.22.99';
-      const wgCfg = await Wireguard.getServerConfig();
-      const generateMissing = !(req.body && req.body.generate === false);
+      const wgCfg = await safeWgConfig();
+      const generateMissing = b.generate !== false;
       let generated = false;
-      const vpnType = (row.vpn_type || (row.conn_mode === 'vpn' ? 'wireguard' : '')).toLowerCase();
+      const connMode = b.conn_mode ? normalizeConnMode(b.conn_mode) : normalizeConnMode(row.conn_mode);
+      const nasname = b.nasname ? normalizeNasname(b.nasname) : row.nasname;
+      const vpnType = connMode === 'vpn'
+        ? normalizeVpnType(b.vpn_type || row.vpn_type, nasname, connMode)
+        : null;
+      const radiusHost = pickRadiusHost(connMode, server);
+      const secret = (b.secret && b.secret !== '********') ? String(b.secret).trim() : row.secret;
 
-      if (row.conn_mode === 'vpn' && vpnType === 'wireguard' && generateMissing) {
+      if (connMode === 'vpn' && vpnType === 'wireguard' && generateMissing) {
         if (!row.wg_private_key || !row.wg_public_key) {
           if (!wgCfg.endpointHost) {
             return res.status(400).json({ success: false, message: 'Isi dulu endpoint WireGuard (tombol ⚙) sebelum generate script VPN.' });
@@ -288,18 +348,20 @@ class NasController {
 
       const data = buildNasRouterOsScript({
         nasId: row.id,
-        nasname: row.nasname,
-        shortname: row.shortname,
-        secret: row.secret,
+        nasname,
+        shortname: b.shortname || row.shortname,
+        secret,
         radiusHost,
-        tunnelAddress: row.tunnel_address,
-        connMode: row.conn_mode,
+        tunnelAddress: b.tunnel_address || row.tunnel_address,
+        connMode,
         vpnType,
+        pppPool: b.ppp_pool_ranges,
+        pppLocal: b.ppp_local_address,
         vpsHost: wgCfg.endpointHost,
         wireguard,
         l2tp
       });
-      res.json({ success: true, data: { ...data, generated, vpn_type: vpnType || null } });
+      res.json({ success: true, data: { ...data, generated, vpn_type: vpnType || null, conn_mode: connMode } });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }
