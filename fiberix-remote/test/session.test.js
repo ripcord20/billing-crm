@@ -24,4 +24,10 @@ assert.ok(store.resumeHost(session.id, session.token));
 assert.strictEqual(store.resumeHost(session.id, 'salah'), null);
 assert.strictEqual(store.joinViewer('999999999', password).error, 'ID tidak ditemukan');
 
+const claimed = store.claim('124713628', '86777', 'tok-abc');
+assert.strictEqual(claimed.session.id, '124713628');
+assert.ok(store.joinViewer('124713628', '86777').session);
+assert.strictEqual(store.claim('124713628', '86777', 'other-token').error, 'taken');
+assert.ok(store.claim('124713628', '86777', 'tok-abc').session);
+
 console.log('session.test.js OK');

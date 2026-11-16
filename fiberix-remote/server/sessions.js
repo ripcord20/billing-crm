@@ -26,17 +26,13 @@ class SessionStore {
     this.byId = new Map();
   }
 
-  create() {
-    let id = makeId();
-    while (this.byId.has(id)) id = makeId();
-    const password = makePassword();
+  _put(id, password, token) {
     const salt = crypto.randomBytes(8).toString('hex');
-    const token = makeToken();
     const sess = {
       id,
       salt,
       passHash: hashPass(password, salt),
-      token,
+      token: token || makeToken(),
       host: null,
       viewers: new Set(),
       lastFrame: null,
@@ -46,6 +42,31 @@ class SessionStore {
     };
     this.byId.set(id, sess);
     return { session: sess, password };
+  }
+
+  create() {
+    let id = makeId();
+    while (this.byId.has(id)) id = makeId();
+    return this._put(id, makePassword(), makeToken());
+  }
+
+  /** Host sudah punya ID+password sendiri (seperti UltraViewer). */
+  claim(id, password, token) {
+    const sid = String(id || '');
+    const pass = String(password || '').trim();
+    if (!/^\d{9}$/.test(sid) || !/^\d{4,8}$/.test(pass) || !token) {
+      return { error: 'bad' };
+    }
+    const existing = this.get(sid);
+    if (existing) {
+      if (existing.token === token) {
+        existing.lastSeen = Date.now();
+        existing.hostSeen = Date.now();
+        return { session: existing };
+      }
+      return { error: 'taken' };
+    }
+    return this._put(sid, pass, token);
   }
 
   get(id) {

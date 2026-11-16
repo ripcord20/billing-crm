@@ -93,6 +93,10 @@ wss.on('connection', (ws) => {
       if (msg.sessionId && msg.token) {
         sess = store.resumeHost(msg.sessionId, msg.token);
       }
+      if (!sess && msg.sessionId && msg.token && msg.password) {
+        const claimed = store.claim(msg.sessionId, msg.password, msg.token);
+        if (claimed.session) sess = claimed.session;
+      }
       if (!sess) {
         const created = store.create();
         sess = created.session;
@@ -104,7 +108,7 @@ wss.on('connection', (ws) => {
       send(ws, {
         type: 'session',
         id: sess.id,
-        password,
+        password: password || msg.password || null,
         token: sess.token,
         resumed: !password
       });
@@ -189,8 +193,26 @@ const heartbeat = setInterval(() => {
 
 wss.on('close', () => clearInterval(heartbeat));
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`[fiberix-remote] relay http://0.0.0.0:${PORT}`);
-  console.log(`[fiberix-remote] viewer  http://<ip>:${PORT}/`);
-  console.log(`[fiberix-remote] ws      ws://<ip>:${PORT}/ws`);
-});
+function startRelay(port) {
+  const p = parseInt(port || PORT, 10);
+  if (server.listening) return Promise.resolve(server);
+  return new Promise((resolve) => {
+    const onErr = (e) => {
+      server.removeListener('error', onErr);
+      if (e && e.code === 'EADDRINUSE') resolve(null);
+      else resolve(null);
+    };
+    server.once('error', onErr);
+    server.listen(p, '0.0.0.0', () => {
+      server.removeListener('error', onErr);
+      console.log(`[fiberix-remote] relay http://0.0.0.0:${p}`);
+      console.log(`[fiberix-remote] viewer  http://<ip>:${p}/`);
+      console.log(`[fiberix-remote] ws      ws://<ip>:${p}/ws`);
+      resolve(server);
+    });
+  });
+}
+
+if (require.main === module) startRelay();
+
+module.exports = { startRelay, store };

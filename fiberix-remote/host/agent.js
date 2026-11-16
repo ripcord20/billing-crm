@@ -13,10 +13,13 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const { spawn, execFile } = require('child_process');
 const { WebSocket } = require('ws');
 const { normalizeRelay, displayRelay } = require('../lib/relayUrl');
 const { DEFAULT_RELAY } = require('../lib/defaultRelay');
+const { startRelay } = require('../server/index');
+const LOCAL_RELAY = 'ws://127.0.0.1:18789/ws';
 
 const IS_WIN = process.platform === 'win32';
 const FPS = Math.max(1, Math.min(8, parseInt(process.env.REMOTE_FPS || '4', 10)));
@@ -46,6 +49,18 @@ function loadState() {
     options.wol = !!j.wol;
   } catch (_) {}
   if (!relayUrl) relayUrl = DEFAULT_RELAY;
+  ensureLocalSession();
+}
+
+function ensureLocalSession() {
+  if (!/^\d{9}$/.test(String(session.id || ''))) {
+    session.id = String(crypto.randomInt(100000000, 999999999));
+  }
+  if (!/^\d{4,8}$/.test(String(session.password || ''))) {
+    session.password = randomPassword();
+  }
+  if (!session.token) session.token = crypto.randomBytes(24).toString('hex');
+  saveState();
 }
 
 function saveState() {
@@ -162,8 +177,9 @@ function connect() {
     send({
       type: 'hello',
       role: 'host',
-      sessionId: session.id || undefined,
-      token: session.token || undefined,
+      sessionId: session.id,
+      token: session.token,
+      password: session.password,
       hostname: os.hostname(),
       platform: process.platform
     });
@@ -200,6 +216,10 @@ function connect() {
   ws.on('error', (e) => {
     lastError = e.message;
     connecting = false;
+    if (relayUrl !== LOCAL_RELAY && /ECONNREFUSED/i.test(String(e.message))) {
+      relayUrl = LOCAL_RELAY;
+      lastError = '';
+    }
   });
 }
 
@@ -393,6 +413,8 @@ uiServer.listen(UI_PORT, '127.0.0.1', () => {
   openLocalUi();
   if (options.autostart) applyAutostart();
   if (options.preventSleep) keepAwake();
-  connect();
-  startCapture();
+  startRelay(18789).finally(() => {
+    connect();
+    startCapture();
+  });
 });
