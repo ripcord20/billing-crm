@@ -1,6 +1,22 @@
 const { Keuangan, User, RecurringExpense, sequelize } = require('../models');
 const { Op }   = require('sequelize');
 const moment   = require('moment');
+const {
+  attachRemaining,
+  computeOutstanding,
+  isInstallment,
+  suggestPartyName
+} = require('../utils/keuanganSisa');
+
+const DEBT_ATTRS = ['id', 'type', 'category', 'description', 'amount', 'party_name', 'status', 'notes'];
+
+async function fetchDebtRows() {
+  return Keuangan.findAll({
+    where: { type: { [Op.in]: ['hutang', 'piutang'] } },
+    attributes: DEBT_ATTRS,
+    raw: true
+  });
+}
 
 const TYPE_LABEL = {
   pemasukan:  'Pemasukan',
@@ -125,17 +141,10 @@ class KeuanganController {
         }
       });
 
-      // Outstanding hutang & piutang (all time, belum lunas)
-      const [hutangOut] = await sequelize.query(
-        `SELECT COALESCE(SUM(amount),0) AS total, COUNT(*) AS cnt
-         FROM keuangan WHERE type='hutang' AND (status='belum_lunas' OR status='cicilan')`,
-        { type: sequelize.QueryTypes.SELECT }
-      ) || [{}];
-      const [piutangOut] = await sequelize.query(
-        `SELECT COALESCE(SUM(amount),0) AS total, COUNT(*) AS cnt
-         FROM keuangan WHERE type='piutang' AND (status='belum_lunas' OR status='cicilan')`,
-        { type: sequelize.QueryTypes.SELECT }
-      ) || [{}];
+      // Outstanding: pokok dikurangi cicilan pihak yang sama, bukan jumlah baris cicil
+      const debtOutstanding = computeOutstanding(await fetchDebtRows());
+      const hutangOut = { total: debtOutstanding.hutang.remaining, cnt: debtOutstanding.hutang.count };
+      const piutangOut = { total: debtOutstanding.piutang.remaining, cnt: debtOutstanding.piutang.count };
 
       // Cash flow = pemasukan + modal_masuk - pengeluaran (bulan ini)
       const cashflow = agg.pemasukan + agg.modal - agg.pengeluaran;
@@ -425,7 +434,8 @@ class KeuanganController {
         offset
       });
 
-      res.json({ success:true, data:rows, total:count, page:parseInt(page), limit:parseInt(limit) });
+      const data = attachRemaining(rows, await fetchDebtRows());
+      res.json({ success:true, data, total:count, page:parseInt(page), limit:parseInt(limit) });
     } catch(e) {
       console.error('[Keuangan.index]', e.message);
       res.status(500).json({ success:false, message:e.message });
@@ -447,13 +457,23 @@ class KeuanganController {
       if (!Object.keys(TYPE_LABEL).includes(type))
         return res.status(400).json({ success:false, message:'Type tidak valid' });
 
+      let party = party_name || null;
+      if (['hutang', 'piutang'].includes(type) && isInstallment({
+        type, category, description, notes, party_name: party
+      }) && !String(party || '').trim()) {
+        party = suggestPartyName(
+          { type, category, description, notes, party_name: party },
+          await fetchDebtRows()
+        );
+      }
+
       const record = await Keuangan.create({
         type, category: category.trim(),
         description: description.trim(),
         amount: parseFloat(String(amount).replace(/[.,]/g,'')||0) || parseFloat(amount),
         date,
         due_date:   due_date   || null,
-        party_name: party_name || null,
+        party_name: party,
         status:     status     || null,
         source:     source     || null,
         ref_number: ref_number || null,

@@ -469,10 +469,12 @@
           :'<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>';
         const dt=t.date?_fmtDate(t.date):'';
         const cat=t.category?esc(t.category):'';
+        const sisa=(t.type==='hutang'||t.type==='piutang')&&t.remaining_amount!=null
+          ? '<div class="tx-s">Sisa '+fmtRpShort(t.remaining_amount)+'</div>' : '';
         return '<div class="tx">'
           +'<div class="tx-ic '+cls+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">'+ic+'</svg></div>'
           +'<div class="tx-body"><div class="tx-t">'+esc(t.description||cat||'Transaksi')+'</div>'
-          +'<div class="tx-s">'+cat+(dt?(' · '+dt):'')+'</div></div>'
+          +'<div class="tx-s">'+cat+(dt?(' · '+dt):'')+'</div>'+sisa+'</div>'
           +'<div class="tx-amt '+cls+'">'+(isIn?'+':'−')+fmtRpShort(t.amount)+'</div>'
         +'</div>';
       }).join('');
