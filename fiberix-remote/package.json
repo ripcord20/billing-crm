@@ -1,0 +1,21 @@
+{
+  "name": "fiberix-remote",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Remote support Fiberix — host Windows (installer EXE), viewer Android (APK), koneksi auto-reconnect",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "relay": "node server/index.js",
+    "host": "node host/agent.js",
+    "test": "node test/session.test.js && node test/reconnect.test.js && node test/relayUrl.test.js",
+    "build:win": "bash scripts/build-windows.sh",
+    "build:apk": "bash scripts/build-android.sh"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Allow Remote Control</title>
+  <style>
+    * { box-sizing:border-box; }
+    body {
+      margin:0; background:#f3f1ea; color:#222;
+      font-family:"Segoe UI",Tahoma,sans-serif; font-size:14px;
+    }
+    .head {
+      display:flex; align-items:center; gap:10px;
+      background:linear-gradient(#fff,#e8eef7); border-bottom:1px solid #b9c7dc;
+      padding:10px 14px; color:#1d4f91; font-size:20px; font-weight:700;
+    }
+    .dish {
+      width:28px; height:28px; border-radius:50%;
+      background:#2f6fbf; color:#fff; display:flex; align-items:center; justify-content:center;
+      font-size:16px;
+    }
+    .box { padding:16px 22px 18px; }
+    .intro { margin:0 0 18px; line-height:1.45; color:#333; }
+    .form { display:grid; grid-template-columns:110px 1fr auto; gap:10px 12px; align-items:center; max-width:420px; }
+    .form label { text-align:right; color:#333; }
+    .field {
+      height:28px; border:1px solid #7a9cc6; background:#fff; padding:2px 8px;
+      font-size:16px; letter-spacing:.04em; font-family:Consolas,"Courier New",monospace;
+    }
+    .iconbtn {
+      width:28px; height:28px; border:1px solid #9bb3d0; background:#f7fafc; cursor:pointer;
+      border-radius:2px; font-size:14px;
+    }
+    .pw-actions { display:flex; gap:4px; }
+    h2 {
+      margin:22px 0 12px; text-align:center; font-size:16px; font-weight:700; color:#222;
+    }
+    .opts { max-width:420px; margin:0 auto; display:flex; flex-direction:column; gap:8px; }
+    .opts label { display:flex; align-items:center; gap:8px; cursor:pointer; }
+    .custom { display:grid; grid-template-columns:110px 1fr auto; gap:10px 12px; align-items:center; max-width:420px; margin:16px auto 0; }
+    .status { display:flex; align-items:center; gap:8px; margin-top:18px; color:#2e7d32; font-size:13px; }
+    .status.off { color:#b45309; }
+    .dot { width:10px; height:10px; border-radius:50%; background:#3ddc5a; box-shadow:0 0 0 2px #c8f0d0; }
+    .status.off .dot { background:#f59e0b; box-shadow:0 0 0 2px #fde68a; }
+  </style>
+</head>
+<body>
+  <div class="head"><span class="dish">📡</span> Allow Remote Control</div>
+  <div class="box">
+    <p class="intro">Please tell your partner the following ID and Password if you would like to allow remote control</p>
+    <div class="form">
+      <label>Your ID</label>
+      <input class="field" id="id" readonly>
+      <button class="iconbtn" title="Salin ID" onclick="copy('id')">📋</button>
+      <label>Password</label>
+      <input class="field" id="pw" readonly>
+      <div class="pw-actions">
+        <button class="iconbtn" title="Salin password" onclick="copy('pw')">📋</button>
+        <button class="iconbtn" title="Password baru" onclick="rotatePw()">↻</button>
+      </div>
+    </div>
+
+    <h2>Unattended access</h2>
+    <div class="opts">
+      <label><input type="checkbox" id="autostart" onchange="saveOpts()"> Run Fiberix Remote with Windows</label>
+      <label><input type="checkbox" id="preventSleep" onchange="saveOpts()"> Prevent Windows from going to sleep</label>
+      <label><input type="checkbox" id="wol" onchange="saveOpts()"> Allow turn on computer remotely</label>
+    </div>
+    <div class="custom">
+      <label>Custom<br>Password</label>
+      <input class="field" id="custom" maxlength="8" placeholder="" inputmode="numeric">
+      <button class="iconbtn" title="Set password" onclick="customPw()">🔑</button>
+    </div>
+
+    <div class="status" id="st"><span class="dot"></span> <span id="stt">Connecting…</span></div>
+  </div>
+  <script>
+    function formatId(id) {
+      const d = String(id || '').replace(/\D/g, '');
+      if (!d) return '';
+      return d.replace(/(\d{3})(?=\d)/g, '$1 ');
+    }
+    function copy(id) {
+      navigator.clipboard.writeText(document.getElementById(id).value.replace(/\s/g, ''));
+    }
+    async function post(url, body) {
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      return r.json();
+    }
+    async function saveOpts() {
+      await post('/api/options', {
+        autostart: document.getElementById('autostart').checked,
+        preventSleep: document.getElementById('preventSleep').checked,
+        wol: document.getElementById('wol').checked
+      });
+    }
+    async function rotatePw() { await post('/api/password', { rotate: true }); }
+    async function customPw() {
+      const p = document.getElementById('custom').value.trim();
+      if (!p) return;
+      await post('/api/password', { password: p });
+    }
+    async function tick() {
+      try {
+        const s = await (await fetch('/api/state')).json();
+        const idEl = document.getElementById('id');
+        const pwEl = document.getElementById('pw');
+        if (document.activeElement !== idEl) idEl.value = formatId(s.id);
+        if (document.activeElement !== pwEl) pwEl.value = s.password || '';
+        document.getElementById('autostart').checked = !!s.autostart;
+        document.getElementById('preventSleep').checked = !!s.preventSleep;
+        document.getElementById('wol').checked = !!s.wol;
+        const st = document.getElementById('st');
+        const stt = document.getElementById('stt');
+        if (s.cloudOnline) {
+          st.className = 'status';
+          stt.textContent = s.viewers ? ('Ready to connect · ' + s.viewers + ' viewer') : 'Ready to connect';
+        } else if (s.online) {
+          st.className = 'status off';
+          stt.textContent = 'Hanya di PC ini. HP 4G belum bisa: nyalakan relay di 103.195.65.216 port 18789';
+        } else {
+          st.className = 'status off';
+          stt.textContent = s.error || 'Connecting…';
+        }
+      } catch (_) {}
+    }
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>
