@@ -4,6 +4,7 @@
  * Script tempel MikroTik Fiberix (tab RouterOS v6 / v7, Salin Script).
  * RADIUS = server Fiberix di LAN (default 192.168.22.99 auth UDP 1812),
  * pool/profile/comment = FIBERIX — bukan BillingRadius.
+ * Tanpa WireGuard (IP public CORE 2 + DNAT 1812): docs/core2-public-ip-radius.md
  */
 
 const DEFAULT_RADIUS_HOST = process.env.RADIUS_HOST || '192.168.22.99';
