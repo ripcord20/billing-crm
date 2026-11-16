@@ -10,11 +10,11 @@ Tujuan: Fiberix kelola CORE 2 dan auth PPPoE Fiberix **tanpa** VPS hub WireGuard
 |---|---|---|
 | Proses FreeRADIUS | **Tidak** | Tetap di LAN billing `192.168.22.99:1812` |
 | Alamat yang diisi CORE 2 di `/radius address=` | **Ya** | Tanpa WG, CORE 2 tidak bisa kirim UDP ke `192.168.22.99` |
-| IP public baru khusus FreeRADIUS | **Tidak wajib** | Cukup pakai IP public Fiberix yang sudah ada (`FX_PUB`, sekarang `103.195.65.216`) + **DNAT UDP 1812/1813** ke `22.99` |
+| IP public baru khusus FreeRADIUS | **Tidak wajib** | Cukup pakai pintu public yang sudah DNAT ke billing — sekarang SSH `103.195.65.216:2221` di **CORE 1** — plus **DNAT UDP 1812/1813** ke `192.168.22.99` |
 
-Jadi: FreeRADIUS **tidak** perlu pindah ke internet / tidak perlu NIC public sendiri. Yang wajib “kelihatan di internet” adalah **pintu** ke FreeRADIUS — IP public kantor/VPS Fiberix — karena CORE 2 menembak alamat itu.
+Jadi: FreeRADIUS **tidak** ada di internet dan **tidak** punya NIC public. Billing Fiberix hanya `192.168.22.99`. `103.195.65.216` **bukan** IP billing; itu IP **CORE 1** untuk remote SSH. CORE 2 menembak pintu itu, CORE 1 yang meneruskan ke `22.99`.
 
-Kalau `FX_PUB` tidak bisa menerima UDP 1812 (ISP blokir, hosting larang, atau IP tidak static), baru perlu IP public static **lain** untuk RADIUS, atau tetap pakai WireGuard.
+Kalau CORE 1 tidak meneruskan UDP 1812 ke `22.99`, auth Fiberix timeout — tambah DNAT di CORE 1, atau tetap pakai WireGuard. Jangan anggap `103.195.65.216` milik billing.
 
 Sesi PPPoE yang sudah online lewat BillingRadius **jangan dipindah** sebelum tes 1 user sukses. Jangan buka `0.0.0.0/0`.
 
@@ -39,9 +39,10 @@ Winbox lewat ISP ke `144.79.228.137:1272` boleh tetap untuk admin manusia. Fiber
 | CORE 2 IP public interconnect | **`41.216.191.123`** (Perwiramedia, bukan `144.79.228.137`) | **Ya** |
 | Jalur Winbox ISP saja | `144.79.228.137:1272` | Jangan dipakai RADIUS/API |
 | CORE 2 REST / Winbox lokal / API | TCP `8088` / `8291` / `8872` | — |
-| Billing Fiberix LAN | `192.168.22.99` | — |
-| Billing Fiberix public (`FX_PUB`) | `103.195.65.216` (SSH 2221, HTTP 80/443 sudah ke `22.99`) | **Ya** — ini pintu RADIUS |
-| FreeRADIUS (proses) | `192.168.22.99` UDP **1812** | Private, di belakang DNAT |
+| Billing Fiberix LAN | `192.168.22.99` | Hanya ini yang ada di NIC billing |
+| CORE 1 public (remote SSH) | `103.195.65.216` — **bukan** IP billing. DNAT TCP `2221` → `22.99:22` | Pintu remote; RADIUS hanya jika DNAT UDP 1812/1813 juga ke `22.99` |
+| SNAT keluar billing | `103.153.62.130` | Bukan alamat di NIC billing; hasil NAT gateway `192.168.22.1` |
+| FreeRADIUS (proses) | `192.168.22.99` UDP **1812** | Private, di belakang DNAT CORE 1 |
 | Accounting Node | `192.168.22.99` UDP **1813** | Private, di belakang DNAT |
 | Auth PPPoE hari ini | BillingRadius `172.20.1.1` (L2TP) | Jangan dimatikan dulu |
 | NAS Fiberix sekarang | `nasname=10.201.0.2` (tunnel WG) | Nanti = `41.216.191.123` |
@@ -49,7 +50,7 @@ Winbox lewat ISP ke `144.79.228.137:1272` boleh tetap untuk admin manusia. Fiber
 Dua IP interconnect yang **tidak boleh berubah**:
 
 1. `41.216.191.123` = IP public static **WAN CORE 2** (Perwiramedia; terpisah dari Winbox ISP)
-2. `FX_PUB` = `103.195.65.216` (kantor/VPS Fiberix) — pintu ke FreeRADIUS
+2. `103.195.65.216` = IP public **CORE 1** (remote SSH ke billing). Bukan NIC Fiberix.
 
 ### Jangan NAT `41.216.191.123` ke `192.168.22.9`
 
@@ -58,12 +59,12 @@ Itu dua sisi berbeda:
 | Sisi | IP | Fungsi |
 |---|---|---|
 | CORE 2 (Perwiramedia) | `41.216.191.123` | Identitas WAN / `nasname` / sumber paket RADIUS |
-| Billing Fiberix | `192.168.22.99` | FreeRADIUS + web Fiberix. **Ini** tujuan DNAT 1812 |
+| Billing Fiberix | `192.168.22.99` | FreeRADIUS + web Fiberix. **Ini** tujuan DNAT 1812. Tidak punya `103.195.65.216` |
 | daloRADIUS lama | `192.168.22.9` | Mesin lain di LAN kantor. Bukan CORE 2, bukan tujuan NAT IP Perwiramedia |
 
 Kalau IP public Perwiramedia belum duduk di MikroTik CORE 2, 1:1 NAT-nya ke **IP WAN CORE 2** (mis. `172.127.2.2`), bukan ke `192.168.22.9`.
 
-Dari CORE 2, `/radius address=` = **`103.195.65.216`**, bukan `192.168.22.9` dan bukan `192.168.22.99` (keduanya LAN, tidak tembus dari internet).
+Dari CORE 2, `/radius address=` = **`103.195.65.216` hanya jika CORE 1 sudah DNAT UDP 1812/1813 ke `192.168.22.99`** (pola yang sama dengan SSH `2221`). Bukan karena IP itu milik billing — billing tidak punya IP itu.
 
 Cek IP mana yang benar-benar milik CORE 2:
 
@@ -81,8 +82,8 @@ Cek IP mana yang benar-benar milik CORE 2:
 Pelanggan PPPoE
       |
    CORE 2  (WAN = 41.216.191.123 Perwiramedia, bukan 144.79.228.137)
-      |  UDP 1812/1813  ----->  FX_PUB 103.195.65.216  --DNAT-->  192.168.22.99:1812/1813
-      |                                                    FreeRADIUS Fiberix (bukan 22.9)
+      |  UDP 1812/1813  ----->  CORE 1 103.195.65.216  --DNAT-->  192.168.22.99:1812/1813
+      |                                                    billing Fiberix (bukan IP CORE 1)
       |
 Fiberix Device Management
    192.168.22.99  --TCP 8088-->  41.216.191.123
@@ -90,17 +91,18 @@ Fiberix Device Management
 
 Dua sisi **saling kebalikan**. Satu sisi saja = timeout / “Belum terhubung”.
 
-FreeRADIUS tetap di `22.99`. Yang public adalah `FX_PUB`.
+FreeRADIUS tetap di `22.99`. `103.195.65.216` public di **CORE 1**, bukan di billing.
 
 ---
 
 ## 2. Sisi A — Fiberix kelola CORE 2 (API)
 
-Firewall di CORE 2: hanya dari `FX_PUB`, bukan dari seluruh internet, bukan dari `144.79.228.137`.
+Firewall di CORE 2: izinkan API dari SNAT billing (`103.153.62.130`) dan/atau CORE 1 (`103.195.65.216`), bukan dari seluruh internet, bukan dari `144.79.228.137`.
 
 ```routeros
 /ip firewall address-list
-add list=FIBERIX-MGMT address=103.195.65.216 comment="kantor/VPS Fiberix"
+add list=FIBERIX-MGMT address=103.195.65.216 comment="CORE 1 SSH public"
+add list=FIBERIX-MGMT address=103.153.62.130 comment="SNAT keluar billing 22.99"
 
 /ip firewall filter
 add chain=input action=accept protocol=tcp dst-port=8088,8291,8872 \
@@ -137,16 +139,16 @@ Kalau public IP duduk di modem, modem forward TCP `8088` ke `172.127.2.2`.
 
 ## 3. Sisi B — PPPoE auth (UDP 1812/1813)
 
-Dari CORE 2, `/radius address=` = **`FX_PUB`** (`103.195.65.216`), bukan `192.168.22.9`, bukan `192.168.22.99`, bukan `144.79.228.137`.
+Dari CORE 2, `/radius address=` = **`103.195.65.216` (CORE 1)** hanya setelah CORE 1 DNAT UDP 1812/1813 ke `192.168.22.99`. Bukan `192.168.22.9`, bukan `192.168.22.99`, bukan `144.79.228.137`.
 
 Proses tetap:
 
 - Auth: FreeRADIUS `192.168.22.99:1812`
 - Acct: Node `192.168.22.99:1813`
 
-### 3.1 DNAT di mesin yang pegang `FX_PUB`
+### 3.1 DNAT di CORE 1 (`103.195.65.216`)
 
-SSH `103.195.65.216:2221` sudah sampai `22.99` (TCP 80/443/2221). UDP 1812/1813 **belum** tentu. Tambahkan UDP di perangkat **yang sama** dengan DNAT TCP itu.
+SSH `103.195.65.216:2221` sudah DNAT ke sshd billing `22.99:22`. UDP 1812/1813 **belum** tentu. Tambahkan UDP di **CORE 1**, tujuan `192.168.22.99` — bukan ke `22.9`.
 
 **MikroTik tepi:**
 
@@ -245,7 +247,7 @@ Reject **tidak** failover ke BillingRadius. Timeout baru failover.
 ## 5. Yang tidak boleh
 
 - Memakai `144.79.228.137` sebagai `nasname`, `src-address` RADIUS, atau IP Device Management.
-- Menyewa IP public di CORE 2 tanpa DNAT 1812 di `FX_PUB` — auth Fiberix tetap timeout.
+- Menyewa IP public di CORE 2 tanpa DNAT 1812 di **CORE 1** (`103.195.65.216` → `22.99`) — auth Fiberix tetap timeout.
 - Memindahkan daemon FreeRADIUS ke internet hanya karena CORE 2 public; DNAT cukup.
 - Buka `8291` / `8088` / `1812` dari `Anywhere`.
 - `/radius address=192.168.22.99` tanpa tunnel.
@@ -266,6 +268,6 @@ Reject **tidak** failover ke BillingRadius. Timeout baru failover.
 |---|---|
 | User internet (BillingRadius) | Tidak |
 | Fiberix lihat CORE 2 | `41.216.191.123:8088` (bukan IP Winbox ISP, bukan `22.9`) |
-| Auth PPPoE Fiberix | `FX_PUB` + DNAT 1812 ke **`192.168.22.99`** (bukan ke `22.9`); FreeRADIUS tetap LAN |
+| Auth PPPoE Fiberix | CORE 1 `103.195.65.216` + DNAT 1812 ke **`192.168.22.99`** (bukan ke `22.9`, IP itu tidak ada di billing) |
 | Sewa IP public **kedua** khusus FreeRADIUS | Hanya jika `103.195.65.216` tidak bisa terima UDP 1812 |
 | Tidak bisa DNAT 1812 di kantor | WireGuard tetap wajib |
