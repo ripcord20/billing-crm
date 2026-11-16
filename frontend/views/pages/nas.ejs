@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="stylesheet" href="/css/nas-palette.css?v=nas5col">
+  <link rel="stylesheet" href="/css/nas-palette.css?v=nas6sec">
   <style>
     .nas-page .page-content { min-width: 0; max-width: 100%; overflow-x: hidden; }
     .nas-page .page-header { align-items: flex-start; gap: 12px; flex-wrap: wrap; }
@@ -224,7 +224,7 @@
         </button>
         <button type="button" class="nas-method-col vpn" onclick="openNas('vpn')">
           <span class="nas-method-k">VPN</span>
-          <span class="nas-method-s">Router beda lokasi. Tunnel WireGuard.</span>
+          <span class="nas-method-s">WireGuard Fiberix, atau domain VPN/DDNS (hostddns, tunnel.web.id).</span>
         </button>
         <button type="button" class="nas-method-col public" onclick="openNas('public')">
           <span class="nas-method-k">IP Publik</span>
@@ -277,13 +277,14 @@
             <div id="nasVpnTypeWrap" style="display:none;">
               <label>Tipe VPN</label>
               <select id="nasVpnType" onchange="previewNasScript();">
-                <option value="wireguard">WireGuard</option>
-                <option value="openvpn">OpenVPN</option>
-                <option value="l2tp">L2TP / IPsec</option>
+              <option value="wireguard">WireGuard Fiberix</option>
+              <option value="domain">Domain / DDNS (hostddns, tunnel.web.id)</option>
+              <option value="openvpn">OpenVPN</option>
+              <option value="l2tp">L2TP / IPsec</option>
               </select>
             </div>
             <div id="nasVpnHint" style="display:none;background:#fff7ed;border:1px dashed #fdba74;border-radius:8px;padding:10px;font-size:12px;color:#9a3412;margin:0 0 12px;">
-              Router luar LAN: pilih <b>VPN</b>, atau peer VPS lalu <b>LAN</b> dengan IP tunnel <code>10.201.0.x</code>. Jangan generate VPN Fiberix.
+              WireGuard Fiberix: isi IP tunnel <code>10.201.0.x</code>. Domain VPN/DDNS: isi hostname seperti <code>cabang.tunnel.web.id</code> atau <code>xxx.hostddns.net</code>. VPN remote Winbox saja tidak menggantikan UDP RADIUS 1812.
             </div>
             <label>Host RADIUS Fiberix</label>
             <input id="nasRadiusHost" value="192.168.22.9" readonly>
@@ -297,15 +298,19 @@
           </div>
           <div class="nas-detail-card">
             <h2>Informasi NAS</h2>
-            <p class="sub">Identitas router di FreeRADIUS (nasname = IP sumber paket RADIUS).</p>
-            <label>IP NAS (nasname) *</label>
-            <input id="nasIp" placeholder="192.168.22.1" oninput="previewNasScript();">
+            <p class="sub">Identitas router di FreeRADIUS (nasname = IP atau domain sumber paket RADIUS).</p>
+            <label>IP / Domain NAS (nasname) *</label>
+            <input id="nasIp" placeholder="192.168.22.1 atau cabang.tunnel.web.id" oninput="previewNasScript();">
             <label>Shortname / nama</label>
             <input id="nasShort" placeholder="contoh: NAGA" oninput="previewNasScript();">
             <label>Wilayah</label>
             <input id="nasArea" placeholder="Pilih wilayah untuk NAS">
-            <label>Secret *</label>
-            <input id="nasSecret" type="password" placeholder="secret RADIUS" oninput="previewNasScript();">
+            <label>Secret RADIUS</label>
+            <div class="nas-secret-row">
+              <input id="nasSecret" type="text" placeholder="otomatis — isi hanya jika ganti" oninput="previewNasScript();" autocomplete="off">
+              <button class="btn btn-sm btn-secondary" type="button" onclick="regenNasSecret()">Buat baru</button>
+            </div>
+            <p class="nas-add-help" style="margin:-4px 0 10px;">Secret dibuat otomatis saat tambah NAS. Kosongkan jika tidak diubah.</p>
             <label>Tipe</label>
             <input id="nasType" value="mikrotik">
           </div>
@@ -505,7 +510,7 @@
       <p>Tambahkan Network Access Server baru ke sistem</p>
       <button type="button" class="nas-add-x" onclick="closeNasAdd()" aria-label="Tutup">&times;</button>
     </div>
-    <form id="nasAddForm" onsubmit="submitNasAdd(event)">
+    <form id="nasAddForm" class="nas-add-form" onsubmit="submitNasAdd(event)">
       <div class="nas-add-body">
         <div class="nas-add-field">
           <label class="nas-add-lbl" for="addNasName">
@@ -562,17 +567,13 @@
         <div class="nas-add-field">
           <label class="nas-add-lbl" for="addNasIp">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 0 0-8 0v2"/></svg>
-            IP NAS <span class="nas-add-req">*</span>
+            IP / Domain NAS <span class="nas-add-req">*</span>
           </label>
           <input id="addNasIp" required placeholder="192.168.22.1" autocomplete="off">
           <p class="nas-add-help" id="addNasIpHint">IP sumber paket RADIUS (nasname).</p>
         </div>
-        <div class="nas-add-field">
-          <label class="nas-add-lbl" for="addNasSecret">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            Secret RADIUS <span class="nas-add-req">*</span>
-          </label>
-          <input id="addNasSecret" type="password" required placeholder="secret RADIUS" autocomplete="new-password">
+        <div class="nas-add-auto" id="addNasSecretNote">
+          Secret RADIUS dibuat otomatis. Nilai aslinya masuk ke script MikroTik setelah NAS tersimpan.
         </div>
       </div>
       <div class="nas-add-foot">
@@ -585,6 +586,6 @@
     </form>
   </div>
 </div>
-<script src="/js/nas.js?v=nas5col"></script>
+<script src="/js/nas.js?v=nas6sec"></script>
 </body>
 </html>

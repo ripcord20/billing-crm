@@ -5,22 +5,33 @@
   position: fixed;
   inset: 0;
   z-index: 1100;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 16px;
+  padding: 12px 12px calc(80px + env(safe-area-inset-bottom, 0px));
   background: rgba(15, 23, 42, .45);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .nas-add-ov.is-open { display: flex; }
 .nas-add-box {
   width: 100%;
   max-width: 460px;
+  margin: auto 0;
   background: #fff;
   border-radius: 18px;
   overflow: hidden;
   box-shadow: 0 24px 60px rgba(15, 23, 42, .28);
-  max-height: 92vh;
+  max-height: calc(100vh - 96px - env(safe-area-inset-bottom, 0px));
+  max-height: calc(100dvh - 96px - env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
+}
+.nas-add-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 .nas-add-hdr {
   background: linear-gradient(180deg, #34d399 0%, #22c55e 100%);
@@ -60,8 +71,11 @@
 }
 .nas-add-x:hover { background: rgba(255,255,255,.28); }
 .nas-add-body {
-  padding: 20px 22px 10px;
-  overflow: auto;
+  padding: 16px 18px 18px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+  flex: 1 1 auto;
 }
 .nas-add-field { margin: 0 0 14px; }
 .nas-add-lbl {
@@ -170,12 +184,33 @@
   opacity: 0;
 }
 .nas-add-menu button.is-sel .nas-add-check { opacity: 1; }
+.nas-add-auto {
+  margin: 0 0 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 600;
+}
+.nas-secret-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0 10px;
+}
+.nas-secret-row input { flex: 1 1 auto; margin: 0 !important; }
 .nas-add-foot {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 10px;
-  padding: 8px 22px 20px;
+  flex-shrink: 0;
+  padding: 10px 18px 14px;
+  border-top: 1px solid #e2e8f0;
+  background: #fff;
 }
 .nas-add-cancel {
   border: 0;
@@ -290,6 +325,8 @@
 [data-theme="dark"] .nas-add-menu button.is-sel { background: #14532d; color: #bbf7d0; }
 [data-theme="dark"] .nas-add-cancel { color: #94a3b8; }
 [data-theme="dark"] .nas-add-help { color: #94a3b8; }
+[data-theme="dark"] .nas-add-auto { background: #052e16; border-color: #166534; color: #bbf7d0; }
+[data-theme="dark"] .nas-add-foot { background: #121a2b; border-color: #243049; }
 [data-theme="dark"] .nas-mode-pill.lan { background: #14532d; color: #bbf7d0; }
 [data-theme="dark"] .nas-mode-pill.vpn { background: #1e3a8a; color: #bfdbfe; }
 [data-theme="dark"] .nas-mode-pill.public { background: #7c2d12; color: #fed7aa; }
@@ -301,7 +338,9 @@
 [data-theme="dark"] .nas-more-toggle { background: #121a2b; border-color: #243049; color: #e8eef9; }
 
 @media (max-width: 480px) {
+  .nas-add-ov { padding: 8px 8px calc(78px + env(safe-area-inset-bottom, 0px)); }
   .nas-add-box { max-width: 100%; border-radius: 16px; }
+  .nas-add-field { margin: 0 0 12px; }
   .nas-add-foot { flex-wrap: wrap; }
   .nas-add-submit { flex: 1; justify-content: center; }
 }

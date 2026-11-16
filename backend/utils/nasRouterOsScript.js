@@ -235,10 +235,11 @@ function buildNasRouterOsScript(opts) {
   const radiusHost = opts.radiusHost || DEFAULT_RADIUS_HOST;
   const secret = opts.secret || '';
   const tunnel = stripCidr(opts.tunnelAddress || '');
-  const connMode = opts.connMode === 'vpn' || opts.vpnType === 'wireguard' || opts.vpnType === 'l2tp' || opts.vpnType === 'openvpn'
+  const connMode = opts.connMode === 'vpn' || opts.vpnType === 'wireguard' || opts.vpnType === 'l2tp' || opts.vpnType === 'openvpn' || opts.vpnType === 'domain' || opts.vpnType === 'ddns'
     ? 'vpn'
     : (opts.connMode === 'public' ? 'public' : 'lan');
-  const modeLabel = connMode === 'vpn' ? 'VPN' : (connMode === 'public' ? 'IP Publik' : 'LAN');
+  const domainVpn = opts.vpnType === 'domain' || opts.vpnType === 'ddns';
+  const modeLabel = connMode === 'vpn' ? (domainVpn ? 'VPN domain' : 'VPN') : (connMode === 'public' ? 'IP Publik' : 'LAN');
   const pppPool = (opts.pppPool || opts.ppp_pool_ranges || '').trim();
   const pppLocal = (opts.pppLocal || opts.ppp_local_address || '').trim();
   const stamped = formatIdDate(opts.now);
@@ -251,9 +252,11 @@ function buildNasRouterOsScript(opts) {
       `# Tanggal: ${stamped}`,
       `# Radius: ${radiusHost}  comment=FIBERIX`,
       '# Pool/profile PPP: FIBERIX dan EXPIRED_FIBERIX.',
-      tunnel
-        ? `# IP tunnel WireGuard router ini: ${tunnel}  ← pakai ini untuk API/sync jika mode tunnel.`
-        : '# Mode LAN / langsung: RADIUS lewat IP lokal. WireGuard tidak wajib.',
+      domainVpn
+        ? `# VPN domain/DDNS: nasname = ${opts.nasname || name}. RADIUS UDP 1812 ke Fiberix.`
+        : (tunnel
+          ? `# IP tunnel WireGuard router ini: ${tunnel}  ← pakai ini untuk API/sync jika mode tunnel.`
+          : '# Mode LAN / langsung: RADIUS lewat IP lokal. WireGuard tidak wajib.'),
       ''
     ];
     const body = [
@@ -271,6 +274,9 @@ function buildNasRouterOsScript(opts) {
     } else if (opts.vpnType === 'l2tp' && opts.l2tp) {
       body.push('# L2TP ke server VPN Anda (bukan concentrator sewa)');
       body.push(...buildL2tpBlock(opts.l2tp));
+    } else if (domainVpn) {
+      body.push('# VPN domain (hostddns / tunnel.web.id): WireGuard Fiberix tidak dipasang.');
+      body.push('# Secret RADIUS sudah otomatis. Pastikan router kirim UDP 1812 ke IP RADIUS Fiberix.');
     } else {
       body.push('# Tunnel dilewati (mode LAN / langsung — WireGuard tidak wajib)');
     }

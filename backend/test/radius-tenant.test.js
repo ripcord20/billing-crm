@@ -128,4 +128,16 @@ const pubRos = buildNasRouterOsScript({
 });
 assert.strictEqual(pubRos.mode_label, 'IP Publik');
 
+const domainRos = buildNasRouterOsScript({
+  nasname: 'cabang.tunnel.web.id',
+  secret: 'fxauto',
+  connMode: 'vpn',
+  vpnType: 'domain',
+  radiusHost: '192.168.22.99'
+});
+assert.strictEqual(domainRos.mode_label, 'VPN domain');
+assert.ok(domainRos.v7.includes('cabang.tunnel.web.id'));
+assert.ok(domainRos.v7.includes('secret="fxauto"'));
+assert.ok(!domainRos.v7.includes('wg-fiberix'));
+
 console.log('radius-tenant.test.js OK');
