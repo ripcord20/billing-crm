@@ -18,6 +18,7 @@ let remoteH = 0;
 let reconnectTimer = null;
 let pingTimer = null;
 let wakeLock = null;
+let authed = false;
 
 function wsUrl() {
   const host = location.hostname;
@@ -68,6 +69,24 @@ function formatIdInput(el) {
   el.value = d.replace(/(\d{3})(?=\d)/g, '$1 ');
 }
 
+function showDesk() {
+  login.classList.add('hidden');
+  desk.classList.remove('hidden');
+  deskId.textContent = sessionId.replace(/(\d{3})(?=\d)/g, '$1 ');
+}
+
+function failLogin(message) {
+  wantOpen = false;
+  authed = false;
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  stopPing();
+  if (ws) try { ws.close(); } catch (_) {}
+  ws = null;
+  desk.classList.add('hidden');
+  login.classList.remove('hidden');
+  err.textContent = message;
+}
+
 function connectViewer() {
   sessionId = document.getElementById('sid').value.replace(/\D/g, '');
   password = document.getElementById('spw').value.trim();
@@ -75,28 +94,26 @@ function connectViewer() {
   if (!wsUrl()) { err.textContent = 'Relay not configured'; return; }
   if (sessionId.length < 6) { err.textContent = 'Invalid ID'; return; }
   wantOpen = true;
+  authed = false;
   retry = 0;
-  login.classList.add('hidden');
-  desk.classList.remove('hidden');
-  deskId.textContent = sessionId.replace(/(\d{3})(?=\d)/g, '$1 ');
+  err.textContent = 'Connecting…';
   openSocket();
   keepAwake();
 }
 
 function disconnectViewer() {
-  wantOpen = false;
-  if (reconnectTimer) clearTimeout(reconnectTimer);
-  stopPing();
-  if (ws) try { ws.close(); } catch (_) {}
-  ws = null;
-  desk.classList.add('hidden');
-  login.classList.remove('hidden');
+  failLogin('');
 }
 
 function openSocket() {
   if (!wantOpen) return;
   setStatus('Connecting…');
-  ws = new WebSocket(wsUrl());
+  try {
+    ws = new WebSocket(wsUrl());
+  } catch (e) {
+    failLogin('Tidak bisa terhubung ke server Fiberix.');
+    return;
+  }
   ws.onopen = () => {
     retry = 0;
     send({ type: 'hello', role: 'viewer', sessionId, password });
@@ -106,12 +123,12 @@ function openSocket() {
     let msg;
     try { msg = JSON.parse(ev.data); } catch { return; }
     if (msg.type === 'error') {
-      err.textContent = msg.message;
-      wantOpen = false;
-      disconnectViewer();
+      failLogin(msg.message + '. Pakai ID dari Fiberix Remote di Windows, bukan UltraViewer.');
       return;
     }
     if (msg.type === 'auth_ok') {
+      authed = true;
+      showDesk();
       setStatus(msg.hostOnline ? 'Connected' : 'Waiting for host', msg.hostOnline ? 'ok' : 'warn');
     }
     if (msg.type === 'status') {
@@ -127,6 +144,16 @@ function openSocket() {
   ws.onclose = () => {
     stopPing();
     if (!wantOpen) return;
+    if (!authed) {
+      retry += 1;
+      if (retry >= 3) {
+        failLogin('Tidak terhubung. Ini bukan UltraViewer. Install Fiberix Remote di PC, nyalakan relay Fiberix, lalu pakai ID dari panel itu.');
+        return;
+      }
+      err.textContent = 'Connecting…';
+      reconnectTimer = setTimeout(openSocket, 800);
+      return;
+    }
     setStatus('Reconnecting…', 'warn');
     const delay = Math.min(8000, 700 + retry * 500);
     retry += 1;
