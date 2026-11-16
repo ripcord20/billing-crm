@@ -1,4 +1,309 @@
-/* Modul NAS — extras only; layout lives in nas.ejs (fin-grid / w-card / modal-ov). */
+/* Kulit Modul NAS — cyberpunk neon (sama seperti dashboard / Isolir / Paket).
+   Layout fin-grid, tabel, dan modal tidak diubah. */
+
+html:has(body.nas-home) {
+  background: #100c22;
+  color-scheme: dark;
+}
+
+body.nas-home {
+  --d-bg: #070814;
+  --d-card: #141028;
+  --d-border: rgba(34, 211, 238, 0.28);
+  --d-text: #f8fafc;
+  --d-muted: #c4b5fd;
+  --d-blue1: #22d3ee;
+  --d-blue2: #0891b2;
+  --d-green: #4ade80;
+  --d-red: #ff4ecd;
+  --d-orange: #fde047;
+  --bg: #070814;
+  --bg-card: #141028;
+  --bg-sidebar: #100c22;
+  --bg-hover: rgba(255, 78, 205, 0.12);
+  --bg-input: #070814;
+  --border: rgba(34, 211, 238, 0.35);
+  --text: #f8fafc;
+  --text-primary: #f8fafc;
+  --text-secondary: #e2e8f0;
+  --text-muted: #c4b5fd;
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+
+body.nas-home.nas-page,
+body.nas-home .app-layout,
+body.nas-home .main-content,
+body.nas-home .page-content {
+  background: transparent !important;
+  color: #f8fafc;
+}
+
+body.nas-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+
+body.nas-home .logo-text,
+body.nas-home .nav-section-title,
+body.nas-home .nav-item { color: #f8fafc; }
+
+body.nas-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+
+body.nas-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+
+body.nas-home .sidebar a.nav-sub:link,
+body.nas-home .sidebar a.nav-sub:visited,
+body.nas-home .sidebar a.nav-sub:hover,
+body.nas-home .sidebar a.nav-sub:focus,
+body.nas-home .sidebar a.nav-sub:active,
+body.nas-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.nas-home .sidebar a.nav-sub .nav-sub-dot,
+body.nas-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #67e8f9 !important;
+}
+
+body.nas-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+
+body.nas-home .search-box,
+body.nas-home .search-box input,
+body.nas-home .topbar-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.nas-home .page-content [style*="font-weight:800"],
+body.nas-home #nasTitle,
+body.nas-home .nas-detail-card h2,
+body.nas-home .modal-ttl {
+  color: #ffffff !important;
+}
+
+body.nas-home .page-content [style*="color:var(--d-muted)"],
+body.nas-home .nas-legend-note,
+body.nas-home .nas-detail-card .sub,
+body.nas-home .nas-detail-card label,
+body.nas-home .fhelp,
+body.nas-home .modal-sub,
+body.nas-home .flbl,
+body.nas-home #nasCountLbl {
+  color: #e2e8f0 !important;
+}
+
+body.nas-home .btn-blue {
+  background: linear-gradient(135deg, #0891b2, #7c3aed) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.28);
+}
+
+body.nas-home .btn-outline,
+body.nas-home .nas-more-toggle {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.nas-home .fin-grid,
+body.nas-home .fin-grid-4 {
+  background: #100c22 !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+body.nas-home .fin-card {
+  border-right-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+body.nas-home .fin-card:hover { background: rgba(34, 211, 238, 0.08) !important; }
+
+body.nas-home #xc-all { background: linear-gradient(145deg, #0891b2, #1d4ed8 58%, #22d3ee) !important; }
+body.nas-home #xc-lan { background: linear-gradient(145deg, #059669, #0f766e 55%, #34d399) !important; }
+body.nas-home #xc-vpn { background: linear-gradient(145deg, #1d4ed8, #4f46e5 55%, #22d3ee) !important; }
+body.nas-home #xc-public { background: linear-gradient(145deg, #b45309, #ea580c 55%, #fde047) !important; }
+
+body.nas-home .fin-card.fc-active {
+  background: inherit !important;
+  box-shadow: inset 0 0 0 2px #ffffff !important;
+}
+
+body.nas-home .xc-lbl,
+body.nas-home .xc-val,
+body.nas-home .xc-sub,
+body.nas-home .fin-card.fc-active .xc-lbl,
+body.nas-home .fin-card.fc-active .xc-val,
+body.nas-home .fin-card.fc-active .xc-sub {
+  color: #ffffff !important;
+}
+
+body.nas-home .w-card,
+body.nas-home .nas-detail-card,
+body.nas-home .nas-usage,
+body.nas-home .nas-m-card {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.28) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 12px 32px rgba(255, 78, 205, 0.08);
+}
+
+body.nas-home .w-card > div[style*="border-bottom"] {
+  border-bottom-color: rgba(34, 211, 238, 0.22) !important;
+}
+
+body.nas-home .search-wrap input,
+body.nas-home .filter-select,
+body.nas-home .finput,
+body.nas-home .nas-detail-card input,
+body.nas-home .nas-detail-card select {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.nas-home .search-wrap input::placeholder,
+body.nas-home .finput::placeholder {
+  color: #94a3b8 !important;
+}
+
+body.nas-home .search-wrap .si { color: #67e8f9 !important; }
+
+body.nas-home .nas-tbl thead th {
+  background: linear-gradient(90deg, #0891b2, #4f46e5 55%, #db2777) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+body.nas-home .nas-tbl tbody tr { border-bottom-color: transparent !important; }
+body.nas-home .nas-tbl tbody tr:hover td { filter: brightness(1.08); }
+body.nas-home .nas-tbl tbody tr:nth-child(8n+1) td { background: #1d4ed8 !important; }
+body.nas-home .nas-tbl tbody tr:nth-child(8n+2) td { background: #0891b2 !important; }
+body.nas-home .nas-tbl tbody tr:nth-child(8n+3) td { background: #059669 !important; }
+body.nas-home .nas-tbl tbody tr:nth-child(8n+4) td { background: #b45309 !important; }
+body.nas-home .nas-tbl tbody tr:nth-child(8n+5) td { background: #ea580c !important; }
+body.nas-home .nas-tbl tbody tr:nth-child(8n+6) td { background: #e11d48 !important; }
+body.nas-home .nas-tbl tbody tr:nth-child(8n+7) td { background: #db2777 !important; }
+body.nas-home .nas-tbl tbody tr:nth-child(8n+8) td { background: #7c3aed !important; }
+body.nas-home .nas-tbl td,
+body.nas-home .nas-tbl .mono { color: #ffffff !important; }
+
+body.nas-home .nas-m-ip,
+body.nas-home .nas-m-meta,
+body.nas-home .nas-m-sync,
+body.nas-home .nas-m-empty { color: #f8fafc !important; }
+
+body.nas-home .rb.rb-edit {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #93c5fd !important;
+  -webkit-text-fill-color: #1d4ed8;
+}
+body.nas-home .rb.rb-sync {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+  border-color: #86efac !important;
+  -webkit-text-fill-color: #15803d;
+}
+body.nas-home .rb.rb-del {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border-color: #fecaca !important;
+  -webkit-text-fill-color: #b91c1c;
+}
+
+body.nas-home .sb-up {
+  background: #dcfce7 !important;
+  color: #065f46 !important;
+  border-color: #86efac !important;
+}
+body.nas-home .sb-down {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #475569 !important;
+}
+body.nas-home .sb-pending {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  border-color: #fde047 !important;
+}
+
+body.nas-home .modal-ov { background: rgba(7, 8, 20, 0.72); }
+body.nas-home .modal-bx {
+  background: #141028 !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 40px rgba(34, 211, 238, 0.12);
+}
+body.nas-home .modal-cls {
+  background: #070814 !important;
+  color: #f8fafc !important;
+}
+
+body.nas-home .nas-detail-card input,
+body.nas-home .nas-detail-card select { color: #f8fafc !important; }
+
+body.nas-home #nasLanHint { color: #bbf7d0 !important; }
+body.nas-home #nasPublicHint { color: #fed7aa !important; }
+body.nas-home #nasVpnHint { color: #e2e8f0 !important; }
+
+body.nas-home #wgServerModal > div[style*="background:#fff;"],
+body.nas-home #wgConfigModal > div[style*="background:#fff;"],
+body.nas-home #remoteWgModal > div[style*="background:#fff;"] {
+  background: #141028 !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+}
+
+body.nas-home #wgServerModal h3,
+body.nas-home #wgConfigModal h3,
+body.nas-home #remoteWgModal h3 { color: #ffffff !important; }
+
+body.nas-home #wgServerModal input,
+body.nas-home #wgServerModal select,
+body.nas-home #remoteWgModal input,
+body.nas-home #remoteWgModal select {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.nas-home .bottom-nav {
+  background: #100c22;
+  border-top: 1px solid rgba(34, 211, 238, 0.28);
+  box-shadow: none;
+}
+
+body.nas-home .bottom-nav a.bn-item:link,
+body.nas-home .bottom-nav a.bn-item:visited,
+body.nas-home .bottom-nav a.bn-item:hover,
+body.nas-home .bottom-nav a.bn-item:focus,
+body.nas-home .bottom-nav a.bn-item:active,
+body.nas-home .bottom-nav a.bn-item.active,
+body.nas-home .bottom-nav button.bn-item,
+body.nas-home .bottom-nav .bn-item span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+
+body.nas-home .bottom-nav .bn-icon svg,
+body.nas-home .bottom-nav .bn-item.active .bn-icon svg,
+body.nas-home .bottom-nav .bn-item:hover .bn-icon svg { stroke: #ffffff !important; }
+
+body.nas-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }
 
 .nas-extra-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .nas-more-toggle { display: none; }
