@@ -76,5 +76,10 @@ assert.strictEqual(stale.state, 'down');
 
 assert.strictEqual(probeTargetForNas({ conn_mode: 'vpn', tunnel_address: '10.10.0.2/32', nasname: '1.2.3.4' }), '10.10.0.2');
 assert.strictEqual(probeTargetForNas({ conn_mode: 'public', nasname: '192.168.62.2' }), '192.168.62.2');
+assert.strictEqual(probeTargetForNas({ conn_mode: 'lan', nasname: '192.168.22.1' }), '192.168.22.1');
+
+const lanUp = classifyNasLink({ connMode: 'lan', deviceStatus: 'online' });
+assert.strictEqual(lanUp.state, 'up');
+assert.strictEqual(lanUp.reason, 'device');
 
 console.log('nasLinkStatus.test.js OK');

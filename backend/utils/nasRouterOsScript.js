@@ -191,7 +191,7 @@ function isPrivateHost(host) {
 function buildPortForwardExample(opts) {
   const rawHost = opts.vpsHost || opts.wgEndpointHost || opts.serverHost || '';
   const tunnel = stripCidr(opts.tunnelAddress || opts.nasname || '10.10.0.2');
-  const lanMode = opts.connMode === 'public' || opts.vpnType === 'public' || !opts.vpnType;
+  const lanMode = opts.connMode === 'lan' || opts.connMode === 'public' || opts.vpnType === 'public' || !opts.vpnType;
   const lanOnly = opts.skipPortForward === true || lanMode || isPrivateHost(rawHost);
   if (lanOnly) {
     return {
@@ -237,8 +237,8 @@ function buildNasRouterOsScript(opts) {
   const tunnel = stripCidr(opts.tunnelAddress || '');
   const connMode = opts.connMode === 'vpn' || opts.vpnType === 'wireguard' || opts.vpnType === 'l2tp' || opts.vpnType === 'openvpn'
     ? 'vpn'
-    : 'public';
-  const modeLabel = connMode === 'vpn' ? 'VPN' : 'LAN';
+    : (opts.connMode === 'public' ? 'public' : 'lan');
+  const modeLabel = connMode === 'vpn' ? 'VPN' : (connMode === 'public' ? 'IP Publik' : 'LAN');
   const pppPool = (opts.pppPool || opts.ppp_pool_ranges || '').trim();
   const pppLocal = (opts.pppLocal || opts.ppp_local_address || '').trim();
   const stamped = formatIdDate(opts.now);

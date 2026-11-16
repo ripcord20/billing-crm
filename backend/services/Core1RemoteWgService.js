@@ -421,7 +421,7 @@ async function provision(input = {}) {
       nasname: tunnelIp,
       shortname: name,
       type: 'mikrotik',
-      conn_mode: 'public',
+      conn_mode: 'lan',
       vpn_type: null,
       tunnel_address: `${tunnelIp}/32`,
       ppp_pool_ranges: pppPool || null,

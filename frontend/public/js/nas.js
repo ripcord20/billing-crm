@@ -12,18 +12,22 @@ function fmtSyncAt(s){
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+function connModeKind(n){
+  if(n.conn_mode==='vpn') return `VPN · ${String(n.vpn_type || 'wireguard').toUpperCase()}`;
+  if(n.conn_mode==='public') return 'IP Publik';
+  return 'LAN';
+}
 function modeBadge(n){
   const link = n.link || {};
   const state = link.state === 'up' || link.state === 'pending' || link.state === 'down' ? link.state : 'down';
-  const kind = n.conn_mode === 'vpn'
-    ? `Tunnel · ${String(n.vpn_type || 'wireguard').toUpperCase()}`
-    : 'LAN / langsung';
+  const kind = connModeKind(n);
+  const pill = n.conn_mode==='vpn'?'vpn':(n.conn_mode==='public'?'public':'lan');
   const label = link.label || (state === 'up' ? 'Terhubung' : 'Belum terhubung');
   const age = link.age_label
     ? `<span class="nas-link-age">${esc(link.age_label)}</span>`
     : '';
   return `<div class="nas-mode">
-    <div class="nas-mode-kind">${esc(kind)}</div>
+    <div class="nas-mode-kind"><span class="nas-mode-pill ${pill}">${esc(kind)}</span></div>
     <span class="nas-link ${state}" title="${esc(label)}">
       <span class="nas-led"></span>
       <span class="nas-link-copy">
@@ -66,7 +70,7 @@ async function loadNas(){
   __nasRows=d.data;
   tb.innerHTML=d.data.map(n=>`<tr>
     <td class="mono">${esc(n.nasname)}${n.tunnel_address?`<br><span style="font-size:11px;color:#64748b;">tunnel: ${esc(n.tunnel_address)}</span>`:''}${n.device?`<br><span style="font-size:11px;color:#166534;">Device: ${esc(n.device.name)}</span>`:''}</td>
-    <td>${esc(n.shortname||'—')}</td>
+    <td>${esc(n.shortname||'—')}${n.area?`<br><span style="font-size:11px;color:#64748b;">${esc(n.area)}</span>`:''}</td>
     <td>${esc(n.type)}</td>
     <td>${modeBadge(n)}</td>
     <td>${n.last_error?`<span style="color:#dc2626;">${esc(n.last_error)}</span>`:fmtSyncAt(n.last_sync_at)}</td>
@@ -74,7 +78,7 @@ async function loadNas(){
   </tr>`).join('');
   renderNasMobile(d.data.map(n=>`<article class="nas-m-card">
     <div class="nas-m-ip">${esc(n.nasname)}</div>
-    <div class="nas-m-meta">${esc(n.shortname||'—')} · ${esc(n.type||'—')}${n.tunnel_address?` · tunnel ${esc(n.tunnel_address)}`:''}${n.device?` · ${esc(n.device.name)}`:''}</div>
+    <div class="nas-m-meta">${esc(n.shortname||'—')} · ${esc(n.type||'—')}${n.area?` · ${esc(n.area)}`:''}${n.tunnel_address?` · tunnel ${esc(n.tunnel_address)}`:''}${n.device?` · ${esc(n.device.name)}`:''}</div>
     <div class="nas-m-row">
       <div>${modeBadge(n)}</div>
       <div class="nas-m-sync"><div class="nas-m-k">Sync</div>${n.last_error?`<span style="color:#dc2626;">${esc(n.last_error)}</span>`:fmtSyncAt(n.last_sync_at)}</div>
@@ -84,9 +88,12 @@ async function loadNas(){
 }
 
 window.onConnModeChange=()=>{
-  const vpn=document.getElementById('nasConnMode').value==='vpn';
+  const mode=document.getElementById('nasConnMode').value;
+  const vpn=mode==='vpn';
   const lanHint=document.getElementById('nasLanHint');
-  if(lanHint) lanHint.style.display=vpn?'none':'block';
+  const pubHint=document.getElementById('nasPublicHint');
+  if(lanHint) lanHint.style.display=mode==='lan'?'block':'none';
+  if(pubHint) pubHint.style.display=mode==='public'?'block':'none';
   const hint=document.getElementById('nasVpnHint');
   const wrap=document.getElementById('nasVpnTypeWrap');
   if(hint) hint.style.display=vpn?'block':'none';
@@ -112,6 +119,7 @@ function nasFormBody(){
     type:document.getElementById('nasType').value.trim()||'mikrotik',
     conn_mode:document.getElementById('nasConnMode').value,
     vpn_type:document.getElementById('nasVpnType').value,
+    area:(document.getElementById('nasArea')&&document.getElementById('nasArea').value.trim())||'',
     ppp_pool_ranges:document.getElementById('nasPppPool').value.trim(),
     ppp_local_address:document.getElementById('nasPppLocal').value.trim()
   };
@@ -119,24 +127,108 @@ function nasFormBody(){
   return body;
 }
 
+const NAS_MODE_META={
+  lan:{label:'LAN', hint:'Satu jaringan dengan Fiberix. WireGuard tidak perlu.', ip:'192.168.22.1', ipHint:'IP LAN MikroTik yang mengirim paket RADIUS.'},
+  vpn:{label:'VPN', hint:'Router beda lokasi. nasname = IP tunnel WireGuard.', ip:'10.201.0.2', ipHint:'IP tunnel (contoh 10.201.0.x), bukan IP WAN router.'},
+  public:{label:'IP Publik', hint:'Interconnect IP public static. Bukan IP remote Winbox ISP.', ip:'', ipHint:'IP WAN CORE yang dilihat FreeRADIUS.'}
+};
+
+function setNasModeUi(mode){
+  const m=NAS_MODE_META[mode]||NAS_MODE_META.lan;
+  const hidden=document.getElementById('addNasMode');
+  if(hidden) hidden.value=mode;
+  const lab=document.getElementById('addNasModeLabel');
+  if(lab) lab.textContent=m.label;
+  const hint=document.getElementById('addNasModeHint');
+  if(hint) hint.textContent=m.hint;
+  const ipHint=document.getElementById('addNasIpHint');
+  if(ipHint) ipHint.textContent=m.ipHint;
+  const ip=document.getElementById('addNasIp');
+  if(ip && !ip.value) ip.placeholder=m.ip||'IP NAS';
+  document.querySelectorAll('#addNasModeMenu [data-mode]').forEach(btn=>{
+    btn.classList.toggle('is-sel', btn.getAttribute('data-mode')===mode);
+  });
+}
+
+window.toggleNasModeMenu=()=>{
+  const menu=document.getElementById('addNasModeMenu');
+  const btn=document.getElementById('addNasModeBtn');
+  if(!menu) return;
+  const open=!menu.classList.contains('is-open');
+  menu.classList.toggle('is-open', open);
+  if(btn) btn.classList.toggle('is-open', open);
+};
+window.pickNasMode=(mode)=>{
+  setNasModeUi(mode);
+  const menu=document.getElementById('addNasModeMenu');
+  const btn=document.getElementById('addNasModeBtn');
+  if(menu) menu.classList.remove('is-open');
+  if(btn) btn.classList.remove('is-open');
+};
+
+async function loadNasAreas(selected){
+  const list=document.getElementById('nasAreaList');
+  if(!list) return;
+  try{
+    const d=await App.api('/nas/areas');
+    const rows=Array.isArray(d&&d.data)?d.data:[];
+    list.innerHTML=rows.map(a=>`<option value="${esc(a)}"></option>`).join('');
+  }catch(_){ list.innerHTML=''; }
+  const add=document.getElementById('addNasArea');
+  if(add && selected) add.value=selected;
+}
+
+window.closeNasAdd=()=>{
+  const ov=document.getElementById('nasAddModal');
+  if(ov) ov.classList.remove('is-open');
+  const menu=document.getElementById('addNasModeMenu');
+  if(menu) menu.classList.remove('is-open');
+};
+
 window.openNas=()=>{
-  document.getElementById('nasId').value='';
-  document.getElementById('nasTitle').textContent='NAS baru';
-  document.getElementById('nasIp').value='';
-  document.getElementById('nasShort').value='';
-  document.getElementById('nasSecret').value='';
-  document.getElementById('nasType').value='mikrotik';
-  document.getElementById('nasConnMode').value='public';
-  document.getElementById('nasVpnType').value='wireguard';
-  document.getElementById('nasPppPool').value='10.2.64.2-10.2.79.254';
-  document.getElementById('nasPppLocal').value='10.2.64.1';
-  __rosTab='v7';
-  onConnModeChange();
-  showNasDetail(true);
-  const pre=document.getElementById('rosScript');
-  if(pre) pre.textContent='Isi IP NAS dan secret, lalu script muncul di sini.';
-  document.getElementById('rosNotes').textContent='Pilih versi RouterOS, lalu salin dan tempel di New Terminal MikroTik.';
-  window.scrollTo({top:0,behavior:'smooth'});
+  const form=document.getElementById('nasAddForm');
+  if(form) form.reset();
+  setNasModeUi('lan');
+  const name=document.getElementById('addNasName');
+  if(name) name.value='';
+  document.getElementById('addNasDesc').value='';
+  document.getElementById('addNasArea').value='';
+  document.getElementById('addNasIp').value='';
+  document.getElementById('addNasSecret').value='';
+  loadNasAreas();
+  const ov=document.getElementById('nasAddModal');
+  if(ov) ov.classList.add('is-open');
+  setTimeout(()=>{ if(name) name.focus(); }, 50);
+};
+
+window.submitNasAdd=async(ev)=>{
+  ev.preventDefault();
+  const shortname=(document.getElementById('addNasName').value||'').trim();
+  const nasname=(document.getElementById('addNasIp').value||'').trim();
+  const secret=(document.getElementById('addNasSecret').value||'').trim();
+  const conn_mode=document.getElementById('addNasMode').value||'lan';
+  if(!shortname) return App.showToast('Nama NAS wajib','error');
+  if(!nasname) return App.showToast('IP NAS wajib','error');
+  if(!secret) return App.showToast('Secret wajib','error');
+  const btn=document.getElementById('addNasSubmit');
+  if(btn){ btn.disabled=true; }
+  const r=await App.api('/nas',{method:'POST',body:JSON.stringify({
+    shortname,
+    nasname,
+    secret,
+    description:(document.getElementById('addNasDesc').value||'').trim(),
+    area:(document.getElementById('addNasArea').value||'').trim(),
+    conn_mode,
+    vpn_type:conn_mode==='vpn'?'wireguard':null,
+    type:'mikrotik'
+  })});
+  if(btn){ btn.disabled=false; }
+  if(!r?.success) return App.showToast(r?.message||'Gagal menambah NAS','error');
+  App.showToast(r.radius_sync?.success?'NAS ditambahkan & sync FreeRADIUS':'NAS ditambahkan', r.radius_sync?.success?'success':'success');
+  closeNasAdd();
+  await loadNas();
+  const newId=r.data&&r.data.id;
+  if(newId) await openNasDetail(newId);
 };
 
 window.openNasDetail=async(id)=>{
@@ -153,8 +245,10 @@ window.openNasDetail=async(id)=>{
   document.getElementById('nasSecret').value='';
   document.getElementById('nasSecret').placeholder='kosongkan jika tidak diubah';
   document.getElementById('nasType').value=n.type||'mikrotik';
-  document.getElementById('nasConnMode').value=n.conn_mode==='vpn'?'vpn':'public';
+  document.getElementById('nasConnMode').value=n.conn_mode==='vpn'?'vpn':(n.conn_mode==='public'?'public':'lan');
   document.getElementById('nasVpnType').value=n.vpn_type||'wireguard';
+  const areaEl=document.getElementById('nasArea');
+  if(areaEl) areaEl.value=n.area||'';
   document.getElementById('nasPppPool').value=n.ppp_pool_ranges||'10.2.64.2-10.2.79.254';
   document.getElementById('nasPppLocal').value=n.ppp_local_address||'10.2.64.1';
   __rosTab='v7';
@@ -561,6 +655,22 @@ window.downloadRemoteWg=()=>{
   URL.revokeObjectURL(a.href);
 };
 
+document.addEventListener('click', (ev) => {
+  const wrap=document.querySelector('.nas-add-mode');
+  if(wrap && !wrap.contains(ev.target)){
+    const menu=document.getElementById('addNasModeMenu');
+    const btn=document.getElementById('addNasModeBtn');
+    if(menu) menu.classList.remove('is-open');
+    if(btn) btn.classList.remove('is-open');
+  }
+});
+document.addEventListener('keydown', (ev) => {
+  if(ev.key==='Escape'){
+    closeNasAdd();
+    const menu=document.getElementById('addNasModeMenu');
+    if(menu) menu.classList.remove('is-open');
+  }
+});
 document.addEventListener('DOMContentLoaded', () => {
   loadNas();
   setInterval(loadNas, 20000);

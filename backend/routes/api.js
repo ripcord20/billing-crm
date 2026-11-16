@@ -398,6 +398,7 @@ router.put('/nas/wireguard/server', authenticate, demoGuard, tenantContextMiddle
 router.post('/nas/wireguard/server/init-keys', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.wgServerInitKeys(r, s));
 router.post('/nas/import', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.importFromRadius(r, s));
 router.post('/nas/remote-wg/provision', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.provisionRemoteWg(r, s));
+router.get('/nas/areas', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.areas(r, s));
 router.get('/nas', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.index(r, s));
 router.post('/nas', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.create(r, s));
 router.post('/nas/:id/sync', authenticate, demoGuard, tenantContextMiddleware, radiusStaff, (r, s) => NasController.syncOne(r, s));

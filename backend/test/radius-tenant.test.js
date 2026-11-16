@@ -112,4 +112,20 @@ assert.ok(ros.port_forward_example.nft_example.includes('10.10.0.2:8728'));
 assert.ok(ros.port_forward_example.rules[0].public.startsWith('vpn.example.com:'));
 assert.ok(radiusAllowedIps('10.10.0.1', '192.168.22.9').includes('192.168.22.9/32'));
 
+const lanRos = buildNasRouterOsScript({
+  nasname: '192.168.22.1',
+  secret: 'x',
+  connMode: 'lan',
+  radiusHost: '192.168.22.99'
+});
+assert.strictEqual(lanRos.mode_label, 'LAN');
+assert.ok(lanRos.v7.includes('Mode LAN') || lanRos.v7.includes('# Mode: LAN'));
+const pubRos = buildNasRouterOsScript({
+  nasname: '203.0.113.10',
+  secret: 'x',
+  connMode: 'public',
+  radiusHost: '192.168.22.99'
+});
+assert.strictEqual(pubRos.mode_label, 'IP Publik');
+
 console.log('radius-tenant.test.js OK');

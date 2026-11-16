@@ -1,6 +1,8 @@
 'use strict';
 
-const { NasDevice, RadiusServer, Device } = require('../models');
+const { NasDevice, RadiusServer, Device, Customer } = require('../models');
+const { Op } = require('sequelize');
+const { normalizeConnMode } = require('../utils/nasConnMode');
 const RadiusSQL = require('../services/RadiusSqlService');
 const RadiusProv = require('../services/RadiusProvisionService');
 const Wireguard = require('../services/WireguardService');
@@ -62,7 +64,7 @@ class NasController {
       if (!b.nasname || !b.secret) {
         return res.status(400).json({ success: false, message: 'IP NAS (nasname) dan secret wajib' });
       }
-      const connMode = b.conn_mode === 'vpn' ? 'vpn' : 'public';
+      const connMode = normalizeConnMode(b.conn_mode);
       const row = await NasDevice.create({
         tenant_id: getTenantId() || b.tenant_id || null,
         radius_server_id: b.radius_server_id || null,
@@ -77,6 +79,7 @@ class NasController {
         secret: b.secret,
         community: b.community || null,
         description: b.description || null,
+        area: b.area ? String(b.area).trim() : null,
         is_active: b.is_active !== false
       });
       const sync = await pushNas(row);
@@ -92,10 +95,11 @@ class NasController {
       if (!row) return res.status(404).json({ success: false, message: 'NAS tidak ditemukan' });
       const b = req.body || {};
       const patch = {};
-      for (const f of ['nasname','shortname','type','ports','community','description','is_active','radius_server_id','device_id','conn_mode','vpn_type','tunnel_address']) {
+      for (const f of ['nasname','shortname','type','ports','community','description','area','is_active','radius_server_id','device_id','vpn_type','tunnel_address']) {
         if (b[f] !== undefined) patch[f] = b[f];
       }
-      if (b.conn_mode === 'vpn' && b.vpn_type === undefined) patch.vpn_type = row.vpn_type || 'wireguard';
+      if (b.conn_mode !== undefined) patch.conn_mode = normalizeConnMode(b.conn_mode);
+      if (patch.conn_mode === 'vpn' && b.vpn_type === undefined) patch.vpn_type = row.vpn_type || 'wireguard';
       if (b.secret && b.secret !== '********') patch.secret = b.secret;
       await row.update(patch);
       const sync = await pushNas(row);
@@ -268,6 +272,7 @@ class NasController {
         secret: row.secret,
         radiusHost,
         tunnelAddress: row.tunnel_address,
+        connMode: row.conn_mode,
         vpnType,
         vpsHost: wgCfg.endpointHost,
         wireguard,
@@ -292,6 +297,36 @@ class NasController {
       res.json({ success: true, data: out });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  async areas(req, res) {
+    try {
+      const names = new Set();
+      const nasAreas = await NasDevice.findAll({
+        attributes: ['area'],
+        where: { area: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] } },
+        raw: true
+      });
+      nasAreas.forEach((r) => {
+        const v = String(r.area || '').trim();
+        if (v) names.add(v);
+      });
+      if (Customer) {
+        const regs = await Customer.findAll({
+          attributes: ['regency'],
+          where: { regency: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] } },
+          group: ['regency'],
+          raw: true
+        });
+        regs.forEach((r) => {
+          const v = String(r.regency || '').trim();
+          if (v) names.add(v);
+        });
+      }
+      res.json({ success: true, data: Array.from(names).sort((a, b) => a.localeCompare(b, 'id')) });
+    } catch (e) {
+      res.json({ success: true, data: [] });
     }
   }
 

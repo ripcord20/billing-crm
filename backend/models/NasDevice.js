@@ -34,13 +34,13 @@ module.exports = (sequelize) => {
       defaultValue: 'mikrotik'
     },
     // ── Mode koneksi NAS ↔ billing/RADIUS ────────────────────────────────
-    // 'public' : MikroTik menjangkau server RADIUS lewat IP publik langsung.
-    // 'vpn'    : MikroTik terhubung lewat tunnel (WireGuard). nasname diisi
-    //            dengan alamat tunnel MikroTik (peer) supaya cocok dengan IP
-    //            yang dilihat FreeRADIUS dari sisi tunnel.
+    // 'lan'    : MikroTik dan Fiberix satu jaringan. nasname = IP LAN router.
+    // 'vpn'    : MikroTik terhubung lewat tunnel (WireGuard). nasname = IP tunnel.
+    // 'public' : Interconnect IP public static. nasname = IP WAN yang dilihat
+    //            FreeRADIUS (bukan IP helper Winbox ISP).
     conn_mode: {
-      type: DataTypes.ENUM('public', 'vpn'),
-      defaultValue: 'public'
+      type: DataTypes.ENUM('lan', 'vpn', 'public'),
+      defaultValue: 'lan'
     },
     vpn_type: {
       type: DataTypes.STRING(20),
@@ -117,6 +117,11 @@ module.exports = (sequelize) => {
     description: {
       type: DataTypes.STRING(200),
       allowNull: true
+    },
+    area: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: 'Wilayah operasional NAS'
     },
     is_active: {
       type: DataTypes.BOOLEAN,
