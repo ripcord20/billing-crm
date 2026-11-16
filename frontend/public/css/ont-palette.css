@@ -301,3 +301,18 @@ body.ontm-home .apexcharts-legend-text {
   fill: #ffffff !important;
   color: #ffffff !important;
 }
+
+/* Kolom sisa yang masih putih: --text sudah terang jadi tulisan hilang. */
+body.ontm-home .wifi-band-box,
+body.ontm-home .form-row input,
+body.ontm-home #customer-search-results,
+body.ontm-home .ot-modal-box div[style*="background:#f8fafc"],
+body.ontm-home .ot-modal-box div[style*="background:#fff"] {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.ontm-home .form-row label,
+body.ontm-home .wifi-band-header {
+  color: #e2e8f0 !important;
+}

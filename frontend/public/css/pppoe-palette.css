@@ -269,3 +269,19 @@ body.pp-home .pb-tb tbody tr:nth-child(8n+5) td { background: #ea580c !important
 body.pp-home .pb-tb tbody tr:nth-child(8n+6) td { background: #e11d48 !important; }
 body.pp-home .pb-tb tbody tr:nth-child(8n+7) td { background: #db2777 !important; }
 body.pp-home .pb-tb tbody tr:nth-child(8n+8) td { background: #7c3aed !important; }
+
+/* Bilah kontrol masih putih: judul memakai --text yang sudah terang. */
+body.pp-home .pp-ctrl {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+  color: #f8fafc !important;
+}
+body.pp-home .pp-ctrl-title,
+body.pp-home .pp-ctrl-l svg {
+  color: #f8fafc !important;
+}
+body.pp-home .pp-ctrl select {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
