@@ -22,11 +22,23 @@ module.exports = (sequelize) => {
     },
     nasname: {
       type: DataTypes.STRING(128),
-      allowNull: false,
-      comment: 'IP NAS (client RADIUS), kolom nas.nasname di FreeRADIUS'
+      allowNull: true,
+      comment: 'IP publik NAS (opsional). Untuk VPN boleh kosong.'
     },
     shortname: {
       type: DataTypes.STRING(64),
+      allowNull: true
+    },
+    connection_method: {
+      type: DataTypes.ENUM('vpn', 'public_ip'),
+      defaultValue: 'vpn'
+    },
+    province: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    regency: {
+      type: DataTypes.STRING(100),
       allowNull: true
     },
     type: {
@@ -39,7 +51,7 @@ module.exports = (sequelize) => {
     },
     secret: {
       type: DataTypes.STRING(120),
-      allowNull: false
+      allowNull: true
     },
     community: {
       type: DataTypes.STRING(50),

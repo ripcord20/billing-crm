@@ -1,20 +1,31 @@
 'use strict';
 
-const { NasDevice, RadiusServer, Device } = require('../models');
+const { NasDevice } = require('../models');
 const RadiusSQL = require('../services/RadiusSqlService');
 const RadiusProv = require('../services/RadiusProvisionService');
 const { getTenantId } = require('../middleware/tenantContext');
 
+function pickSimple(b) {
+  const name = String(b.name || b.shortname || '').trim();
+  const method = b.connection_method === 'public_ip' ? 'public_ip' : 'vpn';
+  const publicIp = String(b.nasname || b.public_ip || '').trim();
+  return {
+    shortname: name,
+    description: b.description ? String(b.description).trim() : null,
+    connection_method: method,
+    province: b.province ? String(b.province).trim() : null,
+    regency: b.regency ? String(b.regency).trim() : null,
+    nasname: method === 'public_ip' ? publicIp : (publicIp || name || null),
+    secret: (b.secret && b.secret !== '********') ? b.secret : null,
+    type: b.type || 'mikrotik',
+    is_active: b.is_active !== false
+  };
+}
+
 class NasController {
   async index(req, res) {
     try {
-      const rows = await NasDevice.findAll({
-        include: [
-          { model: RadiusServer, as: 'radius_server', required: false },
-          { model: Device, as: 'device', attributes: ['id', 'name', 'ip_address'], required: false }
-        ],
-        order: [['id', 'DESC']]
-      });
+      const rows = await NasDevice.findAll({ order: [['id', 'DESC']] });
       res.json({ success: true, data: rows });
     } catch (e) {
       res.status(500).json({ success: false, message: e.message });
@@ -23,25 +34,18 @@ class NasController {
 
   async create(req, res) {
     try {
-      const b = req.body || {};
-      if (!b.nasname || !b.secret) {
-        return res.status(400).json({ success: false, message: 'IP NAS (nasname) dan secret wajib' });
+      const fields = pickSimple(req.body || {});
+      if (!fields.shortname) {
+        return res.status(400).json({ success: false, message: 'Nama NAS wajib diisi' });
+      }
+      if (fields.connection_method === 'public_ip' && !fields.nasname) {
+        return res.status(400).json({ success: false, message: 'IP publik wajib diisi' });
       }
       const row = await NasDevice.create({
-        tenant_id: getTenantId() || b.tenant_id || null,
-        radius_server_id: b.radius_server_id || null,
-        device_id: b.device_id || null,
-        nasname: String(b.nasname).trim(),
-        shortname: b.shortname || b.nasname,
-        type: b.type || 'mikrotik',
-        ports: b.ports || null,
-        secret: b.secret,
-        community: b.community || null,
-        description: b.description || null,
-        is_active: b.is_active !== false
+        tenant_id: getTenantId() || req.body.tenant_id || null,
+        ...fields
       });
-      const sync = await this._push(row);
-      res.status(201).json({ success: true, data: row, radius_sync: sync });
+      res.status(201).json({ success: true, data: row });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }
@@ -52,14 +56,20 @@ class NasController {
       const row = await NasDevice.findByPk(req.params.id);
       if (!row) return res.status(404).json({ success: false, message: 'NAS tidak ditemukan' });
       const b = req.body || {};
-      const patch = {};
-      for (const f of ['nasname','shortname','type','ports','community','description','is_active','radius_server_id','device_id']) {
-        if (b[f] !== undefined) patch[f] = b[f];
+      const patch = pickSimple({
+        name: b.name || b.shortname || row.shortname,
+        description: b.description !== undefined ? b.description : row.description,
+        connection_method: b.connection_method || row.connection_method,
+        province: b.province !== undefined ? b.province : row.province,
+        regency: b.regency !== undefined ? b.regency : row.regency,
+        public_ip: b.public_ip !== undefined ? b.public_ip : (b.nasname !== undefined ? b.nasname : row.nasname),
+        secret: b.secret
+      });
+      if (!patch.shortname) {
+        return res.status(400).json({ success: false, message: 'Nama NAS wajib diisi' });
       }
-      if (b.secret && b.secret !== '********') patch.secret = b.secret;
       await row.update(patch);
-      const sync = await this._push(row);
-      res.json({ success: true, data: row, radius_sync: sync });
+      res.json({ success: true, data: row });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }
@@ -69,14 +79,8 @@ class NasController {
     try {
       const row = await NasDevice.findByPk(req.params.id);
       if (!row) return res.status(404).json({ success: false, message: 'NAS tidak ditemukan' });
-      try {
-        const server = await RadiusProv.resolveServer(row.radius_server_id);
-        if (server) await RadiusSQL.deleteNas(server, row.nasname);
-      } catch (e) {
-        await row.update({ last_error: e.message.slice(0, 250) });
-      }
       await row.destroy();
-      res.json({ success: true, message: 'NAS dihapus dari billing (dan diupayakan dari FreeRADIUS)' });
+      res.json({ success: true, message: 'NAS dihapus' });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }
@@ -107,13 +111,12 @@ class NasController {
           tenant_id: getTenantId() || server.tenant_id || null,
           radius_server_id: server.id,
           nasname: n.nasname,
-          shortname: n.shortname,
+          shortname: n.shortname || n.nasname,
           type: n.type || 'other',
-          ports: n.ports,
-          secret: server.default_nas_secret || 'secret',
+          connection_method: 'public_ip',
+          secret: server.default_nas_secret || null,
           description: n.description,
-          is_active: true,
-          last_sync_at: new Date()
+          is_active: true
         });
         created++;
       }
@@ -125,9 +128,10 @@ class NasController {
 
   async _push(row) {
     try {
+      if (!row.nasname) return { success: false, message: 'NAS belum punya IP untuk sync RADIUS' };
       const server = await RadiusProv.resolveServer(row.radius_server_id);
       if (!server) return { success: false, message: 'Server RADIUS belum dikonfigurasi' };
-      const secret = row.secret && row.secret !== '********' ? row.secret : (server.default_nas_secret || 'secret');
+      const secret = row.secret || server.default_nas_secret || 'secret';
       await RadiusSQL.upsertNas(server, {
         nasname: row.nasname,
         shortname: row.shortname,

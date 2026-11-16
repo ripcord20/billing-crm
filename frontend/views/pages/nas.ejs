@@ -4,52 +4,102 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .nas-page { font-family:'DM Sans',sans-serif; }
+    .nas-hdr { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
+    .nas-hdr h1 { margin:0 0 4px; font-size:22px; font-weight:800; color:#0f172a; }
+    .nas-hdr p { margin:0; font-size:13px; color:#64748b; }
+    .nas-empty { background:#fff; border:1px solid #e8eaed; border-radius:16px; padding:48px 24px; text-align:center; color:#94a3b8; }
+    .nas-list { display:flex; flex-direction:column; gap:10px; }
+    .nas-card { background:#fff; border:1px solid #e8eaed; border-radius:14px; padding:16px 18px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .nas-card h3 { margin:0 0 4px; font-size:15px; font-weight:700; color:#0f172a; }
+    .nas-card .desc { margin:0; font-size:13px; color:#64748b; }
+    .nas-meta { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+    .nas-pill { font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; background:#f1f5f9; color:#475569; }
+    .nas-pill.vpn { background:#ecfdf5; color:#047857; }
+    .nas-pill.ip { background:#eff6ff; color:#1d4ed8; }
+    .nas-modal { display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:2000; align-items:center; justify-content:center; padding:16px; }
+    .nas-modal.open { display:flex; }
+    .nas-sheet { background:#fff; width:100%; max-width:420px; border-radius:18px; overflow:hidden; box-shadow:0 24px 60px rgba(15,23,42,.25); }
+    .nas-sheet-h { background:#86efac; color:#14532d; padding:18px 20px 14px; position:relative; }
+    .nas-sheet-h h2 { margin:0; font-size:18px; font-weight:800; display:flex; align-items:center; gap:8px; }
+    .nas-sheet-h p { margin:6px 0 0; font-size:12.5px; color:#166534; }
+    .nas-x { position:absolute; right:14px; top:14px; border:0; background:transparent; font-size:22px; color:#166534; cursor:pointer; line-height:1; }
+    .nas-sheet-b { padding:18px 20px 20px; }
+    .nas-lab { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:#334155; margin:0 0 6px; }
+    .nas-lab .req { color:#ef4444; }
+    .nas-hint { font-size:11.5px; color:#94a3b8; margin:-2px 0 10px; }
+    .nas-inp, .nas-sel { width:100%; box-sizing:border-box; padding:10px 12px; border:1.5px solid #e2e8f0; border-radius:10px; font-size:13.5px; font-family:inherit; color:#0f172a; background:#fff; outline:none; margin-bottom:14px; }
+    .nas-inp:focus, .nas-sel:focus { border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.15); }
+    .nas-inp::placeholder { color:#cbd5e1; }
+    .nas-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:6px; }
+    .nas-btn-c { background:#fff; border:1.5px solid #e2e8f0; color:#64748b; padding:9px 16px; border-radius:10px; font-weight:700; cursor:pointer; font-family:inherit; }
+    .nas-btn-g { background:#22c55e; border:none; color:#fff; padding:9px 16px; border-radius:10px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px; }
+    .nas-btn-g:hover { background:#16a34a; }
+  </style>
 </head>
 <body>
-<div class="app-layout">
+<div class="app-layout nas-page">
   <%- include('../partials/sidebar') %>
   <div class="main-content">
     <%- include('../partials/topbar') %>
     <main class="page-content">
-      <div class="page-header">
-        <div class="page-header-left">
+      <div class="nas-hdr">
+        <div>
           <h1>Modul NAS</h1>
-          <p style="margin:4px 0 0;color:#64748b;font-size:13px;">Daftar NAS (client RADIUS) untuk FreeRADIUS/daloRADIUS. Sync menulis ke tabel <code>nas</code> di server RADIUS, bukan ke database billing pelanggan.</p>
+          <p>Daftar Network Access Server (router) untuk area layanan.</p>
         </div>
-        <div class="page-header-right" style="display:flex;gap:8px;">
-          <button class="btn btn-secondary" onclick="importNas()">Import dari RADIUS</button>
-          <button class="btn btn-primary" onclick="openNas()">+ NAS</button>
-        </div>
+        <button class="nas-btn-g" onclick="openNas()">+ Tambah NAS</button>
       </div>
-      <div class="card"><div class="card-body">
-        <table class="data-table">
-          <thead><tr><th>NAS IP</th><th>Nama</th><th>Tipe</th><th>Sync</th><th>Aksi</th></tr></thead>
-          <tbody id="nasTable"><tr><td colspan="5" style="text-align:center;padding:32px;color:#94a3b8;">Memuat…</td></tr></tbody>
-        </table>
-      </div></div>
+      <div id="nasList" class="nas-list">
+        <div class="nas-empty">Memuat…</div>
+      </div>
     </main>
   </div>
 </div>
-<div id="nasModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:460px;">
-    <h3 style="margin:0 0 12px;" id="nasTitle">NAS baru</h3>
-    <input type="hidden" id="nasId">
-    <label style="font-size:13px;">IP NAS (nasname) *</label>
-    <input id="nasIp" placeholder="192.168.22.1" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-    <label style="font-size:13px;">Shortname</label>
-    <input id="nasShort" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-    <label style="font-size:13px;">Secret *</label>
-    <input id="nasSecret" type="password" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-    <label style="font-size:13px;">Tipe</label>
-    <input id="nasType" value="mikrotik" style="width:100%;margin:6px 0 16px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
-    <div style="display:flex;justify-content:flex-end;gap:8px;">
-      <button class="btn btn-secondary" onclick="document.getElementById('nasModal').style.display='none'">Batal</button>
-      <button class="btn btn-primary" onclick="saveNas()">Simpan &amp; sync</button>
+
+<div id="nasModal" class="nas-modal" onclick="if(event.target===this)closeNas()">
+  <div class="nas-sheet">
+    <div class="nas-sheet-h">
+      <button class="nas-x" type="button" onclick="closeNas()">&times;</button>
+      <h2 id="nasTitle">+ Tambah NAS</h2>
+      <p>Tambahkan Network Access Server baru ke sistem</p>
     </div>
+    <form class="nas-sheet-b" onsubmit="event.preventDefault();saveNas();">
+      <input type="hidden" id="nasId">
+      <div class="nas-lab">Nama NAS <span class="req">*</span></div>
+      <input class="nas-inp" id="nasName" required placeholder="Contoh: Router Pusat" maxlength="64">
+
+      <div class="nas-lab">Deskripsi</div>
+      <input class="nas-inp" id="nasDesc" placeholder="Contoh: Router untuk area pusat kota" maxlength="200">
+      <div class="nas-hint">Deskripsi singkat tentang NAS ini (opsional)</div>
+
+      <div class="nas-lab">Metode Koneksi <span class="req">*</span></div>
+      <select class="nas-sel" id="nasMethod" onchange="onMethodChange()">
+        <option value="vpn">VPN</option>
+        <option value="public_ip">IP Publik</option>
+      </select>
+
+      <div id="nasIpWrap" style="display:none;">
+        <div class="nas-lab">IP Publik <span class="req">*</span></div>
+        <input class="nas-inp" id="nasIp" placeholder="Contoh: 103.195.65.216">
+      </div>
+
+      <div class="nas-lab">Wilayah</div>
+      <select class="nas-sel" id="nasProvince">
+        <option value="">Pilih wilayah untuk NAS</option>
+      </select>
+
+      <div class="nas-actions">
+        <button type="button" class="nas-btn-c" onclick="closeNas()">Batal</button>
+        <button type="submit" class="nas-btn-g" id="nasSubmit">+ Tambah NAS</button>
+      </div>
+    </form>
   </div>
 </div>
+
 <script src="/js/app.js"></script>
 <script src="/js/nas.js"></script>
 </body>
