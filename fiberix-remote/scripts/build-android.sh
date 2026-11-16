@@ -8,7 +8,7 @@ export ANDROID_SDK_ROOT="$SDK"
 export ANDROID_HOME="$SDK"
 
 mkdir -p android/app/src/main/assets/viewer
-cp -f viewer/index.html viewer/app.js viewer/app.css viewer/manifest.webmanifest viewer/icon.svg viewer/relayUrl.js \
+cp -f viewer/index.html viewer/app.js viewer/app.css viewer/manifest.webmanifest viewer/icon.svg viewer/relayUrl.js viewer/defaultRelay.js \
   android/app/src/main/assets/viewer/
 
 if [[ ! -x "$SDK/cmdline-tools/latest/bin/sdkmanager" && ! -x "$SDK/cmdline-tools/bin/sdkmanager" ]]; then

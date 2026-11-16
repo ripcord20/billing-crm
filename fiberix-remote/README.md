@@ -7,7 +7,11 @@ Aplikasi remote support mirip UltraViewer untuk **PC Windows** (yang dikendalika
 - Panel host sederhana: ID, Password, Unattended access
 - Auto-reconnect, ID tidak berganti setelah internet putus
 
-## 1. Relay (server, wajib nyala)
+## 1. Relay cloud (sekali di VPS, pengguna tidak mengisi alamat)
+
+UltraViewer menyembunyikan alamat server. Fiberix sama: Windows dan Android sudah mengarah ke `103.195.65.216:18789`.
+
+Di VPS itu, jalankan terus:
 
 ```bash
 cd fiberix-remote
@@ -15,7 +19,7 @@ npm install
 npm start
 ```
 
-Port **18789**. Buka firewall.
+Buka firewall **TCP 18789**. Pelanggan dan teknisi hanya memakai ID + password.
 
 ## 2. Windows
 
@@ -29,7 +33,7 @@ Hasil: `dist/FiberixRemote-Setup.exe`
 
 Installer memakai **Node.js resmi** (bukan packer `pkg`, yang sering kena antivirus) + tanda tangan Authenticode.
 
-Di PC pelanggan: Next → Install → panel **Allow Remote Control** muncul. Isi Server `IP:18789`, beri **Your ID** dan **Password** ke teknisi.
+Di PC pelanggan: Next → Install → panel **Allow Remote Control** muncul (ID + password, tanpa alamat server).
 
 Opsi Unattended:
 

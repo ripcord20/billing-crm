@@ -45,9 +45,11 @@ Section "Host" SecHost
 
   SetOutPath "$INSTDIR\lib"
   File "..\..\lib\relayUrl.js"
+  File "..\..\lib\defaultRelay.js"
 
   SetOutPath "$INSTDIR\viewer"
   File "..\..\viewer\relayUrl.js"
+  File "..\..\viewer\defaultRelay.js"
 
   SetOutPath "$INSTDIR\node_modules"
   File /r "..\..\dist\win\stage\node_modules\ws"

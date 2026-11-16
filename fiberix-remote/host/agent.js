@@ -16,6 +16,7 @@ const os = require('os');
 const { spawn, execFile } = require('child_process');
 const { WebSocket } = require('ws');
 const { normalizeRelay, displayRelay } = require('../lib/relayUrl');
+const { DEFAULT_RELAY } = require('../lib/defaultRelay');
 
 const IS_WIN = process.platform === 'win32';
 const FPS = Math.max(1, Math.min(8, parseInt(process.env.REMOTE_FPS || '4', 10)));
@@ -24,7 +25,7 @@ const STATE_FILE = path.join(os.homedir(), '.fiberix-remote-host.json');
 const HERE = process.pkg ? path.dirname(process.execPath) : __dirname;
 const SNAPSHOT = __dirname;
 
-let relayUrl = normalizeRelay(process.env.REMOTE_RELAY || process.argv[2] || '');
+let relayUrl = normalizeRelay(process.env.REMOTE_RELAY || process.argv[2] || DEFAULT_RELAY);
 let session = { id: null, password: null, token: null };
 let ws = null;
 let reconnectTimer = null;
@@ -40,12 +41,11 @@ function loadState() {
   try {
     const j = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
     if (j.id && j.token) session = { id: j.id, token: j.token, password: j.password || null };
-    if (!process.env.REMOTE_RELAY && !process.argv[2] && j.relay) relayUrl = normalizeRelay(j.relay);
     options.autostart = !!j.autostart;
     options.preventSleep = !!j.preventSleep;
     options.wol = !!j.wol;
   } catch (_) {}
-  if (!relayUrl) relayUrl = 'ws://127.0.0.1:18789/ws';
+  if (!relayUrl) relayUrl = DEFAULT_RELAY;
 }
 
 function saveState() {

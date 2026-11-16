@@ -43,9 +43,6 @@
     .status.off { color:#b45309; }
     .dot { width:10px; height:10px; border-radius:50%; background:#3ddc5a; box-shadow:0 0 0 2px #c8f0d0; }
     .status.off .dot { background:#f59e0b; box-shadow:0 0 0 2px #fde68a; }
-    .relay { margin-top:14px; font-size:12px; color:#555; display:flex; gap:8px; align-items:center; }
-    .relay input { flex:1; height:26px; border:1px solid #bbb; padding:0 8px; }
-    .relay button { height:26px; }
   </style>
 </head>
 <body>
@@ -77,11 +74,6 @@
     </div>
 
     <div class="status" id="st"><span class="dot"></span> <span id="stt">Connecting…</span></div>
-    <div class="relay">
-      <span>Server</span>
-      <input id="relay" placeholder="192.168.22.99:18789">
-      <button type="button" onclick="saveRelay()">OK</button>
-    </div>
   </div>
   <script>
     function formatId(id) {
@@ -95,9 +87,6 @@
     async function post(url, body) {
       const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       return r.json();
-    }
-    async function saveRelay() {
-      await post('/api/relay', { url: document.getElementById('relay').value });
     }
     async function saveOpts() {
       await post('/api/options', {
@@ -119,8 +108,6 @@
         const pwEl = document.getElementById('pw');
         if (document.activeElement !== idEl) idEl.value = formatId(s.id);
         if (document.activeElement !== pwEl) pwEl.value = s.password || '';
-        const relay = document.getElementById('relay');
-        if (document.activeElement !== relay) relay.value = s.relayDisplay || '';
         document.getElementById('autostart').checked = !!s.autostart;
         document.getElementById('preventSleep').checked = !!s.preventSleep;
         document.getElementById('wol').checked = !!s.wol;
