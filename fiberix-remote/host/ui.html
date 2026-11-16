@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Fiberix Remote — Host</title>
+  <style>
+    :root { --g:#16a34a; --gd:#14532d; --bg:#0b1220; --card:#111827; --line:#1f2937; --muted:#94a3b8; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; font-family:Segoe UI,system-ui,sans-serif; background:radial-gradient(1200px 500px at 20% -10%, #14532d55, transparent), var(--bg); color:#f8fafc; }
+    .wrap { max-width:520px; margin:0 auto; padding:36px 20px; }
+    h1 { margin:0 0 6px; font-size:22px; }
+    .sub { color:var(--muted); font-size:13px; margin-bottom:22px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:22px; }
+    .row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
+    .row:last-child { border-bottom:0; }
+    .lbl { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+    .val { font-size:28px; font-weight:800; letter-spacing:.12em; font-family:ui-monospace,Consolas,monospace; }
+    .pill { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; padding:5px 10px; border-radius:999px; }
+    .on { background:#052e16; color:#86efac; }
+    .off { background:#3f1d1d; color:#fecaca; }
+    .dot { width:8px; height:8px; border-radius:50%; background:currentColor; }
+    button { background:var(--g); color:#fff; border:0; border-radius:10px; padding:8px 12px; font-weight:700; cursor:pointer; }
+    button.ghost { background:transparent; border:1px solid var(--line); color:#e2e8f0; }
+    .hint { margin-top:16px; font-size:12.5px; color:var(--muted); line-height:1.5; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Fiberix Remote</h1>
+    <p class="sub">Biarkan jendela ini terbuka. ID tidak berubah meski internet sempat putus.</p>
+    <div class="card">
+      <div class="row">
+        <div>
+          <div class="lbl">Status</div>
+          <div id="st" class="pill off"><span class="dot"></span> menyambung…</div>
+        </div>
+        <div style="text-align:right">
+          <div class="lbl">Viewer</div>
+          <div id="vw" style="font-size:22px;font-weight:800;">0</div>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="lbl">ID Anda</div>
+          <div class="val" id="id">--------</div>
+        </div>
+        <button class="ghost" onclick="copy('id')">Salin</button>
+      </div>
+      <div class="row">
+        <div>
+          <div class="lbl">Password</div>
+          <div class="val" id="pw">----</div>
+        </div>
+        <button class="ghost" onclick="copy('pw')">Salin</button>
+      </div>
+    </div>
+    <p class="hint" id="hint">Beri ID dan password ini ke teknisi. Mereka buka viewer di HP Android atau PC, lalu masukkan ID.</p>
+  </div>
+  <script>
+    function copy(id) {
+      const t = document.getElementById(id).textContent.trim();
+      navigator.clipboard.writeText(t);
+    }
+    async function tick() {
+      try {
+        const s = await (await fetch('/api/state')).json();
+        document.getElementById('id').textContent = s.id || '--------';
+        document.getElementById('pw').textContent = s.password || '----';
+        document.getElementById('vw').textContent = s.viewers || 0;
+        const el = document.getElementById('st');
+        if (s.online) {
+          el.className = 'pill on';
+          el.innerHTML = '<span class="dot"></span> siap menerima';
+        } else {
+          el.className = 'pill off';
+          el.innerHTML = '<span class="dot"></span> menyambung ulang…';
+        }
+        if (s.error) document.getElementById('hint').textContent = s.error;
+      } catch (_) {}
+    }
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>

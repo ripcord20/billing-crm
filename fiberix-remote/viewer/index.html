@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#14532d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Fiberix Remote</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div id="login" class="screen">
+    <div class="hero">
+      <div class="logo">FR</div>
+      <h1>Fiberix Remote</h1>
+      <p>Kontrol PC Windows dari HP Android atau komputer lain. Koneksi otomatis menyambung ulang jika putus.</p>
+    </div>
+    <form class="card" onsubmit="event.preventDefault();connectViewer()">
+      <label>ID remote</label>
+      <input id="sid" inputmode="numeric" maxlength="12" placeholder="123456789" required>
+      <label>Password</label>
+      <input id="spw" inputmode="numeric" maxlength="8" placeholder="1234" required>
+      <button type="submit">Hubungkan</button>
+      <p class="err" id="err"></p>
+      <p class="install" id="installHint">Di Android: buka menu Chrome → <b>Tambahkan ke layar utama</b> agar jadi aplikasi.</p>
+    </form>
+  </div>
+
+  <div id="desk" class="screen hidden">
+    <header>
+      <div>
+        <b id="deskId">—</b>
+        <span id="deskSt" class="pill">menyambung</span>
+      </div>
+      <button type="button" class="ghost" onclick="disconnectViewer()">Putuskan</button>
+    </header>
+    <div id="stage">
+      <img id="frame" alt="Layar remote" draggable="false">
+      <div id="wait">Menunggu layar host…</div>
+    </div>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
