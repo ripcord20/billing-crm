@@ -7,6 +7,13 @@ html, body { margin:0; height:100%; background:#f3f1ea; color:#222; font-family:
   background:linear-gradient(#fff,#e8eef7); border-bottom:1px solid #b9c7dc;
   padding:12px 14px; color:#1d4f91; font-size:20px; font-weight:700;
 }
+.head-title { flex:1; }
+.gear {
+  width:36px; height:36px; border:0; background:transparent; color:#1d4f91;
+  font-size:20px; cursor:pointer;
+}
+.settings { margin-top:16px; max-width:460px; }
+.settings p { margin:0 0 8px; font-size:13px; color:#555; }
 .dish {
   width:28px; height:28px; border-radius:50%; background:#2f6fbf; color:#fff;
   display:flex; align-items:center; justify-content:center; font-size:16px;

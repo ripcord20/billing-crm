@@ -11,7 +11,11 @@
 </head>
 <body>
   <div id="login" class="screen">
-    <div class="head"><span class="dish">📡</span> Control Remote Computer</div>
+    <div class="head">
+      <span class="dish">📡</span>
+      <span class="head-title">Control Remote Computer</span>
+      <button type="button" class="gear" title="Settings" onclick="toggleSettings()">⚙</button>
+    </div>
     <div class="box">
       <p class="intro">Enter your partner’s ID and Password to control their computer</p>
       <form class="form" onsubmit="event.preventDefault();connectViewer()">
@@ -19,13 +23,16 @@
         <input id="sid" class="field" inputmode="numeric" maxlength="14" placeholder="124 713 628" required autocomplete="off">
         <label for="spw">Password</label>
         <input id="spw" class="field" inputmode="numeric" maxlength="8" placeholder="86777" required autocomplete="off">
-        <label for="relay">Server</label>
-        <input id="relay" class="field" inputmode="url" placeholder="192.168.22.99:18789" autocomplete="off">
         <div class="actions">
           <button type="submit" class="connect">Connect</button>
         </div>
         <p class="err" id="err"></p>
       </form>
+      <div id="settings" class="settings hidden">
+        <p>Relay (sekali saja, seperti server UltraViewer)</p>
+        <input id="relay" class="field" inputmode="url" placeholder="contoh: 192.168.22.99:18789" autocomplete="off">
+        <button type="button" class="connect" onclick="saveSettings()">Simpan</button>
+      </div>
       <div class="status" id="idleSt"><span class="dot"></span> Ready to connect</div>
     </div>
   </div>

@@ -28,10 +28,24 @@ function nativeRelay() {
   return '';
 }
 
+function isSessionIdLike(raw) {
+  const d = String(raw || '').replace(/\D/g, '');
+  return d.length >= 6 && d.length <= 12 && !String(raw).includes(':');
+}
+
+function storedRelay() {
+  const saved = localStorage.getItem('fiberix_relay') || nativeRelay();
+  if (!saved || isSessionIdLike(saved) || isSessionIdLike(window.displayRelay ? window.displayRelay(saved) : saved)) {
+    if (location.protocol !== 'file:' && location.host) return window.normalizeRelay('', location);
+    return '';
+  }
+  return window.normalizeRelay(saved, location);
+}
+
 function wsUrl() {
   const typed = (document.getElementById('relay') && document.getElementById('relay').value) || '';
-  const saved = localStorage.getItem('fiberix_relay') || nativeRelay();
-  return window.normalizeRelay(typed || saved, location);
+  if (typed && !isSessionIdLike(typed)) return window.normalizeRelay(typed, location);
+  return storedRelay();
 }
 
 function setStatus(text, cls) {
@@ -81,11 +95,12 @@ function connectViewer() {
   password = document.getElementById('spw').value.trim();
   err.textContent = '';
   const relay = wsUrl();
-  if (!relay) { err.textContent = 'Enter server IP:port'; return; }
-  localStorage.setItem('fiberix_relay', relay);
-  try {
-    if (window.FiberixNative && window.FiberixNative.saveRelay) window.FiberixNative.saveRelay(relay);
-  } catch (_) {}
+  if (!relay) {
+    err.textContent = '';
+    toggleSettings(true);
+    return;
+  }
+  persistRelay(relay);
   if (sessionId.length < 6) { err.textContent = 'Invalid ID'; return; }
   wantOpen = true;
   retry = 0;
@@ -175,15 +190,48 @@ window.addEventListener('keyup', (e) => {
   }
 });
 
-(function restoreRelay() {
-  const el = document.getElementById('relay');
+function persistRelay(relay) {
+  localStorage.setItem('fiberix_relay', relay);
+  try {
+    if (window.FiberixNative && window.FiberixNative.saveRelay) window.FiberixNative.saveRelay(relay);
+  } catch (_) {}
+}
+
+function toggleSettings(forceOpen) {
+  const el = document.getElementById('settings');
   if (!el) return;
-  const saved = localStorage.getItem('fiberix_relay') || nativeRelay();
-  if (saved && window.displayRelay) el.value = window.displayRelay(saved);
-  else if (location.protocol !== 'file:' && location.host) el.value = location.host;
+  const open = forceOpen === true || el.classList.contains('hidden');
+  el.classList.toggle('hidden', !open);
+  if (open) {
+    const relay = document.getElementById('relay');
+    const cur = storedRelay();
+    relay.value = (window.displayRelay && cur) ? window.displayRelay(cur) : (relay.value || '');
+    relay.focus();
+  }
+}
+
+function saveSettings() {
+  const raw = document.getElementById('relay').value;
+  if (isSessionIdLike(raw)) {
+    err.textContent = 'Itu Partner ID, bukan alamat server';
+    return;
+  }
+  const relay = window.normalizeRelay(raw, location);
+  if (!relay) { err.textContent = 'Isi IP:port relay'; return; }
+  persistRelay(relay);
+  document.getElementById('settings').classList.add('hidden');
+  err.textContent = '';
+}
+
+(function restoreRelay() {
+  const bad = localStorage.getItem('fiberix_relay');
+  if (bad && isSessionIdLike(bad)) localStorage.removeItem('fiberix_relay');
   const sid = document.getElementById('sid');
   if (sid) sid.addEventListener('input', () => formatIdInput(sid));
 })();
+
+window.toggleSettings = toggleSettings;
+window.saveSettings = saveSettings;
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
