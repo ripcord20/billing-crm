@@ -12,6 +12,7 @@
 
   let overview = null;
   let audience = '';
+  let selectedDevice = '';
 
   function fmt(n, unit, digits) {
     if (n == null || Number.isNaN(Number(n))) return '—';
@@ -30,15 +31,25 @@
       + '<div class="hint">' + hint + '</div></div>';
   }
 
+  function renderLive(data) {
+    const el = document.getElementById('qosLiveLine');
+    if (!el) return;
+    const n = (data.devices || []).length;
+    const scope = data.scope_label || 'Semua device';
+    const when = new Date().toLocaleTimeString('id-ID', { hour12: false });
+    el.textContent = 'Memantau ' + n + ' device dari Device Management · ' + scope + ' · Live · ' + when;
+  }
+
   function renderCards(data) {
     const c = data.cards || {};
     const sla = data.sla || {};
+    const scope = data.scope_label || 'Semua device';
     document.getElementById('qosCards').innerHTML = [
-      cardHtml('latency', 'Latency RTT', fmt(c.latency && c.latency.value, ' ms'), 'SLA < ' + sla.rtt_ms + ' ms · VoIP/realtime', c.latency && c.latency.status),
-      cardHtml('loss', 'Packet loss', fmt(c.packet_loss && c.packet_loss.value, '%'), 'SLA < ' + sla.loss_pct + '% · layanan kritis', c.packet_loss && c.packet_loss.status),
-      cardHtml('jitter', 'Jitter', fmt(c.jitter && c.jitter.value, ' ms'), 'SLA < ' + sla.jitter_ms + ' ms · VoIP/video', c.jitter && c.jitter.status),
-      cardHtml('bw', 'Bandwidth', fmt(c.bandwidth && c.bandwidth.value, '%'), 'Peringatan ≥ ' + sla.bandwidth_warn_pct + '% kapasitas', c.bandwidth && c.bandwidth.status),
-      cardHtml('auth', 'Auth gagal', fmt(c.auth_fails && c.auth_fails.value, ''), 'Jendela ' + ((c.auth_fails && c.auth_fails.target) || '15m'), c.auth_fails && c.auth_fails.status),
+      cardHtml('latency', 'Latency RTT', fmt(c.latency && c.latency.value, ' ms'), (c.latency && c.latency.target ? c.latency.target + ' · ' : '') + 'SLA < ' + sla.rtt_ms + ' ms · ' + scope, c.latency && c.latency.status),
+      cardHtml('loss', 'Packet loss', fmt(c.packet_loss && c.packet_loss.value, '%'), (c.packet_loss && c.packet_loss.target ? c.packet_loss.target + ' · ' : '') + 'SLA < ' + sla.loss_pct + '% · ' + scope, c.packet_loss && c.packet_loss.status),
+      cardHtml('jitter', 'Jitter', fmt(c.jitter && c.jitter.value, ' ms'), (c.jitter && c.jitter.target ? c.jitter.target + ' · ' : '') + 'SLA < ' + sla.jitter_ms + ' ms · ' + scope, c.jitter && c.jitter.status),
+      cardHtml('bw', 'Bandwidth', fmt(c.bandwidth && c.bandwidth.value, '%'), 'Peringatan ≥ ' + sla.bandwidth_warn_pct + '% · ' + scope, c.bandwidth && c.bandwidth.status),
+      cardHtml('auth', 'Auth gagal', fmt(c.auth_fails && c.auth_fails.value, ''), 'Jendela ' + ((c.auth_fails && c.auth_fails.target) || '15m') + ' · ' + scope, c.auth_fails && c.auth_fails.status),
       cardHtml('dns', 'DNS', fmt(c.dns && c.dns.value, ' ms'), c.dns && c.dns.target ? String(c.dns.target) : 'Publik vs ISP', c.dns && c.dns.status)
     ].join('');
   }
@@ -55,14 +66,53 @@
     ].join('');
   }
 
+  function renderDeviceChips(list) {
+    const box = document.getElementById('qosDeviceChips');
+    if (!box) return;
+    const chips = ['<button class="qos-devchip qos-chip' + (!selectedDevice ? ' active' : '') + '" data-dev="" type="button">Semua</button>'];
+    (list || []).forEach((d) => {
+      const id = String(d.id);
+      const on = selectedDevice === id;
+      chips.push(
+        '<button class="qos-devchip qos-chip ' + (d.worst || '') + (on ? ' active' : '') + '" data-dev="' + id + '" type="button">'
+        + esc(d.name || ('#' + id)) + '</button>'
+      );
+    });
+    box.innerHTML = chips.join('');
+  }
+
+  function renderDevices(list) {
+    const el = document.getElementById('qosDevices');
+    if (!el) return;
+    if (!list || !list.length) {
+      el.innerHTML = '<div class="qos-empty">Belum ada router/OLT aktif di Device Management.</div>';
+      return;
+    }
+    el.innerHTML = '<table class="qos-table"><thead><tr><th>Device</th><th>Probe</th><th>RTT</th><th>Loss</th><th>Jitter</th><th>BW</th><th>Status</th></tr></thead><tbody>'
+      + list.map((d) => {
+        const c = d.cards || {};
+        return '<tr>'
+          + '<td><strong>' + esc(d.name) + '</strong><div style="color:var(--text-secondary)">' + esc(d.ip_address || '') + ' · ' + esc(d.type || '') + '</div></td>'
+          + '<td>' + esc(d.probe_via === 'api' ? 'API dari router' : 'ICMP ke device') + '</td>'
+          + '<td>' + fmt(c.latency && c.latency.value, ' ms') + '</td>'
+          + '<td>' + fmt(c.packet_loss && c.packet_loss.value, '%') + '</td>'
+          + '<td>' + fmt(c.jitter && c.jitter.value, ' ms') + '</td>'
+          + '<td>' + fmt(c.bandwidth && c.bandwidth.value, '%') + '</td>'
+          + '<td>' + badge(d.worst) + '</td>'
+          + '</tr>';
+      }).join('')
+      + '</tbody></table>';
+  }
+
   function renderAlerts(list) {
     const rows = (list || []).filter((a) => !audience || a.audience === audience);
     if (!rows.length) {
       document.getElementById('qosAlerts').innerHTML = '<div class="qos-empty">Tidak ada alert terbuka.</div>';
       return;
     }
-    document.getElementById('qosAlerts').innerHTML = '<table class="qos-table"><thead><tr><th>Tipe</th><th>Pesan</th><th></th></tr></thead><tbody>'
+    document.getElementById('qosAlerts').innerHTML = '<table class="qos-table"><thead><tr><th>Device</th><th>Tipe</th><th>Pesan</th><th></th></tr></thead><tbody>'
       + rows.map((a) => '<tr>'
+        + '<td>' + esc(a.device_name || (a.device_id ? ('#' + a.device_id) : 'Jaringan')) + '</td>'
         + '<td><span class="qos-badge ' + a.audience + '">' + (TYPE_LABEL[a.type] || a.type) + '</span><div style="margin-top:4px">' + badge(a.severity === 'critical' ? 'critical' : (a.severity === 'warning' ? 'warn' : 'ok')) + '</div></td>'
         + '<td><strong>' + esc(a.title) + '</strong><div style="color:var(--text-secondary);margin-top:3px">' + esc(a.message) + '</div></td>'
         + '<td><button class="btn btn-secondary btn-sm" type="button" data-ack="' + a.id + '">Ack</button></td>'
@@ -75,8 +125,8 @@
       document.getElementById('qosDns').innerHTML = '<div class="qos-empty">Belum ada hasil probe. Klik Jalankan probe.</div>';
       return;
     }
-    document.getElementById('qosDns').innerHTML = '<table class="qos-table"><thead><tr><th>Resolver</th><th>Waktu</th><th>Status</th></tr></thead><tbody>'
-      + list.map((d) => '<tr><td><strong>' + esc(d.server || '-') + '</strong><div style="color:var(--text-secondary)">' + (d.group === 'public' ? 'Publik' : (d.group === 'isp' ? 'ISP' : esc(d.group || ''))) + '</div></td><td>' + fmt(d.value, ' ms') + '</td><td>' + badge(d.status) + '</td></tr>').join('')
+    document.getElementById('qosDns').innerHTML = '<table class="qos-table"><thead><tr><th>Device</th><th>Resolver</th><th>Waktu</th><th>Status</th></tr></thead><tbody>'
+      + list.map((d) => '<tr><td>' + esc(d.device_name || 'Fiberix / VPS') + '</td><td><strong>' + esc(d.server || '-') + '</strong><div style="color:var(--text-secondary)">' + (d.group === 'public' ? 'Publik' : (d.group === 'isp' ? 'ISP' : esc(d.group || ''))) + '</div></td><td>' + fmt(d.value, ' ms') + '</td><td>' + badge(d.status) + '</td></tr>').join('')
       + '</tbody></table>';
   }
 
@@ -93,13 +143,19 @@
       + '</tbody></table>';
   }
 
+  function deviceName(id) {
+    if (!id) return 'Portal';
+    const d = ((overview && overview.devices) || []).find((x) => Number(x.id) === Number(id));
+    return d ? d.name : ('#' + id);
+  }
+
   function renderAuth(rows) {
     if (!rows || !rows.length) {
       document.getElementById('qosAuth').innerHTML = '<div class="qos-empty">Tidak ada login gagal pada jendela ini.</div>';
       return;
     }
-    document.getElementById('qosAuth').innerHTML = '<table class="qos-table"><thead><tr><th>Sumber</th><th>Identitas</th><th>IP</th></tr></thead><tbody>'
-      + rows.slice(0, 12).map((r) => '<tr><td>' + esc(r.source) + '</td><td>' + esc(r.identifier || '-') + '</td><td>' + esc(r.ip_address || '-') + '</td></tr>').join('')
+    document.getElementById('qosAuth').innerHTML = '<table class="qos-table"><thead><tr><th>Device</th><th>Sumber</th><th>Identitas</th><th>IP</th></tr></thead><tbody>'
+      + rows.slice(0, 12).map((r) => '<tr><td>' + esc(deviceName(r.device_id)) + '</td><td>' + esc(r.source) + '</td><td>' + esc(r.identifier || '-') + '</td><td>' + esc(r.ip_address || '-') + '</td></tr>').join('')
       + '</tbody></table>';
   }
 
@@ -128,24 +184,36 @@
   }
 
   async function load() {
-    const res = await App.api('/qos/overview');
+    const q = selectedDevice ? ('?device_id=' + encodeURIComponent(selectedDevice)) : '';
+    const res = await App.api('/qos/overview' + q);
     if (!res || !res.success) return;
     overview = res.data;
+    renderLive(overview);
     renderSla(overview.settings);
+    renderDeviceChips(overview.devices);
+    renderDevices(overview.devices);
     renderCards(overview);
     renderAlerts(overview.alerts);
     renderDns(overview.dns);
     renderUpsell(overview.upsell);
     fillSettings(overview.settings);
-    const auth = await App.api('/qos/auth-fails?minutes=' + (overview.settings.authWindowMin || 15));
+    const authQ = '/qos/auth-fails?minutes=' + (overview.settings.authWindowMin || 15)
+      + (selectedDevice ? ('&device_id=' + encodeURIComponent(selectedDevice)) : '');
+    const auth = await App.api(authQ);
     renderAuth(auth && auth.success ? auth.data : []);
   }
 
   document.addEventListener('click', async (e) => {
+    const dev = e.target.closest('.qos-devchip');
+    if (dev) {
+      selectedDevice = dev.dataset.dev || '';
+      await load();
+      return;
+    }
     const chip = e.target.closest('.qos-chip');
-    if (chip) {
+    if (chip && !chip.classList.contains('qos-devchip')) {
       audience = chip.dataset.aud || '';
-      document.querySelectorAll('.qos-chip').forEach((c) => c.classList.toggle('active', c === chip));
+      document.querySelectorAll('.qos-filters .qos-chip:not(.qos-devchip)').forEach((c) => c.classList.toggle('active', c === chip));
       if (overview) renderAlerts(overview.alerts);
       return;
     }
@@ -182,7 +250,7 @@
 
   document.getElementById('qosRunBtn').addEventListener('click', async () => {
     const btn = document.getElementById('qosRunBtn');
-    btn.disabled = true; btn.textContent = 'Memeriksa…';
+    btn.disabled = true; btn.textContent = 'Memeriksa semua device…';
     try {
       await App.api('/qos/run', { method: 'POST' });
       await load();
