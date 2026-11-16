@@ -37,7 +37,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
             android:exported="false"
             android:launchMode="singleTop"
-            android:windowSoftInputMode="adjustResize|stateVisible" />
+            android:windowSoftInputMode="adjustResize|stateHidden" />
         <activity
             android:name=".PrivacyActivity"
             android:exported="false"
