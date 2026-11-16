@@ -1,0 +1,185 @@
+/* Kulit Wilayah. Hanya tampilan.
+   Kisi kartu auto-fill dan form tidak diubah. */
+
+html:has(body.wl-home) {
+  background: #100c22;
+  color-scheme: dark;
+}
+
+body.wl-home {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+
+body.wl-home .wl-page,
+body.wl-home .main-content,
+body.wl-home .page-content {
+  background: transparent !important;
+  color: #f8fafc;
+}
+
+body.wl-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+body.wl-home .logo-text,
+body.wl-home .nav-section-title,
+body.wl-home .nav-item { color: #f8fafc; }
+body.wl-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+body.wl-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+body.wl-home .sidebar a.nav-sub:link,
+body.wl-home .sidebar a.nav-sub:visited,
+body.wl-home .sidebar a.nav-sub:hover,
+body.wl-home .sidebar a.nav-sub:focus,
+body.wl-home .sidebar a.nav-sub:active,
+body.wl-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+body.wl-home .sidebar a.nav-sub .nav-sub-dot,
+body.wl-home .sidebar a.nav-sub.active .nav-sub-dot { background: #67e8f9 !important; }
+body.wl-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+body.wl-home .search-box,
+body.wl-home .search-box input,
+body.wl-home .topbar-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.wl-home .wl-crumb,
+body.wl-home .wl-crumb a,
+body.wl-home #wlSub,
+body.wl-home .wl-toggle,
+body.wl-home .wl-empty,
+body.wl-home .flbl {
+  color: #e2e8f0 !important;
+}
+body.wl-home .page-content > div[style*="justify-content:space-between"] > div:first-child > div:first-child,
+body.wl-home .modal-ttl,
+body.wl-home .wl-empty h3 {
+  color: #ffffff !important;
+}
+
+body.wl-home .btn-black {
+  background: linear-gradient(135deg, #0891b2, #db2777) !important;
+  color: #ffffff !important;
+}
+body.wl-home .btn-outline,
+body.wl-home .modal-cls {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.wl-home .btn-info {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  border-color: #fde68a !important;
+  -webkit-text-fill-color: #b45309;
+}
+body.wl-home .wl-danger {
+  background: linear-gradient(135deg, #e11d48, #f43f5e) !important;
+  color: #ffffff !important;
+}
+body.wl-home .wl-restore {
+  background: linear-gradient(135deg, #059669, #10b981) !important;
+  color: #ffffff !important;
+}
+
+body.wl-home .wl-card {
+  border-color: transparent !important;
+  color: #ffffff;
+}
+body.wl-home .wl-card:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.wl-home .wl-card:nth-child(8n+2) { background: #0891b2 !important; }
+body.wl-home .wl-card:nth-child(8n+3) { background: #059669 !important; }
+body.wl-home .wl-card:nth-child(8n+4) { background: #b45309 !important; }
+body.wl-home .wl-card:nth-child(8n+5) { background: #ea580c !important; }
+body.wl-home .wl-card:nth-child(8n+6) { background: #e11d48 !important; }
+body.wl-home .wl-card:nth-child(8n+7) { background: #db2777 !important; }
+body.wl-home .wl-card:nth-child(8n+8) { background: #7c3aed !important; }
+
+body.wl-home .wl-name,
+body.wl-home .wl-stat,
+body.wl-home .wl-geo,
+body.wl-home .wl-brand {
+  color: #ffffff !important;
+}
+body.wl-home .wl-geo b,
+body.wl-home .wl-stat svg,
+body.wl-home .wl-geo svg { color: #e2e8f0 !important; }
+body.wl-home .wl-foot { border-top-color: rgba(255, 255, 255, 0.2) !important; }
+
+body.wl-home .wl-code {
+  background: #e2e8f0 !important;
+  color: #334155 !important;
+  -webkit-text-fill-color: #334155;
+}
+body.wl-home .wl-badge.on { background: #dcfce7 !important; color: #15803d !important; -webkit-text-fill-color: #15803d; }
+body.wl-home .wl-badge.off { background: #fee2e2 !important; color: #b91c1c !important; -webkit-text-fill-color: #b91c1c; }
+body.wl-home .chip.chip-on { background: #dcfce7 !important; color: #15803d !important; -webkit-text-fill-color: #15803d; }
+body.wl-home .chip.chip-off { background: #f1f5f9 !important; color: #475569 !important; -webkit-text-fill-color: #475569; }
+body.wl-home .chip.chip-iso { background: #fee2e2 !important; color: #b91c1c !important; -webkit-text-fill-color: #b91c1c; }
+
+body.wl-home .wl-iconbtn {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
+}
+body.wl-home .tab {
+  background: #100c22 !important;
+  color: #e2e8f0 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.wl-home .tab.on {
+  background: linear-gradient(135deg, #0891b2, #db2777) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+body.wl-home .modal-bx {
+  background: #141028 !important;
+  color: #f8fafc;
+}
+body.wl-home .modal-bx p,
+body.wl-home #cfMsg { color: #e2e8f0 !important; }
+body.wl-home .finput {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.wl-home .wl-user { border-bottom-color: rgba(255, 255, 255, 0.16) !important; color: #ffffff; }
+body.wl-home .toast-ok { background: #052e16 !important; color: #bbf7d0 !important; border-color: #166534 !important; }
+body.wl-home .toast-err { background: #4c0519 !important; color: #fecdd3 !important; border-color: #9f1239 !important; }
+
+body.wl-home .bottom-nav {
+  background: #100c22;
+  border-top: 1px solid rgba(34, 211, 238, 0.28);
+  box-shadow: none;
+}
+body.wl-home .bottom-nav a.bn-item:link,
+body.wl-home .bottom-nav a.bn-item:visited,
+body.wl-home .bottom-nav a.bn-item:hover,
+body.wl-home .bottom-nav a.bn-item:focus,
+body.wl-home .bottom-nav a.bn-item:active,
+body.wl-home .bottom-nav a.bn-item.active,
+body.wl-home .bottom-nav button.bn-item,
+body.wl-home .bottom-nav .bn-item span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+body.wl-home .bottom-nav .bn-icon svg,
+body.wl-home .bottom-nav .bn-item.active .bn-icon svg,
+body.wl-home .bottom-nav .bn-item:hover .bn-icon svg { stroke: #ffffff !important; }
+body.wl-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }

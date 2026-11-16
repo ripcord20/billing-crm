@@ -382,8 +382,10 @@ exports.setWifi = async (req, res) => {
       success: true,
       data: result.data,
       executed: result.executed,
-      queued:   result.queued,
-      eta,
+      queued:   result.queued || result.pendingOffline,
+      pendingOffline: !!result.pendingOffline,
+      statusLabel: result.statusLabel || null,
+      eta: result.eta || eta,
     });
   } catch (err) {
     logger.error('setWifi error:', err);
@@ -427,8 +429,10 @@ exports.rebootDevice = async (req, res) => {
       success: true,
       data: result.data,
       executed: result.executed,
-      queued:   result.queued,
-      eta,
+      queued:   result.queued || result.pendingOffline,
+      pendingOffline: !!result.pendingOffline,
+      statusLabel: result.statusLabel || null,
+      eta: result.eta || eta,
     });
   } catch (err) {
     logger.error('rebootDevice error:', err);
@@ -452,8 +456,10 @@ exports.factoryReset = async (req, res) => {
       success: true,
       data: result.data,
       executed: result.executed,
-      queued:   result.queued,
-      eta,
+      queued:   result.queued || result.pendingOffline,
+      pendingOffline: !!result.pendingOffline,
+      statusLabel: result.statusLabel || null,
+      eta: result.eta || eta,
     });
   } catch (err) {
     logger.error('factoryReset error:', err);

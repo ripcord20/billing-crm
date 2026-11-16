@@ -4,7 +4,9 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#100c22">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/email-palette.css?v=em1">
   <style>
     :root{--d-bg:#eef2f9;--d-card:#fff;--d-border:#e0e7f3;--d-text:#0d1b3e;--d-muted:#6b7fa8;--d-blue1:#1a6ef5;}
     .ib-page{font-family:'DM Sans',sans-serif;}
@@ -130,10 +132,14 @@
     /* Mobile cards */
     .ib-cards{display:none;}
     @media(max-width:760px){
-      .ib-table-wrap{display:none;}
+      .page-content{overflow-x:hidden;padding-bottom:88px;}
+      .ib-table-wrap{display:none;overflow-x:hidden !important;}
       .ib-cards{display:flex;flex-direction:column;}
-      .ibc-item{padding:12px 16px;border-bottom:1px solid #f0f4ff;display:flex;align-items:flex-start;gap:11px;}
+      .ibc-item{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:flex-start;gap:11px;}
       .panel-body{padding:14px;}
+      .ib-sub{white-space:normal;}
+      .preview-frame{height:420px;}
+      .ib-modal div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr !important;}
     }
 
     /* Preview */
@@ -155,7 +161,7 @@
     @media(max-width:440px){.ib-modal-actions{flex-direction:column-reverse;}}
   </style>
 </head>
-<body>
+<body class="em-home">
 <div class="app-layout ib-page">
   <%- include('../partials/sidebar') %>
   <div class="main-content">
@@ -368,7 +374,7 @@
       <div class="pf-field"><label class="pf-label">Password / App Password</label><input type="password" class="pf-input" id="smtpPass" placeholder="••••••••••••"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div class="pf-field"><label class="pf-label">Nama Pengirim</label><input type="text" class="pf-input" id="smtpFromName" placeholder="DIGIS"></div>
-        <div class="pf-field"><label class="pf-label">Email Pengirim (From)</label><input type="text" class="pf-input" id="smtpFrom" placeholder="FLAYNET"></div>
+        <div class="pf-field"><label class="pf-label">Email Pengirim (From)</label><input type="text" class="pf-input" id="smtpFrom" placeholder="Skynet"></div>
       </div>
       <div class="pf-field" style="margin-bottom:0;">
         <label class="pf-label">Koneksi Aman (SSL/TLS)</label>

@@ -2,9 +2,12 @@
 <html lang="id" data-theme="light">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="theme-color" content="#100c22">
+  <meta name="color-scheme" content="dark">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/voucher-template-palette.css?v=vt1">
   <style>
     :root{
       --d-bg:#eef2f9;--d-card:#fff;--d-border:#e0e7f3;
@@ -124,7 +127,7 @@
     }
   </style>
 </head>
-<body>
+<body class="vt-home">
   <%- include('../partials/sidebar') %>
   <div class="main-content">
     <%- include('../partials/topbar') %>

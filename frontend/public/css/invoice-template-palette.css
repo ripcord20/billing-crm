@@ -1,0 +1,135 @@
+/* Kulit Template Invoice. Hanya tampilan.
+   Kertas pratinjau (.pv-paper) tetap terang supaya warna invoice asli kelihatan.
+   Kisi .it-split dan tombol ponsel tidak diubah. */
+
+html:has(body.it-home) {
+  background: #100c22;
+  color-scheme: dark;
+}
+body.it-home {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+body.it-home .app-layout,
+body.it-home .main-content,
+body.it-home .page-content,
+body.it-home .it-page { background: transparent !important; color: #f8fafc; }
+body.it-home .sidebar { background: rgba(16, 12, 34, 0.96); border-right-color: rgba(34, 211, 238, 0.28); }
+body.it-home .logo-text,
+body.it-home .nav-section-title,
+body.it-home .nav-item { color: #f8fafc; }
+body.it-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+body.it-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+body.it-home .sidebar a.nav-sub:link,
+body.it-home .sidebar a.nav-sub:visited,
+body.it-home .sidebar a.nav-sub:hover,
+body.it-home .sidebar a.nav-sub:focus,
+body.it-home .sidebar a.nav-sub:active,
+body.it-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+body.it-home .sidebar a.nav-sub .nav-sub-dot,
+body.it-home .sidebar a.nav-sub.active .nav-sub-dot { background: #67e8f9 !important; }
+body.it-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+body.it-home .search-box,
+body.it-home .search-box input,
+body.it-home .topbar-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.it-home .it-title { color: #ffffff !important; }
+body.it-home .it-sub,
+body.it-home .it-label,
+body.it-home .it-hint,
+body.it-home .it-preview-label,
+body.it-home .it-toggle-row .desc { color: #e2e8f0 !important; }
+body.it-home .it-btn-primary {
+  background: linear-gradient(135deg, #0891b2, #7c3aed) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+body.it-home .it-btn-ghost {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.it-home .it-btn-danger {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border-color: #fecaca !important;
+  -webkit-text-fill-color: #b91c1c;
+}
+body.it-home .it-mobile-tabs {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.28) !important;
+}
+body.it-home .it-mobile-tab { color: #e2e8f0 !important; }
+body.it-home .it-mobile-tab.active {
+  background: linear-gradient(135deg, #0891b2, #db2777) !important;
+  color: #ffffff !important;
+}
+body.it-home .it-form,
+body.it-home .it-sec-hdr,
+body.it-home .it-sec-hdr:hover {
+  background: #141028 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #f8fafc !important;
+}
+body.it-home .it-sec-title,
+body.it-home .it-toggle-row .lbl,
+body.it-home .it-sec-chev { color: #ffffff !important; }
+body.it-home .it-section { border-bottom-color: rgba(255, 255, 255, 0.1) !important; }
+body.it-home .it-input,
+body.it-home .it-select,
+body.it-home .it-textarea {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.it-home .it-preset {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.it-home .it-switch .knob { background: #334155 !important; }
+body.it-home .it-switch input:checked + .knob { background: #059669 !important; }
+body.it-home .it-preview-hdr { background: transparent !important; }
+body.it-home .it-preview-frame {
+  background: #100c22 !important;
+  border-color: rgba(34, 211, 238, 0.28) !important;
+}
+body.it-home .pv-paper {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+body.it-home .bottom-nav {
+  background: #100c22;
+  border-top: 1px solid rgba(34, 211, 238, 0.28);
+}
+body.it-home .bottom-nav a.bn-item:link,
+body.it-home .bottom-nav a.bn-item:visited,
+body.it-home .bottom-nav a.bn-item:hover,
+body.it-home .bottom-nav a.bn-item:focus,
+body.it-home .bottom-nav a.bn-item:active,
+body.it-home .bottom-nav a.bn-item.active,
+body.it-home .bottom-nav button.bn-item,
+body.it-home .bottom-nav .bn-item span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+body.it-home .bottom-nav .bn-icon svg,
+body.it-home .bottom-nav .bn-item.active .bn-icon svg { stroke: #ffffff !important; }
+body.it-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }

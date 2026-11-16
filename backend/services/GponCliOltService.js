@@ -563,6 +563,26 @@ class GponCliOltService extends BaseCliOltService {
     }
     return list;
   }
+
+  // Chipset yang tidak punya T-CONT ZTE. Subclass (C-DATA) menimpa ini
+  // bila perangkat punya profil sendiri.
+  async getProfiles() {
+    return {
+      tcont: [],
+      traffic: [],
+      tcontDetail: [],
+      trafficDetail: [],
+      onuTypes: [],
+      writable: false,
+      labels: {
+        tcont: 'Profil bandwidth',
+        traffic: 'Profil layanan',
+        note: 'OLT ini tidak memakai profil T-CONT ZTE. Daftar diisi bila perangkat mengirim profilnya sendiri.',
+        emptyTcont: 'Tidak ada profil bandwidth pada OLT ini.',
+        emptyTraffic: 'Tidak ada profil layanan pada OLT ini.',
+      },
+    };
+  }
 }
 
 module.exports = GponCliOltService;

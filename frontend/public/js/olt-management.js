@@ -249,7 +249,7 @@ const OltMgmt = {
     const o = this.olts.find(x => x.id === id);
     this.activeStyle = o ? (o.style || (o.brand === 'zte' ? 'zte' : 'chipset')) : 'zte';
     this.activeEpon = o ? !!o.epon : false;
-    document.getElementById('connLbl').textContent = o ? `Aktif: ${o.name} (${o.host})` : '';
+    this.activeBrand = o ? String(o.brand || '').toLowerCase() : '';
     document.getElementById('ponBar').style.display = 'flex';
     document.getElementById('btnUncfg').disabled = false;
     // Sesuaikan label & placeholder PON port menurut gaya brand
@@ -299,7 +299,7 @@ const OltMgmt = {
       const res = await App.api(`/olt-mgmt/${this.activeOltId}/discover?cached=1`);
       if (res?.success && res.data && (res.data.onus || res.data.ports)) {
         hadCache = true;
-        this.applyDiscoverData(res.data, { cached: true });
+        this.applyDiscoverData(res.data);
       }
     } catch (e) { /* lanjut ke live */ }
     if (!hadCache && body) {
@@ -310,7 +310,7 @@ const OltMgmt = {
   },
 
   // Terapkan payload discover (dari cache maupun live) ke seluruh UI
-  applyDiscoverData(d, { cached = false } = {}) {
+  applyDiscoverData(d) {
     d = d || {};
     this.onus = d.onus || [];
     this.portSummaryData = d.ports || [];
@@ -325,25 +325,6 @@ const OltMgmt = {
     this._pushTrend();
     this.renderPortSummaryFromDiscover();
     if (d.system) this.applySystem(d.system);
-    const o = this.olts.find(x => x.id === this.activeOltId);
-    const onlineTot = this.onus.filter(x => x.status === 'online').length;
-    const stamp = d.cachedAt ? this._timeAgo(d.cachedAt) : null;
-    const tag = cached ? `<span class="card-pill pill-gray" style="margin-left:4px" title="Data tersimpan, sedang disegarkan">tersimpan${stamp ? ' · ' + stamp : ''}</span>` : '';
-    document.getElementById('connLbl').innerHTML =
-      `Aktif: ${esc(o?.name || '')} <span class="mut">· ${this.onus.length} ONU di ${this.portSummaryData.length} PON · ${onlineTot} online</span>${tag}`;
-  },
-
-  // Format "x menit lalu" sederhana
-  _timeAgo(iso) {
-    try {
-      const diff = Math.max(0, Date.now() - new Date(iso).getTime());
-      const m = Math.floor(diff / 60000);
-      if (m < 1) return 'baru saja';
-      if (m < 60) return `${m} mnt lalu`;
-      const h = Math.floor(m / 60);
-      if (h < 24) return `${h} jam lalu`;
-      return `${Math.floor(h / 24)} hr lalu`;
-    } catch (e) { return ''; }
   },
 
   // ════════════════════ Auto-discover (muat semua ONU) ════════════════════
@@ -360,7 +341,6 @@ const OltMgmt = {
     const body = document.getElementById('onuBody');
     if (!silent) {
       body.innerHTML = `<tr class="loading-row"><td colspan="6"><span class="spin"></span> Menemukan PON port &amp; memuat ONU...</td></tr>`;
-      document.getElementById('connLbl').innerHTML = `Aktif: ${esc(o?.name || '')} <span class="mut">· memuat…</span>`;
     }
     try {
       // Muat daftar ONU DULU tanpa redaman → tabel tampil instan.
@@ -374,8 +354,7 @@ const OltMgmt = {
       const d = res.data || {};
       // Jika live tidak mengembalikan system (mis. SNMP), ambil terpisah
       if (!d.system) this.loadSystem(true);
-      this.applyDiscoverData(d, { cached: false });
-      if (res.via === 'snmp') document.getElementById('connLbl').innerHTML += ' <span class="card-pill pill-teal" style="margin-left:4px">SNMP</span>';
+      this.applyDiscoverData(d);
 
       // Redaman: SNMP sudah cepat & sertakan power → tak perlu progressive.
       // Untuk CLI (atau bila redaman belum ada), ambil menyusul per-PON.
@@ -538,7 +517,6 @@ const OltMgmt = {
         App.showToast(res.message || 'OLT dihapus', 'success');
         if (this.activeOltId === id) {
           this.activeOltId = null;
-          document.getElementById('connLbl').textContent = 'Pilih OLT untuk mulai';
           document.getElementById('ponBar').style.display = 'none';
           document.getElementById('btnUncfg').disabled = true;
           this.onus = []; this.renderOnus(); this._resetStats();
@@ -753,10 +731,11 @@ const OltMgmt = {
       //   OffLine  = belum ranging / baru di-provisioning (tunggu 1-2 menit)
       //   SyncMib/Ranging = sedang proses online
       const phase = String(o.phase_state || '').toLowerCase().replace(/\(.*\)$/, '');
+      const phaseLbl = this._phaseLabel(o);
       let stTxt;
       if (o.status === 'online') stTxt = 'Online';
       else if (o.status === 'disabled') stTxt = 'Disabled';
-      else if (phase === 'los' || phase === 'loss') stTxt = 'LOS';
+      else if (phaseLbl) stTxt = phaseLbl;
       else if (phase === 'ranging' || phase === 'syncmib' || phase === 'logging' || phase === 'initial') stTxt = 'Ranging…';
       else stTxt = 'Offline';
       const stTitle = (o.status !== 'online' && phase) ? ` title="Phase OLT: ${esc(phase)}"` : '';
@@ -874,6 +853,9 @@ const OltMgmt = {
         ? '<span class="rx-badge rx-loading"><span class="spin spin-sm"></span></span>'
         : '<span class="mut" style="font-size:11px">—</span>';
     }
+    const downLbl = this._phaseLabel(o);
+    if (this.isDyingGasp(o) && downLbl) return `<span class="rx-badge rx-unknown">${downLbl}</span>`;
+    if (this.isOpticalDown(o) && downLbl) return `<span class="rx-badge rx-los">${downLbl}</span>`;
     if (o.onu_rx_dbm === null) {
       const q = o.quality || 'unknown';
       if (q === 'los') return '<span class="rx-badge rx-los">LOS</span>';
@@ -888,7 +870,7 @@ const OltMgmt = {
     const total   = this.onus.length;
     const online  = this.onus.filter(o => o.status === 'online').length;
     const offline = total - online;
-    const bad     = this.onus.filter(o => typeof o.onu_rx_dbm === 'number' && o.onu_rx_dbm < -25).length;
+    const bad     = this.onus.filter(o => typeof o.onu_rx_dbm === 'number' && o.onu_rx_dbm < -25 && !this.isDyingGasp(o) && !this.isOpticalDown(o)).length;
 
     document.getElementById('statOnline').textContent  = online;
     document.getElementById('statOffline').textContent = offline;
@@ -910,7 +892,7 @@ const OltMgmt = {
   // ════════════════════ Tren (chart) ════════════════════
   _pushTrend() {
     const online = this.onus.filter(o => o.status === 'online').length;
-    const rxVals = this.onus.map(o => o.onu_rx_dbm).filter(v => typeof v === 'number');
+    const rxVals = this.onus.filter(o => !this.isDyingGasp(o) && !this.isOpticalDown(o)).map(o => o.onu_rx_dbm).filter(v => typeof v === 'number');
     const avgRx = rxVals.length ? (rxVals.reduce((a, b) => a + b, 0) / rxVals.length) : null;
     this.trend.push({ t: Date.now(), online, avgRx });
     if (this.trend.length > 30) this.trend.shift();
@@ -1065,9 +1047,37 @@ const OltMgmt = {
     }
   },
 
+  // Listrik putus, semua merek: Dying Gasp (ZTE), Power down (HSGQ), dying-gasp / Power off (C-DATA).
+  // Satu kartu. Laser out, LOS, LOSi, LOAi tetap tidak ada sinyal optik.
+  _phaseRaw(o) {
+    return String((o && (o.phase_state || o.phase)) || '');
+  },
+  isDyingGasp(o) {
+    const p = this._phaseRaw(o);
+    return /dying[\s_-]*gasp/i.test(p) || /power[\s_-]*(down|off)/i.test(p) || /^dgi$/i.test(p.trim());
+  },
+  isOpticalDown(o) {
+    const p = this._phaseRaw(o).trim();
+    return /laser[\s_-]*out/i.test(p) || /^loa[i1]$/i.test(p) || /^(los|loss|losi|lofi|lobi)$/i.test(p);
+  },
+  _phaseLabel(o) {
+    const p = this._phaseRaw(o).trim();
+    if (/power[\s_-]*off/i.test(p)) return 'Power Off';
+    if (/power[\s_-]*down/i.test(p)) return 'Power Down';
+    if (/dying[\s_-]*gasp/i.test(p) || /^dgi$/i.test(p)) return 'Dying Gasp';
+    if (/laser[\s_-]*out/i.test(p)) return 'Laser Out';
+    if (/^loa[i1]$/i.test(p)) return 'LOAi';
+    if (/^losi$/i.test(p)) return 'LOSi';
+    if (/^lofi$/i.test(p)) return 'LOFi';
+    if (/^lobi$/i.test(p)) return 'LOBi';
+    if (/^(los|loss)$/i.test(p)) return 'LOS';
+    return null;
+  },
+
   // ════════════════════ Distribusi kualitas redaman (dBm) ════════════════════
   // Hitung ONU per kualitas memakai field `quality` dari backend (sumber tunggal):
-  //   good ≥ -25 dBm · warning -25..-28 · critical < -28 · los · belum diukur.
+  //   good ≥ -25 dBm · warning -25..-28 · critical < -28 · los · dying gasp · belum diukur.
+  // Dying gasp dikeluarkan dari LOS dan Belum diukur supaya tidak terhitung dua kali.
   renderRxQuality() {
     const el = document.getElementById('rxQualityChart');
     const legend = document.getElementById('rxQualityLegend');
@@ -1079,13 +1089,16 @@ const OltMgmt = {
       { key: 'good',     name: 'Good',         desc: '≥ -25 dBm · sinyal baik',     color: '#16a34a' },
       { key: 'warning',  name: 'Warning',      desc: '-25 s/d -28 dBm · waspada',   color: '#f59e0b' },
       { key: 'critical', name: 'Bad',          desc: '< -28 dBm · sinyal lemah',    color: '#dc2626' },
-      { key: 'los',      name: 'LOS',          desc: 'tak ada sinyal optik',        color: '#64748b' },
+      { key: 'los',      name: 'LOS',          desc: 'tak ada sinyal · Laser Out',  color: '#64748b' },
+      { key: 'dyinggasp', name: 'Power Down',   desc: 'listrik putus · Dying Gasp',  color: '#7c3aed' },
       { key: 'unmeasured', name: 'Belum diukur', desc: 'redaman belum terbaca',     color: '#cbd5e1' },
     ];
 
     // Hitung dari ONU yang sedang dimuat.
-    const counts = { good: 0, warning: 0, critical: 0, los: 0, unmeasured: 0 };
+    const counts = { good: 0, warning: 0, critical: 0, los: 0, dyinggasp: 0, unmeasured: 0 };
     this.onus.forEach(o => {
+      if (this.isDyingGasp(o)) { counts.dyinggasp++; return; }
+      if (this.isOpticalDown(o)) { counts.los++; return; }
       const q = o.quality;
       if (q === 'good' || q === 'warning' || q === 'critical' || q === 'los') counts[q]++;
       else counts.unmeasured++;   // unknown / null / belum diambil
@@ -1164,10 +1177,11 @@ const OltMgmt = {
       const denom = measured > 0 ? measured : 1;
       legend.innerHTML = cats.map(c => {
         const n = counts[c.key];
-        const pct = (c.key === 'los' || c.key === 'unmeasured')
+        const fromTotal = c.key === 'los' || c.key === 'dyinggasp' || c.key === 'unmeasured';
+        const pct = fromTotal
           ? (totalAll ? Math.round(n / totalAll * 100) : 0)
           : Math.round(n / denom * 100);
-        const pctLbl = (c.key === 'los' || c.key === 'unmeasured') ? `${pct}% dari total` : `${pct}% terukur`;
+        const pctLbl = fromTotal ? `${pct}% dari total` : `${pct}% terukur`;
         const clickable = n > 0;
         const active = this._rxActiveKey === c.key && clickable;
         return `<div class="rxq-row ${clickable ? '' : 'disabled'} ${active ? 'active' : ''}" ${clickable ? `onclick="OltMgmt.showRxQualityDetail('${c.key}')"` : ''}>
@@ -1207,6 +1221,10 @@ const OltMgmt = {
 
     // Filter ONU sesuai kategori.
     const match = (o) => {
+      if (key === 'dyinggasp') return this.isDyingGasp(o);
+      if (this.isDyingGasp(o)) return false;
+      if (key === 'los') return o.quality === 'los' || this.isOpticalDown(o);
+      if (this.isOpticalDown(o)) return false;
       if (key === 'unmeasured') return !['good','warning','critical','los'].includes(o.quality);
       return o.quality === key;
     };
@@ -1219,7 +1237,8 @@ const OltMgmt = {
     } else {
       const rows = list.map(o => {
         const name = o.name || o.description || '(tanpa nama)';
-        const rx = (typeof o.onu_rx_dbm === 'number') ? `${o.onu_rx_dbm.toFixed(1)} dBm` : (o.quality === 'los' ? 'LOS' : '—');
+        const downLbl = (this.isDyingGasp(o) || this.isOpticalDown(o)) ? this._phaseLabel(o) : null;
+        const rx = downLbl || ((typeof o.onu_rx_dbm === 'number') ? `${o.onu_rx_dbm.toFixed(1)} dBm` : (o.quality === 'los' ? 'LOS' : '—'));
         const idx = (o.onu_if || '').replace('gpon-onu_', '');
         const ifEsc = this._esc(o.onu_if || '');
         return `<tr class="rxq-clickable" onclick="OltMgmt.showDetail('${ifEsc}')" title="Lihat detail ONU">
@@ -1296,15 +1315,16 @@ const OltMgmt = {
     document.getElementById('sysHw').textContent = d.hw_version || '—';
   },
 
-  // ════════════════════ Daftar Card / Slot GPON ════════════════════
-  // Memuat hasil "show card" + "show environment" untuk ditampilkan sebagai
-  // kartu detail per slot di tab Sistem (hanya untuk OLT ZTE).
+  // ════════════════════ Daftar Card / Slot / port PON ════════════════════
   async loadCards(silent) {
     const panel = document.getElementById('cardsPanel');
     const empty = document.getElementById('cardsEmpty');
-    if (!panel || !this.activeOltId) return;
-    // Hanya tampil untuk ZTE — brand lain tidak punya konsep slot/card
-    if (!this._isZte()) { panel.style.display = 'none'; if (empty) empty.style.display = ''; return; }
+    if (!panel) return;
+    if (!this.activeOltId) {
+      panel.style.display = 'none';
+      if (empty) empty.style.display = '';
+      return;
+    }
     panel.style.display = '';
     if (empty) empty.style.display = 'none';
     const grid = document.getElementById('cardsGrid');
@@ -1357,8 +1377,8 @@ const OltMgmt = {
       : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><line x1="7" y1="10" x2="7" y2="14"/><line x1="11" y1="10" x2="11" y2="14"/><line x1="15" y1="10" x2="15" y2="14"/><line x1="19" y1="10" x2="19" y2="14"/></svg>';
 
     const fmt = (v) => (v == null || v === '') ? '<span class="gc-v muted">—</span>' : `<span class="gc-v" title="${esc(String(v))}">${esc(String(v))}</span>`;
-    const cardTypeLabel = isCtrl ? 'Control Card' : (c.type === 'pon' ? 'GPON Card' : 'Card');
-    const portsLbl = isCtrl ? 'Port' : 'PON';
+    const cardTypeLabel = isCtrl ? 'Control Card' : (c.type === 'pon' ? 'GPON Card' : (c.type === 'uplink' ? 'Uplink' : 'Card'));
+    const portsLbl = (isCtrl || c.type === 'uplink') ? 'Port' : 'PON';
 
     // ── Gauge melingkar suhu (hero, terinspirasi referензi monitoring) ──
     // Skala 0–80°C. Warna semantik: hijau <60, kuning 60-69, merah ≥70.
@@ -1427,6 +1447,7 @@ const OltMgmt = {
       <div class="gpon-card-body">
         <div class="gc-row"><span class="gc-k">HW Ver</span>${fmt(c.hw_version)}</div>
         <div class="gc-row"><span class="gc-k">SW Ver</span>${fmt(c.sw_version)}</div>
+        ${c.note ? `<div class="gc-row"><span class="gc-k">Info</span><span class="gc-v">${esc(c.note)}</span></div>` : ''}
       </div>
       ${barsHtml}
     </div>`;
@@ -1437,12 +1458,19 @@ const OltMgmt = {
     const el = document.getElementById('rawSuggest');
     if (!el) return;
     let cmds;
+    const brand = this.activeBrand || '';
     if (this._isZte()) {
       cmds = ['show card', 'show onu-type gpon', 'show card-temperature', 'show processor', 'show gpon onu state gpon-olt_1/2/1', 'show gpon profile tcont', 'show gpon onu uncfg', 'show vlan summary'];
+    } else if (brand === 'cdata') {
+      cmds = ['show version', 'show device', 'show cpu', 'show temperature', 'show dba-profile all', 'show vlan all', 'show ont info all'];
+    } else if (brand === 'hsgq') {
+      cmds = ['show version', 'show card', 'show line-profile', 'show service-profile', 'show vlan all', 'show onu-info all'];
+    } else if (brand === 'hioso') {
+      cmds = ['show version', 'show card', 'show ont info'];
     } else if (this.activeEpon) {
-      cmds = ['show onu-info all', 'show vlan', 'board', 'show system'];
+      cmds = ['show onu-info all', 'show vlan all', 'show version', 'show card'];
     } else {
-      cmds = ['show onu_information', 'show vlan all', 'show system info', 'show card'];
+      cmds = ['show version', 'show vlan all', 'show device', 'show card'];
     }
     el.innerHTML = cmds.map(c => `<button class="pon-pill" onclick="document.getElementById('rawCmd').value=this.textContent;OltMgmt.runRaw()">${esc(c)}</button>`).join('');
   },
@@ -1481,48 +1509,72 @@ const OltMgmt = {
       if (!res?.success) { tEl.innerHTML = fEl.innerHTML = `<div class="ot-alert err show">${esc(res?.message || 'Gagal')}</div>`; return; }
       const d = res.data || {};
       this._profilesCache = d;
-      tEl.innerHTML = this._renderTcontProfiles(d.tcontDetail || [], d.tcont || []);
-      fEl.innerHTML = this._renderTrafficProfiles(d.trafficDetail || [], d.traffic || []);
+      this._profileWritable = d.writable !== false;
+      const labels = d.labels || {};
+      const setText = (id, v) => { const el = document.getElementById(id); if (el && v) el.textContent = v; };
+      setText('tcontTitle', labels.tcont);
+      setText('trafficTitle', labels.traffic);
+      setText('tcontSub', labels.tcontSub);
+      setText('trafficSub', labels.trafficSub);
+      const note = document.getElementById('profilNote');
+      if (note && labels.note) note.textContent = labels.note;
+      const addT = document.getElementById('btnAddTcont');
+      const addF = document.getElementById('btnAddTraffic');
+      if (addT) addT.style.display = this._profileWritable ? '' : 'none';
+      if (addF) addF.style.display = this._profileWritable ? '' : 'none';
+      tEl.innerHTML = this._renderTcontProfiles(d.tcontDetail || [], d.tcont || [], labels);
+      fEl.innerHTML = this._renderTrafficProfiles(d.trafficDetail || [], d.traffic || [], labels);
     } catch (e) {
       tEl.innerHTML = fEl.innerHTML = `<div class="ot-alert err show">${esc(e.message)}</div>`;
     }
   },
 
-  _renderTcontProfiles(detail, names) {
-    // gabungkan detail (punya bandwidth) dengan nama saja (fallback)
+  _renderTcontProfiles(detail, names, labels) {
+    labels = labels || {};
     const byName = {}; detail.forEach(p => byName[p.name] = p);
     names.forEach(n => { if (!byName[n]) byName[n] = { name: n }; });
     const rows = Object.values(byName);
-    if (!rows.length) return '<div style="padding:20px;color:var(--faint)">Belum ada profil T-CONT.</div>';
-    const typeLabel = (t) => ({1:'Fixed',2:'Assured',3:'Assured+Max',4:'Maximum',5:'Fixed+Ass+Max'}[t] || (t!=null?'Type '+t:'—'));
-    return `<table class="onu-table"><thead><tr><th>Nama</th><th>Type</th><th>Max BW</th><th style="text-align:right">Aksi</th></tr></thead><tbody>` +
+    if (!rows.length) return `<div style="padding:20px;color:var(--faint)">${esc(labels.emptyTcont || 'Belum ada profil T-CONT.')}</div>`;
+    const cols = labels.tcontCols || ['Nama', 'Type', 'Max BW'];
+    const typeLabel = (p) => {
+      if (p.typeLabel) return p.typeLabel;
+      const t = p.type;
+      return ({1:'Fixed',2:'Assured',3:'Assured+Max',4:'Maximum',5:'Fixed+Ass+Max'}[t] || (t!=null?'Type '+t:'—'));
+    };
+    const canDel = this._profileWritable !== false;
+    return `<table class="onu-table"><thead><tr><th>${esc(cols[0] || 'Nama')}</th><th>${esc(cols[1] || 'Type')}</th><th>${esc(cols[2] || 'Max BW')}</th><th style="text-align:right">Aksi</th></tr></thead><tbody>` +
       rows.map(p => {
         const isDefault = /^default$/i.test(p.name);
-        const mbw = p.mbw != null ? (p.mbw >= 1000 ? (p.mbw/1000).toFixed(0)+' Mbps' : p.mbw+' kbps') : '—';
+        const mbw = p.bwLabel != null ? p.bwLabel : (p.mbw != null ? (p.mbw >= 1000 ? (p.mbw/1000).toFixed(0)+' Mbps' : p.mbw+' kbps') : '—');
         return `<tr>
-          <td><span class="onu-if">${esc(p.name)}</span></td>
-          <td>${esc(typeLabel(p.type))}</td>
-          <td>${esc(mbw)}</td>
-          <td style="text-align:right">${isDefault ? '<span class="mut" style="font-size:11px">bawaan</span>' :
+          <td data-label="${esc(cols[0] || 'Nama')}"><span class="onu-if">${esc(p.name)}</span></td>
+          <td data-label="${esc(cols[1] || 'Type')}">${esc(typeLabel(p))}</td>
+          <td data-label="${esc(cols[2] || 'Max BW')}">${esc(String(mbw))}</td>
+          <td data-label="Aksi" style="text-align:right">${(!canDel || isDefault) ? '<span class="mut" style="font-size:11px">baca</span>' :
             `<button class="ra del" title="Hapus" onclick="OltMgmt.deleteProfile('tcont','${esc(p.name)}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>`}</td>
         </tr>`;
       }).join('') + '</tbody></table>';
   },
 
-  _renderTrafficProfiles(detail, names) {
+  _renderTrafficProfiles(detail, names, labels) {
+    labels = labels || {};
     const byName = {}; detail.forEach(p => byName[p.name] = p);
     names.forEach(n => { if (!byName[n]) byName[n] = { name: n }; });
     const rows = Object.values(byName);
-    if (!rows.length) return '<div style="padding:20px;color:var(--faint)">Belum ada profil Traffic.</div>';
+    if (!rows.length) return `<div style="padding:20px;color:var(--faint)">${esc(labels.emptyTraffic || 'Belum ada profil Traffic.')}</div>`;
+    const cols = labels.trafficCols || ['Nama', 'SIR', 'PIR'];
     const fmt = (v) => v == null ? '—' : (typeof v === 'number' ? (v >= 1000 ? (v/1000).toFixed(0)+'M' : v+'k') : v);
-    return `<table class="onu-table"><thead><tr><th>Nama</th><th>SIR</th><th>PIR</th><th style="text-align:right">Aksi</th></tr></thead><tbody>` +
+    const canDel = this._profileWritable !== false;
+    return `<table class="onu-table"><thead><tr><th>${esc(cols[0] || 'Nama')}</th><th>${esc(cols[1] || 'SIR')}</th><th>${esc(cols[2] || 'PIR')}</th><th style="text-align:right">Aksi</th></tr></thead><tbody>` +
       rows.map(p => {
         const isDefault = /^default$/i.test(p.name);
+        const sir = p.bwLabel != null ? p.bwLabel : fmt(p.sir);
+        const pir = p.note != null && p.bwLabel != null ? p.note : fmt(p.pir);
         return `<tr>
-          <td><span class="onu-if">${esc(p.name)}</span></td>
-          <td>${esc(fmt(p.sir))}</td>
-          <td>${esc(fmt(p.pir))}</td>
-          <td style="text-align:right">${isDefault ? '<span class="mut" style="font-size:11px">bawaan</span>' :
+          <td data-label="${esc(cols[0] || 'Nama')}"><span class="onu-if">${esc(p.name)}</span></td>
+          <td data-label="${esc(cols[1] || 'SIR')}">${esc(String(sir))}</td>
+          <td data-label="${esc(cols[2] || 'PIR')}">${esc(String(pir))}</td>
+          <td data-label="Aksi" style="text-align:right">${(!canDel || isDefault) ? '<span class="mut" style="font-size:11px">baca</span>' :
             `<button class="ra del" title="Hapus" onclick="OltMgmt.deleteProfile('traffic','${esc(p.name)}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>`}</td>
         </tr>`;
       }).join('') + '</tbody></table>';
@@ -1812,11 +1864,25 @@ const OltMgmt = {
         <div class="info-note" style="margin-bottom:14px">Toleransi Rx ONU normal hingga ~-25 dBm. Di bawah -28 dBm perlu perbaikan optik. "LOS" = tidak ada sinyal (kabel putus/ONU mati).</div>`;
     }
 
+    const cfgFail = d.config_failed === true || /fail/i.test(String(d.config_state || ''));
+    const offline = d.queue_status === 'Pending - Device Offline' || /los|loss|offline|off-?line/i.test(String(d.phase_state || ''));
     const diagHtml = d.diagnosis
-      ? `<div class="info-note" style="margin-bottom:14px;border-left:3px solid ${/los/i.test(d.phase_state||'') ? '#dc2626' : '#d97706'};background:${/los/i.test(d.phase_state||'') ? '#fef2f2' : '#fffbeb'}">⚠ ${esc(d.diagnosis)}</div>`
+      ? `<div class="info-note" style="margin-bottom:14px;border-left:3px solid ${offline ? '#dc2626' : '#d97706'};background:${offline ? '#fef2f2' : '#fffbeb'}">⚠ ${esc(d.diagnosis)}</div>`
       : '';
+    const queueHtml = offline
+      ? `<div class="info-note" style="margin-bottom:14px;border-left:3px solid #d97706;background:#fffbeb"><b>Pending - Device Offline.</b> Konfigurasi tidak dikirim sampai modem online atau Inform kembali.</div>`
+      : '';
+    const retryHtml = cfgFail
+      ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <button type="button" class="btn btn-sm" onclick="OltMgmt.showDetail('${esc(d.onu_if || '')}')">Refresh Provisioning</button>
+          <button type="button" class="btn btn-sm btn-green" onclick="OltMgmt.retryProvision('${esc(d.onu_if || '')}')" ${offline ? 'disabled title="Menunggu modem online"' : ''}>Ulangi provisioning</button>
+        </div>`
+      : '';
+    const cfgCell = cfgFail
+      ? `<span style="color:#b91c1c;font-weight:800">${esc(d.config_state || 'Fail')}</span>`
+      : esc(d.config_state || '—');
 
-    return `${diagHtml}${powerHtml}
+    return `${diagHtml}${queueHtml}${retryHtml}${powerHtml}
       <div class="det-grid">
         <div class="det-cell"><div class="det-k">Interface</div><div class="det-v mono">${esc(d.onu_if||'—')}</div></div>
         <div class="det-cell"><div class="det-k">Serial Number</div><div class="det-v mono">${esc(d.serial_number||'—')}</div></div>
@@ -1824,7 +1890,7 @@ const OltMgmt = {
         <div class="det-cell"><div class="det-k">Type</div><div class="det-v">${esc(d.type||'—')}</div></div>
         <div class="det-cell"><div class="det-k">State</div><div class="det-v">${esc(d.state||'—')}</div></div>
         <div class="det-cell"><div class="det-k">Phase State</div><div class="det-v">${esc(d.phase_state||'—')}</div></div>
-        <div class="det-cell"><div class="det-k">Config State</div><div class="det-v">${esc(d.config_state||'—')}</div></div>
+        <div class="det-cell"><div class="det-k">Config State</div><div class="det-v">${cfgCell}</div></div>
         <div class="det-cell"><div class="det-k">Admin State</div><div class="det-v">${esc(d.admin_state||'—')}</div></div>
         <div class="det-cell"><div class="det-k">Auth Mode</div><div class="det-v">${esc(d.auth_mode||'—')}</div></div>
         <div class="det-cell"><div class="det-k">Jarak (Distance)</div><div class="det-v">${d.distance_m != null ? d.distance_m + ' m' : '—'}</div></div>
@@ -1834,6 +1900,25 @@ const OltMgmt = {
   },
 
   closeDetail() { document.getElementById('detailModal').classList.remove('show'); },
+
+  async retryProvision(onuIf) {
+    if (!onuIf || !this.activeOltId) return;
+    try {
+      const res = await App.api(`/olt-mgmt/${this.activeOltId}/onu/retry-provision`, {
+        method: 'POST', body: JSON.stringify({ onuIf }),
+      });
+      if (res?.pending) App.showToast(res.message || 'Pending - Device Offline', 'warning');
+      else if (res?.success) App.showToast(res.message || 'Provisioning diulang', 'success');
+      else App.showToast(res?.message || 'Gagal mengulang provisioning', 'error');
+      if (res?.data) {
+        document.getElementById('detailBody').innerHTML = this._renderDetail(res.data);
+      } else {
+        this.showDetail(onuIf);
+      }
+    } catch (e) {
+      App.showToast('Error: ' + e.message, 'error');
+    }
+  },
 
   // ════════════════════ Traffic real-time ONU ════════════════════
   async openOnuTraffic(onuIf, name) {

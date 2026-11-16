@@ -1,0 +1,317 @@
+/* Kulit Host Monitor. Hanya tampilan.
+   Filter, scan, dan kolom tabel tidak diubah.
+   Pil status dan tombol aksi tetap tulisan gelap di latar terang. */
+
+html:has(body.pm-home) {
+  background: #100c22;
+  color-scheme: dark;
+}
+
+body.pm-home {
+  --text: #f8fafc;
+  --faint: #e2e8f0;
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+
+body.pm-home .main-content,
+body.pm-home .page-content {
+  background: transparent !important;
+  color: #f8fafc;
+}
+
+body.pm-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+
+body.pm-home .logo-text,
+body.pm-home .nav-section-title,
+body.pm-home .nav-item { color: #f8fafc; }
+
+body.pm-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+
+body.pm-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+
+body.pm-home .sidebar a.nav-sub:link,
+body.pm-home .sidebar a.nav-sub:visited,
+body.pm-home .sidebar a.nav-sub:hover,
+body.pm-home .sidebar a.nav-sub:focus,
+body.pm-home .sidebar a.nav-sub:active,
+body.pm-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.pm-home .sidebar a.nav-sub .nav-sub-dot,
+body.pm-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #67e8f9 !important;
+}
+
+body.pm-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+
+body.pm-home .search-box,
+body.pm-home .search-box input,
+body.pm-home .topbar-btn {
+  background: #100c22;
+  color: #f8fafc;
+  border-color: rgba(34, 211, 238, 0.35);
+}
+
+body.pm-home .pm-hdr-l h1,
+body.pm-home .pm-hdr-l p,
+body.pm-home .pm-tbl-hdr-t,
+body.pm-home .pm-tbl-note,
+body.pm-home .cnt-info,
+body.pm-home .interval-wrap,
+body.pm-home .prog-text {
+  color: #f8fafc !important;
+}
+
+body.pm-home .prog-pct { color: #67e8f9 !important; }
+
+body.pm-home .btn-outline {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.pm-home .btn-blue,
+body.pm-home .btn-teal,
+body.pm-home .btn-green,
+body.pm-home .ar-save,
+body.pm-home .am-btn-primary {
+  background: linear-gradient(135deg, #0891b2, #4f46e5 58%, #ff4ecd) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+body.pm-home .pm-cards {
+  background: transparent !important;
+  border: none !important;
+  gap: 12px;
+}
+
+body.pm-home #pmc-total {
+  background: linear-gradient(145deg, #0891b2 0%, #1d4ed8 58%, #22d3ee 100%) !important;
+  border-color: transparent !important;
+}
+body.pm-home #pmc-up {
+  background: linear-gradient(145deg, #059669 0%, #0f766e 55%, #34d399 100%) !important;
+  border-color: transparent !important;
+}
+body.pm-home #pmc-down {
+  background: linear-gradient(145deg, #e11d48 0%, #be185d 55%, #ff4ecd 100%) !important;
+  border-color: transparent !important;
+}
+body.pm-home #pmc-lat {
+  background: linear-gradient(145deg, #b45309 0%, #ea580c 55%, #fde047 100%) !important;
+  border-color: transparent !important;
+}
+
+body.pm-home .pm-card {
+  border-radius: 14px;
+  border-right-color: transparent !important;
+  border-bottom-color: transparent !important;
+}
+
+body.pm-home .pm-card.pmc-active {
+  box-shadow: inset 0 0 0 3px #ffffff !important;
+}
+
+body.pm-home .pm-card .card-lbl,
+body.pm-home .pm-card .card-val,
+body.pm-home .pm-card .card-sub,
+body.pm-home .pm-card.pmc-active .card-lbl,
+body.pm-home .pm-card.pmc-active .card-val,
+body.pm-home .pm-card.pmc-active .card-sub {
+  color: #ffffff !important;
+}
+
+body.pm-home .sp-line { stroke: #ffffff !important; }
+body.pm-home .sp-dot { fill: #ffffff !important; }
+body.pm-home .sp-fill { fill: rgba(255, 255, 255, 0.18) !important; }
+
+body.pm-home .pm-ctrl,
+body.pm-home .pm-tbl-wrap,
+body.pm-home .modal,
+body.pm-home #syncResult:not(:empty) {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.28) !important;
+  color: #f8fafc;
+}
+
+body.pm-home #syncResult:not(:empty) {
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+
+body.pm-home .search-wrap input,
+body.pm-home .pm-ctrl select,
+body.pm-home .interval-wrap select,
+body.pm-home .assign-search input,
+body.pm-home .ar-ip-input,
+body.pm-home .am-input,
+body.pm-home .am-select {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.pm-home .pm-tbl-hdr { border-bottom-color: rgba(34, 211, 238, 0.22) !important; }
+
+body.pm-home .pm-table {
+  width: 100% !important;
+  min-width: 100%;
+}
+
+body.pm-home .pm-table thead tr,
+body.pm-home .pm-table th {
+  background: linear-gradient(90deg, #0891b2, #4f46e5 55%, #db2777) !important;
+  color: #ffffff !important;
+  border-bottom-color: transparent !important;
+}
+
+body.pm-home .pm-table tbody tr:nth-child(8n+1) td { background: #1d4ed8 !important; }
+body.pm-home .pm-table tbody tr:nth-child(8n+2) td { background: #0891b2 !important; }
+body.pm-home .pm-table tbody tr:nth-child(8n+3) td { background: #059669 !important; }
+body.pm-home .pm-table tbody tr:nth-child(8n+4) td { background: #b45309 !important; }
+body.pm-home .pm-table tbody tr:nth-child(8n+5) td { background: #ea580c !important; }
+body.pm-home .pm-table tbody tr:nth-child(8n+6) td { background: #e11d48 !important; }
+body.pm-home .pm-table tbody tr:nth-child(8n+7) td { background: #db2777 !important; }
+body.pm-home .pm-table tbody tr:nth-child(8n+8) td { background: #7c3aed !important; }
+
+body.pm-home .pm-table td,
+body.pm-home .pm-table .cust-name,
+body.pm-home .pm-table .cust-meta,
+body.pm-home .pm-table .loss-pct {
+  color: #ffffff !important;
+  border-bottom-color: transparent !important;
+}
+
+body.pm-home .pm-table tr:hover td { filter: brightness(1.08); }
+
+body.pm-home .pill,
+body.pm-home .lat,
+body.pm-home .act-btn,
+body.pm-home .ip-badge,
+body.pm-home .ip-src,
+body.pm-home .card-pill {
+  -webkit-text-fill-color: currentcolor !important;
+}
+
+body.pm-home .pill-up { background: #dcfce7 !important; color: #15803d !important; }
+body.pm-home .pill-down { background: #fee2e2 !important; color: #b91c1c !important; }
+body.pm-home .pill-unknown { background: #f8fafc !important; color: #475569 !important; }
+body.pm-home .pill-checking { background: #eff6ff !important; color: #1d4ed8 !important; }
+body.pm-home .lat-good { background: #dcfce7 !important; color: #15803d !important; }
+body.pm-home .lat-ok { background: #fef9c3 !important; color: #854d0e !important; }
+body.pm-home .lat-bad { background: #fee2e2 !important; color: #b91c1c !important; }
+body.pm-home .lat-na { background: #f1f5f9 !important; color: #475569 !important; }
+body.pm-home .ip-badge { background: #f1f5f9 !important; color: #0f172a !important; }
+body.pm-home .ip-badge.ip-empty { background: #fef3c7 !important; color: #92400e !important; }
+body.pm-home .ip-src { background: #dbeafe !important; color: #1d4ed8 !important; }
+body.pm-home .card-pill.pill-blue { background: #dbeafe !important; color: #1d4ed8 !important; }
+body.pm-home .card-pill.pill-green { background: #dcfce7 !important; color: #15803d !important; }
+body.pm-home .card-pill.pill-red { background: #fee2e2 !important; color: #b91c1c !important; }
+body.pm-home .card-pill.pill-amber { background: #fef3c7 !important; color: #92400e !important; }
+body.pm-home .act-btn {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border-color: #bfdbfe !important;
+}
+body.pm-home .act-btn-danger {
+  background: #fef2f2 !important;
+  color: #b91c1c !important;
+  border-color: #fecaca !important;
+}
+
+body.pm-home .modal-hdr,
+body.pm-home .modal-hdr h2,
+body.pm-home .modal-note,
+body.pm-home .am-label,
+body.pm-home .am-help,
+body.pm-home .ar-name,
+body.pm-home .ar-meta,
+body.pm-home .am-search-name,
+body.pm-home .am-search-meta,
+body.pm-home .pm-empty,
+body.pm-home .pm-empty strong,
+body.pm-home .pm-empty p {
+  color: #f8fafc !important;
+}
+
+body.pm-home .modal-hdr { border-bottom-color: rgba(34, 211, 238, 0.28) !important; }
+body.pm-home .modal-close,
+body.pm-home .am-clear-btn,
+body.pm-home .am-btn-secondary {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.pm-home .modal-note,
+body.pm-home .assign-row,
+body.pm-home .am-search-results,
+body.pm-home .am-search-item,
+body.pm-home .am-selected-card {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+
+body.pm-home .assign-row.has-ip {
+  background: rgba(5, 150, 105, 0.28) !important;
+  border-color: rgba(52, 211, 153, 0.55) !important;
+}
+
+body.pm-home .am-avatar {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+body.pm-home .am-src-active { background: #dcfce7 !important; color: #15803d !important; }
+body.pm-home .am-src-offline { background: #fee2e2 !important; color: #b91c1c !important; }
+body.pm-home .am-src-queue { background: #fef3c7 !important; color: #92400e !important; }
+
+body.pm-home .toast-item {
+  background: #141028 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.pm-home .toast-success { color: #bbf7d0 !important; }
+body.pm-home .toast-error { color: #fecaca !important; }
+body.pm-home .toast-info { color: #cffafe !important; }
+
+body.pm-home .bottom-nav {
+  background: #100c22;
+  border-top: 1px solid rgba(34, 211, 238, 0.28);
+  box-shadow: none;
+}
+
+body.pm-home .bottom-nav a.bn-item:link,
+body.pm-home .bottom-nav a.bn-item:visited,
+body.pm-home .bottom-nav a.bn-item:hover,
+body.pm-home .bottom-nav a.bn-item:focus,
+body.pm-home .bottom-nav a.bn-item:active,
+body.pm-home .bottom-nav a.bn-item.active,
+body.pm-home .bottom-nav button.bn-item,
+body.pm-home .bottom-nav .bn-item span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+
+body.pm-home .bottom-nav .bn-icon svg { stroke: #ffffff; }

@@ -1,0 +1,159 @@
+/* Kulit modul Keuangan. Hanya tampilan.
+   Grid kartu, form, filter, dan aksi tidak diubah. */
+
+body.keu-home {
+  --bg: #070814;
+  --text: #f8fafc;
+  --muted: #e2e8f0;
+  --d-bg: #070814;
+  --d-card: #141028;
+  --d-border: rgba(34, 211, 238, 0.35);
+  --d-text: #f8fafc;
+  --d-muted: #e2e8f0;
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+
+body.keu-home .main-content,
+body.keu-home .page-content,
+body.keu-home .keu-page {
+  background: transparent !important;
+  color: #f8fafc;
+}
+
+body.keu-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+
+body.keu-home .logo-text { color: #f8fafc; }
+
+body.keu-home .nav-item { color: #f8fafc; }
+
+body.keu-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+
+body.keu-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+
+body.keu-home .sidebar a.nav-sub:link,
+body.keu-home .sidebar a.nav-sub:visited,
+body.keu-home .sidebar a.nav-sub:hover,
+body.keu-home .sidebar a.nav-sub:focus,
+body.keu-home .sidebar a.nav-sub:active,
+body.keu-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.keu-home .sidebar a.nav-sub .nav-sub-dot,
+body.keu-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #67e8f9 !important;
+}
+
+body.keu-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+
+body.keu-home .page-content h1,
+body.keu-home .page-content p,
+body.keu-home .wc-ttl,
+body.keu-home .wc-lbl,
+body.keu-home .form-label,
+body.keu-home .modal-title,
+body.keu-home .page-content [style*="color:var(--d-text)"],
+body.keu-home .page-content [style*="color:var(--d-muted)"],
+body.keu-home .page-content [style*="color:#0d1b3e"],
+body.keu-home .page-content [style*="color:#64748b"],
+body.keu-home .page-content [style*="color:#94a3b8"] {
+  color: #f8fafc !important;
+}
+
+body.keu-home .fin-card {
+  color: #ffffff;
+}
+
+body.keu-home #fc-masuk { background: linear-gradient(135deg, #059669, #0f766e 52%, #22d3ee) !important; }
+body.keu-home #fc-keluar { background: linear-gradient(135deg, #e11d48, #be185d 55%, #ff4ecd) !important; }
+body.keu-home #fc-cashflow { background: linear-gradient(135deg, #0891b2, #1d4ed8 58%, #818cf8) !important; }
+body.keu-home #fc-hutang { background: linear-gradient(135deg, #d97706, #c2410c 52%, #f43f5e) !important; }
+body.keu-home #fc-piutang { background: linear-gradient(135deg, #7c3aed, #4f46e5 55%, #22d3ee) !important; }
+
+body.keu-home .fin-card .card-lbl,
+body.keu-home .fin-card .card-val,
+body.keu-home .fin-card .card-sub {
+  color: #ffffff !important;
+}
+
+body.keu-home .fin-card.fc-active {
+  box-shadow: inset 0 0 0 2px #ffffff, 0 0 0 3px #ff4ecd;
+}
+
+body.keu-home .w-card,
+body.keu-home .form-card,
+body.keu-home .modal-box,
+body.keu-home .pnbp-item {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+  color: #f8fafc;
+}
+
+body.keu-home .pnbp-item[style*="linear-gradient"] {
+  background: linear-gradient(135deg, #1e3a8a, #1d4ed8) !important;
+}
+
+body.keu-home .form-control,
+body.keu-home .filter-select,
+body.keu-home .search-input,
+body.keu-home .type-tab,
+body.keu-home .filter-tab,
+body.keu-home .modal-close {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+
+body.keu-home .type-tab.active,
+body.keu-home .filter-tab.active {
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+body.keu-home .apexcharts-text,
+body.keu-home .apexcharts-legend-text {
+  fill: #f8fafc !important;
+  color: #f8fafc !important;
+}
+
+/* Tabel transaksi: baris pelangi, teks putih. Lebar dan susunan kolom tidak diubah. */
+body.keu-home .keu-table thead th {
+  background: linear-gradient(90deg, #0891b2 0%, #4f46e5 48%, #ff4ecd 100%) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+body.keu-home .keu-table tbody td {
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+body.keu-home .keu-table tbody td div,
+body.keu-home .keu-table tbody td::before {
+  color: #ffffff !important;
+}
+
+body.keu-home .keu-table tbody tr:nth-child(8n+1) td { background: #1d4ed8 !important; }
+body.keu-home .keu-table tbody tr:nth-child(8n+2) td { background: #0891b2 !important; }
+body.keu-home .keu-table tbody tr:nth-child(8n+3) td { background: #059669 !important; }
+body.keu-home .keu-table tbody tr:nth-child(8n+4) td { background: #b45309 !important; }
+body.keu-home .keu-table tbody tr:nth-child(8n+5) td { background: #ea580c !important; }
+body.keu-home .keu-table tbody tr:nth-child(8n+6) td { background: #e11d48 !important; }
+body.keu-home .keu-table tbody tr:nth-child(8n+7) td { background: #db2777 !important; }
+body.keu-home .keu-table tbody tr:nth-child(8n+8) td { background: #7c3aed !important; }

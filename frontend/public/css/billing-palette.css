@@ -1,0 +1,279 @@
+/* Kulit Daftar Tagihan. Hanya tampilan.
+   Kisi kartu dan kartu HP (.bill-narrow) tidak diubah.
+   Warna pelangi ada di baris, bukan di sel. */
+
+html:has(body.bill-home) {
+  background: #100c22;
+  color-scheme: dark;
+}
+
+body.bill-home {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+
+body.bill-home .app-layout.bill-page,
+body.bill-home .main-content,
+body.bill-home .page-content {
+  background: transparent !important;
+  color: #f8fafc;
+}
+
+body.bill-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+body.bill-home .logo-text,
+body.bill-home .nav-section-title,
+body.bill-home .nav-item { color: #f8fafc; }
+body.bill-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+body.bill-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+body.bill-home .sidebar a.nav-sub:link,
+body.bill-home .sidebar a.nav-sub:visited,
+body.bill-home .sidebar a.nav-sub:hover,
+body.bill-home .sidebar a.nav-sub:focus,
+body.bill-home .sidebar a.nav-sub:active,
+body.bill-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+body.bill-home .sidebar a.nav-sub .nav-sub-dot,
+body.bill-home .sidebar a.nav-sub.active .nav-sub-dot { background: #67e8f9 !important; }
+body.bill-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+body.bill-home .search-box,
+body.bill-home .search-box input,
+body.bill-home .topbar-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.bill-home .page-content h1 { color: #ffffff !important; }
+body.bill-home #billHeaderSub,
+body.bill-home .bill-count { color: #e2e8f0 !important; }
+
+body.bill-home #btnResetInvoices {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border-color: #fecaca !important;
+  -webkit-text-fill-color: #b91c1c;
+}
+body.bill-home button[onclick="markOverdue()"] {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.bill-home a[href="/collect"],
+body.bill-home #btnProofInbox {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #93c5fd !important;
+  -webkit-text-fill-color: #1d4ed8;
+}
+
+body.bill-home .fin-grid {
+  background: #100c22 !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+body.bill-home #bcard-paid {
+  background: linear-gradient(145deg, #059669, #0f766e 55%, #34d399) !important;
+  border-color: transparent !important;
+}
+body.bill-home #bcard-unpaid {
+  background: linear-gradient(145deg, #0891b2, #1d4ed8 58%, #22d3ee) !important;
+  border-color: transparent !important;
+}
+body.bill-home #bcard-overdue {
+  background: linear-gradient(145deg, #be185d, #e11d48 55%, #ff4ecd) !important;
+  border-color: transparent !important;
+}
+body.bill-home #bcard-revenue {
+  background: linear-gradient(145deg, #b45309, #ea580c 55%, #fde047) !important;
+  border-color: transparent !important;
+}
+body.bill-home #bcard-potensi {
+  background: linear-gradient(145deg, #0f766e, #0891b2 55%, #22d3ee) !important;
+  border-color: transparent !important;
+}
+body.bill-home #bcard-sisa {
+  background: linear-gradient(145deg, #7c3aed, #db2777 55%, #ff4ecd) !important;
+  border-color: transparent !important;
+}
+body.bill-home .fin-card.fc-active { box-shadow: inset 0 0 0 3px #ffffff !important; }
+
+body.bill-home .fin-card .card-lbl,
+body.bill-home .fin-card .card-val,
+body.bill-home .fin-card .card-sub,
+body.bill-home .fin-card.fc-active .card-lbl,
+body.bill-home .fin-card.fc-active .card-val,
+body.bill-home .fin-card.fc-active .card-sub,
+body.bill-home #bcard-potensi .card-val,
+body.bill-home #bcard-sisa .card-val {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+
+body.bill-home .fin-card.fc-active .card-pill.pill-green,
+body.bill-home .card-pill.pill-green { background: #dcfce7 !important; color: #15803d !important; -webkit-text-fill-color: #15803d; }
+body.bill-home .fin-card.fc-active .card-pill.pill-teal,
+body.bill-home .card-pill.pill-teal { background: #ccfbf1 !important; color: #0f766e !important; -webkit-text-fill-color: #0f766e; }
+body.bill-home .fin-card.fc-active .card-pill.pill-orange,
+body.bill-home .card-pill.pill-orange { background: #ffedd5 !important; color: #c2410c !important; -webkit-text-fill-color: #c2410c; }
+body.bill-home .fin-card.fc-active .card-pill.pill-blue,
+body.bill-home .card-pill.pill-blue { background: #dbeafe !important; color: #1d4ed8 !important; -webkit-text-fill-color: #1d4ed8; }
+body.bill-home .fin-card.fc-active .card-pill.pill-red,
+body.bill-home .card-pill.pill-red { background: #fee2e2 !important; color: #b91c1c !important; -webkit-text-fill-color: #b91c1c; }
+body.bill-home .fin-card.fc-active .card-pill.pill-amber,
+body.bill-home .card-pill.pill-amber { background: #fef3c7 !important; color: #b45309 !important; -webkit-text-fill-color: #b45309; }
+
+body.bill-home .fin-card .sp-line,
+body.bill-home .fin-card.fc-active .sp-line { stroke: #ffffff !important; }
+body.bill-home .fin-card .sp-fill,
+body.bill-home .fin-card.fc-active .sp-fill { fill: rgba(255, 255, 255, 0.22) !important; }
+body.bill-home .fin-card .sp-dot,
+body.bill-home .fin-card.fc-active .sp-dot { fill: #ffffff !important; }
+
+body.bill-home .bill-card,
+body.bill-home .modal {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.28) !important;
+  color: #f8fafc;
+}
+body.bill-home #generateModal .modal-header,
+body.bill-home .modal-footer {
+  background: #100c22 !important;
+  border-color: rgba(34, 211, 238, 0.22) !important;
+  color: #ffffff;
+}
+body.bill-home .bill-card-header { border-bottom-color: rgba(34, 211, 238, 0.22) !important; }
+body.bill-home .bill-search input,
+body.bill-home .bill-filter select,
+body.bill-home .modal input,
+body.bill-home .modal select,
+body.bill-home .modal textarea {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.bill-home #bulkBar {
+  background: #1e1b4b !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+  color: #ffffff !important;
+}
+
+body.bill-home .bill-table thead th {
+  background: linear-gradient(90deg, #0891b2, #4f46e5 55%, #db2777) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+body.bill-home .bill-table tbody tr:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.bill-home .bill-table tbody tr:nth-child(8n+2) { background: #0891b2 !important; }
+body.bill-home .bill-table tbody tr:nth-child(8n+3) { background: #059669 !important; }
+body.bill-home .bill-table tbody tr:nth-child(8n+4) { background: #b45309 !important; }
+body.bill-home .bill-table tbody tr:nth-child(8n+5) { background: #ea580c !important; }
+body.bill-home .bill-table tbody tr:nth-child(8n+6) { background: #e11d48 !important; }
+body.bill-home .bill-table tbody tr:nth-child(8n+7) { background: #db2777 !important; }
+body.bill-home .bill-table tbody tr:nth-child(8n+8) { background: #7c3aed !important; }
+/* Sorotan baris tetap di atas warna pelangi. Putih solid menutup tulisan. */
+body.bill-home .bill-table tbody tr:hover td {
+  background-color: transparent !important;
+  box-shadow: inset 0 0 0 999px rgba(255, 255, 255, 0.16);
+}
+body.bill-home .bill-table td,
+body.bill-home .bill-page.bill-narrow .bill-table td:nth-child(2) { color: #ffffff !important; }
+/* Tulisan di dalam sel (nama, nomor, nominal, "Dilunasi oleh") ikut putih.
+   Pil, tombol, dan blok yang punya latar sendiri tidak ikut. */
+body.bill-home .bill-table tbody td *:where(
+  :not([style*="background"]):not(.st-paid):not(.st-unpaid):not(.st-overdue):not(.st-cancelled):not(.act-btn):not([class*="pm-"]):not(.st-paid *):not(.st-unpaid *):not(.st-overdue *):not(.st-cancelled *):not(.act-btn *):not([class*="pm-"] *)
+) {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+body.bill-home .bill-table td [style*="background"] {
+  -webkit-text-fill-color: currentcolor !important;
+}
+
+body.bill-home .bill-table a:not(.act-btn):link,
+body.bill-home .bill-table a:not(.act-btn):visited {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+
+body.bill-home .bill-table .st-paid { background: #dcfce7 !important; color: #15803d !important; -webkit-text-fill-color: #15803d; }
+body.bill-home .bill-table .st-paid * { color: #15803d !important; -webkit-text-fill-color: #15803d !important; }
+body.bill-home .bill-table .st-unpaid { background: #fef3c7 !important; color: #b45309 !important; -webkit-text-fill-color: #b45309; }
+body.bill-home .bill-table .st-unpaid * { color: #b45309 !important; -webkit-text-fill-color: #b45309 !important; }
+body.bill-home .bill-table .st-overdue { background: #fee2e2 !important; color: #b91c1c !important; -webkit-text-fill-color: #b91c1c; }
+body.bill-home .bill-table .st-overdue * { color: #b91c1c !important; -webkit-text-fill-color: #b91c1c !important; }
+body.bill-home .bill-table .st-cancelled { background: #f1f5f9 !important; color: #475569 !important; -webkit-text-fill-color: #475569; }
+body.bill-home .bill-table .st-cancelled * { color: #475569 !important; -webkit-text-fill-color: #475569 !important; }
+
+body.bill-home .bill-table .pm-cash { background: #dcfce7 !important; color: #15803d !important; -webkit-text-fill-color: #15803d; }
+body.bill-home .bill-table .pm-transfer { background: #dbeafe !important; color: #1d4ed8 !important; -webkit-text-fill-color: #1d4ed8; }
+body.bill-home .bill-table .pm-qris { background: #ccfbf1 !important; color: #0f766e !important; -webkit-text-fill-color: #0f766e; }
+body.bill-home .bill-table .pm-gateway { background: #ffedd5 !important; color: #c2410c !important; -webkit-text-fill-color: #c2410c; }
+body.bill-home .bill-table .pm-ewallet { background: #e0f2fe !important; color: #0369a1 !important; -webkit-text-fill-color: #0369a1; }
+body.bill-home .bill-table .pm-other { background: #f1f5f9 !important; color: #475569 !important; -webkit-text-fill-color: #475569; }
+body.bill-home .bill-table .pm-gateway.pm-tripay,
+body.bill-home .bill-table .pm-tripay { background: #dbeafe !important; color: #1d4ed8 !important; -webkit-text-fill-color: #1d4ed8; }
+body.bill-home .bill-table .pm-gateway.pm-midtrans,
+body.bill-home .bill-table .pm-midtrans { background: #e0e7ff !important; color: #312e81 !important; -webkit-text-fill-color: #312e81; }
+body.bill-home .bill-table .pm-gateway.pm-xendit,
+body.bill-home .bill-table .pm-xendit { background: #dbeafe !important; color: #1e40af !important; -webkit-text-fill-color: #1e40af; }
+body.bill-home .bill-table .pm-gateway.pm-duitku,
+body.bill-home .bill-table .pm-duitku { background: #cffafe !important; color: #0e7490 !important; -webkit-text-fill-color: #0e7490; }
+
+body.bill-home .bill-table .act-btn.act-inv,
+body.bill-home .bill-table .act-btn.act-email { background: #dbeafe !important; color: #1d4ed8 !important; border-color: #93c5fd !important; -webkit-text-fill-color: #1d4ed8; }
+body.bill-home .bill-table .act-btn.act-inv *,
+body.bill-home .bill-table .act-btn.act-email * { color: #1d4ed8 !important; -webkit-text-fill-color: #1d4ed8 !important; }
+body.bill-home .bill-table .act-btn.act-wa { background: #dcfce7 !important; color: #15803d !important; border-color: #86efac !important; -webkit-text-fill-color: #15803d; }
+body.bill-home .bill-table .act-btn.act-wa * { color: #15803d !important; -webkit-text-fill-color: #15803d !important; }
+body.bill-home .bill-table .act-btn.act-pay { background: linear-gradient(135deg, #0891b2, #1d4ed8) !important; color: #ffffff !important; border-color: transparent !important; -webkit-text-fill-color: #ffffff; }
+body.bill-home .bill-table .act-btn.act-pay * { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }
+body.bill-home .bill-table .act-btn.act-del { background: #fee2e2 !important; color: #b91c1c !important; border-color: #fecaca !important; -webkit-text-fill-color: #b91c1c; }
+body.bill-home .bill-table .act-btn.act-del * { color: #b91c1c !important; -webkit-text-fill-color: #b91c1c !important; }
+
+body.bill-home .pg-btn {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.bill-home .pg-btn.active {
+  background: linear-gradient(135deg, #0891b2, #db2777) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+body.bill-home .bill-pagination { border-top-color: rgba(34, 211, 238, 0.22) !important; }
+
+body.bill-home .bottom-nav {
+  background: #100c22;
+  border-top: 1px solid rgba(34, 211, 238, 0.28);
+  box-shadow: none;
+}
+body.bill-home .bottom-nav a.bn-item:link,
+body.bill-home .bottom-nav a.bn-item:visited,
+body.bill-home .bottom-nav a.bn-item:hover,
+body.bill-home .bottom-nav a.bn-item:focus,
+body.bill-home .bottom-nav a.bn-item:active,
+body.bill-home .bottom-nav a.bn-item.active,
+body.bill-home .bottom-nav button.bn-item,
+body.bill-home .bottom-nav .bn-item span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+body.bill-home .bottom-nav .bn-icon svg,
+body.bill-home .bottom-nav .bn-item.active .bn-icon svg,
+body.bill-home .bottom-nav .bn-item:hover .bn-icon svg { stroke: #ffffff !important; }
+body.bill-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }

@@ -1,0 +1,198 @@
+/* Kulit editor Template Voucher. Hanya chrome editor.
+   Kartu pratinjau .vp-card mengikuti warna yang dipilih pengguna.
+   Kisi split dan preview tidak diubah. */
+
+html:has(body.vt-home) {
+  background: #100c22;
+  color-scheme: dark;
+}
+
+body.vt-home {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+}
+
+body.vt-home .main-content,
+body.vt-home .page-content {
+  background: transparent !important;
+}
+
+body.vt-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+
+body.vt-home .logo-text,
+body.vt-home .nav-section-title,
+body.vt-home .nav-item { color: #f8fafc; }
+
+body.vt-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+
+body.vt-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+
+body.vt-home .sidebar a.nav-sub:link,
+body.vt-home .sidebar a.nav-sub:visited,
+body.vt-home .sidebar a.nav-sub:hover,
+body.vt-home .sidebar a.nav-sub:focus,
+body.vt-home .sidebar a.nav-sub:active,
+body.vt-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.vt-home .sidebar a.nav-sub .nav-sub-dot,
+body.vt-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #67e8f9 !important;
+}
+
+body.vt-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+
+body.vt-home .search-box,
+body.vt-home .search-box input,
+body.vt-home .topbar-btn,
+body.vt-home .mt-selector-wrap {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.vt-home .mt-selector {
+  background: transparent !important;
+  color: #f8fafc !important;
+}
+
+body.vt-home .vt-title { color: #ffffff !important; }
+body.vt-home .vt-sub { color: #e2e8f0 !important; }
+
+body.vt-home .vt-btn-primary {
+  background: linear-gradient(135deg, #0891b2, #4f46e5) !important;
+  color: #ffffff !important;
+}
+
+body.vt-home .vt-btn-ghost {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.45) !important;
+}
+
+body.vt-home .vt-btn-danger {
+  background: #100c22 !important;
+  color: #fecaca !important;
+  border-color: #fb7185 !important;
+}
+
+body.vt-home .vt-form,
+body.vt-home .vt-preview-wrap,
+body.vt-home .vt-save-bar {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.28) !important;
+}
+
+body.vt-home .vt-sec { border-bottom-color: rgba(34, 211, 238, 0.18) !important; }
+
+body.vt-home .vt-sec-hdr { background: #100c22 !important; }
+
+body.vt-home .vt-sec-icon {
+  background: rgba(34, 211, 238, 0.18) !important;
+  color: #67e8f9 !important;
+}
+
+body.vt-home .vt-sec-title,
+body.vt-home .vt-toggle-row .lbl,
+body.vt-home .vt-preview-bar h3 {
+  color: #ffffff !important;
+}
+
+body.vt-home .vt-label,
+body.vt-home .vt-preview-bar .hint,
+body.vt-home .vt-save-bar .status { color: #e2e8f0 !important; }
+
+body.vt-home .vt-save-bar.dirty .status { color: #fde047 !important; }
+
+body.vt-home .vt-preview-bar { border-bottom-color: rgba(34, 211, 238, 0.22) !important; }
+
+body.vt-home .vt-input,
+body.vt-home .vt-textarea,
+body.vt-home .vt-select {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.vt-home .vt-color-row input[type="color"] {
+  background: #070814;
+  border-color: rgba(34, 211, 238, 0.4);
+}
+
+body.vt-home .vt-toggle-row { border-bottom-color: rgba(255, 255, 255, 0.08) !important; }
+body.vt-home .vt-toggle { background: #334155 !important; }
+body.vt-home .vt-toggle.on { background: #0891b2 !important; }
+
+body.vt-home .vt-mobile-tabs {
+  background: #100c22 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+
+body.vt-home .vt-mobile-tab { color: #e2e8f0 !important; }
+
+body.vt-home .vt-mobile-tab.active {
+  background: linear-gradient(135deg, #0891b2, #db2777) !important;
+  color: #ffffff !important;
+}
+
+/* Kunci kartu pratinjau agar warna template pengguna tetap tampil. */
+body.vt-home .vp-card {
+  background: #ffffff !important;
+  color: #0d1b3e !important;
+  border-color: #dde3ef !important;
+}
+
+body.vt-home .vp-user,
+body.vt-home .vp-av { color: #ffffff !important; }
+
+body.vt-home .vp-brand,
+body.vt-home .vp-prof { color: rgba(255, 255, 255, 0.7) !important; }
+
+body.vt-home .vp-lbl { color: #9aa3b5 !important; }
+
+body.vt-home .vp-line { border-bottom-color: #f1f5f9 !important; }
+
+body.vt-home .vp-footer {
+  background: #f8fafc !important;
+  color: #94a3b8 !important;
+  border-top-color: #f1f5f9 !important;
+}
+
+body.vt-home .bottom-nav {
+  background: #100c22;
+  border-top: 1px solid rgba(34, 211, 238, 0.28);
+  box-shadow: none;
+}
+
+body.vt-home .bottom-nav a.bn-item:link,
+body.vt-home .bottom-nav a.bn-item:visited,
+body.vt-home .bottom-nav a.bn-item:hover,
+body.vt-home .bottom-nav a.bn-item:focus,
+body.vt-home .bottom-nav a.bn-item:active,
+body.vt-home .bottom-nav a.bn-item.active,
+body.vt-home .bottom-nav button.bn-item,
+body.vt-home .bottom-nav .bn-item span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+
+body.vt-home .bottom-nav .bn-icon svg,
+body.vt-home .bottom-nav .bn-item.active .bn-icon svg,
+body.vt-home .bottom-nav .bn-item:hover .bn-icon svg { stroke: #ffffff !important; }
+
+body.vt-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }

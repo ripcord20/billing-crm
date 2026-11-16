@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#100c22">
+  <meta name="color-scheme" content="dark">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/qos-palette.css?v=qos2">
   <style>
     .qos-page { max-width: 1280px; }
     .qos-sub { color: var(--text-secondary); font-size: 13px; margin: 4px 0 0; }
@@ -68,7 +71,7 @@
     [data-theme="dark"] .qos-badge.security { background: rgba(239,68,68,.16); color: #fca5a5; }
   </style>
 </head>
-<body>
+<body class="qos-home">
   <div class="app-layout">
     <%- include('../partials/sidebar') %>
     <div class="main-content">

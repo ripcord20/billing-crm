@@ -485,7 +485,8 @@ class PaymentController {
                 dueDate: waCtx.dueDate, dueDateFormatted: fmtDue, invoiceNumber: waCtx.invoiceNumber,
                 notes: waCtx.notes, companyName
               });
-              const msg = replaceVariables(templateContent, templateData);
+              const { withPortalAppLink } = require('../utils/templateHelper');
+              const msg = withPortalAppLink(replaceVariables(templateContent, templateData));
               await GatewayService.sendMessage(session.session_id, waCtx.phone, msg, null);
               waSentStatus = 'sent';
               if (template) { try { await template.increment('usage_count'); } catch(_){} }
@@ -1423,7 +1424,7 @@ class PaymentController {
       const {
         replaceVariables, getInvoiceData,
         getDefaultInvoiceUnpaidTemplate, getDefaultInvoicePaidTemplate,
-        getOrCreateCustomerLink
+        getOrCreateCustomerLink, withPortalAppLink
       } = require('../utils/templateHelper');
 
       // ── 1) Resolve invoice + customer (path dependent on mode) ─────
@@ -1548,7 +1549,7 @@ class PaymentController {
         permanentLink: await getOrCreateCustomerLink(customer)
       });
 
-      const msg = replaceVariables(tplContent, tplData);
+      const msg = withPortalAppLink(replaceVariables(tplContent, tplData));
 
       // ── 5) Kirim & track ─────────────────────────────────────────
       await GatewayService.sendMessage(session.session_id, customer.phone, msg, null);

@@ -1,0 +1,9 @@
+Cadangan tampilan dashboard sebelum palet warna baru.
+
+Untuk kembali:
+1. Salin dashboard.ejs ke frontend/views/pages/dashboard.ejs
+2. Salin dashboard.js ke frontend/public/js/dashboard.js
+3. Hapus frontend/public/css/dashboard-palette.css
+4. Hapus baris stylesheet dashboard-palette.css dan class dash-home di dashboard.ejs jika masih ada
+
+Atau kembalikan commit di branch ini.

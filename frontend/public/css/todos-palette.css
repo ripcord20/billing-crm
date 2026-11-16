@@ -1,0 +1,117 @@
+/* Kulit To Do List. Hanya tampilan.
+   Papan 3 kolom dan kartu geser tidak diubah. */
+
+html:has(body.todo-home) { background: #100c22; color-scheme: dark; }
+body.todo-home {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+body.todo-home .app-layout.todo-page,
+body.todo-home .main-content,
+body.todo-home .page-content { background: transparent !important; color: #f8fafc; }
+body.todo-home .sidebar { background: rgba(16, 12, 34, 0.96); border-right-color: rgba(34, 211, 238, 0.28); }
+body.todo-home .logo-text,
+body.todo-home .nav-section-title,
+body.todo-home .nav-item { color: #f8fafc; }
+body.todo-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+body.todo-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+body.todo-home .sidebar a.nav-sub:link,
+body.todo-home .sidebar a.nav-sub:visited,
+body.todo-home .sidebar a.nav-sub:hover,
+body.todo-home .sidebar a.nav-sub:focus,
+body.todo-home .sidebar a.nav-sub:active,
+body.todo-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+body.todo-home .sidebar a.nav-sub .nav-sub-dot,
+body.todo-home .sidebar a.nav-sub.active .nav-sub-dot { background: #67e8f9 !important; }
+body.todo-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+body.todo-home .search-box,
+body.todo-home .search-box input,
+body.todo-home .topbar-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.todo-home .page-content h1 { color: #ffffff !important; }
+body.todo-home .btn-ghost,
+body.todo-home .filter-select,
+body.todo-home .modal-bx input,
+body.todo-home .modal-bx select,
+body.todo-home .modal-bx textarea {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.todo-home .btn-primary-fin { background: linear-gradient(135deg, #0891b2, #7c3aed) !important; color: #ffffff !important; }
+body.todo-home #tdc-all { background: linear-gradient(145deg, #0891b2, #1d4ed8 55%, #22d3ee) !important; }
+body.todo-home #tdc-todo { background: linear-gradient(145deg, #b45309, #ea580c 55%, #fde047) !important; }
+body.todo-home #tdc-progress { background: linear-gradient(145deg, #7c3aed, #db2777 55%, #ff4ecd) !important; }
+body.todo-home #tdc-done { background: linear-gradient(145deg, #059669, #0f766e 55%, #34d399) !important; }
+body.todo-home .td-card .xc-lbl,
+body.todo-home .td-card .xc-val,
+body.todo-home .td-card .xc-sub { color: #ffffff !important; }
+body.todo-home .td-card.xc-active { box-shadow: inset 0 0 0 2px #ffffff !important; }
+body.todo-home .td-card .sp-line,
+body.todo-home .td-card.xc-active .sp-line { stroke: #ffffff !important; }
+body.todo-home .td-card .sp-dot,
+body.todo-home .td-card.xc-active .sp-dot { fill: #ffffff !important; }
+body.todo-home .td-card .sp-fill,
+body.todo-home .td-card.xc-active .sp-fill { fill: rgba(255, 255, 255, 0.2) !important; }
+body.todo-home .td-card .xc-pill.xc-blue { background: #dbeafe !important; color: #1d4ed8 !important; -webkit-text-fill-color: #1d4ed8; }
+body.todo-home .td-card .xc-pill.xc-amber { background: #fef3c7 !important; color: #b45309 !important; -webkit-text-fill-color: #b45309; }
+body.todo-home .td-card .xc-pill.xc-teal { background: #cffafe !important; color: #0e7490 !important; -webkit-text-fill-color: #0e7490; }
+body.todo-home .td-card .xc-pill.xc-green { background: #dcfce7 !important; color: #166534 !important; -webkit-text-fill-color: #166534; }
+body.todo-home .kanban-col { background: #100c22 !important; border-color: rgba(34, 211, 238, 0.28) !important; }
+body.todo-home .kanban-col-header { background: #141028 !important; border-bottom-color: rgba(255, 255, 255, 0.1) !important; }
+body.todo-home .kanban-col-title,
+body.todo-home .kanban-empty { color: #f8fafc !important; }
+body.todo-home .dot-todo { background: #94a3b8 !important; }
+body.todo-home .dot-progress { background: #fbbf24 !important; }
+body.todo-home .dot-done { background: #34d399 !important; }
+body.todo-home .kanban-count { background: #1e1b4b !important; color: #e0e7ff !important; }
+body.todo-home .task-card:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.todo-home .task-card:nth-child(8n+2) { background: #0891b2 !important; }
+body.todo-home .task-card:nth-child(8n+3) { background: #059669 !important; }
+body.todo-home .task-card:nth-child(8n+4) { background: #b45309 !important; }
+body.todo-home .task-card:nth-child(8n+5) { background: #ea580c !important; }
+body.todo-home .task-card:nth-child(8n+6) { background: #e11d48 !important; }
+body.todo-home .task-card:nth-child(8n+7) { background: #db2777 !important; }
+body.todo-home .task-card:nth-child(8n+8) { background: #7c3aed !important; }
+body.todo-home .task-title,
+body.todo-home .task-desc,
+body.todo-home .task-due { color: #ffffff !important; }
+body.todo-home .task-due.overdue { color: #fecdd3 !important; -webkit-text-fill-color: #fecdd3; }
+body.todo-home .task-due.soon { color: #fde68a !important; -webkit-text-fill-color: #fde68a; }
+body.todo-home .prio-low { background: #dcfce7 !important; color: #166534 !important; -webkit-text-fill-color: #166534; }
+body.todo-home .prio-medium { background: #fef3c7 !important; color: #b45309 !important; -webkit-text-fill-color: #b45309; }
+body.todo-home .prio-high { background: #ffedd5 !important; color: #c2410c !important; -webkit-text-fill-color: #c2410c; }
+body.todo-home .prio-critical { background: #fee2e2 !important; color: #991b1b !important; -webkit-text-fill-color: #991b1b; }
+body.todo-home .ta-edit { background: #dbeafe !important; color: #1d4ed8 !important; -webkit-text-fill-color: #1d4ed8; }
+body.todo-home .ta-del { background: #fee2e2 !important; color: #b91c1c !important; -webkit-text-fill-color: #b91c1c; }
+body.todo-home .modal-bx { background: #141028 !important; color: #f8fafc !important; }
+body.todo-home .modal-ttl { color: #ffffff !important; }
+body.todo-home .bottom-nav { background: #100c22; border-top: 1px solid rgba(34, 211, 238, 0.28); }
+body.todo-home .bottom-nav a.bn-item:link,
+body.todo-home .bottom-nav a.bn-item:visited,
+body.todo-home .bottom-nav a.bn-item:hover,
+body.todo-home .bottom-nav a.bn-item:focus,
+body.todo-home .bottom-nav a.bn-item:active,
+body.todo-home .bottom-nav a.bn-item.active,
+body.todo-home .bottom-nav button.bn-item,
+body.todo-home .bottom-nav .bn-item span { color: #ffffff !important; -webkit-text-fill-color: #ffffff; }
+body.todo-home .bottom-nav .bn-icon svg,
+body.todo-home .bottom-nav .bn-item.active .bn-icon svg { stroke: #ffffff !important; }
+body.todo-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }

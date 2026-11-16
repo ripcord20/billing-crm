@@ -4,7 +4,9 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#100c22">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/email-palette.css?v=em1">
   <style>
     :root{--d-bg:#eef2f9;--d-card:#fff;--d-border:#e0e7f3;--d-text:#0d1b3e;--d-muted:#6b7fa8;--d-blue1:#1a6ef5;}
     .eb-page{font-family:'DM Sans',sans-serif;}
@@ -142,10 +144,14 @@
     /* Mobile cards */
     .eb-cards{display:none;}
     @media(max-width:760px){
-      .eb-table-wrap{display:none;}
+      .page-content{overflow-x:hidden;padding-bottom:88px;}
+      .eb-table-wrap{display:none;overflow-x:hidden !important;}
       .eb-cards{display:flex;flex-direction:column;gap:0;}
-      .ebc-item{padding:13px 16px;border-bottom:1px solid #f0f4ff;}
+      .ebc-item{padding:13px 16px;border-bottom:1px solid rgba(255,255,255,.1);}
       .form-panel-body{padding:14px;}
+      .eb-sub{white-space:normal;}
+      .form-panel-body div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr !important;}
+      .list-filter{max-width:100%;}
     }
 
     /* ── Modal ── */
@@ -174,7 +180,7 @@
     }
   </style>
 </head>
-<body>
+<body class="em-home">
 <div class="app-layout eb-page">
   <%- include('../partials/sidebar') %>
   <div class="main-content">

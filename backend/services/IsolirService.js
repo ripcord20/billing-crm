@@ -1164,6 +1164,28 @@ async function logIsolir({ customer_id, device_id, static_ip, pppoe_username, is
       console.error('[IsolirService] log error:', e.message);
     }
   }
+  try {
+    const { ActivityLog } = require('../models');
+    const verb = action === 'restore' ? 'Pelunasan / un-isolir' : 'Isolir';
+    await ActivityLog.create({
+      user_id: triggered_by_user || null,
+      action: action === 'restore' ? 'restore' : 'isolir',
+      module: 'isolir',
+      description: `${verb} pelanggan #${customer_id} (${isolir_method || 'static'}, pemicu ${trigger_by || '-'})`,
+      target_type: 'customer',
+      target_id: customer_id || null,
+      new_data: {
+        method: isolir_method || 'static',
+        trigger_by: trigger_by || null,
+        pppoe_username: pppoe_username || null,
+        static_ip: static_ip || null,
+        success: !!success,
+        error_msg: error_msg || null,
+      },
+    });
+  } catch (err) {
+    console.error('[IsolirService] audit error:', err.message);
+  }
 }
 
 // ── Render template dengan placeholder (sinkron dengan WaFeaturesController) ──

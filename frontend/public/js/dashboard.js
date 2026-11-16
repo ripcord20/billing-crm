@@ -171,7 +171,9 @@ async function loadDashboardData() {
   setText('pppoeActiveCount', d.pppoe?.active ?? 0);
   setText('ontOnlineCount',   d.ont?.online   ?? 0);
   setText('ontOfflineCount',  d.ont?.offline  ?? 0);
-  setText('cpuLoadAvg',       (d.cpu?.average ?? 0) + '%');
+  const cpuAvg = d.cpu?.average ?? 0;
+  setText('cpuLoadAvg',       cpuAvg + '%');
+  paintCpuLoad(cpuAvg);
   if (d.cpu?.deviceName) setText('cpuDeviceName', d.cpu.deviceName);
 
   // Sidebar badges
@@ -599,6 +601,7 @@ function initRefresh() {
       loadDevices();
       loadBillingStats();
       pollRealtimeTraffic();
+      if (typeof window.loadAlerts === 'function') window.loadAlerts();
     });
   }
   // Backward-compat: ID lama yang mungkin masih ada di view lain
@@ -612,6 +615,18 @@ function initRefresh() {
 function setText(id, val) {
   const el = document.getElementById(id);
   if (el) el.textContent = val;
+}
+
+/* Kuning dan merah hanya saat beban benar-benar naik. Di bawah 60% tetap netral. */
+function paintCpuLoad(average) {
+  const card = document.getElementById('cpuKpi');
+  if (!card) return;
+  const n = Number(average);
+  const value = Number.isFinite(n) ? n : 0;
+  card.classList.remove('is-ok', 'is-warn', 'is-hot');
+  if (value >= 85) card.classList.add('is-hot');
+  else if (value >= 60) card.classList.add('is-warn');
+  else card.classList.add('is-ok');
 }
 function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');

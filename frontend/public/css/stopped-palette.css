@@ -1,0 +1,197 @@
+/* Kulit Pelanggan Berhenti. Hanya tampilan.
+   Kisi 3 kartu dan lebar tabel tidak diubah. */
+
+html:has(body.stop-home) {
+  background: #100c22;
+  color-scheme: dark;
+}
+
+body.stop-home {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+
+body.stop-home .stop-page,
+body.stop-home .main-content,
+body.stop-home .page-content {
+  background: transparent !important;
+  color: #f8fafc;
+}
+
+body.stop-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+body.stop-home .logo-text,
+body.stop-home .nav-section-title,
+body.stop-home .nav-item { color: #f8fafc; }
+body.stop-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+body.stop-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+body.stop-home .sidebar a.nav-sub:link,
+body.stop-home .sidebar a.nav-sub:visited,
+body.stop-home .sidebar a.nav-sub:hover,
+body.stop-home .sidebar a.nav-sub:focus,
+body.stop-home .sidebar a.nav-sub:active,
+body.stop-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+body.stop-home .sidebar a.nav-sub .nav-sub-dot,
+body.stop-home .sidebar a.nav-sub.active .nav-sub-dot { background: #67e8f9 !important; }
+body.stop-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+body.stop-home .search-box,
+body.stop-home .search-box input,
+body.stop-home .topbar-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.stop-home .page-content > div[style*="justify-content:space-between"] > div:first-child > div:first-child {
+  color: #ffffff !important;
+}
+body.stop-home .page-content > div[style*="justify-content:space-between"] > div:first-child > div:nth-child(2),
+body.stop-home #stopCount,
+body.stop-home #stopCustPick {
+  color: #e2e8f0 !important;
+}
+
+body.stop-home .btn-primary-fin {
+  background: linear-gradient(135deg, #0891b2, #db2777) !important;
+  color: #ffffff !important;
+}
+body.stop-home .btn-ghost {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+body.stop-home .fin-grid {
+  background: #100c22 !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+body.stop-home .fin-card:nth-child(1) {
+  background: linear-gradient(145deg, #0891b2, #1d4ed8 58%, #22d3ee) !important;
+}
+body.stop-home .fin-card:nth-child(2) {
+  background: linear-gradient(145deg, #be185d, #e11d48 55%, #ff4ecd) !important;
+}
+body.stop-home .fin-card:nth-child(3) {
+  background: linear-gradient(145deg, #b45309, #ea580c 55%, #fde047) !important;
+}
+body.stop-home .fin-card .xc-lbl,
+body.stop-home .fin-card .xc-val,
+body.stop-home .fin-card .xc-sub {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+
+body.stop-home .w-card,
+body.stop-home .modal-bx {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.28) !important;
+  color: #f8fafc;
+}
+body.stop-home .ex-card {
+  background: #451a03 !important;
+  border-color: #fbbf24 !important;
+  color: #fde68a;
+}
+body.stop-home .ex-tag {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  -webkit-text-fill-color: #b45309;
+}
+body.stop-home #exampleCard [style*="92400e"] { color: #fde68a !important; }
+
+body.stop-home .search-wrap input,
+body.stop-home .filter-select,
+body.stop-home .finput {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.stop-home .search-wrap .si { color: #67e8f9 !important; }
+
+body.stop-home .chip {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.stop-home .chip.on {
+  background: #ffedd5 !important;
+  color: #c2410c !important;
+  border-color: #fdba74 !important;
+  -webkit-text-fill-color: #c2410c;
+}
+
+body.stop-home .cust-table thead th {
+  background: linear-gradient(90deg, #0891b2, #4f46e5 55%, #db2777) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+body.stop-home .cust-table tbody tr:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.stop-home .cust-table tbody tr:nth-child(8n+2) { background: #0891b2 !important; }
+body.stop-home .cust-table tbody tr:nth-child(8n+3) { background: #059669 !important; }
+body.stop-home .cust-table tbody tr:nth-child(8n+4) { background: #b45309 !important; }
+body.stop-home .cust-table tbody tr:nth-child(8n+5) { background: #ea580c !important; }
+body.stop-home .cust-table tbody tr:nth-child(8n+6) { background: #e11d48 !important; }
+body.stop-home .cust-table tbody tr:nth-child(8n+7) { background: #db2777 !important; }
+body.stop-home .cust-table tbody tr:nth-child(8n+8) { background: #7c3aed !important; }
+body.stop-home .cust-table td { color: #ffffff !important; background: transparent !important; }
+
+body.stop-home .cust-table .cid-badge {
+  background: #eef3ff !important;
+  color: #1d4ed8 !important;
+  -webkit-text-fill-color: #1d4ed8;
+}
+body.stop-home .cust-table .sb {
+  background: #ffedd5 !important;
+  color: #c2410c !important;
+  border-color: #fdba74 !important;
+  -webkit-text-fill-color: #c2410c;
+}
+body.stop-home .cust-table .rb.rb-edit {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #93c5fd !important;
+  -webkit-text-fill-color: #1d4ed8;
+}
+body.stop-home .cust-table .rb.rb-act {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+  border-color: #86efac !important;
+  -webkit-text-fill-color: #15803d;
+}
+
+body.stop-home .bottom-nav {
+  background: #100c22;
+  border-top: 1px solid rgba(34, 211, 238, 0.28);
+  box-shadow: none;
+}
+body.stop-home .bottom-nav a.bn-item:link,
+body.stop-home .bottom-nav a.bn-item:visited,
+body.stop-home .bottom-nav a.bn-item:hover,
+body.stop-home .bottom-nav a.bn-item:focus,
+body.stop-home .bottom-nav a.bn-item:active,
+body.stop-home .bottom-nav a.bn-item.active,
+body.stop-home .bottom-nav button.bn-item,
+body.stop-home .bottom-nav .bn-item span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+body.stop-home .bottom-nav .bn-icon svg,
+body.stop-home .bottom-nav .bn-item.active .bn-icon svg,
+body.stop-home .bottom-nav .bn-item:hover .bn-icon svg { stroke: #ffffff !important; }
+body.stop-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }

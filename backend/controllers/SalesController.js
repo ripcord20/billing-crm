@@ -724,8 +724,8 @@ exports.showRegistration = async (req, res) => {
 exports.createRegistration = async (req, res) => {
   try {
     const b = req.body;
-    if (!b.name || !b.phone || !b.address)
-      return res.status(400).json({ success: false, message: 'Nama, telepon, dan alamat wajib diisi' });
+    if (!b.name || !b.phone)
+      return res.status(400).json({ success: false, message: 'Nama dan telepon wajib diisi' });
 
     const sales_id = isSalesRole(req) ? req.user.id : (b.sales_id || null);
     let referral_code = null;
@@ -734,10 +734,16 @@ exports.createRegistration = async (req, res) => {
       referral_code = prof.referral_code;
     }
 
+    let address = (b.address || '').trim();
+    if (!address) {
+      if (b.latitude && b.longitude) address = `Pin lokasi (${b.latitude}, ${b.longitude})`;
+      else return res.status(400).json({ success: false, message: 'Lengkapi alamat atau pin lokasi di peta' });
+    }
+
     const reg = await RegistrationRequest.create({
       name: b.name, phone: b.phone, email: b.email || null,
       id_card_number: b.id_card_number || null,
-      address: b.address, latitude: b.latitude || null, longitude: b.longitude || null,
+      address, latitude: b.latitude || null, longitude: b.longitude || null,
       package_id: b.package_id || null, notes: b.notes || null,
       sales_id, referral_code,
       source: isSalesRole(req) ? 'manual_sales' : (b.source || 'walk_in'),
@@ -747,7 +753,7 @@ exports.createRegistration = async (req, res) => {
     // Auto coverage check kalau ada koordinat
     if (reg.latitude && reg.longitude) await runCoverage(reg);
 
-    res.status(201).json({ success: true, data: reg, message: 'Registrasi dibuat' });
+    res.status(201).json({ success: true, data: reg, message: 'Lead tersimpan' });
   } catch (e) { res.status(400).json({ success: false, message: e.message }); }
 };
 
@@ -1360,10 +1366,14 @@ exports.deleteRegistration = async (req, res) => {
 
     // Catat siapa & kenapa SEBELUM destroy, karena setelah soft delete
     // baris tidak lagi terjangkau oleh update biasa.
-    await reg.update({
-      deleted_by: req.user?.id || null,
-      delete_reason: reason || null,
-    });
+    try {
+      await reg.update({
+        deleted_by: req.user?.id || null,
+        delete_reason: reason || null,
+      });
+    } catch (auditErr) {
+      logger.warn('[Sales] audit hapus dilewati: ' + auditErr.message);
+    }
     await reg.destroy(); // paranoid → hanya mengisi deleted_at
 
     logger.info(
@@ -1416,7 +1426,11 @@ exports.bulkDeleteRegistrations = async (req, res) => {
         continue;
       }
       try {
-        await reg.update({ deleted_by: req.user?.id || null, delete_reason: reason || null });
+        try {
+          await reg.update({ deleted_by: req.user?.id || null, delete_reason: reason || null });
+        } catch (auditErr) {
+          logger.warn('[Sales] audit bulk-hapus dilewati #' + reg.id + ': ' + auditErr.message);
+        }
         await reg.destroy();
         result.deleted++;
       } catch (e) {

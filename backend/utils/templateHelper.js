@@ -60,6 +60,35 @@ function buildInvoiceLink(invoiceId) {
   return base ? `${base}/pub/invoice/${token}` : `/pub/invoice/${token}`;
 }
 
+function appBaseUrl() {
+  return (process.env.APP_URL || process.env.BASE_URL || 'https://fiberix.my.id').replace(/\/+$/, '');
+}
+
+function buildPortalLink() {
+  return appBaseUrl() + '/portal';
+}
+
+function buildAndroidAppLink() {
+  return appBaseUrl() + '/downloads/Fiberix-Pelanggan.apk';
+}
+
+// Tambahkan tautan aplikasi di akhir pesan bila template belum memuatnya.
+function withPortalAppLink(message) {
+  const portal = buildPortalLink();
+  const apk = buildAndroidAppLink();
+  const text = String(message || '').replace(/\s*$/, '');
+  if (!text) return text;
+  const parts = [];
+  if (!text.includes(portal)) {
+    parts.push('📲 Aplikasi pelanggan:\n' + portal + '\nBuka tautan di HP, lalu pilih Tambah ke Layar Utama.');
+  }
+  if (!text.includes(apk)) {
+    parts.push('Unduh Android:\n' + apk);
+  }
+  if (!parts.length) return text;
+  return text + '\n\n' + parts.join('\n\n');
+}
+
 /**
  * ── PERMANENT CUSTOMER LINK ────────────────────────────────────────────
  * Link permanen per-PELANGGAN (bukan per-invoice). Selalu menampilkan
@@ -248,7 +277,10 @@ function getPaymentConfirmationData(params) {
     // ikut ter-render. Caller boleh kirim companyName; bila tidak, fallback '-'.
     perusahaan: companyName || '-',
     company: companyName || '-',
-    company_name: companyName || '-'
+    company_name: companyName || '-',
+    link_aplikasi: buildPortalLink(),
+    aplikasi: buildPortalLink(),
+    link_apk: buildAndroidAppLink()
   };
 }
 
@@ -365,7 +397,10 @@ function getInvoiceData(params) {
     // Kosong kalau pelanggan belum punya token.
     link_bayar_permanen: permanentLink || '',
     link_permanen:       permanentLink || '',
-    permanent_link:      permanentLink || ''
+    permanent_link:      permanentLink || '',
+    link_aplikasi: buildPortalLink(),
+    aplikasi: buildPortalLink(),
+    link_apk: buildAndroidAppLink()
   };
 }
 
@@ -417,6 +452,9 @@ module.exports = {
   generateInvoiceToken,
   verifyInvoiceToken,
   buildInvoiceLink,
+  buildPortalLink,
+  buildAndroidAppLink,
+  withPortalAppLink,
   generateCustomerLinkToken,
   buildCustomerLink,
   getOrCreateCustomerLink

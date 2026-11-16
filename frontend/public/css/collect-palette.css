@@ -1,0 +1,148 @@
+/* Kulit Collect Billing. Hanya tampilan.
+   Kisi .coll-grid dan kartu tabel ponsel tidak diubah.
+   Peta Leaflet tetap bisa dibaca. */
+
+html:has(body.coll-home) { background: #100c22; color-scheme: dark; }
+body.coll-home {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+body.coll-home .app-layout.coll-page,
+body.coll-home .main-content,
+body.coll-home .page-content { background: transparent !important; color: #f8fafc; }
+body.coll-home .sidebar { background: rgba(16, 12, 34, 0.96); border-right-color: rgba(34, 211, 238, 0.28); }
+body.coll-home .logo-text,
+body.coll-home .nav-section-title,
+body.coll-home .nav-item { color: #f8fafc; }
+body.coll-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+body.coll-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+body.coll-home .sidebar a.nav-sub:link,
+body.coll-home .sidebar a.nav-sub:visited,
+body.coll-home .sidebar a.nav-sub:hover,
+body.coll-home .sidebar a.nav-sub:focus,
+body.coll-home .sidebar a.nav-sub:active,
+body.coll-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+body.coll-home .sidebar a.nav-sub .nav-sub-dot,
+body.coll-home .sidebar a.nav-sub.active .nav-sub-dot { background: #67e8f9 !important; }
+body.coll-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+body.coll-home .search-box,
+body.coll-home .search-box input,
+body.coll-home .topbar-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.coll-home .page-content h1 { color: #ffffff !important; }
+body.coll-home .page-content h1 + p { color: #e2e8f0 !important; }
+body.coll-home .coll-card.blue { background: linear-gradient(145deg, #0891b2, #1d4ed8 58%, #22d3ee) !important; border-color: transparent !important; }
+body.coll-home .coll-card.teal { background: linear-gradient(145deg, #059669, #0f766e 55%, #34d399) !important; border-color: transparent !important; }
+body.coll-home .coll-card.amber { background: linear-gradient(145deg, #b45309, #ea580c 55%, #fde047) !important; border-color: transparent !important; }
+body.coll-home .coll-card.red { background: linear-gradient(145deg, #be185d, #e11d48 55%, #ff4ecd) !important; border-color: transparent !important; }
+body.coll-home .coll-card .lbl,
+body.coll-home .coll-card .val,
+body.coll-home .coll-card .sub,
+body.coll-home .coll-card .arrow { color: #ffffff !important; }
+body.coll-home .coll-card .ic { background: rgba(255, 255, 255, 0.18) !important; color: #ffffff !important; }
+body.coll-home .btn-c.btn-primary { background: linear-gradient(135deg, #0891b2, #1d4ed8) !important; color: #ffffff !important; }
+body.coll-home .btn-c.btn-teal { background: linear-gradient(135deg, #059669, #0f766e) !important; color: #ffffff !important; }
+body.coll-home .btn-c.btn-ghost {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border: 1.5px solid rgba(34, 211, 238, 0.4) !important;
+}
+body.coll-home .coll-pills { background: #141028 !important; border-color: rgba(34, 211, 238, 0.28) !important; }
+body.coll-home .coll-tab-btn { color: #e2e8f0 !important; }
+body.coll-home .coll-tab-active {
+  background: linear-gradient(135deg, #0891b2, #db2777) !important;
+  color: #ffffff !important;
+}
+body.coll-home .coll-toolbar input,
+body.coll-home .coll-toolbar select,
+body.coll-home .modal-box select,
+body.coll-home .modal-box input,
+body.coll-home .pc-input {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.coll-home .coll-tablewrap,
+body.coll-home .modal-box,
+body.coll-home .pc-box,
+body.coll-home .map-legend {
+  background: #141028 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #f8fafc !important;
+}
+body.coll-home .map-legend .lg { color: #f8fafc !important; }
+body.coll-home table.coll th {
+  background: #100c22 !important;
+  color: #e2e8f0 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+body.coll-home table.coll tbody tr:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.coll-home table.coll tbody tr:nth-child(8n+2) { background: #0891b2 !important; }
+body.coll-home table.coll tbody tr:nth-child(8n+3) { background: #059669 !important; }
+body.coll-home table.coll tbody tr:nth-child(8n+4) { background: #b45309 !important; }
+body.coll-home table.coll tbody tr:nth-child(8n+5) { background: #ea580c !important; }
+body.coll-home table.coll tbody tr:nth-child(8n+6) { background: #e11d48 !important; }
+body.coll-home table.coll tbody tr:nth-child(8n+7) { background: #db2777 !important; }
+body.coll-home table.coll tbody tr:nth-child(8n+8) { background: #7c3aed !important; }
+body.coll-home table.coll td { color: #ffffff !important; background: transparent !important; border-color: rgba(255, 255, 255, 0.1) !important; }
+body.coll-home table.coll td::before { color: #e2e8f0 !important; }
+body.coll-home .badge.b-pending { background: #f1f5f9 !important; color: #475569 !important; -webkit-text-fill-color: #475569; }
+body.coll-home .badge.b-assigned { background: #dbeafe !important; color: #1d4ed8 !important; -webkit-text-fill-color: #1d4ed8; }
+body.coll-home .badge.b-inprogress { background: #e0f2fe !important; color: #0369a1 !important; -webkit-text-fill-color: #0369a1; }
+body.coll-home .badge.b-paid { background: #dcfce7 !important; color: #15803d !important; -webkit-text-fill-color: #15803d; }
+body.coll-home .badge.b-partial { background: #fef9c3 !important; color: #a16207 !important; -webkit-text-fill-color: #a16207; }
+body.coll-home .badge.b-promise { background: #fef3c7 !important; color: #b45309 !important; -webkit-text-fill-color: #b45309; }
+body.coll-home .badge.b-nothome { background: #fae8ff !important; color: #a21caf !important; -webkit-text-fill-color: #a21caf; }
+body.coll-home .badge.b-refused { background: #fee2e2 !important; color: #b91c1c !important; -webkit-text-fill-color: #b91c1c; }
+body.coll-home .badge.b-termination { background: #ffe4e6 !important; color: #be123c !important; -webkit-text-fill-color: #be123c; }
+body.coll-home .badge.b-cancelled { background: #f1f5f9 !important; color: #64748b !important; -webkit-text-fill-color: #64748b; }
+body.coll-home .dep-st-wait { background: #fef3c7 !important; color: #b45309 !important; -webkit-text-fill-color: #b45309; }
+body.coll-home .dep-st-ok { background: #dcfce7 !important; color: #15803d !important; -webkit-text-fill-color: #15803d; }
+body.coll-home .dep-st-no { background: #fee2e2 !important; color: #b91c1c !important; -webkit-text-fill-color: #b91c1c; }
+body.coll-home .tab-badge { background: #e11d48 !important; color: #ffffff !important; }
+body.coll-home .dep-pending-banner {
+  background: #451a03 !important;
+  color: #fde68a !important;
+  border-color: #fbbf24 !important;
+}
+body.coll-home .leaflet-popup-content-wrapper,
+body.coll-home .leaflet-popup-content { background: #ffffff !important; color: #0f172a !important; }
+body.coll-home .leaflet-popup-tip { background: #ffffff !important; }
+body.coll-home .modal-box h3,
+body.coll-home .modal-box label { color: #ffffff !important; }
+body.coll-home .modal-box p.hint { color: #e2e8f0 !important; }
+body.coll-home .bottom-nav {
+  background: #100c22;
+  border-top: 1px solid rgba(34, 211, 238, 0.28);
+}
+body.coll-home .bottom-nav a.bn-item:link,
+body.coll-home .bottom-nav a.bn-item:visited,
+body.coll-home .bottom-nav a.bn-item:hover,
+body.coll-home .bottom-nav a.bn-item:focus,
+body.coll-home .bottom-nav a.bn-item:active,
+body.coll-home .bottom-nav a.bn-item.active,
+body.coll-home .bottom-nav button.bn-item,
+body.coll-home .bottom-nav .bn-item span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+}
+body.coll-home .bottom-nav .bn-icon svg,
+body.coll-home .bottom-nav .bn-item.active .bn-icon svg { stroke: #ffffff !important; }
+body.coll-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }

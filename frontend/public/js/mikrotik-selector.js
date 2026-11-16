@@ -88,6 +88,7 @@
       if (!data?.success || !Array.isArray(data.data) || !data.data.length) {
         sel.innerHTML = '<option value="">Belum ada MikroTik terdaftar</option>';
         sel.disabled = true;
+        setStored('');
         onReady({ list: [], activeId: null });
         return;
       }
