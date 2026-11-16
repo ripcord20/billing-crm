@@ -225,3 +225,15 @@ body.sales-home #anDonut text {
   body.sales-home table:has(#regBody) td:nth-child(6)::before { content: "Status"; }
   body.sales-home table:has(#regBody) td:nth-child(7)::before { content: "Tanggal"; }
 }
+
+/* Panel assign sales masih #f8fafc sementara --muted sudah terang. */
+body.sales-home #assignBox > div[style*="background:#f8fafc"] {
+  background: #100c22 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+  color: #f8fafc !important;
+}
+body.sales-home #assignBox select {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
