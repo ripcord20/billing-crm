@@ -132,14 +132,32 @@ function parseSnMacFromText(text, barcodes) {
   return { sn: '', mac: '' };
 }
 
+function defaultScanHint() {
+  return 'Tidak perlu ketik SN dan MAC. Tinggal foto stiker ONT.';
+}
+
+function ensureModemCategory() {
+  const sel = $('fCategory');
+  if (!sel) return;
+  if (typeof isCableCategory === 'function' && isCableCategory(sel.value)) return;
+  if (isModemCategory(sel.value)) {
+    applyAssetFormMode();
+    return;
+  }
+  const opt = [...sel.options].find(o => /modem|ont|onu|gpon/i.test(o.textContent || ''));
+  if (opt) sel.value = opt.value;
+  applyAssetFormMode();
+}
+
 function scanLabelPhoto() {
+  ensureModemCategory();
   const inp = $('fScanFile');
   if (inp) inp.click();
 }
 
 function setScanStatus(msg) {
   const el = $('scanStatus');
-  if (el) el.textContent = msg || '';
+  if (el) el.textContent = msg || defaultScanHint();
 }
 
 async function onScanLabelFile(input) {
@@ -150,6 +168,7 @@ async function onScanLabelFile(input) {
     preview.src = URL.createObjectURL(file);
     preview.style.display = 'block';
   }
+  ensureModemCategory();
   setScanStatus('Membaca label…');
   try {
     let codes = [];
@@ -169,8 +188,8 @@ async function onScanLabelFile(input) {
     if (parsed.sn && $('fSerial')) $('fSerial').value = parsed.sn;
     if (parsed.mac && $('fMac')) $('fMac').value = parsed.mac;
     if (parsed.sn || parsed.mac) {
+      ensureModemCategory();
       setScanStatus((parsed.sn ? 'GPON SN ' + parsed.sn : '') + (parsed.sn && parsed.mac ? ' · ' : '') + (parsed.mac ? 'MAC ' + parsed.mac : ''));
-      applyAssetFormMode();
     } else {
       setScanStatus('Tidak ketemu GPON SN / MAC. Isi manual atau foto lebih dekat.');
     }
@@ -439,7 +458,7 @@ function openAddAsset() {
   $('editAssetId').value = '';
   ['fName', 'fBrand', 'fModel', 'fSerial', 'fMac', 'fPurchaseDate', 'fPrice', 'fVendor', 'fWarranty', 'fLocation', 'fNotes', 'fAdaptor', 'fAdaptorType'].forEach(id => { const el = $(id); if (el) el.value = ''; });
   ['fCategory', 'fStatus', 'fCondition', 'fCustomer', 'fInfra', 'fOnt'].forEach(id => { const el = $(id); if (el) el.value = ''; });
-  setScanStatus('');
+  setScanStatus(defaultScanHint());
   if ($('scanPreview')) { $('scanPreview').style.display = 'none'; $('scanPreview').src = ''; }
   applyAssetFormMode();
   openModal('assetModal');
@@ -471,6 +490,8 @@ async function openEdit(id) {
     $('fOnt').value = a.ont_device_id || '';
     $('fNotes').value = a.notes || '';
     fillModemFields(a);
+    setScanStatus(defaultScanHint());
+    if ($('scanPreview')) { $('scanPreview').style.display = 'none'; $('scanPreview').src = ''; }
     applyAssetFormMode();
     openModal('assetModal');
   } catch(e) { alert('Gagal memuat data asset'); }
