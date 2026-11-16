@@ -151,9 +151,9 @@
         <div class="fg"><label>Brand</label><input type="text" id="fBrand" placeholder="MikroTik"></div>
         <div class="fg"><label>Model</label><input type="text" id="fModel" placeholder="RB5009"></div>
       </div>
-      <div class="fg"><label>Serial Number</label><input type="text" id="fSerial" placeholder="Opsional"></div>
-      <div class="fg"><label>MAC Address</label><input type="text" id="fMac" placeholder="AA:BB:CC:DD:EE:FF"></div>
-      <button type="button" class="save-btn" style="background:#eef6ff;color:#1d4ed8;box-shadow:none;margin:0 0 14px;" onclick="document.getElementById('fPhoto').click();_scanAfterPhoto=true;">📷 Foto isi SN &amp; MAC</button>
+      <div class="fg"><label>GPON SN</label><input type="text" id="fSerial" placeholder="ZTEGXXXXXXXX" autocomplete="off"></div>
+      <div class="fg"><label>MAC Address</label><input type="text" id="fMac" placeholder="AA:BB:CC:DD:EE:FF" maxlength="17" autocomplete="off"></div>
+      <button type="button" class="save-btn" style="background:#eef6ff;color:#1d4ed8;box-shadow:none;margin:0 0 14px;" onclick="document.getElementById('fPhoto').click();_scanAfterPhoto=true;">📷 Foto GPON SN &amp; MAC</button>
       <div class="fg-row">
         <div class="fg"><label>Adaptor</label>
           <select id="fAdaptor"><option value="">—</option><option value="included">Termasuk</option><option value="none">Tidak ada</option></select>
@@ -183,7 +183,7 @@
     </div>
   </nav>
   <div class="toast" id="toast"></div>
-
+  <script src="/js/parseOntLabel.js?v=gpon1"></script>
   <script>
     function getToken(){ const ls=localStorage.getItem('token'); if(ls)return ls; const m=document.cookie.match(/(?:^|;\s*)token=([^;]+)/); return m?decodeURIComponent(m[1]):null; }
     async function api(url,opts){ const t=getToken(); const headers=Object.assign({'Content-Type':'application/json'}, t?{'Authorization':'Bearer '+t}:{}); try{ const r=await fetch(url,Object.assign({credentials:'include',headers},opts||{})); if(r.status===401){location.href='/login';return null;} const x=await r.text(); try{return x?JSON.parse(x):null;}catch(_){return null;} }catch(e){return null;} }
@@ -327,25 +327,32 @@
       const rd=new FileReader(); rd.onload=e=>setPhotoPreview(e.target.result); rd.readAsDataURL(f);
       if(_scanAfterPhoto){ _scanAfterPhoto=false; scanMobileLabel(f); }
     }
-    function parseSnMac(text){
-      const raw=String(text||'');
-      let mac=''; const mc=raw.match(/\b([0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}\b/);
-      if(mc) mac=mc[0].replace(/-/g,':').toUpperCase();
-      let sn=''; const sl=raw.match(/(?:S\/N|SN|Serial)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-]{4,})/i);
-      if(sl) sn=sl[1].toUpperCase();
-      return {sn,mac};
+    function parseSnMac(text, codes){
+      if(typeof parseOntLabel==='function') return parseOntLabel(text, codes||[]);
+      return {sn:'',mac:''};
     }
     async function scanMobileLabel(file){
       toast('Membaca label…');
       try{
-        if(!window.Tesseract){
-          await new Promise(function(res,rej){ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+        let codes=[];
+        if(window.BarcodeDetector){
+          try{
+            const det=new BarcodeDetector({formats:['qr_code','code_128','code_39','ean_13','data_matrix']});
+            const bmp=await createImageBitmap(file);
+            codes=(await det.detect(bmp)||[]).map(c=>c.rawValue).filter(Boolean);
+          }catch(_){}
         }
-        const r=await window.Tesseract.recognize(file,'eng');
-        const p=parseSnMac(r&&r.data&&r.data.text);
+        let p=parseSnMac('',codes);
+        if(!p.sn||!p.mac){
+          if(!window.Tesseract){
+            await new Promise(function(res,rej){ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+          }
+          const r=await window.Tesseract.recognize(file,'eng');
+          p=parseSnMac(r&&r.data&&r.data.text, codes);
+        }
         if(p.sn) document.getElementById('fSerial').value=p.sn;
         if(p.mac) document.getElementById('fMac').value=p.mac;
-        toast(p.sn||p.mac?'SN/MAC terisi dari foto':'Tidak ketemu SN/MAC', p.sn||p.mac?'ok':'err');
+        toast(p.sn||p.mac?'GPON SN / MAC terisi dari foto':'Tidak ketemu GPON SN / MAC', p.sn||p.mac?'ok':'err');
       }catch(e){ toast('Gagal baca foto','err'); }
     }
     function clearPhoto(){ _photoFile=null; document.getElementById('fPhoto').value=''; setPhotoPreview(''); }

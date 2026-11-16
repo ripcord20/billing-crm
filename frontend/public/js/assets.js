@@ -90,6 +90,10 @@ function applyAssetFormMode() {
   const modem = isModemCategory(catId);
   const form = $('assetForm');
   if (form) form.classList.toggle('modem-mode', modem);
+  const lbl = $('lblSerial');
+  const serial = $('fSerial');
+  if (lbl) lbl.textContent = modem ? 'GPON SN' : 'Nomor Seri';
+  if (serial) serial.placeholder = modem ? 'ZTEGXXXXXXXX' : 'Nomor seri';
 }
 
 function readModemSpecs() {
@@ -123,27 +127,9 @@ function adaptorCell(a) {
   return '—';
 }
 
-function parseSnMacFromText(text) {
-  const raw = String(text || '').replace(/\r/g, '\n');
-  let mac = '';
-  const macColon = raw.match(/\b([0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}\b/);
-  if (macColon) mac = macColon[0].replace(/-/g, ':').toUpperCase();
-  if (!mac) {
-    const compact = raw.match(/\b[0-9A-Fa-f]{12}\b/);
-    if (compact) mac = compact[0].toUpperCase().match(/.{2}/g).join(':');
-  }
-  let sn = '';
-  const labeled = raw.match(/(?:S\/N|SN|Serial(?:\s*No\.?|\s*Number)?)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-]{4,})/i);
-  if (labeled) sn = labeled[1].toUpperCase();
-  if (!sn) {
-    const lines = raw.split(/\n+/).map(l => l.trim()).filter(Boolean);
-    for (const line of lines) {
-      const m = line.match(/\b([A-Z0-9]{8,})\b/);
-      if (m && m[1].replace(/[^0-9A-F]/gi, '').length !== 12) { sn = m[1].toUpperCase(); break; }
-    }
-  }
-  if (sn && mac && sn.replace(/[^0-9A-F]/g, '') === mac.replace(/[^0-9A-F]/g, '')) sn = '';
-  return { sn, mac };
+function parseSnMacFromText(text, barcodes) {
+  if (typeof parseOntLabel === 'function') return parseOntLabel(text, barcodes);
+  return { sn: '', mac: '' };
 }
 
 function scanLabelPhoto() {
@@ -166,26 +152,27 @@ async function onScanLabelFile(input) {
   }
   setScanStatus('Membaca label…');
   try {
-    let text = '';
+    let codes = [];
     if (window.BarcodeDetector) {
       try {
         const det = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'data_matrix'] });
         const bmp = await createImageBitmap(file);
-        const codes = await det.detect(bmp);
-        text = (codes || []).map(c => c.rawValue).filter(Boolean).join('\n');
+        const found = await det.detect(bmp);
+        codes = (found || []).map(c => c.rawValue).filter(Boolean);
       } catch (e) { /* fallback OCR */ }
     }
-    if (!text) {
-      text = await ocrLabelImage(file);
+    let parsed = parseSnMacFromText('', codes);
+    if (!parsed.sn || !parsed.mac) {
+      const text = await ocrLabelImage(file);
+      parsed = parseSnMacFromText(text, codes);
     }
-    const parsed = parseSnMacFromText(text);
     if (parsed.sn && $('fSerial')) $('fSerial').value = parsed.sn;
     if (parsed.mac && $('fMac')) $('fMac').value = parsed.mac;
     if (parsed.sn || parsed.mac) {
-      setScanStatus((parsed.sn ? 'SN ' + parsed.sn : '') + (parsed.sn && parsed.mac ? ' · ' : '') + (parsed.mac ? 'MAC ' + parsed.mac : ''));
+      setScanStatus((parsed.sn ? 'GPON SN ' + parsed.sn : '') + (parsed.sn && parsed.mac ? ' · ' : '') + (parsed.mac ? 'MAC ' + parsed.mac : ''));
       applyAssetFormMode();
     } else {
-      setScanStatus('Tidak ketemu SN/MAC. Isi manual atau foto lebih dekat.');
+      setScanStatus('Tidak ketemu GPON SN / MAC. Isi manual atau foto lebih dekat.');
     }
   } catch (e) {
     setScanStatus('Gagal baca foto: ' + (e.message || e));
