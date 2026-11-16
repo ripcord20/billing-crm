@@ -216,7 +216,7 @@ class NasController {
       const row = await NasDevice.findByPk(req.params.id);
       if (!row) return res.status(404).json({ success: false, message: 'NAS tidak ditemukan' });
       const server = await RadiusProv.resolveServer(row.radius_server_id);
-      const radiusHost = (server && server.host) || process.env.RADIUS_HOST || '192.168.22.9';
+      const radiusHost = (server && server.host) || process.env.RADIUS_HOST || '192.168.22.99';
       const wgCfg = await Wireguard.getServerConfig();
       const generateMissing = !(req.body && req.body.generate === false);
       let generated = false;
