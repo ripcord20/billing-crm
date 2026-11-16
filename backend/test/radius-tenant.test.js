@@ -41,17 +41,13 @@ assert.strictEqual(decryptSecret(enc), 'radpass');
 assert.strictEqual(rateLimitFromPackage({ speed_up: 5, speed_down: 20 }), '5M/20M');
 assert.strictEqual(rateLimitFromPackage(null), null);
 
-function pickNas(b) {
-  const name = String(b.name || '').trim();
-  const method = b.connection_method === 'public_ip' ? 'public_ip' : 'vpn';
-  const ip = String(b.public_ip || '').trim();
-  if (!name) return { error: 'Nama NAS wajib diisi' };
-  if (method === 'public_ip' && !ip) return { error: 'IP publik wajib diisi' };
-  return { shortname: name, connection_method: method, nasname: method === 'public_ip' ? ip : (ip || name) };
-}
-assert.strictEqual(pickNas({}).error, 'Nama NAS wajib diisi');
-assert.strictEqual(pickNas({ name: 'Router Pusat', connection_method: 'vpn' }).shortname, 'Router Pusat');
-assert.strictEqual(pickNas({ name: 'R1', connection_method: 'public_ip' }).error, 'IP publik wajib diisi');
-assert.strictEqual(pickNas({ name: 'R1', connection_method: 'public_ip', public_ip: '1.2.3.4' }).nasname, '1.2.3.4');
+const { pickNasFields } = require('../utils/nasFields');
+assert.strictEqual(pickNasFields({}).error, 'Nama NAS wajib diisi');
+assert.strictEqual(pickNasFields({ name: 'Router Pusat', connection_method: 'vpn' }).shortname, 'Router Pusat');
+assert.strictEqual(pickNasFields({ name: 'R1', connection_method: 'public_ip' }).error, 'IP publik wajib diisi');
+assert.strictEqual(pickNasFields({ name: 'R1', connection_method: 'public_ip', public_ip: '1.2.3.4' }).nasname, '1.2.3.4');
+assert.strictEqual(pickNasFields({ name: 'R2', connection_method: 'lan' }).error, 'IP LAN wajib diisi');
+assert.strictEqual(pickNasFields({ name: 'R2', connection_method: 'lan', lan_ip: '192.168.22.1' }).nasname, '192.168.22.1');
+assert.strictEqual(pickNasFields({ name: 'R2', connection_method: 'lan', lan_ip: '192.168.22.1' }).connection_method, 'lan');
 
 console.log('radius-tenant.test.js OK');

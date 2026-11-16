@@ -20,6 +20,7 @@
     .nas-pill { font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; background:#f1f5f9; color:#475569; }
     .nas-pill.vpn { background:#ecfdf5; color:#047857; }
     .nas-pill.ip { background:#eff6ff; color:#1d4ed8; }
+    .nas-pill.lan { background:#fff7ed; color:#c2410c; }
     .nas-modal { display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:2000; align-items:center; justify-content:center; padding:16px; }
     .nas-modal.open { display:flex; }
     .nas-sheet { background:#fff; width:100%; max-width:420px; border-radius:18px; overflow:hidden; box-shadow:0 24px 60px rgba(15,23,42,.25); }
@@ -80,10 +81,11 @@
       <select class="nas-sel" id="nasMethod" onchange="onMethodChange()">
         <option value="vpn">VPN</option>
         <option value="public_ip">IP Publik</option>
+        <option value="lan">LAN</option>
       </select>
 
       <div id="nasIpWrap" style="display:none;">
-        <div class="nas-lab">IP Publik <span class="req">*</span></div>
+        <div class="nas-lab" id="nasIpLabel">IP Publik <span class="req">*</span></div>
         <input class="nas-inp" id="nasIp" placeholder="Contoh: 103.195.65.216">
       </div>
 

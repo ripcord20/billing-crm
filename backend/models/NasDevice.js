@@ -30,7 +30,7 @@ module.exports = (sequelize) => {
       allowNull: true
     },
     connection_method: {
-      type: DataTypes.ENUM('vpn', 'public_ip'),
+      type: DataTypes.ENUM('vpn', 'public_ip', 'lan'),
       defaultValue: 'vpn'
     },
     province: {

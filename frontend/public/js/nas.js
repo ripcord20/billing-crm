@@ -3,7 +3,15 @@ function esc(s) {
 }
 
 function methodLabel(m) {
-  return m === 'public_ip' ? 'IP Publik' : 'VPN';
+  if (m === 'public_ip') return 'IP Publik';
+  if (m === 'lan') return 'LAN';
+  return 'VPN';
+}
+
+function methodClass(m) {
+  if (m === 'public_ip') return 'ip';
+  if (m === 'lan') return 'lan';
+  return 'vpn';
 }
 
 let _nasCache = [];
@@ -34,15 +42,14 @@ async function loadNas() {
   }
   box.innerHTML = d.data.map(n => {
     const wilayah = [n.regency, n.province].filter(Boolean).join(', ') || 'Wilayah belum dipilih';
-    const m = n.connection_method === 'public_ip' ? 'ip' : 'vpn';
-    const ip = n.connection_method === 'public_ip' && n.nasname
-      ? `<span class="nas-pill">${esc(n.nasname)}</span>` : '';
+    const showIp = (n.connection_method === 'public_ip' || n.connection_method === 'lan') && n.nasname;
+    const ip = showIp ? `<span class="nas-pill">${esc(n.nasname)}</span>` : '';
     return `<div class="nas-card">
       <div>
         <h3>${esc(n.shortname || n.nasname || 'NAS')}</h3>
         <p class="desc">${esc(n.description || 'Tidak ada deskripsi')}</p>
         <div class="nas-meta">
-          <span class="nas-pill ${m}">${methodLabel(n.connection_method)}</span>
+          <span class="nas-pill ${methodClass(n.connection_method)}">${methodLabel(n.connection_method)}</span>
           <span class="nas-pill">${esc(wilayah)}</span>
           ${ip}
         </div>
@@ -56,9 +63,24 @@ async function loadNas() {
 }
 
 window.onMethodChange = function () {
-  const vpn = document.getElementById('nasMethod').value !== 'public_ip';
-  document.getElementById('nasIpWrap').style.display = vpn ? 'none' : 'block';
-  document.getElementById('nasIp').required = !vpn;
+  const method = document.getElementById('nasMethod').value;
+  const wrap = document.getElementById('nasIpWrap');
+  const label = document.getElementById('nasIpLabel');
+  const inp = document.getElementById('nasIp');
+  if (method === 'public_ip') {
+    wrap.style.display = 'block';
+    label.innerHTML = 'IP Publik <span class="req">*</span>';
+    inp.placeholder = 'Contoh: 103.195.65.216';
+    inp.required = true;
+  } else if (method === 'lan') {
+    wrap.style.display = 'block';
+    label.innerHTML = 'IP LAN <span class="req">*</span>';
+    inp.placeholder = 'Contoh: 192.168.22.1';
+    inp.required = true;
+  } else {
+    wrap.style.display = 'none';
+    inp.required = false;
+  }
 };
 
 window.openNas = function () {
@@ -81,12 +103,14 @@ window.closeNas = function () {
 window.editNas = function (id) {
   const n = _nasCache.find(x => x.id === id);
   if (!n) return;
+  const method = n.connection_method === 'public_ip' || n.connection_method === 'lan'
+    ? n.connection_method : 'vpn';
   document.getElementById('nasId').value = n.id;
   document.getElementById('nasTitle').textContent = 'Edit NAS';
   document.getElementById('nasSubmit').textContent = 'Simpan';
   document.getElementById('nasName').value = n.shortname || '';
   document.getElementById('nasDesc').value = n.description || '';
-  document.getElementById('nasMethod').value = n.connection_method === 'public_ip' ? 'public_ip' : 'vpn';
+  document.getElementById('nasMethod').value = method;
   document.getElementById('nasIp').value = n.nasname || '';
   document.getElementById('nasProvince').value = n.province || '';
   onMethodChange();
@@ -96,15 +120,18 @@ window.editNas = function (id) {
 window.saveNas = async function () {
   const id = document.getElementById('nasId').value;
   const method = document.getElementById('nasMethod').value;
+  const ip = document.getElementById('nasIp').value.trim();
   const body = {
     name: document.getElementById('nasName').value.trim(),
     description: document.getElementById('nasDesc').value.trim(),
     connection_method: method,
     province: document.getElementById('nasProvince').value,
-    public_ip: document.getElementById('nasIp').value.trim()
+    public_ip: ip,
+    lan_ip: ip
   };
   if (!body.name) return App.showToast('Nama NAS wajib', 'error');
-  if (method === 'public_ip' && !body.public_ip) return App.showToast('IP publik wajib', 'error');
+  if (method === 'public_ip' && !ip) return App.showToast('IP publik wajib', 'error');
+  if (method === 'lan' && !ip) return App.showToast('IP LAN wajib', 'error');
   const r = await App.api(id ? '/nas/' + id : '/nas', {
     method: id ? 'PUT' : 'POST',
     body: JSON.stringify(body)

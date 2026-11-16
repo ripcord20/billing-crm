@@ -43,9 +43,16 @@ async function run(db) {
   await addColumn(sequelize, 'payments', 'tenant_id', 'tenant_id INT NULL');
   await addColumn(sequelize, 'devices', 'tenant_id', 'tenant_id INT NULL');
   await addColumn(sequelize, 'nas_devices', 'connection_method',
-    "connection_method ENUM('vpn','public_ip') NOT NULL DEFAULT 'vpn'");
+    "connection_method ENUM('vpn','public_ip','lan') NOT NULL DEFAULT 'vpn'");
   await addColumn(sequelize, 'nas_devices', 'province', 'province VARCHAR(100) NULL');
   await addColumn(sequelize, 'nas_devices', 'regency', 'regency VARCHAR(100) NULL');
+  try {
+    await sequelize.query(
+      "ALTER TABLE nas_devices MODIFY COLUMN connection_method ENUM('vpn','public_ip','lan') NOT NULL DEFAULT 'vpn'"
+    );
+  } catch (e) {
+    logger.warn('nas_devices.connection_method enum +lan skipped: ' + e.message);
+  }
   try {
     await sequelize.query('ALTER TABLE nas_devices MODIFY COLUMN nasname VARCHAR(128) NULL');
     await sequelize.query('ALTER TABLE nas_devices MODIFY COLUMN secret VARCHAR(120) NULL');

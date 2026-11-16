@@ -4,23 +4,7 @@ const { NasDevice } = require('../models');
 const RadiusSQL = require('../services/RadiusSqlService');
 const RadiusProv = require('../services/RadiusProvisionService');
 const { getTenantId } = require('../middleware/tenantContext');
-
-function pickSimple(b) {
-  const name = String(b.name || b.shortname || '').trim();
-  const method = b.connection_method === 'public_ip' ? 'public_ip' : 'vpn';
-  const publicIp = String(b.nasname || b.public_ip || '').trim();
-  return {
-    shortname: name,
-    description: b.description ? String(b.description).trim() : null,
-    connection_method: method,
-    province: b.province ? String(b.province).trim() : null,
-    regency: b.regency ? String(b.regency).trim() : null,
-    nasname: method === 'public_ip' ? publicIp : (publicIp || name || null),
-    secret: (b.secret && b.secret !== '********') ? b.secret : null,
-    type: b.type || 'mikrotik',
-    is_active: b.is_active !== false
-  };
-}
+const { pickNasFields } = require('../utils/nasFields');
 
 class NasController {
   async index(req, res) {
@@ -34,13 +18,8 @@ class NasController {
 
   async create(req, res) {
     try {
-      const fields = pickSimple(req.body || {});
-      if (!fields.shortname) {
-        return res.status(400).json({ success: false, message: 'Nama NAS wajib diisi' });
-      }
-      if (fields.connection_method === 'public_ip' && !fields.nasname) {
-        return res.status(400).json({ success: false, message: 'IP publik wajib diisi' });
-      }
+      const fields = pickNasFields(req.body || {});
+      if (fields.error) return res.status(400).json({ success: false, message: fields.error });
       const row = await NasDevice.create({
         tenant_id: getTenantId() || req.body.tenant_id || null,
         ...fields
@@ -56,19 +35,17 @@ class NasController {
       const row = await NasDevice.findByPk(req.params.id);
       if (!row) return res.status(404).json({ success: false, message: 'NAS tidak ditemukan' });
       const b = req.body || {};
-      const patch = pickSimple({
+      const fields = pickNasFields({
         name: b.name || b.shortname || row.shortname,
         description: b.description !== undefined ? b.description : row.description,
         connection_method: b.connection_method || row.connection_method,
         province: b.province !== undefined ? b.province : row.province,
         regency: b.regency !== undefined ? b.regency : row.regency,
-        public_ip: b.public_ip !== undefined ? b.public_ip : (b.nasname !== undefined ? b.nasname : row.nasname),
+        public_ip: b.public_ip !== undefined ? b.public_ip : (b.lan_ip !== undefined ? b.lan_ip : (b.nasname !== undefined ? b.nasname : row.nasname)),
         secret: b.secret
       });
-      if (!patch.shortname) {
-        return res.status(400).json({ success: false, message: 'Nama NAS wajib diisi' });
-      }
-      await row.update(patch);
+      if (fields.error) return res.status(400).json({ success: false, message: fields.error });
+      await row.update(fields);
       res.json({ success: true, data: row });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
