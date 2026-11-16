@@ -27,6 +27,21 @@ async function addColumn(sequelize, table, col, ddl) {
   return true;
 }
 
+async function ensureNasConnModeLan(sequelize) {
+  const [rows] = await sequelize.query(
+    `SELECT COLUMN_TYPE FROM information_schema.columns
+      WHERE table_schema = DATABASE() AND table_name = 'nas_devices' AND column_name = 'conn_mode'`
+  );
+  const colType = rows && rows[0] ? String(rows[0].COLUMN_TYPE || '') : '';
+  if (!colType) return;
+  if (colType.includes("'lan'")) return;
+  await sequelize.query(
+    "ALTER TABLE nas_devices MODIFY COLUMN conn_mode ENUM('lan','vpn','public') NOT NULL DEFAULT 'lan'"
+  );
+  await sequelize.query("UPDATE nas_devices SET conn_mode='lan' WHERE conn_mode='public'");
+  logger.info('Migrated: nas_devices.conn_mode added lan; legacy public → lan');
+}
+
 async function run(db) {
   const { sequelize } = db;
 
@@ -47,7 +62,9 @@ async function run(db) {
   await addColumn(sequelize, 'tenants', 'radius_server_id', 'radius_server_id INT NULL');
 
   // ── NAS: mode koneksi + WireGuard (additive) ─────────────────────────────
-  await addColumn(sequelize, 'nas_devices', 'conn_mode', "conn_mode ENUM('public','vpn') NOT NULL DEFAULT 'public'");
+  await addColumn(sequelize, 'nas_devices', 'conn_mode', "conn_mode ENUM('lan','vpn','public') NOT NULL DEFAULT 'lan'");
+  await ensureNasConnModeLan(sequelize);
+  await addColumn(sequelize, 'nas_devices', 'area', 'area VARCHAR(100) NULL');
   await addColumn(sequelize, 'nas_devices', 'vpn_type', "vpn_type VARCHAR(20) NULL DEFAULT 'wireguard'");
   await addColumn(sequelize, 'nas_devices', 'tunnel_address', 'tunnel_address VARCHAR(64) NULL');
   await addColumn(sequelize, 'nas_devices', 'wg_public_key', 'wg_public_key VARCHAR(128) NULL');
