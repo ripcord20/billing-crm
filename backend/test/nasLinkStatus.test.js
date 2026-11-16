@@ -74,7 +74,23 @@ const stale = classifyNasLink({
 });
 assert.strictEqual(stale.state, 'down');
 
+const domainPending = classifyNasLink({
+  connMode: 'vpn',
+  vpnType: 'domain',
+  wgConfigured: false
+});
+assert.strictEqual(domainPending.state, 'down', 'VPN domain jangan pending generate WireGuard');
+
+const domainUp = classifyNasLink({
+  connMode: 'vpn',
+  vpnType: 'domain',
+  reachable: true
+});
+assert.strictEqual(domainUp.state, 'up');
+assert.strictEqual(domainUp.age_label, 'Domain merespons');
+
 assert.strictEqual(probeTargetForNas({ conn_mode: 'vpn', tunnel_address: '10.10.0.2/32', nasname: '1.2.3.4' }), '10.10.0.2');
+assert.strictEqual(probeTargetForNas({ conn_mode: 'vpn', nasname: 'cabang.tunnel.web.id' }), 'cabang.tunnel.web.id');
 assert.strictEqual(probeTargetForNas({ conn_mode: 'public', nasname: '192.168.62.2' }), '192.168.62.2');
 assert.strictEqual(probeTargetForNas({ conn_mode: 'lan', nasname: '192.168.22.1' }), '192.168.22.1');
 

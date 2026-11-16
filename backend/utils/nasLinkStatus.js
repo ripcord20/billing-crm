@@ -26,18 +26,20 @@ function formatAgeLabel(sec) {
 
 function classifyNasLink({
   connMode,
+  vpnType,
   wgConfigured,
   deviceStatus,
   handshakeUnix,
   reachable
 } = {}) {
   const vpn = connMode === 'vpn';
+  const domainVpn = vpnType === 'domain' || vpnType === 'ddns';
   const age = handshakeAgeSec(handshakeUnix);
   const handshakeUp = age != null && age <= HANDSHAKE_UP_SEC;
   const deviceUp = deviceStatus === 'online' || deviceStatus === 'warning';
 
-  // VPN = tunnel WireGuard. Jangan pakai status Device Management (LAN/API):
-  // router bisa online meski interface WG belum ada di MikroTik.
+  // VPN = tunnel WireGuard atau domain VPN/DDNS. Jangan pakai status Device
+  // Management (LAN/API): router bisa online meski tunnel belum ada.
   if (vpn) {
     if (handshakeUp) {
       return {
@@ -54,10 +56,10 @@ function classifyNasLink({
         label: 'Terhubung',
         reason: 'ping',
         age_sec: age,
-        age_label: 'IP tunnel merespons'
+        age_label: domainVpn ? 'Domain merespons' : 'IP tunnel merespons'
       };
     }
-    if (!wgConfigured) {
+    if (!wgConfigured && !domainVpn) {
       return {
         state: 'pending',
         label: 'Belum generate',
@@ -158,6 +160,7 @@ async function attachNasLinkStatus(rows, dumpMap = new Map()) {
     const deviceStatus = j.device && j.device.status ? j.device.status : null;
     const draft = classifyNasLink({
       connMode: j.conn_mode,
+      vpnType: j.vpn_type,
       wgConfigured: !!j.wg_configured,
       deviceStatus,
       handshakeUnix,
@@ -175,6 +178,7 @@ async function attachNasLinkStatus(rows, dumpMap = new Map()) {
     const peer = j.wg_public_key ? dumpMap.get(j.wg_public_key) : null;
     j.link = classifyNasLink({
       connMode: j.conn_mode,
+      vpnType: j.vpn_type,
       wgConfigured: !!j.wg_configured,
       deviceStatus: j.device && j.device.status ? j.device.status : null,
       handshakeUnix: peer && peer.handshake ? peer.handshake : 0,

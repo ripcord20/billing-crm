@@ -13,9 +13,17 @@ function fmtSyncAt(s){
 }
 
 function connModeKind(n){
-  if(n.conn_mode==='vpn') return `VPN · ${String(n.vpn_type || 'wireguard').toUpperCase()}`;
+  if(n.conn_mode==='vpn'){
+    const t=String(n.vpn_type||'wireguard').toLowerCase();
+    if(t==='domain'||t==='ddns') return 'VPN · DOMAIN';
+    return `VPN · ${t.toUpperCase()}`;
+  }
   if(n.conn_mode==='public') return 'IP Publik';
   return 'LAN';
+}
+function isDomainNasname(s){
+  const v=String(s||'').trim();
+  return /[a-z]/i.test(v) && v.includes('.');
 }
 function modeBadge(n){
   const link = n.link || {};
@@ -42,7 +50,7 @@ function nasActionButtons(n){
   const label=esc(n.shortname||n.nasname);
   return `<button class="btn btn-sm btn-primary" onclick="openNasDetail(${n.id})" title="Detail NAS + script RouterOS">Detail</button>
       ${isRemoteCore1Nas(n)?`<button class="btn btn-sm btn-secondary" onclick="reprintRemoteWg(${n.id})" title="Salin ulang script tunnel VPS WireGuard">Script WG</button>`:''}
-      ${n.conn_mode==='vpn'?`<button class="btn btn-sm btn-secondary" onclick="wgGen(${n.id},'${label}')" title="Generate/regenerate config VPN saja">VPN</button>`:''}
+      ${n.conn_mode==='vpn'&&n.vpn_type!=='domain'&&n.vpn_type!=='ddns'?`<button class="btn btn-sm btn-secondary" onclick="wgGen(${n.id},'${label}')" title="Generate/regenerate config VPN saja">VPN</button>`:''}
       <button class="btn btn-sm btn-secondary" onclick="syncNas(${n.id})">Sync</button>
       <button class="btn btn-sm btn-danger" onclick="delNas(${n.id})">Hapus</button>`;
 }
@@ -129,7 +137,7 @@ function nasFormBody(){
 
 const NAS_MODE_META={
   lan:{label:'LAN', hint:'Satu jaringan dengan Fiberix. WireGuard tidak perlu.', ip:'192.168.22.1', ipHint:'IP LAN MikroTik yang mengirim paket RADIUS.'},
-  vpn:{label:'VPN', hint:'Router beda lokasi. nasname = IP tunnel WireGuard.', ip:'10.201.0.2', ipHint:'IP tunnel (contoh 10.201.0.x), bukan IP WAN router.'},
+  vpn:{label:'VPN', hint:'Router beda lokasi. WireGuard Fiberix, atau domain VPN/DDNS.', ip:'10.201.0.2 atau cabang.tunnel.web.id', ipHint:'IP tunnel WireGuard (10.201.0.x), atau domain seperti cabang.tunnel.web.id / xxx.hostddns.net.'},
   public:{label:'IP Publik', hint:'Interconnect IP public static. Bukan IP remote Winbox ISP.', ip:'', ipHint:'IP WAN CORE yang dilihat FreeRADIUS.'}
 };
 
@@ -199,7 +207,6 @@ window.openNas=(mode)=>{
   document.getElementById('addNasDesc').value='';
   document.getElementById('addNasArea').value='';
   document.getElementById('addNasIp').value='';
-  document.getElementById('addNasSecret').value='';
   loadNasAreas();
   const ov=document.getElementById('nasAddModal');
   if(ov) ov.classList.add('is-open');
@@ -210,30 +217,37 @@ window.submitNasAdd=async(ev)=>{
   ev.preventDefault();
   const shortname=(document.getElementById('addNasName').value||'').trim();
   const nasname=(document.getElementById('addNasIp').value||'').trim();
-  const secret=(document.getElementById('addNasSecret').value||'').trim();
   const conn_mode=document.getElementById('addNasMode').value||'lan';
   if(!shortname) return App.showToast('Nama NAS wajib','error');
-  if(!nasname) return App.showToast('IP NAS wajib','error');
-  if(!secret) return App.showToast('Secret wajib','error');
+  if(!nasname) return App.showToast('IP atau domain NAS wajib','error');
+  const vpn_type=conn_mode!=='vpn'?null:(isDomainNasname(nasname)?'domain':'wireguard');
   const btn=document.getElementById('addNasSubmit');
   if(btn){ btn.disabled=true; }
   const r=await App.api('/nas',{method:'POST',body:JSON.stringify({
     shortname,
     nasname,
-    secret,
     description:(document.getElementById('addNasDesc').value||'').trim(),
     area:(document.getElementById('addNasArea').value||'').trim(),
     conn_mode,
-    vpn_type:conn_mode==='vpn'?'wireguard':null,
+    vpn_type,
     type:'mikrotik'
   })});
   if(btn){ btn.disabled=false; }
   if(!r?.success) return App.showToast(r?.message||'Gagal menambah NAS','error');
-  App.showToast(r.radius_sync?.success?'NAS ditambahkan & sync FreeRADIUS':'NAS ditambahkan', r.radius_sync?.success?'success':'success');
+  App.showToast(r.radius_sync?.success?'NAS ditambahkan. Secret otomatis ada di script.':'NAS ditambahkan. Secret otomatis ada di script.','success');
   closeNasAdd();
   await loadNas();
   const newId=r.data&&r.data.id;
   if(newId) await openNasDetail(newId);
+};
+
+window.regenNasSecret=()=>{
+  const el=document.getElementById('nasSecret');
+  if(!el) return;
+  const bytes=new Uint8Array(10);
+  (window.crypto||crypto).getRandomValues(bytes);
+  el.value='fx'+Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+  previewNasScript();
 };
 
 window.openNasDetail=async(id)=>{
@@ -248,10 +262,11 @@ window.openNasDetail=async(id)=>{
   document.getElementById('nasIp').value=n.nasname||'';
   document.getElementById('nasShort').value=n.shortname||'';
   document.getElementById('nasSecret').value='';
-  document.getElementById('nasSecret').placeholder='kosongkan jika tidak diubah';
+  document.getElementById('nasSecret').placeholder='otomatis — isi hanya jika ganti';
   document.getElementById('nasType').value=n.type||'mikrotik';
   document.getElementById('nasConnMode').value=n.conn_mode==='vpn'?'vpn':(n.conn_mode==='public'?'public':'lan');
-  document.getElementById('nasVpnType').value=n.vpn_type||'wireguard';
+  const vt=String(n.vpn_type||'wireguard').toLowerCase();
+  document.getElementById('nasVpnType').value=(vt==='domain'||vt==='ddns'||vt==='hostddns')?'domain':(vt||'wireguard');
   const areaEl=document.getElementById('nasArea');
   if(areaEl) areaEl.value=n.area||'';
   document.getElementById('nasPppPool').value=n.ppp_pool_ranges||'10.2.64.2-10.2.79.254';
@@ -266,8 +281,7 @@ window.openNasDetail=async(id)=>{
 window.saveNas=async()=>{
   const body=nasFormBody();
   const id=document.getElementById('nasId').value;
-  if(!body.nasname) return App.showToast('IP NAS wajib','error');
-  if(!id && !body.secret) return App.showToast('Secret wajib','error');
+  if(!body.nasname) return App.showToast('IP atau domain NAS wajib','error');
   const r=await App.api(id?'/nas/'+id:'/nas',{method:id?'PUT':'POST',body:JSON.stringify(body)});
   if(!r?.success) return App.showToast(r?.message||'Gagal','error');
   const linked=r.device_linked?' (sudah tertaut Device Management)':'';

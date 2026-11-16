@@ -23,7 +23,7 @@ module.exports = (sequelize) => {
     nasname: {
       type: DataTypes.STRING(128),
       allowNull: false,
-      comment: 'IP NAS (client RADIUS), kolom nas.nasname di FreeRADIUS'
+      comment: 'IP atau hostname NAS (client RADIUS), kolom nas.nasname di FreeRADIUS'
     },
     shortname: {
       type: DataTypes.STRING(64),
@@ -35,7 +35,8 @@ module.exports = (sequelize) => {
     },
     // ── Mode koneksi NAS ↔ billing/RADIUS ────────────────────────────────
     // 'lan'    : MikroTik dan Fiberix satu jaringan. nasname = IP LAN router.
-    // 'vpn'    : MikroTik terhubung lewat tunnel (WireGuard). nasname = IP tunnel.
+    // 'vpn'    : Tunnel WireGuard Fiberix (nasname = IP tunnel) atau domain
+    //            VPN/DDNS (hostddns, tunnel.web.id).
     // 'public' : Interconnect IP public static. nasname = IP WAN yang dilihat
     //            FreeRADIUS (bukan IP helper Winbox ISP).
     conn_mode: {
@@ -153,7 +154,9 @@ module.exports = (sequelize) => {
     const t = this.get('vpn_type');
     values.wg_configured = t === 'wireguard'
       ? !!(this.get('wg_public_key') && this.get('wg_private_key'))
-      : !!(this.get('vpn_username') && this.get('vpn_password'));
+      : (t === 'domain' || t === 'ddns'
+        ? true
+        : !!(this.get('vpn_username') && this.get('vpn_password')));
     return values;
   };
 

@@ -3,6 +3,8 @@
 const { NasDevice, RadiusServer, Device, Customer } = require('../models');
 const { Op } = require('sequelize');
 const { normalizeConnMode } = require('../utils/nasConnMode');
+const { normalizeNasname, isValidNasname, normalizeVpnType } = require('../utils/nasHost');
+const { resolveNasSecret } = require('../utils/nasSecret');
 const RadiusSQL = require('../services/RadiusSqlService');
 const RadiusProv = require('../services/RadiusProvisionService');
 const Wireguard = require('../services/WireguardService');
@@ -61,22 +63,28 @@ class NasController {
   async create(req, res) {
     try {
       const b = req.body || {};
-      if (!b.nasname || !b.secret) {
-        return res.status(400).json({ success: false, message: 'IP NAS (nasname) dan secret wajib' });
+      if (!b.nasname) {
+        return res.status(400).json({ success: false, message: 'IP atau domain NAS wajib' });
+      }
+      const nasname = normalizeNasname(b.nasname);
+      if (!isValidNasname(nasname)) {
+        return res.status(400).json({ success: false, message: 'Isi IP (contoh 10.201.0.2) atau domain VPN/DDNS (contoh cabang.tunnel.web.id)' });
       }
       const connMode = normalizeConnMode(b.conn_mode);
+      const vpnType = connMode === 'vpn' ? normalizeVpnType(b.vpn_type, nasname, connMode) : null;
+      const secret = resolveNasSecret(b.secret);
       const row = await NasDevice.create({
         tenant_id: getTenantId() || b.tenant_id || null,
         radius_server_id: b.radius_server_id || null,
         device_id: b.device_id || null,
-        nasname: String(b.nasname).trim(),
-        shortname: b.shortname || b.nasname,
+        nasname,
+        shortname: b.shortname || nasname,
         type: b.type || 'mikrotik',
         conn_mode: connMode,
-        vpn_type: connMode === 'vpn' ? (b.vpn_type || 'wireguard') : null,
+        vpn_type: vpnType,
         tunnel_address: b.tunnel_address || null,
         ports: b.ports || null,
-        secret: b.secret,
+        secret,
         community: b.community || null,
         description: b.description || null,
         area: b.area ? String(b.area).trim() : null,
@@ -95,11 +103,24 @@ class NasController {
       if (!row) return res.status(404).json({ success: false, message: 'NAS tidak ditemukan' });
       const b = req.body || {};
       const patch = {};
-      for (const f of ['nasname','shortname','type','ports','community','description','area','is_active','radius_server_id','device_id','vpn_type','tunnel_address']) {
+      for (const f of ['shortname','type','ports','community','description','area','is_active','radius_server_id','device_id','tunnel_address']) {
         if (b[f] !== undefined) patch[f] = b[f];
       }
+      if (b.nasname !== undefined) {
+        const nasname = normalizeNasname(b.nasname);
+        if (!isValidNasname(nasname)) {
+          return res.status(400).json({ success: false, message: 'Isi IP atau domain NAS yang valid' });
+        }
+        patch.nasname = nasname;
+      }
       if (b.conn_mode !== undefined) patch.conn_mode = normalizeConnMode(b.conn_mode);
-      if (patch.conn_mode === 'vpn' && b.vpn_type === undefined) patch.vpn_type = row.vpn_type || 'wireguard';
+      const nextMode = patch.conn_mode || row.conn_mode;
+      const nextName = patch.nasname || row.nasname;
+      if (b.vpn_type !== undefined || b.nasname !== undefined || b.conn_mode !== undefined) {
+        patch.vpn_type = nextMode === 'vpn'
+          ? normalizeVpnType(b.vpn_type !== undefined ? b.vpn_type : row.vpn_type, nextName, nextMode)
+          : null;
+      }
       if (b.secret && b.secret !== '********') patch.secret = b.secret;
       await row.update(patch);
       const sync = await pushNas(row);
