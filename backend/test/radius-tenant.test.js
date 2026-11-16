@@ -92,6 +92,11 @@ const ros = buildNasRouterOsScript({
 });
 assert.ok(ros.v7.includes('/radius add'));
 assert.ok(ros.v7.includes('address=192.168.22.9'));
+assert.ok(ros.v7.includes('src-address=10.10.0.2'));
+assert.ok(ros.v7.includes('require-message-auth=no'));
+assert.ok(ros.v7.includes('dst-address=192.168.22.9/32 gateway=wg-fiberix'));
+assert.ok(ros.v6.includes('address=192.168.22.9'));
+assert.ok(!ros.v6.includes('require-message-auth'), 'v6 tanpa Message-Authenticator');
 assert.ok(ros.v7.includes('secret="sec\\"ret"'));
 assert.ok(ros.v7.includes('comment="FIBERIX"'));
 assert.ok(ros.v7.includes('name=FIBERIX'));

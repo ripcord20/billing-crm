@@ -116,6 +116,9 @@ function buildWireguardBlock(wg, wgServerAddress) {
     `    endpoint-address=${wg.endpointHost} endpoint-port=${wg.endpointPort || 51820} \\`,
     `    allowed-address=${wg.allowedIps} persistent-keepalive=${wg.keepalive || 25}s comment="FIBERIX"`,
     `/ip route add dst-address=${firstHop} gateway=wg-fiberix comment="FIBERIX"`,
+    ...String(wg.allowedIps || '').split(',').map((p) => p.trim()).filter(Boolean)
+      .filter((p) => p !== firstHop)
+      .map((p) => `/ip route add dst-address=${p} gateway=wg-fiberix comment="FIBERIX"`),
     ...buildApiAllowFromTunnel(serverIp)
   ].filter(Boolean);
 }
@@ -141,8 +144,14 @@ function buildRadiusIsolirAndNat(version, opts) {
   const isolirHost = stripCidr(opts.isolirHost || radiusHost);
   const isolirPort = opts.isolirPort || 80;
   const isolirTarget = `${isolirHost}:${isolirPort}`;
+  const src = opts.srcAddress ? ` src-address=${stripCidr(opts.srcAddress)}` : '';
   const lines = [
-    `/radius add service=ppp,hotspot address=${radiusHost} secret="${secret}" timeout=3s comment="FIBERIX"`,
+    `/radius add service=ppp,hotspot address=${radiusHost} secret="${secret}" timeout=3s${src} comment="FIBERIX"`,
+  ];
+  if (version === 'v7') {
+    lines.push(':do { /radius set [find comment="FIBERIX"] require-message-auth=no } on-error={}');
+  }
+  lines.push(
     '/radius incoming set accept=yes',
     '/ppp aaa set use-radius=yes accounting=yes interim-update=00:04:00',
     ensurePool(EXPIRED_POOL_NAME, EXPIRED_POOL),
@@ -157,7 +166,7 @@ function buildRadiusIsolirAndNat(version, opts) {
     '/ip firewall address-list add list=RFC_1918 address=192.168.0.0/16 comment="FIBERIX"',
     `/ip firewall filter add chain=input protocol=tcp dst-port=${PROXY_PORT} src-address-list=!RFC_1918 action=drop comment="FIBERIX"`,
     '/ip firewall filter add chain=forward protocol=tcp dst-port=!53,80 src-address-list=EXPIRED dst-address-list=!EXPIRED_PAGE action=drop comment="FIBERIX"'
-  ];
+  );
   if (opts.vpnType === 'wireguard' && opts.wireguard) {
     lines.push('/ip firewall nat add chain=srcnat action=masquerade out-interface=wg-fiberix comment="FIBERIX"');
   } else if (opts.vpnType === 'l2tp' && opts.l2tp) {
@@ -267,6 +276,7 @@ function buildNasRouterOsScript(opts) {
     body.push(...buildRadiusIsolirAndNat(version, {
       radiusHost,
       secret,
+      srcAddress: tunnel,
       isolirHost: opts.isolirHost || radiusHost,
       isolirPort: opts.isolirPort,
       vpnType: opts.vpnType,
@@ -274,7 +284,8 @@ function buildNasRouterOsScript(opts) {
       l2tp: opts.l2tp
     }));
     body.push('');
-    body.push('# Cek: /radius print  dan  /ppp aaa print');
+    body.push(`# Cek: /ping ${radiusHost}  lalu  /radius print`);
+    body.push('# Jangan matikan RADIUS lama sebelum ping RADIUS Fiberix sukses.');
     return [...header, ...withDelays(body.filter((l) => l != null))].join('\n');
   }
 
@@ -290,6 +301,8 @@ function buildNasRouterOsScript(opts) {
     'Router di luar LAN: MikroTik keluar ke Fiberix (UDP 51820). Setelah handshake, Device Management memakai IP tunnel.',
     'IP NAS (nasname) = IP tunnel. Jangan isi IP publik MikroTik.',
     'Bila RADIUS di mesin lain, tambah route subnet tunnel via IP LAN Fiberix.',
+    'Router remote (WireGuard): pastikan /ip route dst-address=RADIUS lewat wg, dan /radius src-address=IP tunnel. Tanpa itu paket RADIUS keluar WAN → timeout.',
+    'Jangan matikan RADIUS lama sebelum /ping ke IP RADIUS Fiberix sukses.',
     'Object PPP/RADIUS memakai nama FIBERIX.'
   ];
 

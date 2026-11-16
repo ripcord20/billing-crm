@@ -299,14 +299,21 @@ function buildCore1RemoteClientScript(opts) {
     '',
     `# Izinkan API/Winbox dari hub VPS dan Fiberix`,
     `/ip firewall filter add chain=input action=accept protocol=tcp dst-port=80,443,8088,8728,8729,8291 src-address=${hubIp} comment="CORE1-API"`,
-    `/ip firewall filter add chain=input action=accept protocol=tcp dst-port=80,443,8088,8728,8729,8291 src-address=${fiberixLan} comment="CORE1-API"`
+    `/ip firewall filter add chain=input action=accept protocol=tcp dst-port=80,443,8088,8728,8729,8291 src-address=${fiberixLan} comment="CORE1-API"`,
+    '',
+    `# RouterOS tidak memasang route dari allowed-address. Tanpa ini RADIUS 192.168.22.9 keluar WAN → timeout.`,
+    `:if ([:len [/ip route find where dst-address="${radiusHost}/32" gateway=${iface}]] = 0) do={ /ip route add dst-address=${radiusHost}/32 gateway=${iface} comment="FIBERIX-RADIUS" }`,
+    `:if ([:len [/ip route find where dst-address="${fiberixLan}/32" gateway=${iface}]] = 0) do={ /ip route add dst-address=${fiberixLan}/32 gateway=${iface} comment="FIBERIX-LAN" }`,
+    `:if ([:len [/ip route find where dst-address="192.168.22.0/24" gateway=${iface}]] = 0) do={ /ip route add dst-address=192.168.22.0/24 gateway=${iface} comment="FIBERIX-LAN" }`
   ];
 
   if (secret) {
     lines.push(
       '',
-      `# RADIUS Fiberix (paket keluar lewat tunnel, sumber = ${tunnelIp})`,
-      `/radius add service=ppp,hotspot address=${radiusHost} secret="${secret}" timeout=3s comment="FIBERIX"`,
+      `# RADIUS Fiberix (paket keluar lewat ${iface}, sumber = ${tunnelIp})`,
+      `# Jangan matikan RADIUS urutan ke-2 sebelum /ping ${radiusHost} sukses.`,
+      `/radius add service=ppp,hotspot address=${radiusHost} secret="${secret}" timeout=3s src-address=${tunnelIp} comment="FIBERIX"`,
+      ':do { /radius set [find comment="FIBERIX"] require-message-auth=no } on-error={}',
       '/radius incoming set accept=yes',
       '/ppp aaa set use-radius=yes accounting=yes interim-update=00:04:00'
     );
@@ -321,7 +328,8 @@ function buildCore1RemoteClientScript(opts) {
   lines.push(
     '',
     `:put "Selesai. Cek handshake: /interface wireguard peers print"`,
-    `:put "Ping hub VPS: /ping ${hubIp} count=5"`
+    `:put "Ping hub VPS: /ping ${hubIp} count=5"`,
+    `:put "Ping RADIUS Fiberix: /ping ${radiusHost} count=5 — baru matikan RADIUS lama jika ping ini sukses"`
   );
   return lines.join('\n');
 }
