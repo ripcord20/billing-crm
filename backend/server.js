@@ -793,6 +793,31 @@ const startServer = async () => {
       logger.warn('Failed to migrate customers.public_link_token: ' + (e.message || e));
     }
 
+    // ── Migrasi: customers.stopped_at + stop_reason + stop_notes ────────────
+    try {
+      const stopCols = [
+        { name: 'stopped_at',  ddl: 'DATE NULL', after: 'notes' },
+        { name: 'stop_reason', ddl: 'VARCHAR(120) NULL', after: 'stopped_at' },
+        { name: 'stop_notes',  ddl: 'TEXT NULL', after: 'stop_reason' },
+      ];
+      for (const col of stopCols) {
+        const [rows] = await db.sequelize.query(
+          `SELECT COUNT(*) AS c FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+              AND table_name = 'customers'
+              AND column_name = '${col.name}'`
+        );
+        if (!(rows && rows[0] && parseInt(rows[0].c) > 0)) {
+          await db.sequelize.query(
+            `ALTER TABLE customers ADD COLUMN ${col.name} ${col.ddl} AFTER ${col.after}`
+          );
+          logger.info('Migrated: customers.' + col.name + ' column added');
+        }
+      }
+    } catch (e) {
+      logger.warn('Failed to migrate customers stop columns: ' + (e.message || e));
+    }
+
     // ── Migrasi: kolom verifikasi pembayaran manual (invoices) ──────────────
     // verification_status: alur konfirmasi MANUAL saja (transfer bank + bukti).
     //   none      = belum ada pengajuan

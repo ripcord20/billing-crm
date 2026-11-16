@@ -174,6 +174,45 @@ body.stop-home .cust-table .rb.rb-act {
   border-color: #86efac !important;
   -webkit-text-fill-color: #15803d;
 }
+body.stop-home .cust-table .rb.rb-note {
+  background: #ede9fe !important;
+  color: #6d28d9 !important;
+  border-color: #c4b5fd !important;
+  -webkit-text-fill-color: #6d28d9;
+}
+body.stop-home .pill-lunas {
+  background: #dcfce7 !important;
+  color: #047857 !important;
+  border-color: #86efac !important;
+  -webkit-text-fill-color: #047857;
+}
+body.stop-home .pill-tanggungan {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border-color: #fecaca !important;
+  -webkit-text-fill-color: #b91c1c;
+}
+body.stop-home .st-chip {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.stop-home .st-chip.on {
+  background: #e0f2fe !important;
+  color: #075985 !important;
+  border-color: #7dd3fc !important;
+  -webkit-text-fill-color: #075985;
+}
+body.stop-home .note-preview,
+body.stop-home .note-preview.empty { color: #e2e8f0 !important; }
+body.stop-home .stop-drawer {
+  background: #141028 !important;
+  color: #f8fafc;
+  border-left: 1px solid rgba(34, 211, 238, 0.28);
+}
+body.stop-home .drawer-hd,
+body.stop-home .drawer-ft { border-color: rgba(34, 211, 238, 0.2) !important; }
+body.stop-home #drName { color: #f8fafc !important; }
 
 body.stop-home .bottom-nav {
   background: #100c22;

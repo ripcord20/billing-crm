@@ -91,6 +91,7 @@ window.openAddCustomer = async function () {
   const today = new Date().toISOString().slice(0, 10);
   _setVal('custInstallDate', today);
   _setVal('custStatus', 'active');
+  if (typeof onCustStatusChange === 'function') onCustStatusChange();
   // Show checkbox WA welcome (default ON)
   const waBox = document.getElementById('waWelcomeBox');
   if (waBox) waBox.style.display = '';
@@ -193,6 +194,9 @@ window.editCustomer = async function (id) {
   const mkSel = document.getElementById('custMikrotikId');
   if (mkSel) mkSel.value = c.mikrotik_id || '';
   _setVal('custStatus',      c.status          || 'active');
+  _setVal('custStopReason',  c.stop_reason     || 'Pindah rumah');
+  _setVal('custStoppedAt',   c.stopped_at      || '');
+  if (typeof onCustStatusChange === 'function') onCustStatusChange();
   _setVal('custId',          c.customer_id     || '');
   // Koordinat peta — populate dari customer record (sebelumnya tidak ke-load)
   _setVal('custLatitude',    c.latitude != null ? c.latitude : '');
@@ -480,6 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 window.applyFilter = function(status) {
+  if (status === 'inactive') { window.location.href = '/customers/stopped'; return; }
   const sel = document.getElementById('filterStatus');
   if (sel) sel.value = status;
   _custPage = 1;
@@ -508,7 +513,7 @@ async function loadCustomerStats() {
   const isolated = s.isolated || 0;
 
   _setText('scTotal',      total);
-  _setText('scTotalSub',   active + ' aktif · ' + inactive + ' nonaktif');
+  _setText('scTotalSub',   active + ' aktif · ' + (s.inactive || 0) + ' berhenti');
   _setBar ('scTotalBar',   total > 0 ? 0.99 : 0);
   _setText('scTotalPct',   active + ' aktif · ' + isolated + ' isolir');
 
@@ -562,6 +567,7 @@ function _setPct(id, text) {
 async function loadCustomers() {
   const search = document.getElementById('searchCustomer')?.value || '';
   const status = document.getElementById('filterStatus')?.value   || '';
+  if (status === 'inactive') { window.location.href = '/customers/stopped'; return; }
   const prov   = document.getElementById('filterProvince')?.value || '';
   const reg    = document.getElementById('filterRegency')?.value  || '';
   const dist   = document.getElementById('filterDistrict')?.value || '';
@@ -641,14 +647,18 @@ async function loadCustomers() {
     else if (c.status==='active')    { stCls='sb-active';   stDot='#16a34a'; stLabel='Aktif'; }
     else if (c.status==='isolated')  { stCls='sb-suspended';stDot='#dc2626'; stLabel='Isolir'; }
     else if (c.status==='suspended') { stCls='sb-suspended';stDot='#dc2626'; stLabel='Suspended'; }
+    else if (c.status==='inactive')  { stCls='sb-inactive'; stDot='#c2410c'; stLabel='Berhenti'; }
 
     var price = (c.package && c.package.price)
       ? 'Rp '+Number(c.package.price).toLocaleString('id-ID')
       : (c.monthly_fee ? 'Rp '+Number(c.monthly_fee).toLocaleString('id-ID') : '–');
 
     var isoBtn = '';
-    if (c.status==='active')   isoBtn = '<button class="rb rb-iso" onclick="toggleIsolate('+c.id+',\'isolate\')">Isolir</button>';
-    if (c.status==='isolated') isoBtn = '<button class="rb rb-act" onclick="toggleIsolate('+c.id+',\'activate\')">Aktifkan</button>';
+    if (c.status==='active')   isoBtn = '<button class="rb rb-iso" onclick="toggleIsolate('+c.id+',\'isolate\')">Isolir</button>'
+      + '<a class="rb rb-del" href="/customers/stopped?mark='+c.id+'" style="text-decoration:none">Berhenti</a>';
+    if (c.status==='isolated' || c.status==='suspended') isoBtn = '<button class="rb rb-act" onclick="toggleIsolate('+c.id+',\'activate\')">Aktifkan</button>'
+      + '<a class="rb rb-del" href="/customers/stopped?mark='+c.id+'" style="text-decoration:none">Berhenti</a>';
+    if (c.status==='inactive') isoBtn = '<a class="rb rb-edit" href="/customers/stopped" style="text-decoration:none">Arsip</a>';
 
     var addrShort = c.address ? _esc(c.address.substring(0,30))+(c.address.length>30?'...':'') : '';
     var pkgName   = (c.package && c.package.name) ? _esc(c.package.name) : (c.package_name ? _esc(c.package_name) : '–');
@@ -1039,6 +1049,8 @@ async function _saveCustomerInner() {
     mac_address:      (document.getElementById('custMacAddress')?.value || '').trim().toUpperCase() || null,
     mikrotik_id:      document.getElementById('custMikrotikId')?.value || null,
     status:           document.getElementById('custStatus')?.value   || 'active',
+    stop_reason:      document.getElementById('custStopReason')?.value || null,
+    stopped_at:       document.getElementById('custStoppedAt')?.value || null,
     latitude,
     longitude,
     infra_parent_id:  infraParentId,
@@ -1176,6 +1188,15 @@ function _renderPagination(total, limit) {
   el.innerHTML = info + btns;
 }
 window._goPage = function(p) { _custPage = p; loadCustomers(); };
+window.onCustStatusChange = function() {
+  const st = document.getElementById('custStatus')?.value;
+  const wrap = document.getElementById('custStopWrap');
+  if (wrap) wrap.style.display = st === 'inactive' ? '' : 'none';
+  if (st === 'inactive') {
+    const dt = document.getElementById('custStoppedAt');
+    if (dt && !dt.value) dt.value = new Date().toISOString().slice(0, 10);
+  }
+};
 
 // ── CUSTOMER ID helpers ───────────────────────────────────────
 function setIdStatus(type, id) {
