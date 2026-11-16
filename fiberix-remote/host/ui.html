@@ -113,9 +113,12 @@
         document.getElementById('wol').checked = !!s.wol;
         const st = document.getElementById('st');
         const stt = document.getElementById('stt');
-        if (s.online) {
+        if (s.cloudOnline) {
           st.className = 'status';
           stt.textContent = s.viewers ? ('Ready to connect · ' + s.viewers + ' viewer') : 'Ready to connect';
+        } else if (s.online) {
+          st.className = 'status off';
+          stt.textContent = 'Hanya di PC ini. HP 4G belum bisa: nyalakan relay di 103.195.65.216 port 18789';
         } else {
           st.className = 'status off';
           stt.textContent = s.error || 'Connecting…';

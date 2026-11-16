@@ -30,15 +30,21 @@ const SNAPSHOT = __dirname;
 
 let relayUrl = normalizeRelay(process.env.REMOTE_RELAY || process.argv[2] || DEFAULT_RELAY);
 let session = { id: null, password: null, token: null };
-let ws = null;
-let reconnectTimer = null;
 let captureTimer = null;
 let seq = 0;
-let viewers = 0;
-let hostOnline = false;
 let lastError = '';
-let connecting = false;
 let options = { autostart: false, preventSleep: false, wol: false };
+const links = {
+  cloud: { url: relayUrl, ws: null, online: false, viewers: 0, connecting: false, timer: null, err: '' },
+  local: { url: LOCAL_RELAY, ws: null, online: false, viewers: 0, connecting: false, timer: null, err: '' }
+};
+
+function viewers() {
+  return (links.cloud.viewers || 0) + (links.local.viewers || 0);
+}
+function hostOnline() {
+  return !!(links.cloud.online || links.local.online);
+}
 
 function loadState() {
   try {
@@ -121,29 +127,19 @@ function applyPassword(next) {
 }
 
 function send(obj) {
-  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+  const raw = JSON.stringify(obj);
+  for (const L of Object.values(links)) {
+    if (L.ws && L.ws.readyState === WebSocket.OPEN) L.ws.send(raw);
+  }
 }
 
-function dropSocket() {
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer);
-    reconnectTimer = null;
-  }
-  if (ws) {
-    try { ws.removeAllListeners(); ws.close(); } catch (_) {}
-    ws = null;
-  }
-  connecting = false;
-  hostOnline = false;
-}
-
-function scheduleReconnect() {
-  if (reconnectTimer) return;
-  hostOnline = false;
-  reconnectTimer = setTimeout(() => {
-    reconnectTimer = null;
-    connect();
-  }, 1200);
+function schedule(name) {
+  const L = links[name];
+  if (L.timer) return;
+  L.timer = setTimeout(() => {
+    L.timer = null;
+    connectLink(name);
+  }, name === 'cloud' ? 2500 : 1200);
 }
 
 function setRelay(next) {
@@ -153,28 +149,33 @@ function setRelay(next) {
     return false;
   }
   relayUrl = url;
+  links.cloud.url = url;
   saveState();
-  dropSocket();
-  connect();
+  if (links.cloud.ws) {
+    try { links.cloud.ws.close(); } catch (_) {}
+  }
+  connectLink('cloud');
   return true;
 }
 
-function connect() {
-  if (connecting) return;
-  connecting = true;
-  lastError = '';
+function connectLink(name) {
+  const L = links[name];
+  if (L.connecting) return;
+  L.connecting = true;
   try {
-    ws = new WebSocket(relayUrl, { handshakeTimeout: 8000 });
+    L.ws = new WebSocket(L.url, { handshakeTimeout: 8000 });
   } catch (e) {
-    connecting = false;
+    L.connecting = false;
+    L.online = false;
+    L.err = e.message;
     lastError = e.message;
-    scheduleReconnect();
+    schedule(name);
     return;
   }
-
-  ws.on('open', () => {
-    connecting = false;
-    send({
+  L.ws.on('open', () => {
+    L.connecting = false;
+    L.err = '';
+    L.ws.send(JSON.stringify({
       type: 'hello',
       role: 'host',
       sessionId: session.id,
@@ -182,50 +183,52 @@ function connect() {
       password: session.password,
       hostname: os.hostname(),
       platform: process.platform
-    });
+    }));
   });
-
-  ws.on('message', (buf) => {
+  L.ws.on('message', (buf) => {
     let msg;
     try { msg = JSON.parse(String(buf)); } catch { return; }
     if (msg.type === 'session') {
       session.id = msg.id;
       session.token = msg.token;
       if (msg.password) session.password = msg.password;
-      hostOnline = true;
+      L.online = true;
+      L.err = '';
       lastError = '';
       saveState();
-      console.log(`\n  Fiberix Remote siap`);
+      console.log(`\n  Fiberix Remote siap (${name})`);
       console.log(`  ID       : ${session.id}`);
-      console.log(`  Password : ${session.password || '(sama seperti sebelumnya)'}`);
-      console.log(`  Panel    : http://127.0.0.1:${UI_PORT}\n`);
+      console.log(`  Password : ${session.password}`);
     }
     if (msg.type === 'status') {
-      viewers = msg.viewers || 0;
-      hostOnline = !!msg.hostOnline;
+      L.viewers = msg.viewers || 0;
+      L.online = !!msg.hostOnline;
     }
-    if (msg.type === 'error') lastError = msg.message;
+    if (msg.type === 'error') {
+      L.err = msg.message;
+      lastError = msg.message;
+    }
     if (msg.type === 'input') applyInput(msg);
   });
-
-  ws.on('close', () => {
-    connecting = false;
-    hostOnline = false;
-    scheduleReconnect();
+  L.ws.on('close', () => {
+    L.connecting = false;
+    L.online = false;
+    L.viewers = 0;
+    schedule(name);
   });
-  ws.on('error', (e) => {
-    lastError = e.message;
-    connecting = false;
-    if (relayUrl !== LOCAL_RELAY && /ECONNREFUSED/i.test(String(e.message))) {
-      relayUrl = LOCAL_RELAY;
-      lastError = '';
-    }
+  L.ws.on('error', (e) => {
+    L.err = e.message;
+    L.connecting = false;
+    if (name === 'cloud') lastError = 'Server internet belum nyala (' + displayRelay(L.url) + ')';
   });
 }
 
-setInterval(() => {
-  if (ws && ws.readyState === WebSocket.OPEN) send({ type: 'ping', t: Date.now() });
-}, 4000);
+function connect() {
+  connectLink('local');
+  connectLink('cloud');
+}
+
+setInterval(() => send({ type: 'ping', t: Date.now() }), 4000);
 
 function bmpClockFrame() {
   const w = 640, h = 360;
@@ -278,7 +281,7 @@ function captureFrame(cb) {
 function startCapture() {
   if (captureTimer) return;
   const tick = () => {
-    if (!hostOnline || viewers < 1) {
+    if (!hostOnline() || viewers() < 1) {
       captureTimer = setTimeout(tick, 500);
       return;
     }
@@ -339,8 +342,9 @@ function stateJson() {
     password: session.password,
     relay: relayUrl,
     relayDisplay: displayRelay(relayUrl),
-    online: hostOnline,
-    viewers,
+    online: hostOnline(),
+    cloudOnline: !!links.cloud.online,
+    viewers: viewers(),
     error: lastError,
     platform: process.platform,
     hostname: os.hostname(),
