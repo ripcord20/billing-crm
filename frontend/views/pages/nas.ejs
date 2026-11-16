@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title><%= title %> - <%= appName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app-layout">
+  <%- include('../partials/sidebar') %>
+  <div class="main-content">
+    <%- include('../partials/topbar') %>
+    <main class="page-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Modul NAS</h1>
+          <p style="margin:4px 0 0;color:var(--text-secondary);font-size:13px;">Tombol <b>Script</b> = satu tempelan RouterOS (WireGuard + RADIUS <code>192.168.22.9</code> + AAA + isolir). IP tunnel = WireGuard Fiberix (mis. <code>10.10.0.2</code>), bukan sewa VPN cloud.</p>
+        </div>
+        <div class="page-header-right" style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" onclick="openWgServer()">⚙ WireGuard Server</button>
+          <button class="btn btn-secondary" onclick="importNas()">Import dari RADIUS</button>
+          <button class="btn btn-primary" onclick="openNas()">+ NAS</button>
+        </div>
+      </div>
+      <div class="card"><div class="card-body">
+        <table class="data-table">
+          <thead><tr><th>NAS IP</th><th>Nama</th><th>Tipe</th><th>Mode</th><th>Sync</th><th>Aksi</th></tr></thead>
+          <tbody id="nasTable"><tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8;">Memuat…</td></tr></tbody>
+        </table>
+      </div></div>
+    </main>
+  </div>
+</div>
+<div id="nasModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:460px;">
+    <h3 style="margin:0 0 12px;" id="nasTitle">NAS baru</h3>
+    <input type="hidden" id="nasId">
+    <label style="font-size:13px;">IP NAS (nasname) *</label>
+    <input id="nasIp" placeholder="192.168.22.1" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <label style="font-size:13px;">Shortname</label>
+    <input id="nasShort" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <label style="font-size:13px;">Secret *</label>
+    <input id="nasSecret" type="password" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <label style="font-size:13px;">Tipe</label>
+    <input id="nasType" value="mikrotik" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <label style="font-size:13px;">Mode Koneksi</label>
+    <select id="nasConnMode" onchange="onConnModeChange()" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+      <option value="public">Public IP (langsung)</option>
+      <option value="vpn">VPN (tunnel)</option>
+    </select>
+    <div id="nasVpnTypeWrap" style="display:none;">
+      <label style="font-size:13px;">Tipe VPN</label>
+      <select id="nasVpnType" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+        <option value="wireguard">WireGuard</option>
+        <option value="openvpn">OpenVPN</option>
+        <option value="l2tp">L2TP / IPsec</option>
+      </select>
+    </div>
+    <div id="nasVpnHint" style="display:none;background:#f0f6ff;border:1px dashed #9cc2ff;border-radius:8px;padding:10px;font-size:12px;color:#334155;margin:0 0 12px;">
+      Alamat tunnel dialokasikan otomatis. Setelah disimpan, klik tombol
+      <b>VPN</b> pada baris NAS untuk auto-generate credential/peer + config yang siap
+      ditempel ke MikroTik.
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn btn-secondary" onclick="document.getElementById('nasModal').style.display='none'">Batal</button>
+      <button class="btn btn-primary" onclick="saveNas()">Simpan &amp; sync</button>
+    </div>
+  </div>
+</div>
+
+<!-- WireGuard Server settings modal -->
+<div id="wgServerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:520px;max-height:90vh;overflow:auto;">
+    <h3 style="margin:0 0 4px;">Pengaturan WireGuard Server</h3>
+    <p style="margin:0 0 14px;color:#64748b;font-size:12px;">Server tunnel tempat MikroTik terhubung. Endpoint host harus dijangkau router (IP publik server, atau DNS).</p>
+    <label style="font-size:13px;">Aktifkan WireGuard</label>
+    <select id="wgEnabled" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+      <option value="true">Aktif</option>
+      <option value="false">Nonaktif</option>
+    </select>
+    <label style="font-size:13px;">Endpoint Host (IP publik / domain server) *</label>
+    <input id="wgEndpointHost" placeholder="vpn.isp-anda.com atau 203.0.113.10" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+    <div style="display:flex;gap:8px;">
+      <div style="flex:1;"><label style="font-size:13px;">Listen Port</label>
+        <input id="wgListenPort" value="51820" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;"></div>
+      <div style="flex:1;"><label style="font-size:13px;">Interface</label>
+        <input id="wgIface" value="wg0" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;"></div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <div style="flex:1;"><label style="font-size:13px;">Subnet Tunnel</label>
+        <input id="wgSubnet" value="10.10.0.0/24" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;"></div>
+      <div style="flex:1;"><label style="font-size:13px;">Alamat Server</label>
+        <input id="wgServerAddr" value="10.10.0.1" style="width:100%;margin:6px 0 10px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;"></div>
+    </div>
+    <label style="font-size:13px;">Public Key Server</label>
+    <input id="wgServerPub" readonly placeholder="(belum digenerate)" style="width:100%;margin:6px 0 6px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;font-family:monospace;font-size:11px;">
+    <button class="btn btn-sm btn-secondary" onclick="wgInitKeys()" style="margin:0 0 14px;">Generate/keys server</button>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn btn-secondary" onclick="document.getElementById('wgServerModal').style.display='none'">Tutup</button>
+      <button class="btn btn-primary" onclick="saveWgServer()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- VPN config output modal (WireGuard / OpenVPN / L2TP) -->
+<div id="wgConfigModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1001;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:640px;max-height:92vh;overflow:auto;">
+    <h3 style="margin:0 0 4px;">Config VPN <span id="wgCfgType" style="text-transform:uppercase;color:#2563eb;"></span> — <span id="wgCfgNas"></span></h3>
+    <p style="margin:0 0 12px;color:#b45309;font-size:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px;">⚠ Kredensial/private key hanya ditampilkan SEKARANG. Simpan config ini — generate ulang akan membuat kredensial baru.</p>
+    <div style="margin-bottom:6px;font-size:13px;font-weight:600;">Alamat Tunnel: <span id="wgCfgAddr" class="mono"></span></div>
+
+    <div id="wgCredWrap" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;margin:8px 0;font-size:13px;">
+      <div>Username: <b id="wgCredUser" class="mono"></b></div>
+      <div>Password: <b id="wgCredPass" class="mono"></b></div>
+      <div id="wgCredPskWrap">IPsec PSK: <b id="wgCredPsk" class="mono"></b></div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 4px;">
+      <b style="font-size:13px;" id="wgCfgClientLabel">Config Klien</b>
+      <span><button class="btn btn-sm btn-secondary" onclick="wgCopy('wgCfgClient')">Salin</button>
+      <button class="btn btn-sm btn-secondary" onclick="wgDownload()">Unduh</button></span>
+    </div>
+    <pre id="wgCfgClient" style="background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;font-size:12px;white-space:pre-wrap;word-break:break-all;"></pre>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 4px;">
+      <b style="font-size:13px;">Perintah MikroTik (RouterOS)</b>
+      <button class="btn btn-sm btn-secondary" onclick="wgCopy('wgCfgMikrotik')">Salin</button>
+    </div>
+    <pre id="wgCfgMikrotik" style="background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;font-size:12px;white-space:pre-wrap;word-break:break-all;"></pre>
+
+    <div id="wgPeerWrap">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 4px;">
+        <b style="font-size:13px;" id="wgCfgPeerLabel">Blok [Peer] untuk server</b>
+        <button class="btn btn-sm btn-secondary" onclick="wgCopy('wgCfgPeer')">Salin</button>
+      </div>
+      <pre id="wgCfgPeer" style="background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;font-size:12px;white-space:pre-wrap;word-break:break-all;"></pre>
+    </div>
+
+    <div id="wgApplyNote" style="font-size:12px;color:#64748b;margin:6px 0 12px;"></div>
+    <div style="display:flex;justify-content:flex-end;">
+      <button class="btn btn-primary" onclick="document.getElementById('wgConfigModal').style.display='none'">Selesai</button>
+    </div>
+  </div>
+</div>
+
+<div id="rosModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1002;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-card);border-radius:12px;padding:24px;width:100%;max-width:720px;max-height:92vh;overflow:auto;color:var(--text);">
+    <h3 style="margin:0 0 4px;">Script RouterOS — <span id="rosNas"></span></h3>
+    <p id="rosHint" style="margin:0 0 12px;color:var(--text-secondary);font-size:13px;"></p>
+    <div style="display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap;">
+      <button class="btn btn-sm btn-primary" type="button" id="rosTabV7" onclick="showRosTab('v7')">RouterOS v7</button>
+      <button class="btn btn-sm btn-secondary" type="button" id="rosTabV6" onclick="showRosTab('v6')">RouterOS v6</button>
+      <button class="btn btn-sm btn-secondary" type="button" onclick="copyRos()">Salin</button>
+      <button class="btn btn-sm btn-secondary" type="button" onclick="downloadRos()">Unduh .rsc</button>
+    </div>
+    <pre id="rosScript" class="radius-guide-pre" style="max-height:320px;background:#0f172a;color:#e2e8f0;border:none;"></pre>
+    <div style="margin-top:14px;padding:12px;border:1px dashed var(--border);border-radius:10px;background:var(--bg-hover);">
+      <strong style="font-size:13px;">Contoh Port Forward (belum dipasang)</strong>
+      <p id="rosPfNote" style="margin:6px 0 8px;font-size:12px;color:var(--text-secondary);"></p>
+      <table class="data-table" style="margin:0;">
+        <thead><tr><th>Kegunaan</th><th>Publik (VPS)</th><th>Internal (tunnel)</th></tr></thead>
+        <tbody id="rosPfTable"></tbody>
+      </table>
+      <pre id="rosPfNft" style="margin:10px 0 0;font-size:11px;white-space:pre-wrap;color:var(--text-secondary);"></pre>
+    </div>
+    <p id="rosNotes" style="margin:12px 0 0;font-size:12px;color:var(--text-secondary);"></p>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+      <button class="btn btn-primary" onclick="document.getElementById('rosModal').style.display='none'">Selesai</button>
+    </div>
+  </div>
+</div>
+<style>
+  .radius-guide-pre{margin:0;padding:12px;border-radius:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.45;white-space:pre-wrap;word-break:break-all;overflow:auto;}
+</style>
+<script src="/js/app.js"></script>
+<script src="/js/nas.js"></script>
+</body>
+</html>
