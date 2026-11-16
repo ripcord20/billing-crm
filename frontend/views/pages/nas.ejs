@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="stylesheet" href="/css/nas-palette.css?v=nas6sec">
+  <link rel="stylesheet" href="/css/nas-palette.css?v=nas7ros">
   <style>
     .nas-page .page-content { min-width: 0; max-width: 100%; overflow-x: hidden; }
     .nas-page .page-header { align-items: flex-start; gap: 12px; flex-wrap: wrap; }
@@ -287,7 +287,7 @@
               WireGuard Fiberix: isi IP tunnel <code>10.201.0.x</code>. Domain VPN/DDNS: isi hostname seperti <code>cabang.tunnel.web.id</code> atau <code>xxx.hostddns.net</code>. VPN remote Winbox saja tidak menggantikan UDP RADIUS 1812.
             </div>
             <label>Host RADIUS Fiberix</label>
-            <input id="nasRadiusHost" value="192.168.22.9" readonly>
+            <input id="nasRadiusHost" value="192.168.22.99" readonly>
           </div>
           <div class="nas-detail-card">
             <h2>Informasi Profile PPP</h2>
@@ -322,6 +322,7 @@
               <span style="font-size:12px;color:var(--text-secondary);margin-right:4px;">Script Konfigurasi RouterOS:</span>
               <button class="btn btn-sm btn-secondary" type="button" id="rosTabV6" onclick="showRosTab('v6')">RouterOS v6</button>
               <button class="btn btn-sm btn-primary" type="button" id="rosTabV7" onclick="showRosTab('v7')">RouterOS v7</button>
+              <button class="btn btn-sm btn-secondary" type="button" onclick="reloadNasScript()">Muat script</button>
               <button class="btn btn-sm btn-secondary" type="button" onclick="copyRos()">Salin Script</button>
               <button class="btn btn-sm btn-secondary" type="button" onclick="downloadRos()">Unduh .rsc</button>
             </div>
@@ -586,6 +587,6 @@
     </form>
   </div>
 </div>
-<script src="/js/nas.js?v=nas6sec"></script>
+<script src="/js/nas.js?v=nas7ros"></script>
 </body>
 </html>

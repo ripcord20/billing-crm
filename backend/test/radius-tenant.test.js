@@ -121,12 +121,16 @@ const lanRos = buildNasRouterOsScript({
 assert.strictEqual(lanRos.mode_label, 'LAN');
 assert.ok(lanRos.v7.includes('Mode LAN') || lanRos.v7.includes('# Mode: LAN'));
 const pubRos = buildNasRouterOsScript({
-  nasname: '203.0.113.10',
-  secret: 'x',
+  nasname: '41.216.191.123',
+  secret: 'fxauto',
   connMode: 'public',
-  radiusHost: '192.168.22.99'
+  radiusHost: '103.195.65.216'
 });
 assert.strictEqual(pubRos.mode_label, 'IP Publik');
+assert.strictEqual(pubRos.conn_mode, 'public');
+assert.ok(pubRos.v7.includes('address=103.195.65.216'));
+assert.ok(pubRos.v7.includes('secret="fxauto"'));
+assert.ok(!pubRos.v7.includes('wg-fiberix'));
 
 const domainRos = buildNasRouterOsScript({
   nasname: 'cabang.tunnel.web.id',

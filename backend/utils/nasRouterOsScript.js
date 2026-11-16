@@ -256,7 +256,9 @@ function buildNasRouterOsScript(opts) {
         ? `# VPN domain/DDNS: nasname = ${opts.nasname || name}. RADIUS UDP 1812 ke Fiberix.`
         : (tunnel
           ? `# IP tunnel WireGuard router ini: ${tunnel}  ← pakai ini untuk API/sync jika mode tunnel.`
-          : '# Mode LAN / langsung: RADIUS lewat IP lokal. WireGuard tidak wajib.'),
+          : (connMode === 'public'
+            ? `# Mode IP Publik: nasname = ${opts.nasname || name}. /radius address=${radiusHost} (pintu CORE 1, DNAT ke billing).`
+            : '# Mode LAN / langsung: RADIUS lewat IP lokal. WireGuard tidak wajib.')),
       ''
     ];
     const body = [
@@ -277,6 +279,9 @@ function buildNasRouterOsScript(opts) {
     } else if (domainVpn) {
       body.push('# VPN domain (hostddns / tunnel.web.id): WireGuard Fiberix tidak dipasang.');
       body.push('# Secret RADIUS sudah otomatis. Pastikan router kirim UDP 1812 ke IP RADIUS Fiberix.');
+    } else if (connMode === 'public') {
+      body.push('# IP Publik: WireGuard tidak dipasang.');
+      body.push(`# /radius address=${radiusHost} — CORE 1 harus DNAT UDP 1812/1813 ke billing 192.168.22.99.`);
     } else {
       body.push('# Tunnel dilewati (mode LAN / langsung — WireGuard tidak wajib)');
     }
@@ -306,7 +311,9 @@ function buildNasRouterOsScript(opts) {
     'Tempel di New Terminal MikroTik (RouterOS v7 atau v6 sesuai tab).',
     'Jika MikroTik dan Fiberix satu jaringan, mode LAN cukup — WireGuard tidak wajib.',
     'Router di luar LAN: MikroTik keluar ke Fiberix (UDP 51820). Setelah handshake, Device Management memakai IP tunnel.',
-    'IP NAS (nasname) = IP tunnel. Jangan isi IP publik MikroTik.',
+    connMode === 'public'
+      ? 'Mode IP Publik: nasname = IP WAN CORE yang dilihat FreeRADIUS. /radius address = pintu CORE 1, bukan 192.168.22.9.'
+      : 'IP NAS (nasname) = IP sumber paket RADIUS (LAN atau IP tunnel).',
     'Bila RADIUS di mesin lain, tambah route subnet tunnel via IP LAN Fiberix.',
     'Router remote (WireGuard): pastikan /ip route dst-address=RADIUS lewat wg, dan /radius src-address=IP tunnel. Tanpa itu paket RADIUS keluar WAN → timeout.',
     'Jangan matikan RADIUS lama sebelum /ping ke IP RADIUS Fiberix sukses.',
@@ -331,6 +338,7 @@ function buildNasRouterOsScript(opts) {
     recommended_api_host: tunnel || opts.nasname || null,
     recommended_api_port: 8728,
     skip_port_forward: !!portForward.skipped,
+    conn_mode: connMode,
     mode_label: modeLabel,
     ppp_pool_ranges: pppPool || null,
     ppp_local_address: pppLocal || null,
