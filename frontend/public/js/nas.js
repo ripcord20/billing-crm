@@ -63,8 +63,8 @@ async function loadNas(){
   }
   if(!d.data.length){
     __nasRows=[];
-    tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:#94a3b8;">Belum ada NAS. Tambah router yang auth ke FreeRADIUS.</td></tr>';
-    renderNasMobile('<div class="nas-m-empty">Belum ada NAS. Tambah router yang auth ke FreeRADIUS.</div>');
+    tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:#94a3b8;">Belum ada NAS. Pilih kolom LAN, VPN, atau IP Publik di atas.</td></tr>';
+    renderNasMobile('<div class="nas-m-empty">Belum ada NAS. Pilih kolom LAN, VPN, atau IP Publik di atas.</div>');
     return;
   }
   __nasRows=d.data;
@@ -185,10 +185,15 @@ window.closeNasAdd=()=>{
   if(menu) menu.classList.remove('is-open');
 };
 
-window.openNas=()=>{
+window.toggleNasExtra=()=>{
+  const box=document.getElementById('nasExtraBtns');
+  if(box) box.classList.toggle('is-open');
+};
+
+window.openNas=(mode)=>{
   const form=document.getElementById('nasAddForm');
   if(form) form.reset();
-  setNasModeUi('lan');
+  setNasModeUi(mode==='vpn'||mode==='public'?mode:'lan');
   const name=document.getElementById('addNasName');
   if(name) name.value='';
   document.getElementById('addNasDesc').value='';

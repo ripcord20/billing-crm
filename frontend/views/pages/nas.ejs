@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="stylesheet" href="/css/nas-palette.css?v=nas4lan">
+  <link rel="stylesheet" href="/css/nas-palette.css?v=nas5col">
   <style>
     .nas-page .page-content { min-width: 0; max-width: 100%; overflow-x: hidden; }
     .nas-page .page-header { align-items: flex-start; gap: 12px; flex-wrap: wrap; }
@@ -204,15 +204,32 @@
       <div class="page-header">
         <div class="page-header-left">
           <h1>Modul NAS</h1>
-          <p style="margin:4px 0 0;color:var(--text-secondary);font-size:13px;">Tambah router yang auth ke FreeRADIUS. Metode: <b>LAN</b>, <b>VPN</b>, atau <b>IP Publik</b>.</p>
+          <p style="margin:4px 0 0;color:var(--text-secondary);font-size:13px;">Pilih metode koneksi, lalu isi form. LAN, VPN, atau IP Publik.</p>
         </div>
         <div class="page-header-right" style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-secondary" onclick="openPhoneQr()">QR HP</button>
-          <button class="btn btn-secondary" onclick="openWgServer()">⚙ WireGuard Server</button>
-          <button class="btn btn-secondary" onclick="importNas()">Import dari RADIUS</button>
-          <button class="btn btn-secondary" onclick="openRemoteWg()" style="background:#fff7ed;border-color:#fdba74;color:#9a3412;">Cabang remote</button>
-          <button class="btn btn-primary" onclick="openNas()">+ Tambah NAS</button>
+          <button type="button" class="nas-more-toggle" onclick="toggleNasExtra()">Lainnya</button>
+          <div class="nas-extra-btns" id="nasExtraBtns">
+            <button class="btn btn-secondary" onclick="openPhoneQr()">QR HP</button>
+            <button class="btn btn-secondary" onclick="openWgServer()">⚙ WireGuard Server</button>
+            <button class="btn btn-secondary" onclick="importNas()">Import dari RADIUS</button>
+            <button class="btn btn-secondary" onclick="openRemoteWg()" style="background:#fff7ed;border-color:#fdba74;color:#9a3412;">Cabang remote</button>
+          </div>
+          <button class="btn btn-primary" onclick="openNas('lan')">+ Tambah NAS</button>
         </div>
+      </div>
+      <div class="nas-method-grid" aria-label="Metode koneksi NAS">
+        <button type="button" class="nas-method-col lan" onclick="openNas('lan')">
+          <span class="nas-method-k">LAN</span>
+          <span class="nas-method-s">Satu jaringan dengan Fiberix. WireGuard tidak perlu.</span>
+        </button>
+        <button type="button" class="nas-method-col vpn" onclick="openNas('vpn')">
+          <span class="nas-method-k">VPN</span>
+          <span class="nas-method-s">Router beda lokasi. Tunnel WireGuard.</span>
+        </button>
+        <button type="button" class="nas-method-col public" onclick="openNas('public')">
+          <span class="nas-method-k">IP Publik</span>
+          <span class="nas-method-s">Interconnect WAN static. Bukan IP Winbox ISP.</span>
+        </button>
       </div>
       <div class="card nas-table-card"><div class="card-body">
         <div class="table-scroll" id="nasTableScroll">
@@ -568,6 +585,6 @@
     </form>
   </div>
 </div>
-<script src="/js/nas.js?v=nas4lan"></script>
+<script src="/js/nas.js?v=nas5col"></script>
 </body>
 </html>

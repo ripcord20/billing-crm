@@ -220,6 +220,61 @@
 .nas-mode-pill.vpn { background: #eff6ff; color: #1d4ed8; }
 .nas-mode-pill.public { background: #fff7ed; color: #9a3412; }
 
+.nas-method-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 14px;
+}
+.nas-method-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  padding: 14px 12px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+}
+.nas-method-col:hover { border-color: #86efac; box-shadow: 0 8px 20px rgba(34,197,94,.12); }
+.nas-method-col.lan { border-color: #bbf7d0; background: #f0fdf4; }
+.nas-method-col.vpn { border-color: #bfdbfe; background: #eff6ff; }
+.nas-method-col.public { border-color: #fed7aa; background: #fff7ed; }
+.nas-method-k {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+.nas-method-col.lan .nas-method-k { color: #166534; }
+.nas-method-col.vpn .nas-method-k { color: #1d4ed8; }
+.nas-method-col.public .nas-method-k { color: #9a3412; }
+.nas-method-s { font-size: 11px; line-height: 1.4; color: #64748b; }
+.nas-extra-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.nas-more-toggle {
+  display: none;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+@media (max-width: 768px) {
+  .nas-method-grid { grid-template-columns: 1fr; }
+  .nas-extra-btns { display: none; width: 100%; }
+  .nas-extra-btns.is-open { display: flex; }
+  .nas-more-toggle { display: inline-flex; }
+}
+
 [data-theme="dark"] .nas-add-box { background: #121a2b; }
 [data-theme="dark"] .nas-add-lbl { color: #e8eef9; }
 [data-theme="dark"] .nas-add-body input,
@@ -238,6 +293,12 @@
 [data-theme="dark"] .nas-mode-pill.lan { background: #14532d; color: #bbf7d0; }
 [data-theme="dark"] .nas-mode-pill.vpn { background: #1e3a8a; color: #bfdbfe; }
 [data-theme="dark"] .nas-mode-pill.public { background: #7c2d12; color: #fed7aa; }
+[data-theme="dark"] .nas-method-col { background: #121a2b; border-color: #243049; }
+[data-theme="dark"] .nas-method-col.lan { background: #052e16; border-color: #166534; }
+[data-theme="dark"] .nas-method-col.vpn { background: #172554; border-color: #1d4ed8; }
+[data-theme="dark"] .nas-method-col.public { background: #431407; border-color: #9a3412; }
+[data-theme="dark"] .nas-method-s { color: #94a3b8; }
+[data-theme="dark"] .nas-more-toggle { background: #121a2b; border-color: #243049; color: #e8eef9; }
 
 @media (max-width: 480px) {
   .nas-add-box { max-width: 100%; border-radius: 16px; }
