@@ -29,14 +29,14 @@ Jangan isi IP itu di:
 - UFW / iptables “from CORE 2”
 - Device Management (REST `8088`)
 
-Winbox lewat ISP ke `144.79.228.137:1272` boleh tetap untuk admin manusia. Fiberix ↔ CORE 2 tanpa WG memakai **`CORE2_PUB`** (IP public static yang benar-benar duduk di WAN CORE 2 / 1:1 NAT ke CORE 2), yang **belum** diisi di panduan ini sampai ada IP static khusus interconnect.
+Winbox lewat ISP ke `144.79.228.137:1272` boleh tetap untuk admin manusia. Fiberix ↔ CORE 2 tanpa WG memakai **`41.216.191.123`** (Perwiramedia). **Jangan** 1:1 NAT IP itu ke `192.168.22.9` — `22.9` adalah mesin daloRADIUS lama di LAN Fiberix, bukan CORE 2.
 
 ## 0. Inventaris
 
 | Peran | Nilai | Wajib static? |
 |---|---|---|
 | CORE 2 WAN lokal | `172.127.2.2/30` (vlan1272) | — |
-| CORE 2 IP public interconnect | **`CORE2_PUB`** — isi nanti (bukan `144.79.228.137`) | **Ya** |
+| CORE 2 IP public interconnect | **`41.216.191.123`** (Perwiramedia, bukan `144.79.228.137`) | **Ya** |
 | Jalur Winbox ISP saja | `144.79.228.137:1272` | Jangan dipakai RADIUS/API |
 | CORE 2 REST / Winbox lokal / API | TCP `8088` / `8291` / `8872` | — |
 | Billing Fiberix LAN | `192.168.22.99` | — |
@@ -44,12 +44,26 @@ Winbox lewat ISP ke `144.79.228.137:1272` boleh tetap untuk admin manusia. Fiber
 | FreeRADIUS (proses) | `192.168.22.99` UDP **1812** | Private, di belakang DNAT |
 | Accounting Node | `192.168.22.99` UDP **1813** | Private, di belakang DNAT |
 | Auth PPPoE hari ini | BillingRadius `172.20.1.1` (L2TP) | Jangan dimatikan dulu |
-| NAS Fiberix sekarang | `nasname=10.201.0.2` (tunnel WG) | Nanti = `CORE2_PUB` |
+| NAS Fiberix sekarang | `nasname=10.201.0.2` (tunnel WG) | Nanti = `41.216.191.123` |
 
 Dua IP interconnect yang **tidak boleh berubah**:
 
-1. `CORE2_PUB` = IP public static **WAN CORE 2** (sewa/assign terpisah dari Winbox ISP)
+1. `41.216.191.123` = IP public static **WAN CORE 2** (Perwiramedia; terpisah dari Winbox ISP)
 2. `FX_PUB` = `103.195.65.216` (kantor/VPS Fiberix) — pintu ke FreeRADIUS
+
+### Jangan NAT `41.216.191.123` ke `192.168.22.9`
+
+Itu dua sisi berbeda:
+
+| Sisi | IP | Fungsi |
+|---|---|---|
+| CORE 2 (Perwiramedia) | `41.216.191.123` | Identitas WAN / `nasname` / sumber paket RADIUS |
+| Billing Fiberix | `192.168.22.99` | FreeRADIUS + web Fiberix. **Ini** tujuan DNAT 1812 |
+| daloRADIUS lama | `192.168.22.9` | Mesin lain di LAN kantor. Bukan CORE 2, bukan tujuan NAT IP Perwiramedia |
+
+Kalau IP public Perwiramedia belum duduk di MikroTik CORE 2, 1:1 NAT-nya ke **IP WAN CORE 2** (mis. `172.127.2.2`), bukan ke `192.168.22.9`.
+
+Dari CORE 2, `/radius address=` = **`103.195.65.216`**, bukan `192.168.22.9` dan bukan `192.168.22.99` (keduanya LAN, tidak tembus dari internet).
 
 Cek IP mana yang benar-benar milik CORE 2:
 
@@ -59,19 +73,19 @@ Cek IP mana yang benar-benar milik CORE 2:
 /ip route print where dst-address=0.0.0.0/0
 ```
 
-`CORE2_PUB` harus kelihatan sebagai alamat WAN CORE 2 **atau** hasil 1:1 NAT modem ke `172.127.2.2`. Bukan IP helper Winbox ISP.
+`41.216.191.123` harus kelihatan sebagai alamat WAN CORE 2 **atau** hasil 1:1 NAT modem Perwiramedia ke IP LAN CORE 2. Bukan IP helper Winbox ISP, bukan `192.168.22.9`.
 
 ## 1. Gambar jalur (tanpa WG)
 
 ```
 Pelanggan PPPoE
       |
-   CORE 2  (WAN = CORE2_PUB, bukan 144.79.228.137)
+   CORE 2  (WAN = 41.216.191.123 Perwiramedia, bukan 144.79.228.137)
       |  UDP 1812/1813  ----->  FX_PUB 103.195.65.216  --DNAT-->  192.168.22.99:1812/1813
-      |                                                    FreeRADIUS + accounting Node
+      |                                                    FreeRADIUS Fiberix (bukan 22.9)
       |
 Fiberix Device Management
-   192.168.22.99  --TCP 8088-->  CORE2_PUB
+   192.168.22.99  --TCP 8088-->  41.216.191.123
 ```
 
 Dua sisi **saling kebalikan**. Satu sisi saja = timeout / “Belum terhubung”.
@@ -107,14 +121,14 @@ Device Management Fiberix:
 
 | Field | Isi |
 |---|---|
-| IP | `CORE2_PUB` (bukan `144.79.228.137`) |
+| IP | `41.216.191.123` (bukan `144.79.228.137`) |
 | Port API | `8088` |
 | Protocol | REST HTTP |
 
 Tes dari VPS Fiberix:
 
 ```bash
-curl -I --max-time 5 http://CORE2_PUB:8088/
+curl -I --max-time 5 http://41.216.191.123:8088/
 ```
 
 Kalau public IP duduk di modem, modem forward TCP `8088` ke `172.127.2.2`.
@@ -123,7 +137,7 @@ Kalau public IP duduk di modem, modem forward TCP `8088` ke `172.127.2.2`.
 
 ## 3. Sisi B — PPPoE auth (UDP 1812/1813)
 
-Dari CORE 2, `/radius address=` = **`FX_PUB`** (`103.195.65.216`), bukan `192.168.22.99`, bukan `144.79.228.137`.
+Dari CORE 2, `/radius address=` = **`FX_PUB`** (`103.195.65.216`), bukan `192.168.22.9`, bukan `192.168.22.99`, bukan `144.79.228.137`.
 
 Proses tetap:
 
@@ -145,10 +159,10 @@ add chain=dstnat protocol=udp dst-address=103.195.65.216 dst-port=1813 \
 
 /ip firewall filter
 add chain=forward action=accept protocol=udp dst-address=192.168.22.99 \
-    dst-port=1812,1813 src-address=CORE2_PUB comment="CORE2-RADIUS"
+    dst-port=1812,1813 src-address=41.216.191.123 comment="CORE2-RADIUS"
 ```
 
-Ganti `CORE2_PUB` dengan IP WAN static CORE 2 yang sebenarnya. **Jangan** `144.79.228.137`.
+`CORE2_PUB` = `41.216.191.123`. **Jangan** `144.79.228.137`. DNAT tujuan = **`192.168.22.99`**, bukan `192.168.22.9`.
 
 **Jika `ip -4 addr` di billing sudah kelihatan `103.195.65.216`:** tidak perlu DNAT, cukup UFW.
 
@@ -157,8 +171,8 @@ Ganti `CORE2_PUB` dengan IP WAN static CORE 2 yang sebenarnya. **Jangan** `144.7
 ```bash
 iptables -t nat -A PREROUTING -p udp -d 103.195.65.216 --dport 1812 -j DNAT --to-destination 192.168.22.99:1812
 iptables -t nat -A PREROUTING -p udp -d 103.195.65.216 --dport 1813 -j DNAT --to-destination 192.168.22.99:1813
-iptables -A FORWARD -p udp -s CORE2_PUB -d 192.168.22.99 --dport 1812 -j ACCEPT
-iptables -A FORWARD -p udp -s CORE2_PUB -d 192.168.22.99 --dport 1813 -j ACCEPT
+iptables -A FORWARD -p udp -s 41.216.191.123 -d 192.168.22.99 --dport 1812 -j ACCEPT
+iptables -A FORWARD -p udp -s 41.216.191.123 -d 192.168.22.99 --dport 1813 -j ACCEPT
 ```
 
 Jangan buka 1812 dari `Anywhere`.
@@ -166,33 +180,33 @@ Jangan buka 1812 dari `Anywhere`.
 ### 3.2 UFW di VPS billing
 
 ```bash
-sudo ufw allow proto udp from CORE2_PUB to any port 1812 comment 'CORE2-RADIUS-AUTH'
-sudo ufw allow proto udp from CORE2_PUB to any port 1813 comment 'CORE2-RADIUS-ACCT'
+sudo ufw allow proto udp from 41.216.191.123 to any port 1812 comment 'CORE2-PERWIRA-RADIUS-AUTH'
+sudo ufw allow proto udp from 41.216.191.123 to any port 1813 comment 'CORE2-PERWIRA-RADIUS-ACCT'
 sudo ufw status | grep 181
 sudo ss -ulnp | grep -E '1812|1813'
 ```
 
 Harus: `0.0.0.0:1812` = freeradius, `0.0.0.0:1813` = node. Rule `10.201.0.0/24` boleh tetap selama WG masih ada.
 
-### 3.3 Tabel `nas` — nasname = `CORE2_PUB`
+### 3.3 Tabel `nas` — nasname = `41.216.191.123`
 
-FreeRADIUS melihat **IP sumber** paket UDP. Tanpa WG itu = WAN public CORE 2 (`CORE2_PUB`), bukan `10.201.0.2`, bukan `144.79.228.137`.
+FreeRADIUS melihat **IP sumber** paket UDP. Tanpa WG itu = WAN public CORE 2 (`41.216.191.123`), bukan `10.201.0.2`, bukan `144.79.228.137`, bukan `192.168.22.9`.
 
 ```sql
 SELECT id, nasname, shortname, CHAR_LENGTH(secret) AS secret_len FROM nas;
 
 INSERT INTO nas (nasname, shortname, type, secret, description)
-SELECT 'CORE2_PUB', 'CORE 2 public', 'mikrotik', secret, 'CORE 2 WAN public'
+SELECT '41.216.191.123', 'CORE 2 public', 'mikrotik', secret, 'CORE 2 WAN Perwiramedia'
 FROM nas WHERE nasname = '10.201.0.2' LIMIT 1;
 ```
 
-Ganti string `CORE2_PUB` di SQL dengan IP WAN static yang sebenarnya. Secret **harus sama** dengan `/radius` comment=FIBERIX. Jangan ketik secret di chat.
+Secret **harus sama** dengan `/radius` comment=FIBERIX. Jangan ketik secret di chat.
 
 ```bash
 sudo systemctl restart freeradius
 ```
 
-Modul NAS Fiberix: IP NAS = `CORE2_PUB`.
+Modul NAS Fiberix: metode **IP Publik**, IP NAS = `41.216.191.123`.
 
 ### 3.4 `/radius` di CORE 2
 
@@ -202,11 +216,11 @@ add dst-address=103.195.65.216/32 gateway=172.127.2.1 comment="FIBERIX-RADIUS-PU
 
 /radius
 set [find comment="FIBERIX"] address=103.195.65.216 authentication-port=1812 \
-    accounting-port=1813 src-address=CORE2_PUB timeout=3s \
+    accounting-port=1813 src-address=41.216.191.123 timeout=3s \
     require-message-auth=no disabled=yes
 ```
 
-`src-address=CORE2_PUB` hanya jika IP itu **ada di CORE 2**. Kalau CORE 2 hanya `172.127.2.2` dan public 1:1 di modem, **kosongkan src-address**. `nasname` = IP yang **dilihat** FreeRADIUS di `tcpdump` (bukan IP Winbox ISP).
+`src-address=41.216.191.123` hanya jika IP itu **ada di CORE 2**. Kalau public 1:1 di modem Perwiramedia ke IP LAN CORE 2, **kosongkan src-address**. `nasname` = IP yang **dilihat** FreeRADIUS di `tcpdump` (bukan IP Winbox ISP, bukan `192.168.22.9`).
 
 BillingRadius **tetap enabled**:
 
@@ -219,11 +233,11 @@ BillingRadius **tetap enabled**:
 
 ## 4. Tes
 
-1. Device Management ke `CORE2_PUB:8088` Terhubung (bukan ke `144.79.228.137`).
+1. Device Management ke `41.216.191.123:8088` Terhubung (bukan ke `144.79.228.137`).
 2. Dari CORE 2: `/ping 103.195.65.216 count=5`.
 3. Di VPS: `sudo tcpdump -n -i any udp port 1812`.
 4. Enable FIBERIX, **jangan** matikan BillingRadius, geser FIBERIX urutan 1, tes **1 user**.
-5. Paket harus dari `CORE2_PUB` → `22.99:1812`. Accept. Baru boleh disable BillingRadius.
+5. Paket harus dari `41.216.191.123` → `22.99:1812`. Accept. Baru boleh disable BillingRadius.
 6. WG dimatikan terakhir, setelah stabil beberapa hari.
 
 Reject **tidak** failover ke BillingRadius. Timeout baru failover.
@@ -251,7 +265,7 @@ Reject **tidak** failover ke BillingRadius. Timeout baru failover.
 | Kebutuhan | Perlu public static di mana? |
 |---|---|
 | User internet (BillingRadius) | Tidak |
-| Fiberix lihat CORE 2 | `CORE2_PUB` + forward 8088 (bukan IP Winbox ISP) |
-| Auth PPPoE Fiberix | `FX_PUB` (sudah ada) + DNAT 1812 ke `22.99`; FreeRADIUS tetap LAN |
+| Fiberix lihat CORE 2 | `41.216.191.123:8088` (bukan IP Winbox ISP, bukan `22.9`) |
+| Auth PPPoE Fiberix | `FX_PUB` + DNAT 1812 ke **`192.168.22.99`** (bukan ke `22.9`); FreeRADIUS tetap LAN |
 | Sewa IP public **kedua** khusus FreeRADIUS | Hanya jika `103.195.65.216` tidak bisa terima UDP 1812 |
 | Tidak bisa DNAT 1812 di kantor | WireGuard tetap wajib |
