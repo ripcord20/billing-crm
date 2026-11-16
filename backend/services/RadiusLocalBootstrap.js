@@ -91,7 +91,7 @@ async function pointServersAtLocal(db, local) {
       mysql_password: enc,
       last_error: null
     };
-    if (!row.host) patch.host = process.env.RADIUS_HOST || '192.168.22.9';
+    if (!row.host) patch.host = process.env.RADIUS_HOST || '192.168.22.99';
     await row.update(patch);
     updated += 1;
   }

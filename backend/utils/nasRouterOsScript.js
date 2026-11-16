@@ -2,11 +2,11 @@
 
 /**
  * Script tempel MikroTik Fiberix (tab RouterOS v6 / v7, Salin Script).
- * RADIUS = server Fiberix di LAN (default 192.168.22.9),
+ * RADIUS = server Fiberix di LAN (default 192.168.22.99 auth UDP 1812),
  * pool/profile/comment = FIBERIX — bukan BillingRadius.
  */
 
-const DEFAULT_RADIUS_HOST = process.env.RADIUS_HOST || '192.168.22.9';
+const DEFAULT_RADIUS_HOST = process.env.RADIUS_HOST || '192.168.22.99';
 const ACTIVE_POOL_NAME = 'FIBERIX';
 const DEFAULT_PPP_POOL = '10.2.64.2-10.2.79.254';
 const DEFAULT_PPP_LOCAL = '10.2.64.1';

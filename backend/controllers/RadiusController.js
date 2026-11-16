@@ -113,7 +113,7 @@ class RadiusController {
 
       const data = buildSqlGuide({
         billingLan: process.env.RADIUS_BILLING_LAN || '192.168.22.99',
-        daemonHost: (row && row.host) || process.env.RADIUS_HOST || '192.168.22.9',
+        daemonHost: (row && row.host) || process.env.RADIUS_HOST || '192.168.22.99',
         mysqlUser: (row && row.mysql_user) || process.env.RADIUS_MYSQL_USER || 'radius',
         mysqlDatabase: (row && row.mysql_database) || 'radius',
         mysqlPort: (row && row.mysql_port) || 3306,

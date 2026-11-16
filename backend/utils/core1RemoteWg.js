@@ -301,7 +301,7 @@ function buildCore1RemoteClientScript(opts) {
     `/ip firewall filter add chain=input action=accept protocol=tcp dst-port=80,443,8088,8728,8729,8291 src-address=${hubIp} comment="CORE1-API"`,
     `/ip firewall filter add chain=input action=accept protocol=tcp dst-port=80,443,8088,8728,8729,8291 src-address=${fiberixLan} comment="CORE1-API"`,
     '',
-    `# RouterOS tidak memasang route dari allowed-address. Tanpa ini RADIUS 192.168.22.9 keluar WAN → timeout.`,
+    `# RouterOS tidak memasang route dari allowed-address. Tanpa ini RADIUS Fiberix keluar WAN → timeout.`,
     `:if ([:len [/ip route find where dst-address="${radiusHost}/32" gateway=${iface}]] = 0) do={ /ip route add dst-address=${radiusHost}/32 gateway=${iface} comment="FIBERIX-RADIUS" }`,
     `:if ([:len [/ip route find where dst-address="${fiberixLan}/32" gateway=${iface}]] = 0) do={ /ip route add dst-address=${fiberixLan}/32 gateway=${iface} comment="FIBERIX-LAN" }`,
     `:if ([:len [/ip route find where dst-address="192.168.22.0/24" gateway=${iface}]] = 0) do={ /ip route add dst-address=192.168.22.0/24 gateway=${iface} comment="FIBERIX-LAN" }`

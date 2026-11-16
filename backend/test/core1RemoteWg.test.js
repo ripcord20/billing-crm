@@ -88,7 +88,7 @@ assert.ok(script.includes('/radius add'));
 assert.ok(script.includes('secret="s3cret"'));
 assert.ok(script.includes('src-address=10.201.0.3'), 'RADIUS sumber IP tunnel');
 assert.ok(script.includes('require-message-auth=no'));
-assert.ok(script.includes('dst-address=192.168.22.9/32'), 'route RADIUS lewat wg-neva');
+assert.ok(script.includes('dst-address=192.168.22.99/32'), 'route RADIUS lewat wg-neva');
 assert.ok(script.includes('dst-address=192.168.22.0/24'), 'route LAN Fiberix lewat wg-neva');
 assert.ok(script.includes('Jangan matikan RADIUS urutan ke-2'));
 assert.ok(script.includes('src-address=10.201.0.1'));

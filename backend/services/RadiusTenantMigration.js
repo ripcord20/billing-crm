@@ -107,7 +107,7 @@ async function run(db) {
     }
   });
 
-  const radiusHost = process.env.RADIUS_HOST || '192.168.22.9';
+  const radiusHost = process.env.RADIUS_HOST || '192.168.22.99';
   const mysqlHost = process.env.RADIUS_MYSQL_HOST || radiusHost;
   const mysqlUser = process.env.RADIUS_MYSQL_USER || 'radius';
   const mysqlDb = process.env.RADIUS_MYSQL_DB || 'radius';
