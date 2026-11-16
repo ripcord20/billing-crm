@@ -3,6 +3,15 @@
 
 html:has(body.asset-home) { background: #100c22; color-scheme: dark; }
 body.asset-home {
+  --text: #f8fafc;
+  --text-primary: #f8fafc;
+  --text-secondary: #e2e8f0;
+  --text-muted: #cbd5e1;
+  --text-tertiary: #cbd5e1;
+  --bg: #070814;
+  --bg-card: #141028;
+  --bg-input: #070814;
+  --border: rgba(34, 211, 238, 0.35);
   background:
     radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
     radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
@@ -53,7 +62,8 @@ body.asset-home .btn-outline {
   color: #f8fafc !important;
   border-color: rgba(34, 211, 238, 0.4) !important;
 }
-body.asset-home .btn-blue { background: linear-gradient(135deg, #0891b2, #7c3aed) !important; color: #ffffff !important; border-color: transparent !important; }
+body.asset-home .btn-blue,
+body.asset-home .btn-primary { background: linear-gradient(135deg, #0891b2, #7c3aed) !important; color: #ffffff !important; border-color: transparent !important; }
 body.asset-home .tab-bar { background: transparent !important; }
 body.asset-home .tab-btn { color: #e2e8f0 !important; background: #141028 !important; border-color: rgba(255, 255, 255, 0.12) !important; }
 body.asset-home .tab-btn.active { background: linear-gradient(135deg, #0891b2, #7c3aed) !important; color: #ffffff !important; }
@@ -82,7 +92,66 @@ body.asset-home .modal-box textarea {
   background: #070814 !important;
   color: #f8fafc !important;
   border-color: rgba(34, 211, 238, 0.35) !important;
+  color-scheme: dark;
 }
+body.asset-home label,
+body.asset-home .form-group label,
+body.asset-home .modal-box label,
+body.asset-home .detail-item label {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+  opacity: 1;
+}
+body.asset-home .form-sep {
+  color: #67e8f9 !important;
+  -webkit-text-fill-color: #67e8f9;
+  border-bottom-color: rgba(34, 211, 238, 0.28) !important;
+}
+body.asset-home .form-sep::before { background: #22d3ee !important; }
+body.asset-home .modal-box input::placeholder,
+body.asset-home .modal-box textarea::placeholder,
+body.asset-home .filter-bar input::placeholder,
+body.asset-home #catName::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1;
+}
+body.asset-home .modal-box option,
+body.asset-home .filter-bar option {
+  background: #141028;
+  color: #f8fafc;
+}
+body.asset-home input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.3);
+  opacity: 1;
+}
+body.asset-home input[type="date"]::-webkit-datetime-edit,
+body.asset-home input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+body.asset-home input[type="date"]::-webkit-datetime-edit-text,
+body.asset-home input[type="date"]::-webkit-datetime-edit-month-field,
+body.asset-home input[type="date"]::-webkit-datetime-edit-day-field,
+body.asset-home input[type="date"]::-webkit-datetime-edit-year-field {
+  color: #f8fafc;
+}
+body.asset-home .modal-close {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.asset-home .btn-secondary {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.asset-home .detail-item span,
+body.asset-home #dName,
+body.asset-home #dNotes,
+body.asset-home #paginfoText,
+body.asset-home .upload-hint,
+body.asset-home .tl-meta,
+body.asset-home .tl-action,
+body.asset-home .tl-note,
+body.asset-home #dTimeline,
+body.asset-home #categoryList { color: #e2e8f0 !important; }
 
 body.asset-home #fc-tot { background: linear-gradient(145deg, #0891b2, #1d4ed8 55%, #22d3ee) !important; }
 body.asset-home #fc-active { background: linear-gradient(145deg, #059669, #0f766e 55%, #34d399) !important; }
