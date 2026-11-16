@@ -3,6 +3,7 @@ function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt
 let __wgLastConfig = null; // {nas, client_config, filename}
 let __nasRows = [];
 let __previewTimer = null;
+let __nasFilter = 'all';
 
 function fmtSyncAt(s){
   if(!s) return 'belum';
@@ -29,54 +30,85 @@ function modeBadge(n){
   const link = n.link || {};
   const state = link.state === 'up' || link.state === 'pending' || link.state === 'down' ? link.state : 'down';
   const kind = connModeKind(n);
-  const pill = n.conn_mode==='vpn'?'vpn':(n.conn_mode==='public'?'public':'lan');
+  const pill = n.conn_mode==='vpn'?'xc-blue':(n.conn_mode==='public'?'xc-orange':'xc-green');
   const label = link.label || (state === 'up' ? 'Terhubung' : 'Belum terhubung');
-  const age = link.age_label
-    ? `<span class="nas-link-age">${esc(link.age_label)}</span>`
-    : '';
+  const sb = state === 'up' ? 'sb-up' : (state === 'pending' ? 'sb-pending' : 'sb-down');
+  const age = link.age_label ? ` · ${esc(link.age_label)}` : '';
   return `<div class="nas-mode">
-    <div class="nas-mode-kind"><span class="nas-mode-pill ${pill}">${esc(kind)}</span></div>
-    <span class="nas-link ${state}" title="${esc(label)}">
-      <span class="nas-led"></span>
-      <span class="nas-link-copy">
-        <span class="nas-link-text">${esc(label)}</span>
-        ${age}
-      </span>
-    </span>
+    <span class="xc-pill ${pill}">${esc(kind)}</span>
+    <span class="sb ${sb}" title="${esc(label)}"><span class="sb-dot"></span>${esc(label)}${age}</span>
   </div>`;
 }
 
 function nasActionButtons(n){
   const label=esc(n.shortname||n.nasname);
-  return `<button class="btn btn-sm btn-primary" onclick="openNasDetail(${n.id})" title="Detail NAS + script RouterOS">Detail</button>
-      ${isRemoteCore1Nas(n)?`<button class="btn btn-sm btn-secondary" onclick="reprintRemoteWg(${n.id})" title="Salin ulang script tunnel VPS WireGuard">Script WG</button>`:''}
-      ${n.conn_mode==='vpn'&&n.vpn_type!=='domain'&&n.vpn_type!=='ddns'?`<button class="btn btn-sm btn-secondary" onclick="wgGen(${n.id},'${label}')" title="Generate/regenerate config VPN saja">VPN</button>`:''}
-      <button class="btn btn-sm btn-secondary" onclick="syncNas(${n.id})">Sync</button>
-      <button class="btn btn-sm btn-danger" onclick="delNas(${n.id})">Hapus</button>`;
+  return `<button class="rb rb-edit" onclick="openNasDetail(${n.id})" title="Detail NAS + script RouterOS">Detail</button>
+      ${isRemoteCore1Nas(n)?`<button class="rb rb-edit" onclick="reprintRemoteWg(${n.id})" title="Salin ulang script tunnel VPS WireGuard">Script WG</button>`:''}
+      ${n.conn_mode==='vpn'&&n.vpn_type!=='domain'&&n.vpn_type!=='ddns'?`<button class="rb rb-sync" onclick="wgGen(${n.id},'${label}')" title="Generate/regenerate config VPN saja">VPN</button>`:''}
+      <button class="rb rb-sync" onclick="syncNas(${n.id})">Sync</button>
+      <button class="rb rb-del" onclick="delNas(${n.id})">Hapus</button>`;
 }
 function renderNasMobile(html){
   const box=document.getElementById('nasMobileList');
   if(box) box.innerHTML=html;
 }
-async function loadNas(){
+function nasLinkState(n){
+  const s=n.link&&n.link.state;
+  return s==='up'||s==='pending'||s==='down'?s:'down';
+}
+function updateNasStats(rows){
+  const total=rows.length;
+  const lan=rows.filter(n=>n.conn_mode!=='vpn'&&n.conn_mode!=='public').length;
+  const vpn=rows.filter(n=>n.conn_mode==='vpn').length;
+  const pub=rows.filter(n=>n.conn_mode==='public').length;
+  const up=rows.filter(n=>nasLinkState(n)==='up').length;
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=String(v); };
+  set('scTotal', total);
+  set('scLan', lan);
+  set('scVpn', vpn);
+  set('scPublic', pub);
+  set('xp-all', up+' terhubung');
+  set('xp-lan', lan?lan+' perangkat':'satu jaringan');
+  set('xp-vpn', vpn?vpn+' perangkat':'tunnel / domain');
+  set('xp-public', pub?pub+' perangkat':'WAN static');
+}
+window.setNasFilter=(mode)=>{
+  __nasFilter=mode||'all';
+  document.querySelectorAll('.fin-card[data-filter]').forEach(el=>{
+    el.classList.toggle('fc-active', el.getAttribute('data-filter')===__nasFilter);
+  });
+  renderNasList();
+};
+function filteredNasRows(){
+  const q=(document.getElementById('nasSearch')&&document.getElementById('nasSearch').value||'').trim().toLowerCase();
+  const st=document.getElementById('nasStatusFilter')&&document.getElementById('nasStatusFilter').value||'';
+  return (__nasRows||[]).filter(n=>{
+    if(__nasFilter==='lan' && (n.conn_mode==='vpn'||n.conn_mode==='public')) return false;
+    if(__nasFilter==='vpn' && n.conn_mode!=='vpn') return false;
+    if(__nasFilter==='public' && n.conn_mode!=='public') return false;
+    if(st && nasLinkState(n)!==st) return false;
+    if(!q) return true;
+    const blob=[n.nasname,n.shortname,n.area,n.type,n.tunnel_address].join(' ').toLowerCase();
+    return blob.includes(q);
+  });
+}
+window.renderNasList=()=>{
   const tb=document.getElementById('nasTable');
-  const d=await App.api('/nas');
-  if(!d?.success){
-    const msg=d?.message==='Route not found'
-      ? 'API Modul NAS belum aktif di server. Refresh setelah diperbaiki.'
-      : (d?.message||'Gagal memuat NAS');
-    tb.innerHTML=`<tr><td colspan="6" style="text-align:center;color:#dc2626;padding:24px;">${esc(msg)}</td></tr>`;
-    renderNasMobile(`<div class="nas-m-empty" style="color:#dc2626;">${esc(msg)}</div>`);
+  if(!tb) return;
+  const rows=filteredNasRows();
+  const lbl=document.getElementById('nasCountLbl');
+  if(lbl) lbl.textContent=rows.length+' NAS';
+  if(!__nasRows.length){
+    tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8;">Belum ada NAS. Ketuk Tambah NAS.</td></tr>';
+    renderNasMobile('<div class="nas-m-empty">Belum ada NAS. Ketuk Tambah NAS.</div>');
     return;
   }
-  if(!d.data.length){
-    __nasRows=[];
-    tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:#94a3b8;">Belum ada NAS. Pilih kolom LAN, VPN, atau IP Publik di atas.</td></tr>';
-    renderNasMobile('<div class="nas-m-empty">Belum ada NAS. Pilih kolom LAN, VPN, atau IP Publik di atas.</div>');
+  if(!rows.length){
+    tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8;">Tidak ada NAS yang sesuai filter.</td></tr>';
+    renderNasMobile('<div class="nas-m-empty">Tidak ada NAS yang sesuai filter.</div>');
     return;
   }
-  __nasRows=d.data;
-  tb.innerHTML=d.data.map(n=>`<tr>
+  tb.innerHTML=rows.map(n=>`<tr>
     <td class="mono">${esc(n.nasname)}${n.tunnel_address?`<br><span style="font-size:11px;color:#64748b;">tunnel: ${esc(n.tunnel_address)}</span>`:''}${n.device?`<br><span style="font-size:11px;color:#166534;">Device: ${esc(n.device.name)}</span>`:''}</td>
     <td>${esc(n.shortname||'—')}${n.area?`<br><span style="font-size:11px;color:#64748b;">${esc(n.area)}</span>`:''}</td>
     <td>${esc(n.type)}</td>
@@ -84,15 +116,32 @@ async function loadNas(){
     <td>${n.last_error?`<span style="color:#dc2626;">${esc(n.last_error)}</span>`:fmtSyncAt(n.last_sync_at)}</td>
     <td class="nas-aksi" style="white-space:nowrap;">${nasActionButtons(n)}</td>
   </tr>`).join('');
-  renderNasMobile(d.data.map(n=>`<article class="nas-m-card">
+  renderNasMobile(rows.map(n=>`<article class="nas-m-card">
     <div class="nas-m-ip">${esc(n.nasname)}</div>
     <div class="nas-m-meta">${esc(n.shortname||'—')} · ${esc(n.type||'—')}${n.area?` · ${esc(n.area)}`:''}${n.tunnel_address?` · tunnel ${esc(n.tunnel_address)}`:''}${n.device?` · ${esc(n.device.name)}`:''}</div>
     <div class="nas-m-row">
       <div>${modeBadge(n)}</div>
-      <div class="nas-m-sync"><div class="nas-m-k">Sync</div>${n.last_error?`<span style="color:#dc2626;">${esc(n.last_error)}</span>`:fmtSyncAt(n.last_sync_at)}</div>
+      <div class="nas-m-sync">${n.last_error?`<span style="color:#dc2626;">${esc(n.last_error)}</span>`:fmtSyncAt(n.last_sync_at)}</div>
     </div>
     <div class="nas-m-actions">${nasActionButtons(n)}</div>
   </article>`).join(''));
+};
+async function loadNas(){
+  const tb=document.getElementById('nasTable');
+  const d=await App.api('/nas');
+  if(!d?.success){
+    const msg=d?.message==='Route not found'
+      ? 'API Modul NAS belum aktif di server. Refresh setelah diperbaiki.'
+      : (d?.message||'Gagal memuat NAS');
+    __nasRows=[];
+    updateNasStats([]);
+    tb.innerHTML=`<tr><td colspan="6" style="text-align:center;color:#dc2626;padding:24px;">${esc(msg)}</td></tr>`;
+    renderNasMobile(`<div class="nas-m-empty" style="color:#dc2626;">${esc(msg)}</div>`);
+    return;
+  }
+  __nasRows=d.data||[];
+  updateNasStats(__nasRows);
+  renderNasList();
 }
 
 window.onConnModeChange=()=>{
@@ -145,36 +194,16 @@ const NAS_MODE_META={
 
 function setNasModeUi(mode){
   const m=NAS_MODE_META[mode]||NAS_MODE_META.lan;
-  const hidden=document.getElementById('addNasMode');
-  if(hidden) hidden.value=mode;
-  const lab=document.getElementById('addNasModeLabel');
-  if(lab) lab.textContent=m.label;
+  const sel=document.getElementById('addNasMode');
+  if(sel) sel.value=mode;
   const hint=document.getElementById('addNasModeHint');
   if(hint) hint.textContent=m.hint;
   const ipHint=document.getElementById('addNasIpHint');
   if(ipHint) ipHint.textContent=m.ipHint;
   const ip=document.getElementById('addNasIp');
   if(ip && !ip.value) ip.placeholder=m.ip||'IP NAS';
-  document.querySelectorAll('#addNasModeMenu [data-mode]').forEach(btn=>{
-    btn.classList.toggle('is-sel', btn.getAttribute('data-mode')===mode);
-  });
 }
-
-window.toggleNasModeMenu=()=>{
-  const menu=document.getElementById('addNasModeMenu');
-  const btn=document.getElementById('addNasModeBtn');
-  if(!menu) return;
-  const open=!menu.classList.contains('is-open');
-  menu.classList.toggle('is-open', open);
-  if(btn) btn.classList.toggle('is-open', open);
-};
-window.pickNasMode=(mode)=>{
-  setNasModeUi(mode);
-  const menu=document.getElementById('addNasModeMenu');
-  const btn=document.getElementById('addNasModeBtn');
-  if(menu) menu.classList.remove('is-open');
-  if(btn) btn.classList.remove('is-open');
-};
+window.pickNasMode=(mode)=>setNasModeUi(mode);
 
 async function loadNasAreas(selected){
   const list=document.getElementById('nasAreaList');
@@ -190,9 +219,7 @@ async function loadNasAreas(selected){
 
 window.closeNasAdd=()=>{
   const ov=document.getElementById('nasAddModal');
-  if(ov) ov.classList.remove('is-open');
-  const menu=document.getElementById('addNasModeMenu');
-  if(menu) menu.classList.remove('is-open');
+  if(ov) ov.classList.remove('active');
 };
 
 window.toggleNasExtra=()=>{
@@ -211,7 +238,7 @@ window.openNas=(mode)=>{
   document.getElementById('addNasIp').value='';
   loadNasAreas();
   const ov=document.getElementById('nasAddModal');
-  if(ov) ov.classList.add('is-open');
+  if(ov) ov.classList.add('active');
   setTimeout(()=>{ if(name) name.focus(); }, 50);
 };
 
@@ -580,8 +607,8 @@ window.showRosTab=(tab)=>{
   if(lab) lab.textContent=tab==='v7'?'RouterOS v7 Script':'RouterOS v6 Script';
   const fmt=document.getElementById('rosScriptFormat');
   if(fmt) fmt.textContent=tab==='v7'?'(Format action-data)':'(Format redirect-to)';
-  document.getElementById('rosTabV7').className='btn btn-sm '+(tab==='v7'?'btn-primary':'btn-secondary');
-  document.getElementById('rosTabV6').className='btn btn-sm '+(tab==='v6'?'btn-primary':'btn-secondary');
+  document.getElementById('rosTabV7').className=tab==='v7'?'btn-blue':'btn-outline';
+  document.getElementById('rosTabV6').className=tab==='v6'?'btn-blue':'btn-outline';
 };
 function copyText(t){
   const text=String(t||'');
@@ -695,21 +722,8 @@ window.downloadRemoteWg=()=>{
   URL.revokeObjectURL(a.href);
 };
 
-document.addEventListener('click', (ev) => {
-  const wrap=document.querySelector('.nas-add-mode');
-  if(wrap && !wrap.contains(ev.target)){
-    const menu=document.getElementById('addNasModeMenu');
-    const btn=document.getElementById('addNasModeBtn');
-    if(menu) menu.classList.remove('is-open');
-    if(btn) btn.classList.remove('is-open');
-  }
-});
 document.addEventListener('keydown', (ev) => {
-  if(ev.key==='Escape'){
-    closeNasAdd();
-    const menu=document.getElementById('addNasModeMenu');
-    if(menu) menu.classList.remove('is-open');
-  }
+  if(ev.key==='Escape') closeNasAdd();
 });
 document.addEventListener('DOMContentLoaded', () => {
   loadNas();
