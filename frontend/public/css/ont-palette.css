@@ -1,0 +1,303 @@
+/* Kulit ONT Management. Hanya tampilan.
+   Grid kartu, kolom tabel, dan aksi tidak diubah. */
+
+body.ontm-home {
+  --bg: #070814;
+  --text: #f8fafc;
+  --muted: #e2e8f0;
+  --faint: #e2e8f0;
+  --text-primary: #f8fafc;
+  --text-muted: #e2e8f0;
+  --border: rgba(34, 211, 238, 0.35);
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+
+body.ontm-home .main-content,
+body.ontm-home .page-content {
+  background: transparent !important;
+  color: #f8fafc;
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.ontm-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+body.ontm-home .logo-text,
+body.ontm-home .nav-item { color: #f8fafc; }
+body.ontm-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+body.ontm-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+body.ontm-home .sidebar a.nav-sub:link,
+body.ontm-home .sidebar a.nav-sub:visited,
+body.ontm-home .sidebar a.nav-sub:hover,
+body.ontm-home .sidebar a.nav-sub:focus,
+body.ontm-home .sidebar a.nav-sub:active,
+body.ontm-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+body.ontm-home .sidebar a.nav-sub .nav-sub-dot,
+body.ontm-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #67e8f9 !important;
+}
+
+body.ontm-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+body.ontm-home .search-box,
+body.ontm-home .search-box input,
+body.ontm-home .topbar-btn {
+  background: #100c22;
+  color: #f8fafc;
+  border-color: rgba(34, 211, 238, 0.35);
+}
+
+body.ontm-home .ot-hdr-l h1,
+body.ontm-home .ot-hdr-l p { color: #f8fafc !important; }
+
+body.ontm-home .live-chip {
+  background: rgba(16, 185, 129, 0.18) !important;
+  border-color: rgba(52, 211, 153, 0.45) !important;
+  color: #4ade80 !important;
+}
+body.ontm-home .live-chip .ldot { background: #4ade80 !important; }
+
+body.ontm-home .btn-outline {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.ontm-home .btn-blue {
+  background: linear-gradient(135deg, #0891b2, #4f46e5 58%, #ff4ecd) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+body.ontm-home .ot-cards {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+body.ontm-home #otc-total {
+  background: linear-gradient(135deg, #0891b2, #1d4ed8 58%, #22d3ee) !important;
+}
+body.ontm-home #otc-online {
+  background: linear-gradient(135deg, #059669, #0f766e 55%, #22d3ee) !important;
+}
+body.ontm-home #otc-offline {
+  background: linear-gradient(135deg, #e11d48, #be185d 55%, #ff4ecd) !important;
+}
+body.ontm-home #otc-server {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed 55%, #ff4ecd) !important;
+}
+body.ontm-home .ot-card .card-lbl,
+body.ontm-home .ot-card .card-val,
+body.ontm-home .ot-card .card-sub,
+body.ontm-home #otc-server .srv-name,
+body.ontm-home #otc-server .srv-url,
+body.ontm-home #otc-server .srv-foot,
+body.ontm-home #otc-server .srv-foot b {
+  color: #ffffff !important;
+}
+body.ontm-home .ot-card .card-val { white-space: nowrap; }
+body.ontm-home .ot-card .card-pill {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+body.ontm-home .ot-card .sp-line { stroke: #ffffff !important; }
+body.ontm-home .ot-card .sp-fill { fill: rgba(255, 255, 255, 0.22) !important; }
+body.ontm-home .ot-card .sp-dot { fill: #ffffff !important; }
+body.ontm-home .ot-card.otc-active {
+  box-shadow: inset 0 0 0 3px #ffffff !important;
+}
+body.ontm-home #otc-server .srv-icon {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+body.ontm-home #otc-server .srv-foot { border-top-color: rgba(255, 255, 255, 0.28) !important; }
+
+body.ontm-home .ot-tbl-wrap,
+body.ontm-home .ot-modal-box {
+  background: #141028 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+  color: #f8fafc;
+}
+body.ontm-home .ot-tbl-hdr,
+body.ontm-home .ot-modal-hdr,
+body.ontm-home .ot-modal-footer,
+body.ontm-home .ot-tbl-footer {
+  background: #100c22 !important;
+  border-color: rgba(34, 211, 238, 0.28) !important;
+}
+body.ontm-home .ot-tbl-title,
+body.ontm-home .ot-count,
+body.ontm-home .ot-modal-hdr h3,
+body.ontm-home .ot-modal-hdr p {
+  color: #f8fafc !important;
+}
+
+body.ontm-home .fchip {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.ontm-home .fchip.active {
+  background: linear-gradient(135deg, #0891b2, #4f46e5) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+body.ontm-home .fchip.online.active {
+  background: linear-gradient(135deg, #059669, #0f766e) !important;
+  border-color: transparent !important;
+}
+body.ontm-home .fchip.offline.active {
+  background: linear-gradient(135deg, #e11d48, #be185d) !important;
+  border-color: transparent !important;
+}
+
+body.ontm-home .search-wrap input,
+body.ontm-home .pg-perpage select,
+body.ontm-home .pg-btn,
+body.ontm-home .ot-modal-close,
+body.ontm-home .settings-form-row input,
+body.ontm-home .form-control,
+body.ontm-home .hist-btn {
+  background: #100c22 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.ontm-home .pg-btn.pg-active,
+body.ontm-home .hist-btn.active {
+  background: linear-gradient(135deg, #0891b2, #4f46e5) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+body.ontm-home .pg-info,
+body.ontm-home .pg-info-text,
+body.ontm-home .pg-info-text strong,
+body.ontm-home .pg-perpage { color: #e2e8f0 !important; }
+
+body.ontm-home .ot-table thead th,
+body.ontm-home .param-table thead th {
+  background: linear-gradient(90deg, #0891b2 0%, #4f46e5 48%, #ff4ecd 100%) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+body.ontm-home .ot-table tbody td,
+body.ontm-home .ot-table .num-cell,
+body.ontm-home .ot-table .sn-num,
+body.ontm-home .ot-table .sn-sub,
+body.ontm-home .ot-table .cust-name,
+body.ontm-home .ot-table .cust-id,
+body.ontm-home .ot-table .ssid-txt,
+body.ontm-home .ot-table .dev-val,
+body.ontm-home .ot-table .dev-val.warn,
+body.ontm-home .ot-table .dev-val.hot,
+body.ontm-home .ot-table .inform-ago,
+body.ontm-home .ot-table .inform-sub,
+body.ontm-home .ot-table .rx-lbl,
+body.ontm-home .param-table td,
+body.ontm-home .param-path,
+body.ontm-home .param-value,
+body.ontm-home .param-type {
+  color: #ffffff !important;
+}
+body.ontm-home .ot-table tbody tr:nth-child(8n+1) td,
+body.ontm-home .param-table tbody tr:nth-child(8n+1) td { background: #1d4ed8 !important; }
+body.ontm-home .ot-table tbody tr:nth-child(8n+2) td,
+body.ontm-home .param-table tbody tr:nth-child(8n+2) td { background: #0891b2 !important; }
+body.ontm-home .ot-table tbody tr:nth-child(8n+3) td,
+body.ontm-home .param-table tbody tr:nth-child(8n+3) td { background: #059669 !important; }
+body.ontm-home .ot-table tbody tr:nth-child(8n+4) td,
+body.ontm-home .param-table tbody tr:nth-child(8n+4) td { background: #b45309 !important; }
+body.ontm-home .ot-table tbody tr:nth-child(8n+5) td,
+body.ontm-home .param-table tbody tr:nth-child(8n+5) td { background: #ea580c !important; }
+body.ontm-home .ot-table tbody tr:nth-child(8n+6) td,
+body.ontm-home .param-table tbody tr:nth-child(8n+6) td { background: #e11d48 !important; }
+body.ontm-home .ot-table tbody tr:nth-child(8n+7) td,
+body.ontm-home .param-table tbody tr:nth-child(8n+7) td { background: #db2777 !important; }
+body.ontm-home .ot-table tbody tr:nth-child(8n+8) td,
+body.ontm-home .param-table tbody tr:nth-child(8n+8) td { background: #7c3aed !important; }
+
+body.ontm-home .ot-table .rx-val.good,
+body.ontm-home .ot-mcard-stat-val.good {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+body.ontm-home .ot-table .rx-val.weak,
+body.ontm-home .ot-mcard-stat-val.weak,
+body.ontm-home .ot-mcard-stat-val.warn {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+body.ontm-home .ot-table .rx-val.bad,
+body.ontm-home .ot-mcard-stat-val.bad,
+body.ontm-home .ot-mcard-stat-val.hot {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+
+body.ontm-home .ot-mobile-list .ot-mcard:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.ontm-home .ot-mobile-list .ot-mcard:nth-child(8n+2) { background: #0891b2 !important; }
+body.ontm-home .ot-mobile-list .ot-mcard:nth-child(8n+3) { background: #059669 !important; }
+body.ontm-home .ot-mobile-list .ot-mcard:nth-child(8n+4) { background: #b45309 !important; }
+body.ontm-home .ot-mobile-list .ot-mcard:nth-child(8n+5) { background: #ea580c !important; }
+body.ontm-home .ot-mobile-list .ot-mcard:nth-child(8n+6) { background: #e11d48 !important; }
+body.ontm-home .ot-mobile-list .ot-mcard:nth-child(8n+7) { background: #db2777 !important; }
+body.ontm-home .ot-mobile-list .ot-mcard:nth-child(8n+8) { background: #7c3aed !important; }
+body.ontm-home .ot-mcard,
+body.ontm-home .ot-mcard-serial,
+body.ontm-home .ot-mcard-model,
+body.ontm-home .ot-mcard-cust-name,
+body.ontm-home .ot-mcard-cust-id,
+body.ontm-home .ot-mcard-stat-lbl,
+body.ontm-home .ot-mcard-stat-val,
+body.ontm-home .ot-mcard-num {
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+body.ontm-home .tbl-empty,
+body.ontm-home .tbl-empty p { color: #ffffff !important; }
+
+body.ontm-home .info-item,
+body.ontm-home .signal-panel,
+body.ontm-home .task-card,
+body.ontm-home .get-set-card,
+body.ontm-home .sig-chart-wrap {
+  background: #100c22 !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+  color: #f8fafc;
+}
+body.ontm-home .info-lbl,
+body.ontm-home .info-val,
+body.ontm-home .sig-lbl,
+body.ontm-home .sig-val,
+body.ontm-home .task-card h4,
+body.ontm-home .task-card p,
+body.ontm-home .m-tab { color: #e2e8f0 !important; }
+body.ontm-home .m-tab.active {
+  color: #67e8f9 !important;
+  border-bottom-color: #67e8f9 !important;
+}
+body.ontm-home .apexcharts-text,
+body.ontm-home .apexcharts-legend-text {
+  fill: #ffffff !important;
+  color: #ffffff !important;
+}

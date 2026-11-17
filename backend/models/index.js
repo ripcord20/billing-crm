@@ -57,6 +57,8 @@ const TrafficData = require('./TrafficData')(sequelize);
 
 // Data wilayah Indonesia (mandiri di server sendiri)
 const { Province, Regency, District, Village } = require('./Region')(sequelize);
+const Wilayah = require('./Wilayah')(sequelize);
+const UserWilayah = require('./UserWilayah')(sequelize);
 
 // Queue History
 const QueueHistory = require('./QueueHistory')(sequelize);
@@ -281,6 +283,8 @@ const db = {
   Regency,
   District,
   Village,
+  Wilayah,
+  UserWilayah,
   WaSession,
   WaMessage,
   WaAutoReply,
@@ -531,5 +535,11 @@ Employee.hasMany(HrisPayrollItem,      { foreignKey: 'employee_id', as: 'payroll
 // onDelete CASCADE: hapus job → itemnya ikut terhapus.
 PppoeProvisionItem.belongsTo(PppoeProvisionJob, { foreignKey: 'job_id', as: 'job', onDelete: 'CASCADE' });
 PppoeProvisionJob.hasMany(PppoeProvisionItem,  { foreignKey: 'job_id', as: 'items', onDelete: 'CASCADE' });
+
+// Wilayah operasional (kampung). Alias wilayah_akses dipakai daftar akses user.
+Customer.belongsTo(Wilayah, { foreignKey: 'wilayah_id', as: 'wilayah' });
+Wilayah.hasMany(Customer, { foreignKey: 'wilayah_id', as: 'customers' });
+User.belongsToMany(Wilayah, { through: UserWilayah, foreignKey: 'user_id', otherKey: 'wilayah_id', as: 'wilayah_akses' });
+Wilayah.belongsToMany(User, { through: UserWilayah, foreignKey: 'wilayah_id', otherKey: 'user_id', as: 'users' });
 
 module.exports = db;

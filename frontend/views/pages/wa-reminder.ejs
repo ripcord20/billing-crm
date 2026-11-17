@@ -4,7 +4,9 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#100c22">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/wa-palette.css?v=wa1">
   <style>
     :root{
       --et-bg:#eef2f9;--et-card:#fff;--et-border:#e0e7f3;
@@ -174,9 +176,18 @@
     @keyframes rmUp{from{transform:translateY(8px);opacity:0;}to{transform:translateY(0);opacity:1;}}
     .rm-actions{display:flex;gap:10px;margin-top:22px;opacity:0;animation:rmUp .4s ease .42s forwards;}
     .rm-actions .et-btn{flex:1;justify-content:center;height:46px;}
+    @media (max-width:760px){
+      .page-content{overflow-x:hidden;}
+      .et-page{padding:12px 12px 90px;}
+      .et-title,.et-sub,.et-item-d{overflow-wrap:anywhere;}
+      .et-actions{width:100%;}
+      .et-actions .et-btn{flex:1 1 auto;justify-content:center;}
+      .rm-hist-item{overflow-wrap:anywhere;}
+      .rm-hist-item > div > div{white-space:normal;}
+    }
   </style>
 </head>
-<body>
+<body class="wa-home">
 <div class="app-layout">
   <%- include('../partials/sidebar', { active: active }) %>
   <div class="main-content">

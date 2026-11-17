@@ -297,7 +297,16 @@ class OntController {
       const result = await GenieACSService.setParameterValues(ont.device_id, [[parameter, value, type]]);
 
       logger.info(`ONT setParameterValues: ${ont.serial_number} ${parameter}=${value}`);
-      res.json({ success: true, message: 'Parameter berhasil diset', data: result });
+      const pendingOffline = !!(result && result.pendingOffline);
+      res.json({
+        success: true,
+        pendingOffline,
+        status: pendingOffline ? 'Pending - Device Offline' : null,
+        message: pendingOffline
+          ? 'Pending - Device Offline. Parameter ditunda sampai modem Inform kembali ke ACS.'
+          : 'Parameter berhasil diset',
+        data: result,
+      });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Gagal set parameter: ' + error.message });
     }

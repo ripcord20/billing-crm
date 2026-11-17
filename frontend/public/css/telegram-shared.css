@@ -279,6 +279,17 @@ input[type=time].et-inp{font-family:'DM Mono',monospace;letter-spacing:.5px;}
 @media(max-width:520px){.botcmd-row2{grid-template-columns:1fr;}}
 .botcmd-check{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--et-text);cursor:pointer;}
 .botcmd-note{font-size:11px;color:#1a4d6e;background:#eef5ff;border:1px solid #cfe0fb;border-radius:8px;padding:9px 11px;line-height:1.45;}
+
+/* Ponsel: riwayat dan daftar perintah muat di lebar layar */
+@media (max-width: 760px) {
+  body.tg-home .page-content { overflow-x: hidden; }
+  .rp-hist-row { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .rp-hist-when, .tg-hist-when, .tg-doc-n, .rm-sc-lbl, .tg-check-d, .et-item-d { white-space: normal; overflow-wrap: anywhere; }
+  .tg-hist-row, .botcmd-item, .tg-banner { flex-wrap: wrap; }
+  .botcmd-meta { max-width: 100%; justify-content: flex-start; }
+  .tg-banner-link { margin-left: 0; white-space: normal; }
+  .rp-hist-detail, .tg-hist-sub { overflow-wrap: anywhere; }
+}
 .botcmd-err{font-size:12px;color:#dc2626;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.25);border-radius:8px;padding:9px 11px;}
 .bc-ph{cursor:pointer;background:#eef2f9;border-radius:4px;padding:1px 5px;font-size:10.5px;color:#1a4d6e;margin-right:3px;display:inline-block;margin-top:3px;}
 .bc-ph:hover{background:#dbe6f7;}

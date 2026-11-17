@@ -4,7 +4,9 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#100c22">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/email-palette.css?v=em1">
   <style>
     :root{ --el-bg:#eef2f9;--el-card:#fff;--el-border:#e0e7f3;--el-text:#0d1b3e;--el-muted:#6b7fa8;
       --el-blue:#1f8bff;--el-blue-deep:#1565e0;--el-green:#16a34a;--el-red:#dc2626;--el-amber:#e08a00; }
@@ -54,10 +56,26 @@
       transition:all .3s;box-shadow:0 12px 30px rgba(13,27,62,.3);pointer-events:none;max-width:90vw;}
     .el-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
     .el-toast.err{background:#b91c1c;}
-    @media(max-width:700px){ .el-subj,.el-type{display:none;} }
+    @media(max-width:760px){
+      .page-content{overflow-x:hidden;padding-bottom:88px;}
+      .el-filters{width:100%;}
+      .el-inp,.el-sel,.el-btn{max-width:100%;}
+      .el-inp.search{min-width:0;width:100%;max-width:none;}
+      .el-panel{overflow:hidden;}
+      .el-panel table,.el-panel tbody,.el-panel tr,.el-panel td{display:block;width:100%;}
+      .el-panel thead{display:none;}
+      .el-panel tr{border:1px solid rgba(34,211,238,.35);border-radius:14px;margin:0 0 10px;padding:6px 10px;background:#100c22;}
+      .el-panel td{border:none;border-bottom:1px solid rgba(255,255,255,.08);display:block;padding:8px 0;white-space:normal;overflow-wrap:anywhere;text-align:left;}
+      .el-panel td:last-child{border-bottom:none;}
+      .el-panel td[data-label]::before{content:attr(data-label);display:block;font-size:11px;font-weight:700;color:#94a3b8;text-align:left;margin-bottom:3px;}
+      .el-panel td[colspan]{display:block;text-align:center;}
+      .el-panel td[colspan]::before{content:none;}
+      .el-subj,.el-type{display:block;white-space:normal;}
+      .el-time{white-space:normal;}
+    }
   </style>
 </head>
-<body>
+<body class="em-home">
 <div class="app-layout">
   <%- include('../partials/sidebar', { active: active }) %>
   <div class="main-content">
@@ -148,11 +166,11 @@
     const err=r.error_message?'<div class="el-subj" style="color:#c4302b;">'+esc(r.error_message)+'</div>':'';
     const retryInfo=(r.retry_count>0)?' · percobaan '+r.retry_count:'';
     return '<tr>'
-      +'<td><div class="el-recip">'+esc(r.recipient)+'</div><div class="el-subj">'+esc(r.subject||'(tanpa subjek)')+'</div>'+err+'</td>'
-      +'<td><span class="el-type">'+esc(TYPE_LBL[r.type]||r.type||'-')+'</span></td>'
-      +'<td>'+badge(r.status)+'<div class="el-subj" style="font-size:10.5px;">'+(r.has_attachment?'📎 lampiran':'')+retryInfo+'</div></td>'
-      +'<td class="el-time">'+fmtTime(r.sent_at)+'</td>'
-      +'<td style="text-align:right;">'+action+'</td>'
+      +'<td data-label="Penerima"><div class="el-recip">'+esc(r.recipient)+'</div><div class="el-subj">'+esc(r.subject||'(tanpa subjek)')+'</div>'+err+'</td>'
+      +'<td data-label="Jenis"><span class="el-type">'+esc(TYPE_LBL[r.type]||r.type||'-')+'</span></td>'
+      +'<td data-label="Status">'+badge(r.status)+'<div class="el-subj" style="font-size:10.5px;">'+(r.has_attachment?'📎 lampiran':'')+retryInfo+'</div></td>'
+      +'<td data-label="Waktu" class="el-time">'+fmtTime(r.sent_at)+'</td>'
+      +'<td data-label="Aksi">'+action+'</td>'
       +'</tr>';
   }
 

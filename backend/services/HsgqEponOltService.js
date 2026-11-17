@@ -516,6 +516,51 @@ class HsgqEponOltService extends BaseCliOltService {
     return vlans;
   }
 
+  async getCards() {
+    const sys = await this.getSystemInfo();
+    const max = this.defaultPonPorts || 4;
+    const cards = [{
+      slot_label: '0',
+      status: 'INSERVICE',
+      type: 'control',
+      cfgType: sys.model || 'HSGQ',
+      realType: 'EPON',
+      port: max,
+      hw_version: sys.hw_version,
+      sw_version: sys.version,
+      note: sys.uptime ? `uptime ${sys.uptime}` : null,
+    }];
+    for (let p = 1; p <= max; p++) {
+      cards.push({
+        slot_label: String(p),
+        status: 'READY',
+        type: 'pon',
+        cfgType: 'EPON',
+        realType: 'EPON',
+        port: p,
+      });
+    }
+    return cards;
+  }
+
+  async getProfiles() {
+    return {
+      tcont: [],
+      traffic: [],
+      tcontDetail: [],
+      trafficDetail: [],
+      onuTypes: [],
+      writable: false,
+      labels: {
+        tcont: 'Profil DBA',
+        traffic: 'Profil layanan',
+        note: 'CLI EPON HSGQ ini tidak menampilkan profil bandwidth. VLAN tetap ada di tab VLAN.',
+        emptyTcont: 'Tidak ada profil DBA pada CLI OLT ini.',
+        emptyTraffic: 'Tidak ada profil layanan pada CLI OLT ini.',
+      },
+    };
+  }
+
   _parseOnuVlans(out) {
     const list = [];
     String(out).split('\n').forEach(line => {

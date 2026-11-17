@@ -189,7 +189,7 @@ exports.show = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const { title, type, priority, description, customer_id, infra_point_id,
-            latitude, longitude, location_note, assigned_to, tags } = req.body;
+            latitude, longitude, location_note, assigned_to, tags, notify_tech_group } = req.body;
 
     if (!title) return res.status(400).json({ success: false, message: 'Judul wajib diisi' });
 
@@ -228,9 +228,11 @@ exports.create = async (req, res) => {
     // Notifikasi Telegram (event bisnis) — fire-and-forget, tidak memblok response.
     try {
       let custName = null;
+      let custCode = null;
       if (ticket.customer_id) {
-        const c = await Customer.findByPk(ticket.customer_id, { attributes: ['name'] });
+        const c = await Customer.findByPk(ticket.customer_id, { attributes: ['name', 'customer_id'] });
         custName = c?.name || null;
+        custCode = c?.customer_id || null;
       }
       let assigneeName = null;
       if (ticket.assigned_to) {
@@ -252,6 +254,21 @@ exports.create = async (req, res) => {
         slaHours: ticket.sla_hours,
         dueAt: ticket.due_at,
         customerName: custName,
+        assignedTo: assigneeName,
+        createdBy: creatorName,
+        locationNote: ticket.location_note,
+        description: ticket.description,
+        createdAt: ticket.created_at || ticket.createdAt,
+      }).catch(() => {});
+      require('../services/OpsNotifyService').notifyTicket({
+        event: 'created',
+        type: ticket.type,
+        notify_tech_group,
+        ticketNo: ticket.ticket_number,
+        subject: ticket.title,
+        priority: ticket.priority,
+        customerName: custName,
+        customerCode: custCode,
         assignedTo: assigneeName,
         createdBy: creatorName,
         locationNote: ticket.location_note,
@@ -296,6 +313,25 @@ exports.update = async (req, res) => {
       notifyCustomerTicketUpdate(ticket, event, {
         from: oldStatus, to: req.body.status
       });
+      if (event === 'resolved' || event === 'closed') {
+        try {
+          let custName = null;
+          if (ticket.customer_id) {
+            const c = await Customer.findByPk(ticket.customer_id, { attributes: ['name'] });
+            custName = c?.name || null;
+          }
+          require('../services/OpsNotifyService').notifyTicket({
+            event,
+            type: ticket.type,
+            notify_tech_group: ticket.type === 'gangguan' ? '1' : '0',
+            ticketNo: ticket.ticket_number,
+            subject: ticket.title,
+            priority: ticket.priority,
+            customerName: custName,
+            description: ticket.description,
+          }).catch(() => {});
+        } catch (_) {}
+      }
     }
 
     // Log assignment change (no push notification — only status changes trigger push)

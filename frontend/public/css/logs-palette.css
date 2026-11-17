@@ -1,0 +1,114 @@
+/* Kulit Activity Logs. Hanya tampilan.
+   Kisi filter dan lembar detail tidak diubah. */
+
+html:has(body.log-home) { background: #100c22; color-scheme: dark; }
+body.log-home {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+body.log-home .app-layout,
+body.log-home .main-content,
+body.log-home .page-content { background: transparent !important; color: #f8fafc; }
+body.log-home .sidebar { background: rgba(16, 12, 34, 0.96); border-right-color: rgba(34, 211, 238, 0.28); }
+body.log-home .logo-text,
+body.log-home .nav-section-title,
+body.log-home .nav-item { color: #f8fafc; }
+body.log-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+body.log-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+body.log-home .sidebar a.nav-sub:link,
+body.log-home .sidebar a.nav-sub:visited,
+body.log-home .sidebar a.nav-sub:hover,
+body.log-home .sidebar a.nav-sub:focus,
+body.log-home .sidebar a.nav-sub:active,
+body.log-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+body.log-home .sidebar a.nav-sub .nav-sub-dot,
+body.log-home .sidebar a.nav-sub.active .nav-sub-dot { background: #67e8f9 !important; }
+body.log-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+body.log-home .search-box,
+body.log-home .search-box input,
+body.log-home .topbar-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.log-home .page-header h1 { color: #ffffff !important; }
+body.log-home .lg-subtitle,
+body.log-home .lg-stat,
+body.log-home .lg-stat-sub,
+body.log-home .lg-field label { color: #e2e8f0 !important; }
+body.log-home .lg-card,
+body.log-home .lg-modal-bx,
+body.log-home .lg-pagination {
+  background: #141028 !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+body.log-home .lg-input,
+body.log-home .lg-btn-ghost,
+body.log-home .lg-page-btn {
+  background: #070814 !important;
+  color: #f8fafc !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+body.log-home .lg-btn-primary,
+body.log-home .lg-page-btn.active {
+  background: linear-gradient(135deg, #0891b2, #7c3aed) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+body.log-home .lg-table thead th {
+  background: #100c22 !important;
+  color: #e2e8f0 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.12) !important;
+}
+body.log-home .lg-table tbody tr:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.log-home .lg-table tbody tr:nth-child(8n+2) { background: #0891b2 !important; }
+body.log-home .lg-table tbody tr:nth-child(8n+3) { background: #059669 !important; }
+body.log-home .lg-table tbody tr:nth-child(8n+4) { background: #b45309 !important; }
+body.log-home .lg-table tbody tr:nth-child(8n+5) { background: #ea580c !important; }
+body.log-home .lg-table tbody tr:nth-child(8n+6) { background: #e11d48 !important; }
+body.log-home .lg-table tbody tr:nth-child(8n+7) { background: #db2777 !important; }
+body.log-home .lg-table tbody tr:nth-child(8n+8) { background: #7c3aed !important; }
+body.log-home .lg-table td,
+body.log-home .lg-time-main,
+body.log-home .lg-user-name,
+body.log-home .lg-desc,
+body.log-home .lg-ip,
+body.log-home .lg-time-sub,
+body.log-home .lg-user-email { color: #ffffff !important; }
+body.log-home .lg-badge.lg-badge-create { background: #dcfce7 !important; color: #166534 !important; -webkit-text-fill-color: #166534; }
+body.log-home .lg-badge.lg-badge-update { background: #dbeafe !important; color: #1d4ed8 !important; -webkit-text-fill-color: #1d4ed8; }
+body.log-home .lg-badge.lg-badge-delete { background: #fee2e2 !important; color: #991b1b !important; -webkit-text-fill-color: #991b1b; }
+body.log-home .lg-badge.lg-badge-login,
+body.log-home .lg-badge.lg-badge-logout { background: #cffafe !important; color: #0e7490 !important; -webkit-text-fill-color: #0e7490; }
+body.log-home .lg-badge.lg-badge-default,
+body.log-home .lg-module { background: #e2e8f0 !important; color: #334155 !important; -webkit-text-fill-color: #334155; }
+body.log-home .lg-modal-ttl,
+body.log-home .lg-modal-body { color: #f8fafc !important; }
+body.log-home .lg-modal-cls { background: #100c22 !important; color: #f8fafc !important; }
+body.log-home .bottom-nav { background: #100c22; border-top: 1px solid rgba(34, 211, 238, 0.28); }
+body.log-home .bottom-nav a.bn-item:link,
+body.log-home .bottom-nav a.bn-item:visited,
+body.log-home .bottom-nav a.bn-item:hover,
+body.log-home .bottom-nav a.bn-item:focus,
+body.log-home .bottom-nav a.bn-item:active,
+body.log-home .bottom-nav a.bn-item.active,
+body.log-home .bottom-nav button.bn-item,
+body.log-home .bottom-nav .bn-item span { color: #ffffff !important; -webkit-text-fill-color: #ffffff; }
+body.log-home .bottom-nav .bn-icon svg,
+body.log-home .bottom-nav .bn-item.active .bn-icon svg { stroke: #ffffff !important; }
+body.log-home .bottom-nav .bn-item.active::after { background: #ffffff !important; }

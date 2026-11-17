@@ -499,6 +499,11 @@ const GeniePage = (() => {
           showInlineAlert('wifi-result', 'success',
             '✅ Pengaturan WiFi berhasil diterapkan. Perubahan aktif dalam beberapa detik.');
           setTimeout(() => loadDevices(), 3000);
+        } else if (j.pendingOffline || j.statusLabel === 'Pending - Device Offline') {
+          showInlineAlert('wifi-result', 'info',
+            'Pending - Device Offline. Pengaturan WiFi ditunda sampai modem Inform kembali ke ACS.',
+            true);
+          setTimeout(() => loadDevices(), 10000);
         } else if (j.queued) {
           const eta = j.eta?.etaText || '± 1-15 menit';
           showInlineAlert('wifi-result', 'info',
@@ -562,6 +567,10 @@ const GeniePage = (() => {
         if (j.executed) {
           showInlineAlert('task-result', 'success',
             `✅ Perintah ${actionLabel} berhasil dieksekusi. ONT akan reboot dalam beberapa detik.`);
+        } else if (j.pendingOffline || j.statusLabel === 'Pending - Device Offline') {
+          showInlineAlert('task-result', 'info',
+            `Pending - Device Offline. Perintah ${actionLabel} ditunda sampai modem Inform kembali ke ACS.`,
+            true);
         } else if (j.queued) {
           // Tampilkan ETA kalau ada
           const eta = j.eta?.etaText || '± 1-15 menit';

@@ -1,0 +1,161 @@
+/* Kulit NMS Interface, selaras dengan modul lain.
+   Hanya tampilan. Grid panel, grafik, dan aksi tidak diubah. */
+
+body.nms-home {
+  --bg: #070814;
+  --text: #f8fafc;
+  --text-primary: #f8fafc;
+  --text-muted: #e2e8f0;
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 78, 205, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 50%),
+    #070814 !important;
+  color: #f8fafc !important;
+}
+
+body.nms-home .main-content,
+body.nms-home .page-content {
+  background: transparent !important;
+  color: #f8fafc;
+}
+
+body.nms-home .sidebar {
+  background: rgba(16, 12, 34, 0.96);
+  border-right-color: rgba(34, 211, 238, 0.28);
+}
+
+body.nms-home .logo-text { color: #f8fafc; }
+body.nms-home .nav-item { color: #f8fafc; }
+
+body.nms-home .nav-item.active {
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #22d3ee !important;
+  box-shadow: inset -3px 0 0 #ff4ecd;
+}
+
+body.nms-home .nav-item.active .nav-icon { color: #22d3ee !important; }
+
+body.nms-home .sidebar a.nav-sub:link,
+body.nms-home .sidebar a.nav-sub:visited,
+body.nms-home .sidebar a.nav-sub:hover,
+body.nms-home .sidebar a.nav-sub:focus,
+body.nms-home .sidebar a.nav-sub:active,
+body.nms-home .sidebar a.nav-sub.active {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.nms-home .sidebar a.nav-sub .nav-sub-dot,
+body.nms-home .sidebar a.nav-sub.active .nav-sub-dot {
+  background: #67e8f9 !important;
+}
+
+body.nms-home .topbar {
+  background: #100c22;
+  border-bottom-color: rgba(34, 211, 238, 0.28);
+  color: #f8fafc;
+}
+
+body.nms-home .nms {
+  --g-bg: transparent;
+  --g-panel: #141028;
+  --g-panel-2: #100c22;
+  --g-border: rgba(34, 211, 238, 0.35);
+  --g-text: #f8fafc;
+  --g-text-dim: #e2e8f0;
+  --g-text-faint: #cbd5e1;
+  --g-grid: rgba(34, 211, 238, 0.22);
+  --g-rx: #22d3ee;
+  --g-tx: #fbbf24;
+  --g-accent: #22d3ee;
+  --g-ok: #4ade80;
+  --g-warn: #fbbf24;
+  --g-crit: #ff4ecd;
+}
+
+body.nms-home .nms-btn.primary {
+  background: linear-gradient(135deg, #0891b2, #4f46e5 58%, #ff4ecd) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+body.nms-home .nms-grid .panel:nth-child(8n+1) .panel-head { background: #1d4ed8 !important; }
+body.nms-home .nms-grid .panel:nth-child(8n+2) .panel-head { background: #0891b2 !important; }
+body.nms-home .nms-grid .panel:nth-child(8n+3) .panel-head { background: #059669 !important; }
+body.nms-home .nms-grid .panel:nth-child(8n+4) .panel-head { background: #b45309 !important; }
+body.nms-home .nms-grid .panel:nth-child(8n+5) .panel-head { background: #ea580c !important; }
+body.nms-home .nms-grid .panel:nth-child(8n+6) .panel-head { background: #e11d48 !important; }
+body.nms-home .nms-grid .panel:nth-child(8n+7) .panel-head { background: #db2777 !important; }
+body.nms-home .nms-grid .panel:nth-child(8n+8) .panel-head { background: #7c3aed !important; }
+
+body.nms-home .panel-head .panel-name,
+body.nms-home .panel-head .panel-router,
+body.nms-home .panel-head .panel-del,
+body.nms-home .panel-head .panel-status,
+body.nms-home .panel-head .panel-status.up,
+body.nms-home .panel-head .panel-status.down {
+  color: #ffffff !important;
+}
+body.nms-home .panel-head .panel-status {
+  background: rgba(255, 255, 255, 0.18) !important;
+}
+
+body.nms-home .panel-metrics .metric:nth-child(1) {
+  background: linear-gradient(135deg, #0891b2, #1d4ed8 60%, #22d3ee) !important;
+}
+body.nms-home .panel-metrics .metric:nth-child(2) {
+  background: linear-gradient(135deg, #d97706, #c2410c 55%, #fbbf24) !important;
+}
+
+body.nms-home .metric .metric-val,
+body.nms-home .metric .metric-val.rx,
+body.nms-home .metric .metric-val.tx,
+body.nms-home .metric .metric-lbl,
+body.nms-home .metric .metric-sub,
+body.nms-home .metric .metric-unit {
+  color: #ffffff !important;
+}
+body.nms-home .metric .mdot { background: #ffffff !important; }
+body.nms-home .metric-val { white-space: nowrap; }
+
+body.nms-home .dt-metrics .dt-metric:nth-child(1) {
+  background: linear-gradient(135deg, #0891b2, #1d4ed8 60%, #22d3ee) !important;
+}
+body.nms-home .dt-metrics .dt-metric:nth-child(2) {
+  background: linear-gradient(135deg, #d97706, #c2410c 55%, #fbbf24) !important;
+}
+body.nms-home .dt-metric .metric-val,
+body.nms-home .dt-metric .metric-lbl,
+body.nms-home .dt-metric .metric-sub,
+body.nms-home .dt-metric .metric-unit {
+  color: #ffffff !important;
+}
+
+body.nms-home .if-list .if-row:nth-child(8n+1) { background: #1d4ed8 !important; }
+body.nms-home .if-list .if-row:nth-child(8n+2) { background: #0891b2 !important; }
+body.nms-home .if-list .if-row:nth-child(8n+3) { background: #059669 !important; }
+body.nms-home .if-list .if-row:nth-child(8n+4) { background: #b45309 !important; }
+body.nms-home .if-list .if-row:nth-child(8n+5) { background: #ea580c !important; }
+body.nms-home .if-list .if-row:nth-child(8n+6) { background: #e11d48 !important; }
+body.nms-home .if-list .if-row:nth-child(8n+7) { background: #db2777 !important; }
+body.nms-home .if-list .if-row:nth-child(8n+8) { background: #7c3aed !important; }
+
+body.nms-home .if-list .if-row .if-name,
+body.nms-home .if-list .if-row .if-type,
+body.nms-home .if-list .if-row .if-add,
+body.nms-home .if-list .if-row .if-ic {
+  color: #ffffff !important;
+}
+
+body.nms-home .dt-info .row:nth-child(8n+1) { background: #1d4ed8; }
+body.nms-home .dt-info .row:nth-child(8n+2) { background: #0891b2; }
+body.nms-home .dt-info .row:nth-child(8n+3) { background: #059669; }
+body.nms-home .dt-info .row:nth-child(8n+4) { background: #b45309; }
+body.nms-home .dt-info .row:nth-child(8n+5) { background: #ea580c; }
+body.nms-home .dt-info .row:nth-child(8n+6) { background: #e11d48; }
+body.nms-home .dt-info .row:nth-child(8n+7) { background: #db2777; }
+body.nms-home .dt-info .row:nth-child(8n+8) { background: #7c3aed; }
+body.nms-home .dt-info .row .k,
+body.nms-home .dt-info .row .v {
+  color: #ffffff !important;
+}

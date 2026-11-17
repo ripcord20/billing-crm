@@ -460,6 +460,16 @@ router.delete('/noc/monitors/:id', authenticate, demoGuard, NocController.delete
 // PPPoE username → Customer name mapping (untuk NOC dashboard panel PPPoE)
 router.get('/noc/pppoe-customer-map', authenticate, demoGuard, NocController.pppoeCustomerMap);
 
+const OpsNotifyController = require('../controllers/OpsNotifyController');
+router.get ('/noc/uplinks',            authenticate, demoGuard, OpsNotifyController.uplinkStatus);
+router.post('/noc/uplinks/refresh',    authenticate, demoGuard, OpsNotifyController.uplinkRefresh);
+router.get ('/uplinks/status',         authenticate, demoGuard, OpsNotifyController.uplinkStatus);
+router.post('/uplinks/refresh',        authenticate, demoGuard, OpsNotifyController.uplinkRefresh);
+router.get ('/ops-notify/config',      authenticate, demoGuard, OpsNotifyController.config);
+router.post('/ops-notify/save',        authenticate, demoGuard, OpsNotifyController.save);
+router.get ('/ops-notify/groups',      authenticate, demoGuard, OpsNotifyController.groups);
+router.post('/ops-notify/test',        authenticate, demoGuard, OpsNotifyController.test);
+
 router.get('/billing/unpaid-customers', authenticate, demoGuard, BillingController.unpaidCustomers);
 router.get('/billing/total-outstanding', authenticate, demoGuard, BillingController.totalOutstanding);
 
@@ -989,14 +999,6 @@ router.post('/tools/hotspot/customers/:id/restore', authenticate, authorize('sup
 router.post('/tools/hotspot/bindings',              authenticate, authorize('superadmin','admin'), demoGuard, logActivity('create','hotspot_binding'), (r,s) => ToolsCtrl.createBinding(r,s));
 router.delete('/tools/hotspot/bindings/:bindingId', authenticate, authorize('superadmin','admin'), demoGuard, logActivity('delete','hotspot_binding'), (r,s) => ToolsCtrl.deleteBinding(r,s));
 router.post('/tools/hotspot/bindings/:bindingId/toggle', authenticate, authorize('superadmin','admin'), demoGuard, logActivity('toggle','hotspot_binding'), (r,s) => ToolsCtrl.toggleBinding(r,s));
-
-// ── IP Addressing (manajemen /ip/address MikroTik) ──────────
-const IpAddrCtrl = require('../controllers/IpAddressController');
-router.get('/ip-addressing',            authenticate, demoGuard, (r,s) => IpAddrCtrl.list(r,s));
-router.post('/ip-addressing',           authenticate, authorize('superadmin','admin'), demoGuard, logActivity('create','ip_address'), (r,s) => IpAddrCtrl.create(r,s));
-router.put('/ip-addressing/:id',        authenticate, authorize('superadmin','admin'), demoGuard, logActivity('update','ip_address'), (r,s) => IpAddrCtrl.update(r,s));
-router.delete('/ip-addressing/:id',     authenticate, authorize('superadmin','admin'), demoGuard, logActivity('delete','ip_address'), (r,s) => IpAddrCtrl.remove(r,s));
-router.post('/ip-addressing/:id/toggle',authenticate, authorize('superadmin','admin'), demoGuard, logActivity('toggle','ip_address'), (r,s) => IpAddrCtrl.toggle(r,s));
 
 // ── Isolir Management ───────────────────────────────────────
 const IsolirCtrl = require('../controllers/IsolirController');
@@ -2346,6 +2348,7 @@ router.post  ('/olt-mgmt/:id/onu/reboot',    authenticate, demoGuard, authorize(
 router.post  ('/olt-mgmt/:id/onu/factory-reset', authenticate, demoGuard, authorize('superadmin','admin'), OltMgmtController.factoryResetOnu.bind(OltMgmtController));
 router.post  ('/olt-mgmt/:id/onu/eth-port',  authenticate, demoGuard, authorize('superadmin','admin'), OltMgmtController.setOnuEthPort.bind(OltMgmtController));
 router.post  ('/olt-mgmt/:id/onu/verify',    authenticate, demoGuard, OltMgmtController.verifyOnu.bind(OltMgmtController));
+router.post  ('/olt-mgmt/:id/onu/retry-provision', authenticate, demoGuard, authorize('superadmin','admin'), OltMgmtController.retryProvision.bind(OltMgmtController));
 router.delete('/olt-mgmt/:id/onu',           authenticate, demoGuard, authorize('superadmin'),         OltMgmtController.deleteOnu.bind(OltMgmtController));
 // Dashboard: system info & ringkasan per-PON
 router.get   ('/olt-mgmt/:id/system',        authenticate, demoGuard, OltMgmtController.systemInfo.bind(OltMgmtController));
@@ -2513,6 +2516,13 @@ router.get ('/sales/customer-points',    authenticate, demoGuard, salesRoles, Sa
 router.get ('/sales/customers',          authenticate, demoGuard, salesRoles, SalesCtrl.listCustomers);
 router.get ('/sales/registrations',      authenticate, demoGuard, salesRoles, SalesCtrl.listRegistrations);
 router.post('/sales/registrations',      authenticate, demoGuard, salesRoles, SalesCtrl.createRegistration);
+// Hapus/trash — path statis HARUS sebelum /:id supaya tidak tertelan param
+router.post  ('/sales/registrations/bulk-delete', authenticate, demoGuard, salesRoles, SalesCtrl.bulkDeleteRegistrations);
+router.get   ('/sales/registrations-trash',       authenticate, demoGuard, salesAdminRoles, SalesCtrl.listDeletedRegistrations);
+router.get   ('/sales/registrations/:id/delete-impact', authenticate, demoGuard, salesRoles, SalesCtrl.registrationDeleteImpact);
+router.post  ('/sales/registrations/:id/delete',  authenticate, demoGuard, salesRoles, SalesCtrl.deleteRegistration);
+router.delete('/sales/registrations/:id',         authenticate, demoGuard, salesRoles, SalesCtrl.deleteRegistration);
+router.post  ('/sales/registrations/:id/restore', authenticate, demoGuard, salesAdminRoles, SalesCtrl.restoreRegistration);
 router.get ('/sales/registrations/:id',  authenticate, demoGuard, salesRoles, SalesCtrl.showRegistration);
 router.put ('/sales/registrations/:id/assign', authenticate, demoGuard, salesAdminRoles, SalesCtrl.assignSales);
 router.post('/sales/registrations/:id/photo', authenticate, demoGuard, salesRoles, SalesCtrl.uploadSingle, SalesCtrl.uploadRegistrationPhoto);

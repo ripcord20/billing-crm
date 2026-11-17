@@ -2,9 +2,12 @@
 <html lang="en" data-theme="light" id="dmHtml">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="theme-color" content="#100c22">
+  <meta name="color-scheme" content="dark">
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/device-monitor-palette.css?v=dmon1">
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
   <style>
     /* ── Theme variables ───────────────────────────────────── */
@@ -196,7 +199,7 @@
     .proto-badge.snmp { background: rgba(34,197,94,.12); color: #16a34a; }
   </style>
 </head>
-<body>
+<body class="dmon-home">
 <div class="app-layout">
   <%- include('../partials/sidebar') %>
   <div class="main-content">

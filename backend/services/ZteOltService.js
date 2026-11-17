@@ -481,6 +481,55 @@ class ZteOltService extends BaseCliOltService {
     };
   }
 
+  // Ulangi service-port yang sudah ada bila Config State Fail dan ONU online.
+  // Modem LOS/offline tidak didorong: antrean ditandai Pending - Device Offline.
+  async retryProvision(onuIf) {
+    const ifc = this._normOnuIf(onuIf);
+    const detail = await this.getOnuDetail(ifc);
+    if (detail.queue_status === 'Pending - Device Offline') {
+      return {
+        pending: true,
+        status: 'Pending - Device Offline',
+        message: detail.config_error || 'Modem LOS/Offline. Konfigurasi ditunda sampai ONU online kembali.',
+        data: detail,
+      };
+    }
+    if (!detail.config_failed) {
+      return {
+        pending: false,
+        status: detail.config_state || 'ok',
+        message: 'Config State bukan Fail. Tidak ada provisioning yang diulang.',
+        data: detail,
+      };
+    }
+    const vlans = await this.getOnuVlans(ifc);
+    if (!vlans.length) {
+      return {
+        pending: false,
+        status: 'Config State: Fail',
+        message: (detail.config_error || 'Config State: Fail.') + ' Belum ada service-port di ONU ini. Ulangi dari wizard provisioning dengan VLAN yang benar.',
+        data: detail,
+      };
+    }
+    for (const v of vlans) {
+      await this.setOnuVlan(ifc, {
+        sp: v.service_port || 1,
+        gem: v.gemport || 1,
+        userVlan: v.user_vlan || v.vlan,
+        vlan: v.vlan,
+      });
+    }
+    const after = await this.getOnuDetail(ifc);
+    return {
+      pending: false,
+      status: after.config_state || 'retried',
+      message: after.config_failed
+        ? 'Service-port dikirim ulang, tetapi Config State masih Fail. ' + (after.config_error || '')
+        : 'Provisioning diulang. Config State sudah tidak Fail.',
+      data: after,
+    };
+  }
+
   // ── WAN IP & MAC pelanggan (ZTE) ───────────────────────────────────
   // Mengambil IP WAN ONT (DHCP/PPPoE) dan daftar MAC yang terlihat OLT.
   //   onuIf: "gpon-onu_1/2/2:30"
@@ -975,18 +1024,31 @@ class ZteOltService extends BaseCliOltService {
   _parseOnuVlansZte(out) {
     const list = [];
     const seen = new Set();
-    const add = (sp, vlan, svlan) => {
+    const add = (sp, vlan, svlan, extra = {}) => {
       sp = parseInt(sp); vlan = parseInt(vlan);
       if (!sp || !vlan) return;
       const key = sp + ':' + vlan;
       if (seen.has(key)) return; seen.add(key);
-      list.push({ service_port: sp, vlan, svlan: svlan ? parseInt(svlan) : null });
+      list.push({
+        service_port: sp,
+        vlan,
+        svlan: svlan ? parseInt(svlan) : null,
+        gemport: extra.gemport || null,
+        user_vlan: extra.user_vlan || null,
+      });
     };
     String(out).split('\n').forEach(line => {
       const t = line.trim();
-      // Format config: "service-port 1 vport 1 user-vlan 100 vlan 100 svlan 9"
-      let m = t.match(/service-port\s+(\d+).*?\bvlan\s+(\d+)(?:.*?\bsvlan\s+(\d+))?/i);
-      if (m) { add(m[1], m[2], m[3]); return; }
+      // Format config: "service-port 1 vport 1 user-vlan 100 vlan 200 svlan 9"
+      // \s+vlan tidak boleh kena "user-vlan", supaya retry tidak menukar VLAN.
+      let m = t.match(/service-port\s+(\d+)(?:\s+vport\s+(\d+))?(?:\s+user-vlan\s+(\d+))?(?:\s+vlan\s+(\d+))?(?:.*?\bsvlan\s+(\d+))?/i);
+      if (m && (m[4] || m[3])) {
+        add(m[1], m[4] || m[3], m[5], {
+          gemport: m[2] ? parseInt(m[2], 10) : null,
+          user_vlan: m[3] ? parseInt(m[3], 10) : null,
+        });
+        return;
+      }
       // Format tabel `show service-port interface`: kolom diawali "Sport Vport ... Vlan ..."
       // Baris data diawali angka (Sport). Ambil Sport (kolom-1) & Vlan (cari angka VLAN).
       m = t.match(/^(\d+)\s+\d+\s+.*?\b(\d{1,4})\b/);
@@ -1992,6 +2054,7 @@ class ZteOltService extends BaseCliOltService {
     const neverRanged = /n\/a/i.test(String(distStr || '')) || distance_m == null;
     const neverOnline = /^0h\s*0m\s*0s$/i.test(onlineDur.trim());
     let diagnosis = null;
+    const phaseOffline = /los|loss|offline|off-?line|dying|power.?off/.test(phase);
     if (phase && !/working|online/.test(phase)) {
       if (/los|loss/.test(phase)) {
         diagnosis = 'LOS — OLT tidak menerima sinyal optik dari ONU. Cek: ONU menyala? fiber tercolok & bersih? redaman tidak terlalu tinggi?';
@@ -2000,6 +2063,14 @@ class ZteOltService extends BaseCliOltService {
       } else {
         diagnosis = 'ONU sedang offline. Tunggu proses ranging (1-2 menit) lalu refresh.';
       }
+    }
+    const configFailed = /fail/i.test(String(configState || ''));
+    let config_error = null;
+    if (configFailed) {
+      config_error = phaseOffline
+        ? 'Config State: Fail. Modem LOS atau mati, jadi OLT tidak bisa mendorong konfigurasi. Status antrean: Pending - Device Offline. Konfigurasi dilanjutkan setelah modem online.'
+        : 'Config State: Fail. OLT menolak konfigurasi ONU. Periksa profil TCONT, VLAN, dan service-port, lalu tekan Ulangi provisioning.';
+      diagnosis = diagnosis ? (diagnosis + ' ' + config_error) : config_error;
     }
     return {
       onu_if:       onuIf,
@@ -2017,6 +2088,9 @@ class ZteOltService extends BaseCliOltService {
       online_duration: onlineDur || null,
       never_online: neverOnline && neverRanged,
       diagnosis,
+      config_failed: configFailed,
+      config_error,
+      queue_status: phaseOffline ? 'Pending - Device Offline' : null,
       raw: String(out).trim().slice(0, 4000),
     };
   }

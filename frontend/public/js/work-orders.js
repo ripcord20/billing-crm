@@ -181,11 +181,11 @@ function renderTable() {
         <div class="tech-avatar manual">${ini}</div>
         <div>
           <div style="font-size:12.5px;font-weight:600">${esc(w.technician_name)}</div>
-          ${w.technician_phone?`<div style="font-size:11px;color:var(--d-muted)">${esc(w.technician_phone)}</div>`:''}
+          ${w.technician_phone?`<div class="wo-sub" style="font-size:11px">${esc(w.technician_phone)}</div>`:''}
         </div>
       </div>`;
     } else {
-      techHtml = `<span style="font-size:12px;color:var(--d-muted);font-style:italic">Belum ditugaskan</span>`;
+      techHtml = `<span class="wo-sub" style="font-size:12px;font-style:italic">Belum ditugaskan</span>`;
     }
 
     // Due date class
@@ -197,25 +197,25 @@ function renderTable() {
 
     // Customer sub-info
     const custInfo = w.customer
-      ? `<div style="font-size:11px;color:var(--d-muted);margin-top:2px">${esc(w.customer.name)}</div>`
+      ? `<div class="wo-sub" style="font-size:11px;margin-top:2px">${esc(w.customer.name)}</div>`
       : '';
     const ticketInfo = w.ticket
-      ? `<div style="font-size:11px;color:#0891b2;margin-top:2px">${esc(w.ticket.ticket_number)}</div>`
+      ? `<div class="wo-ticket" style="font-size:11px;margin-top:2px">${esc(w.ticket.ticket_number)}</div>`
       : '';
 
     return `<tr>
-      <td><span class="wo-num">${esc(w.wo_number||'—')}</span></td>
-      <td><span class="type-badge type-${w.type}">${typeLabel(w.type)}</span></td>
-      <td>
-        <div style="font-size:13.5px;font-weight:600;color:var(--d-text)">${esc(w.title)}</div>
+      <td data-label="No WO"><span class="wo-num">${esc(w.wo_number||'—')}</span></td>
+      <td data-label="Tipe"><span class="type-badge type-${w.type}">${typeLabel(w.type)}</span></td>
+      <td data-label="Judul">
+        <div class="wo-title" style="font-size:13.5px;font-weight:600">${esc(w.title)}</div>
         ${custInfo}${ticketInfo}
       </td>
-      <td>${techHtml}</td>
-      <td><span class="${dueCls}">${dueLabel||'—'}</span></td>
-      <td><span class="prio prio-${w.priority}">${(w.priority||'').toUpperCase()}</span></td>
-      <td><span class="sb sb-${w.status}">${statusDot(w.status)}${statusLabel(w.status)}</span></td>
-      <td style="text-align:right;padding-right:16px">
-        <div style="display:flex;justify-content:flex-end;gap:6px">
+      <td data-label="Teknisi">${techHtml}</td>
+      <td data-label="Jadwal"><span class="${dueCls}">${dueLabel||'—'}</span></td>
+      <td data-label="Prioritas"><span class="prio prio-${w.priority}">${(w.priority||'').toUpperCase()}</span></td>
+      <td data-label="Status"><span class="sb sb-${w.status}">${statusDot(w.status)}${statusLabel(w.status)}</span></td>
+      <td data-label="Aksi">
+        <div class="wo-actions" style="display:flex;justify-content:flex-end;gap:6px">
           <button class="rb rb-view" onclick="openDetail(${w.id})">
             <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             Detail
