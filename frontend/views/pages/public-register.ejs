@@ -348,7 +348,7 @@
     function initMap(){
       const def=[-6.2,106.8];
       map=L.map('map').setView(def,13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'}).addTo(map);
       marker=L.marker(def,{draggable:true,icon:pinIcon()}).addTo(map);
       marker.on('dragend',()=>{const p=marker.getLatLng();lat=p.lat;lng=p.lng;checkCoverage();});
       map.on('click',e=>{lat=e.latlng.lat;lng=e.latlng.lng;marker.setLatLng(e.latlng);checkCoverage();});

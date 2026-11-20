@@ -1041,10 +1041,10 @@ const CENTER = [-6.2088, 106.8456];
 function initMap() {
   leafMap = L.map('tt-map-leaf', { center:CENTER, zoom:13, zoomControl:false });
 
-  // CartoDB Voyager (sama dengan gps-tracking.ejs)
-  streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution:'&copy; <a href="https://carto.com/">CARTO</a>',
-    subdomains:'abcd', maxZoom:19
+  // Esri World Street Map (sama dengan gps-tracking.ejs)
+  streetLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    attribution:'Tiles &copy; Esri',
+    maxZoom:19
   });
 
   // Google Satellite (imagery)
