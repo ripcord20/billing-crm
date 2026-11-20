@@ -152,10 +152,59 @@ function isIsolirProfileName(name, isolirName = DEFAULT_ISOLIR_PROFILE) {
   return n.includes('isolir');
 }
 
-function resolveRestoreProfile(originalProfile, isolirProfileName = DEFAULT_ISOLIR_PROFILE) {
+function resolveRestoreProfile(originalProfile, isolirProfileName = DEFAULT_ISOLIR_PROFILE, fallbackProfile = 'default') {
   const raw = String(originalProfile || '').trim();
-  if (!raw || isIsolirProfileName(raw, isolirProfileName)) return 'default';
+  const fallback = String(fallbackProfile || '').trim() || 'default';
+  if (!raw || isIsolirProfileName(raw, isolirProfileName)) {
+    return isIsolirProfileName(fallback, isolirProfileName) ? 'default' : fallback;
+  }
   return raw;
+}
+
+function profileUsesRadius(profile) {
+  const v = String((profile && (profile['use-radius'] || profile.use_radius)) || 'no').toLowerCase();
+  return v === 'yes' || v === 'true';
+}
+
+/**
+ * Pilih PPP profile untuk restore. Jangan jatuh ke `default` (sering use-radius=yes)
+ * kalau paket/NAS punya profile lokal — itu bikin log "authentication failed".
+ */
+async function pickRestoreProfile(api, opts = {}) {
+  const isolirName = opts.isolirProfileName || DEFAULT_ISOLIR_PROFILE;
+  const candidates = [];
+  const add = (n) => {
+    const s = String(n || '').trim();
+    if (!s || isIsolirProfileName(s, isolirName)) return;
+    if (!candidates.includes(s)) candidates.push(s);
+  };
+  add(opts.originalProfile);
+  add(opts.packageProfile);
+  add(opts.fallbackProfile);
+
+  let all = [];
+  try { all = await runWithRetry(api, ['/ppp/profile/print']); } catch (_) { all = []; }
+  const byName = {};
+  for (const p of all || []) {
+    if (p && p.name) byName[p.name] = p;
+  }
+
+  for (const n of candidates) {
+    const p = byName[n];
+    if (p && !profileUsesRadius(p)) return n;
+  }
+  for (const n of candidates) {
+    if (byName[n]) return n;
+  }
+  for (const p of all || []) {
+    const n = String(p.name || '');
+    if (!n || isIsolirProfileName(n, isolirName) || profileUsesRadius(p)) continue;
+    const remote = String(p['remote-address'] || p.remoteAddress || '');
+    if (/isolir/i.test(remote)) continue;
+    if (/fiberix|skynet|^pppoe/i.test(n)) return n;
+  }
+  if (byName.default && !profileUsesRadius(byName.default)) return 'default';
+  return candidates[0] || 'default';
 }
 
 function nameMatches(rowName, username) {
@@ -318,7 +367,12 @@ async function isolirPPPoEUser(api, pppoeUsername, sequelize, customerId, opts =
 async function restorePPPoEUser(api, pppoeUsername, originalProfile, opts = {}) {
   if (!pppoeUsername) throw new Error('PPPoE username kosong');
   const isolirName = opts.isolirProfileName || DEFAULT_ISOLIR_PROFILE;
-  const targetProfile = resolveRestoreProfile(originalProfile, isolirName);
+  const targetProfile = await pickRestoreProfile(api, {
+    originalProfile,
+    isolirProfileName: isolirName,
+    packageProfile: opts.packageProfile,
+    fallbackProfile: opts.fallbackProfile
+  });
 
   const secrets = await findPppSecrets(api, pppoeUsername);
   let secretRestored = false;
@@ -333,7 +387,8 @@ async function restorePPPoEUser(api, pppoeUsername, originalProfile, opts = {}) 
     await runWithRetry(api, [
       '/ppp/secret/set',
       '=.id=' + secret['.id'],
-      '=profile=' + targetProfile
+      '=profile=' + targetProfile,
+      '=disabled=no'
     ]);
     secretRestored = true;
   }
@@ -364,4 +419,5 @@ module.exports = {
   findPppSecrets,
   isIsolirProfileName,
   resolveRestoreProfile,
+  pickRestoreProfile,
 };

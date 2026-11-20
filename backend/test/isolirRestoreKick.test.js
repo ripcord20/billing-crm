@@ -7,10 +7,11 @@ function arg(words, prefix) {
   return w ? w.slice(prefix.length) : null;
 }
 
-function makeApi({ secrets = [], sessions = [], failIdRemove = false } = {}) {
+function makeApi({ secrets = [], sessions = [], profiles = [], failIdRemove = false } = {}) {
   const state = {
     secrets: secrets.map(s => ({ ...s })),
     sessions: sessions.map(s => ({ ...s })),
+    profiles: profiles.map(p => ({ ...p })),
     calls: []
   };
   return {
@@ -35,6 +36,9 @@ function makeApi({ secrets = [], sessions = [], failIdRemove = false } = {}) {
         const name = arg(words, '?name=');
         if (name) return state.sessions.filter(s => s.name === name);
         return state.sessions.slice();
+      }
+      if (cmd === '/ppp/profile/print') {
+        return (state.profiles || []).slice();
       }
       if (cmd === '/ppp/active/remove') {
         if (failIdRemove && arg(words, '=.id=')) {
@@ -65,6 +69,7 @@ assert.strictEqual(IsolirPPPoE.resolveRestoreProfile('10Mbps'), '10Mbps');
 assert.strictEqual(IsolirPPPoE.resolveRestoreProfile('isolir-profile'), 'default');
 assert.strictEqual(IsolirPPPoE.resolveRestoreProfile('SKYNET-ISOLIR'), 'default');
 assert.strictEqual(IsolirPPPoE.resolveRestoreProfile(''), 'default');
+assert.strictEqual(IsolirPPPoE.resolveRestoreProfile('', 'isolir-profile', 'FIBERIX'), 'FIBERIX');
 assert.ok(IsolirPPPoE.isIsolirProfileName('SKYNET-ISOLIR'));
 
 (async () => {
@@ -126,10 +131,46 @@ assert.ok(IsolirPPPoE.isIsolirProfileName('SKYNET-ISOLIR'));
   {
     const api = makeApi({
       secrets: [{ '.id': '*1', name: 'andi', profile: 'isolir-profile' }],
-      sessions: []
+      sessions: [],
+      profiles: [{ name: 'default', 'use-radius': 'no' }]
     });
     await IsolirPPPoE.restorePPPoEUser(api, 'andi', 'isolir-profile', { retryDelayMs: 0 });
     assert.strictEqual(api.state.secrets[0].profile, 'default');
+  }
+
+  // Prefer package profile over RADIUS default (auth failed after bayar)
+  {
+    const api = makeApi({
+      secrets: [{ '.id': '*1', name: 'Ainul-rumah', profile: 'isolir-profile', disabled: 'true' }],
+      sessions: [],
+      profiles: [
+        { name: 'default', 'use-radius': 'yes' },
+        { name: 'FIBERIX', 'use-radius': 'no', 'remote-address': 'FIBERIX' },
+        { name: 'isolir-profile', 'use-radius': 'no', 'remote-address': 'isolir-pool' }
+      ]
+    });
+    const r = await IsolirPPPoE.restorePPPoEUser(api, 'Ainul-rumah', null, {
+      retryDelayMs: 0,
+      packageProfile: 'FIBERIX'
+    });
+    assert.strictEqual(r.secretRestored, true);
+    assert.strictEqual(api.state.secrets[0].profile, 'FIBERIX');
+    const setCall = api.state.calls.find(c => c[0] === '/ppp/secret/set');
+    assert.ok(setCall.some(w => w === '=disabled=no'), 'secret must be re-enabled');
+  }
+
+  {
+    const api = makeApi({
+      profiles: [
+        { name: 'default', 'use-radius': 'yes' },
+        { name: 'FIBERIX', 'use-radius': 'no', 'remote-address': 'FIBERIX' }
+      ]
+    });
+    const picked = await IsolirPPPoE.pickRestoreProfile(api, {
+      originalProfile: 'isolir-profile',
+      packageProfile: 'FIBERIX'
+    });
+    assert.strictEqual(picked, 'FIBERIX');
   }
 
   // Isolir still kicks after profile switch

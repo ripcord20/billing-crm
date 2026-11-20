@@ -807,7 +807,7 @@ async function listActiveNasExtIds() {
 
 // CORE 1 vs CORE 2: sesi PPPoE bisa hidup di NAS yang bukan customers.mikrotik_id.
 // Profile + kick hanya di router terdaftar → IP isolir tidak berganti.
-async function applyPppoeOnPeerNas({ skipExtId, pppoeUser, mode, originalProfile, customerId }) {
+async function applyPppoeOnPeerNas({ skipExtId, pppoeUser, mode, originalProfile, customerId, packageProfile }) {
   const IsolirPPPoE = require('./IsolirPPPoE');
   const peers = await listActiveNasExtIds();
   const extras = [];
@@ -828,7 +828,8 @@ async function applyPppoeOnPeerNas({ skipExtId, pppoeUser, mode, originalProfile
           const cfg = await IsolirPPPoE.getPPPoESettings(sequelize);
           result = await IsolirPPPoE.restorePPPoEUser(api, pppoeUser, originalProfile, {
             allowMissingSecret: true,
-            isolirProfileName: cfg.profileName
+            isolirProfileName: cfg.profileName,
+            packageProfile
           });
         }
         extras.push({
@@ -1056,6 +1057,16 @@ async function restoreCustomer(customerId, triggerBy = 'admin', adminUserId = nu
 
   const ip = cust.static_ip || null;
   const pppoeUser = cust.pppoe_username || null;
+  let packageProfile = null;
+  if (cust.package_id) {
+    try {
+      const pr = await sequelize.query(
+        'SELECT mikrotik_profile FROM packages WHERE id=?',
+        { replacements: [cust.package_id], type: sequelize.QueryTypes.SELECT }
+      );
+      packageProfile = (pr[0] && pr[0].mikrotik_profile) || null;
+    } catch (_) { packageProfile = null; }
+  }
   let success = false, errorMsg = null, methodDetail = null;
   let pppoeOutcome = null;
 
@@ -1087,7 +1098,7 @@ async function restoreCustomer(customerId, triggerBy = 'admin', adminUserId = nu
         const cfg = await IsolirPPPoE.getPPPoESettings(sequelize);
         const result = await IsolirPPPoE.restorePPPoEUser(
           api, pppoeUser, cust.pppoe_profile_original,
-          { allowMissingSecret: true, isolirProfileName: cfg.profileName }
+          { allowMissingSecret: true, isolirProfileName: cfg.profileName, packageProfile }
         );
         methodDetail = result.message;
         pppoeOutcome = result;
@@ -1105,7 +1116,8 @@ async function restoreCustomer(customerId, triggerBy = 'admin', adminUserId = nu
         pppoeUser,
         mode: 'restore',
         originalProfile: cust.pppoe_profile_original,
-        customerId
+        customerId,
+        packageProfile
       });
       const { extraKick, extraFound, extraSecret } = summarizePppoePeerKick(extras);
       if (extraKick) methodDetail = (methodDetail || '') + `; NAS lain: ${extraKick} session di-kick`;
