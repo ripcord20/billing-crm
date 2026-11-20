@@ -502,6 +502,34 @@ class CustomerController {
     }
   }
 
+  // GET /customers/:id/modem-remote
+  // Resolve IP WAN modem (PPPoE aktif / IP statis privat) lalu kembalikan
+  // URL GUI. Teknisi harus sudah di overlay WireGuard — endpoint ini tidak
+  // mem-proxy HTTP ke IP arbitrer.
+  async modemRemote(req, res) {
+    try {
+      const customer = await Customer.findByPk(req.params.id, {
+        attributes: [
+          'id', 'customer_id', 'name', 'status', 'static_ip',
+          'pppoe_username', 'connection_type', 'mikrotik_id', 'tenant_id'
+        ]
+      });
+      if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+      if (!assertCustomerTenant(req, customer)) {
+        return res.status(404).json({ success: false, message: 'Customer not found' });
+      }
+      const { sequelize } = require('../models');
+      const ModemRemote = require('../services/ModemRemoteService');
+      const result = await ModemRemote.resolveModemRemote(customer, sequelize, req.query || {});
+      if (!result.ok) {
+        return res.status(404).json({ success: false, message: result.message });
+      }
+      return res.json({ success: true, ...result });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: 'Gagal mencari IP modem' });
+    }
+  }
+
   // ──────────────────────────────────────────────────────────────────
   // DELETE /api/customers/:id
   // Hapus customer dari DB. Default: hanya hapus record DB (backward compat).

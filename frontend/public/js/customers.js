@@ -677,6 +677,7 @@ async function loadCustomers() {
       + '<td><span class="sb '+stCls+'"><span class="sb-dot" style="background:'+stDot+'"></span>'+stLabel+'</span></td>'
       + '<td style="text-align:right;padding-right:18px">'
         + '<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">'
+          + '<button class="rb rb-remote" onclick="openModemRemote('+c.id+',event)">Remote</button>'
           + '<button class="rb rb-wa" onclick="sendWA(\''+_esc(c.phone||'')+'\')" >WA</button>'
           + '<button class="rb rb-edit" onclick="editCustomer('+c.id+')">Edit</button>'
           + isoBtn
