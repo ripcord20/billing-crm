@@ -347,6 +347,38 @@ class MikroTikRestAPI {
     });
   }
 
+  // RouterOS v7 REST: DELETE /ppp/active/%2A<id> sering gagal ("no such command
+  // prefix"). Session isolir tetap pegang IP pool isolir sampai timeout.
+  // Urutan ini mirror MikrotikService.disconnectPPPoE.
+  async _removePppActive(id) {
+    const enc = encodeURIComponent(id);
+    const attempts = [
+      () => this._request('POST', '/rest/ppp/active/remove', { numbers: id }),
+      () => this._request('POST', `/rest/ppp/active/${enc}/remove`, null),
+      () => this._request('DELETE', `/rest/ppp/active/${enc}`),
+      () => this._request('DELETE', '/rest/ppp/active/' + id)
+    ];
+    let lastErr = null;
+    const stillThere = async () => {
+      const all = await this._request('GET', '/rest/ppp/active');
+      if (!Array.isArray(all)) return false;
+      return all.some(r => r['.id'] === id);
+    };
+    for (const run of attempts) {
+      try {
+        await run();
+      } catch (e) {
+        lastErr = e;
+      }
+      try {
+        if (!(await stillThere())) return;
+      } catch (_) {
+        return;
+      }
+    }
+    throw lastErr || new Error('PPP session masih aktif setelah kick');
+  }
+
   // Convert native API path/words → REST path + params
   // Native: ['/ip/firewall/filter/print', '?comment=FOO']
   //   → REST GET /rest/ip/firewall/filter?comment=FOO
@@ -456,8 +488,13 @@ class MikroTikRestAPI {
     }
 
     if (verb === 'remove') {
-      if (!id) throw new Error('REST remove butuh =.id=...');
-      await this._request('DELETE', url + '/' + encodeURIComponent(id));
+      const rid = id || data.numbers || data['.id'];
+      if (!rid) throw new Error('REST remove butuh =.id=...');
+      if (path === '/ppp/active') {
+        await this._removePppActive(rid);
+        return [];
+      }
+      await this._request('DELETE', url + '/' + encodeURIComponent(rid));
       return [];
     }
 
@@ -758,6 +795,69 @@ async function setupFirewall(deviceId) {
   return { success: true, details: results };
 }
 
+async function listActiveNasExtIds() {
+  return sequelize.query(
+    `SELECT md.id AS id, d.name AS name
+       FROM mikrotik_devices md
+       INNER JOIN devices d ON d.id = md.device_id
+      WHERE d.is_active = 1`,
+    { type: sequelize.QueryTypes.SELECT }
+  );
+}
+
+// CORE 1 vs CORE 2: sesi PPPoE bisa hidup di NAS yang bukan customers.mikrotik_id.
+// Profile + kick hanya di router terdaftar → IP isolir tidak berganti.
+async function applyPppoeOnPeerNas({ skipExtId, pppoeUser, mode, originalProfile, customerId }) {
+  const IsolirPPPoE = require('./IsolirPPPoE');
+  const peers = await listActiveNasExtIds();
+  const extras = [];
+  for (const row of peers) {
+    if (Number(row.id) === Number(skipExtId)) continue;
+    try {
+      const device = await loadDeviceWithMaster(row.id, true);
+      if (!device) continue;
+      const api = await connectDevice(device);
+      try {
+        let result;
+        if (mode === 'isolir') {
+          result = await IsolirPPPoE.isolirPPPoEUser(api, pppoeUser, sequelize, customerId, {
+            skipOriginalBackup: true,
+            allowMissingSecret: true
+          });
+        } else {
+          const cfg = await IsolirPPPoE.getPPPoESettings(sequelize);
+          result = await IsolirPPPoE.restorePPPoEUser(api, pppoeUser, originalProfile, {
+            allowMissingSecret: true,
+            isolirProfileName: cfg.profileName
+          });
+        }
+        extras.push({
+          nas: device.name,
+          kicked: result.kicked || 0,
+          secretRestored: !!result.secretRestored,
+          found: result.found || 0
+        });
+        if (result.kicked || result.secretRestored) {
+          console.log(`[Isolir] PPPoE ${mode} extra NAS ${device.name}: kicked=${result.kicked || 0} secret=${result.secretRestored ? 1 : 0}`);
+        }
+      } finally {
+        try { api.close(); } catch (_) {}
+      }
+    } catch (e) {
+      extras.push({ nas: row.name || String(row.id), error: e.message });
+      console.warn(`[Isolir] PPPoE ${mode} extra NAS ${row.name || row.id}: ${e.message}`);
+    }
+  }
+  return extras;
+}
+
+function summarizePppoePeerKick(extras) {
+  const extraKick = (extras || []).reduce((n, x) => n + (x.kicked || 0), 0);
+  const extraFound = (extras || []).reduce((n, x) => n + (x.found || 0), 0);
+  const extraSecret = (extras || []).some(x => x.secretRestored);
+  return { extraKick, extraFound, extraSecret };
+}
+
 // ── Isolir satu pelanggan ──────────────────────────────────────
 async function isolirCustomer(customerId, triggerBy = 'admin', adminUserId = null) {
   // Step 1: ambil customer + extension ID
@@ -808,6 +908,7 @@ async function isolirCustomer(customerId, triggerBy = 'admin', adminUserId = nul
   const ip = cust.static_ip || null;
   const pppoeUser = cust.pppoe_username || null;
   let success = false, errorMsg = null, addrlistId = null, methodDetail = null;
+  let pppoeOutcome = null;
 
   try {
     const api = await connectDevice(cust);
@@ -841,14 +942,46 @@ async function isolirCustomer(customerId, triggerBy = 'admin', adminUserId = nul
       } else {
         // ── Method PPPoE: switch profile + kick session ──
         const IsolirPPPoE = require('./IsolirPPPoE');
-        const result = await IsolirPPPoE.isolirPPPoEUser(api, pppoeUser, sequelize, customerId);
+        const result = await IsolirPPPoE.isolirPPPoEUser(api, pppoeUser, sequelize, customerId, {
+          allowMissingSecret: true
+        });
         methodDetail = result.message;
+        pppoeOutcome = result;
       }
       success = true;
     } finally {
       try { api.close(); } catch(_) {}
     }
   } catch(e) { errorMsg = e.message; }
+
+  if (method === 'pppoe') {
+    try {
+      const extras = await applyPppoeOnPeerNas({
+        skipExtId: (success && pppoeOutcome) ? cust.mikrotik_id : null,
+        pppoeUser,
+        mode: 'isolir',
+        customerId
+      });
+      const { extraKick, extraFound, extraSecret } = summarizePppoePeerKick(extras);
+      if (extraKick) methodDetail = (methodDetail || '') + `; NAS lain: ${extraKick} session di-kick`;
+      const secretOk = !!(pppoeOutcome && pppoeOutcome.secretRestored) || extraSecret;
+      const kickOk = ((pppoeOutcome && pppoeOutcome.kicked) || 0) + extraKick;
+      const foundOk = ((pppoeOutcome && pppoeOutcome.found) || 0) + extraFound;
+      if (foundOk > 0 && kickOk === 0) {
+        success = false;
+        errorMsg = 'Kick sesi PPPoE gagal — IP isolir belum lepas';
+      } else if (secretOk || kickOk > 0) {
+        success = true;
+        errorMsg = null;
+        if (!methodDetail) methodDetail = `PPPoE "${pppoeUser}" diisolir`;
+      } else if (success && pppoeOutcome && !secretOk && kickOk === 0) {
+        success = false;
+        errorMsg = 'PPP secret tidak ditemukan di NAS manapun dan tidak ada session untuk di-kick';
+      }
+    } catch (e) {
+      console.warn('[Isolir] isolir extra NAS: ' + e.message);
+    }
+  }
 
   if (success) {
     await sequelize.query(
@@ -924,6 +1057,7 @@ async function restoreCustomer(customerId, triggerBy = 'admin', adminUserId = nu
   const ip = cust.static_ip || null;
   const pppoeUser = cust.pppoe_username || null;
   let success = false, errorMsg = null, methodDetail = null;
+  let pppoeOutcome = null;
 
   try {
     const api = await connectDevice(cust);
@@ -950,16 +1084,49 @@ async function restoreCustomer(customerId, triggerBy = 'admin', adminUserId = nu
       } else {
         // ── Method PPPoE: restore profile asli + kick ──
         const IsolirPPPoE = require('./IsolirPPPoE');
+        const cfg = await IsolirPPPoE.getPPPoESettings(sequelize);
         const result = await IsolirPPPoE.restorePPPoEUser(
-          api, pppoeUser, cust.pppoe_profile_original
+          api, pppoeUser, cust.pppoe_profile_original,
+          { allowMissingSecret: true, isolirProfileName: cfg.profileName }
         );
         methodDetail = result.message;
+        pppoeOutcome = result;
       }
       success = true;
     } finally {
       try { api.close(); } catch(_) {}
     }
   } catch(e) { errorMsg = e.message; }
+
+  if (method === 'pppoe') {
+    try {
+      const extras = await applyPppoeOnPeerNas({
+        skipExtId: (success && pppoeOutcome) ? cust.mikrotik_id : null,
+        pppoeUser,
+        mode: 'restore',
+        originalProfile: cust.pppoe_profile_original,
+        customerId
+      });
+      const { extraKick, extraFound, extraSecret } = summarizePppoePeerKick(extras);
+      if (extraKick) methodDetail = (methodDetail || '') + `; NAS lain: ${extraKick} session di-kick`;
+      const secretOk = !!(pppoeOutcome && pppoeOutcome.secretRestored) || extraSecret;
+      const kickOk = ((pppoeOutcome && pppoeOutcome.kicked) || 0) + extraKick;
+      const foundOk = ((pppoeOutcome && pppoeOutcome.found) || 0) + extraFound;
+      if (foundOk > 0 && kickOk === 0) {
+        success = false;
+        errorMsg = 'Kick sesi PPPoE gagal — IP isolir belum lepas';
+      } else if (secretOk || kickOk > 0) {
+        success = true;
+        errorMsg = null;
+        if (!methodDetail) methodDetail = `PPPoE "${pppoeUser}" dipulihkan`;
+      } else if (success && pppoeOutcome && !secretOk && kickOk === 0) {
+        success = false;
+        errorMsg = 'PPP secret tidak ditemukan di NAS manapun dan tidak ada session untuk di-kick';
+      }
+    } catch (e) {
+      console.warn('[Isolir] restore extra NAS: ' + e.message);
+    }
+  }
 
   if (success) {
     await sequelize.query(
@@ -1074,7 +1241,10 @@ async function restoreAfterPayment(customerId) {
     'SELECT isolir_status FROM customers WHERE id=?',
     { replacements: [customerId], type: sequelize.QueryTypes.SELECT }
   );
-  if (rows[0]?.isolir_status === 'isolated') return restoreCustomer(customerId, 'payment');
+  const st = rows[0]?.isolir_status;
+  if (st === 'isolated' || st === 'restoring') {
+    return restoreCustomer(customerId, 'payment');
+  }
   return { success: true, skipped: true };
 }
 
