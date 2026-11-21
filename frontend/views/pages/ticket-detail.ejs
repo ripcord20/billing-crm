@@ -870,7 +870,7 @@ $('commentFile')?.addEventListener('change',function(){
 function initMap(lat,lng,t){
   if(leafMap){leafMap.remove();leafMap=null;}
   leafMap=L.map('map').setView([lat,lng],15);
-  const streets=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'});
+  const streets=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'});
   const sat=L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',{maxZoom:21,subdomains:'0123',attribution:'© Google'});
   streets.addTo(leafMap);window._ml={streets,sat};window._mc='streets';
   const tc=TC[t.type]||'#f44336';
