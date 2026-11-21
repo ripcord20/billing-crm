@@ -226,6 +226,37 @@
     .finput::placeholder { color:#b0bcdc; }
     textarea.finput { resize:vertical; }
 
+    /* Customer combobox */
+    .wo-cust-pick { position:relative; }
+    .wo-cust-search-wrap { position:relative; }
+    .wo-cust-ico { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--d-muted);pointer-events:none; }
+    .wo-cust-search { padding-left:36px !important; padding-right:34px !important; }
+    .wo-cust-clear {
+      position:absolute;right:6px;top:50%;transform:translateY(-50%);
+      border:none;background:transparent;color:var(--d-muted);cursor:pointer;
+      width:26px;height:26px;border-radius:50%;font-size:14px;line-height:1;
+    }
+    .wo-cust-clear:hover { background:var(--d-bg); color:var(--d-text); }
+    .wo-cust-results {
+      position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;
+      max-height:220px;overflow-y:auto;
+      background:#fff;border:1.5px solid var(--d-border);border-radius:10px;
+      box-shadow:0 10px 28px rgba(13,27,62,.14);
+    }
+    .wo-cust-item { padding:9px 12px;cursor:pointer;border-bottom:1px solid #f0f4fc; }
+    .wo-cust-item:last-child { border-bottom:none; }
+    .wo-cust-item:hover, .wo-cust-item.active { background:#eef3ff; }
+    .wo-cust-item-name { font-size:13px;font-weight:600;color:var(--d-text); }
+    .wo-cust-item-meta { font-size:11px;color:var(--d-muted);margin-top:1px; }
+    .wo-cust-empty { padding:12px;text-align:center;font-size:12.5px;color:var(--d-muted); }
+    body.wo-home .wo-cust-results { background:#141028 !important; border-color:rgba(34,211,238,.35) !important; }
+    body.wo-home .wo-cust-item { border-bottom-color:rgba(255,255,255,.08); }
+    body.wo-home .wo-cust-item:hover, body.wo-home .wo-cust-item.active { background:rgba(34,211,238,.14); }
+    body.wo-home .wo-cust-item-name { color:#ffffff !important; -webkit-text-fill-color:#ffffff; }
+    body.wo-home .wo-cust-item-meta { color:#e2e8f0 !important; -webkit-text-fill-color:#e2e8f0; }
+    body.wo-home .wo-cust-empty { color:#94a3b8 !important; }
+    body.wo-home .wo-cust-ico, body.wo-home .wo-cust-clear { color:#94a3b8; }
+
     /* Technician toggle */
     .tech-toggle { display:flex;border:1.5px solid var(--d-border);border-radius:10px;overflow:hidden;margin-bottom:12px; }
     .tech-toggle-btn { flex:1;padding:8px;text-align:center;font-size:12.5px;font-weight:600;cursor:pointer;background:#fff;color:var(--d-muted);border:none;transition:all .15s; }
@@ -531,9 +562,15 @@
         </div>
         <div>
           <label class="flbl">Customer</label>
-          <select class="finput" id="f_customer_id">
-            <option value="">— Pilih customer (opsional) —</option>
-          </select>
+          <div class="wo-cust-pick" id="woCustPick">
+            <input type="hidden" id="f_customer_id" value="">
+            <div class="wo-cust-search-wrap">
+              <svg class="wo-cust-ico" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input type="text" class="finput wo-cust-search" id="f_customer_search" placeholder="Cari nama / CID / HP…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="f_customer_results" aria-autocomplete="list">
+              <button type="button" class="wo-cust-clear" id="f_customer_clear" title="Hapus pilihan" hidden>✕</button>
+            </div>
+            <div class="wo-cust-results" id="f_customer_results" role="listbox" hidden></div>
+          </div>
         </div>
         <div>
           <label class="flbl">Ticket</label>
@@ -595,7 +632,7 @@
 </div>
 
 <script src="/js/app.js"></script>
-<script src="/js/work-orders.js"></script>
+<script src="/js/work-orders.js?v=wo3"></script>
 
 <script>
 (function(){
