@@ -111,7 +111,9 @@
     .filter-input, .filter-select { padding:10px 14px; border:1.5px solid var(--border); border-radius:10px; font-size:13px; font-family:inherit; background:#f8fafc; color:var(--text); outline:none; transition:all .15s; width:100%; }
     .filter-input:focus, .filter-select:focus { border-color:var(--ot-blue); background:#fff; box-shadow:0 0 0 3px rgba(26,110,245,.1); }
 
-    .ot-tbl-wrap { background:#fff; border:1.5px solid var(--border); border-radius:16px; overflow:hidden; }
+    html, body { overflow-x: hidden; max-width: 100%; }
+    .ot, .page-content { max-width: 100%; }
+    .ot-tbl-wrap { background:#fff; border:1.5px solid var(--border); border-radius:16px; overflow:hidden; max-width:100%; }
     .ot-tbl-hdr  { padding:14px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #f1f5f9; flex-wrap:wrap; gap:10px; }
     .ot-tbl-title { font-size:14px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:8px; }
     .ot-count { font-size:11px; font-weight:600; background:#f1f5f9; color:var(--muted); padding:2px 9px; border-radius:20px; }
@@ -122,6 +124,42 @@
     .ot-table tbody tr { border-bottom:1px solid #f8fafc; transition:background .1s; cursor:pointer; }
     .ot-table tbody tr:hover { background:#f8fafc; }
     .ot-table td { padding:10px 14px; font-size:13px; color:#374151; vertical-align:middle; }
+
+    .ot-mobile-list { display: none; }
+    .ot-m-card {
+      display: block;
+      padding: 14px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      cursor: pointer;
+      min-width: 0;
+    }
+    .ot-m-card:last-child { border-bottom: none; }
+    .ot-m-card:active { background: #f8fafc; }
+    .ot-m-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .ot-m-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 800; color: var(--ot-blue); font-size: 13px; flex-shrink: 0; }
+    .ot-m-title { font-size: 14px; font-weight: 700; color: var(--text); margin: 6px 0 4px; overflow-wrap: anywhere; word-break: break-word; }
+    .ot-m-cust { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+    .ot-m-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+    .ot-m-date { font-size: 11px; color: #94a3b8; margin-left: auto; }
+    .ot-m-actions { display: flex; gap: 6px; margin-top: 10px; }
+    .ot-m-empty { padding: 36px 16px; text-align: center; color: #94a3b8; font-size: 13px; }
+
+    @media (max-width: 768px) {
+      .page-content.ot { padding: 12px 12px 88px !important; overflow-x: hidden; }
+      .ot-table { display: none !important; }
+      .ot-mobile-list { display: block; }
+      .ot-tbl-wrap { overflow: hidden; }
+      .ot-hdr { flex-direction: column; align-items: stretch; }
+      .ot-hdr-r { width: 100%; }
+      .ot-hdr-r .btn { width: 100%; justify-content: center; }
+    }
+    body.tk-home .ot-m-card { border-bottom-color: rgba(255,255,255,.12); }
+    body.tk-home .ot-m-card:active { background: rgba(255,255,255,.06); }
+    body.tk-home .ot-m-id { color: #67e8f9; }
+    body.tk-home .ot-m-title { color: #fff; }
+    body.tk-home .ot-m-cust,
+    body.tk-home .ot-m-date,
+    body.tk-home .ot-m-empty { color: #cbd5e1; }
 
     .status-pill { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; border:1px solid; }
     .pill-open { background:#fffbeb; color:#92400e; border-color:#fcd34d; }
@@ -896,6 +934,7 @@
             </tr>
           </tbody>
         </table>
+        <div class="ot-mobile-list" id="ticketMobileList"></div>
       </div>
 
     </main>
@@ -1435,18 +1474,20 @@ async function loadTickets() {
 
 function renderTickets(tickets) {
   const tbody = document.getElementById('ticketTableBody');
-  
+  const mobile = document.getElementById('ticketMobileList');
+
   if (tickets.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;">
+        <td colspan="8" style="text-align:center;padding:40px;color:#94a3b8;">
           Tidak ada ticket ditemukan
         </td>
       </tr>
     `;
+    if (mobile) mobile.innerHTML = `<div class="ot-m-empty">Tidak ada ticket ditemukan</div>`;
     return;
   }
-  
+
   tbody.innerHTML = tickets.map((ticket, index) => `
     <tr onclick="window.location.href='/tickets/${ticket.id}'">
       <td>${index + 1}</td>
@@ -1476,6 +1517,31 @@ function renderTickets(tickets) {
       </td>
     </tr>
   `).join('');
+
+  if (mobile) {
+    mobile.innerHTML = tickets.map((ticket) => `
+      <article class="ot-m-card" onclick="window.location.href='/tickets/${ticket.id}'">
+        <div class="ot-m-top">
+          <span class="ot-m-id">#${String(ticket.id).padStart(4, '0')}</span>
+          <span class="status-pill pill-${ticket.status}">${ticket.status.replace('_', ' ')}</span>
+        </div>
+        <div class="ot-m-title">${ticket.title || '—'}</div>
+        <div class="ot-m-cust">${ticket.customer?.name || '-'}</div>
+        <div class="ot-m-row">
+          <span class="badge badge-type-${ticket.type || 'gangguan'}">${typeLabel(ticket.type)}</span>
+          <span class="ot-m-date">${formatDateLong(ticket.created_at)}</span>
+        </div>
+        <div class="ot-m-actions">
+          <button onclick="event.stopPropagation();window.location.href='/tickets/${ticket.id}'" style="padding:4px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;color:#1e40af;font-size:11px;font-weight:600;cursor:pointer;">
+            Detail
+          </button>
+          <button onclick="event.stopPropagation();showDeleteModal(${ticket.id}, ${ticket.id})" class="btn-action-delete">
+            Hapus
+          </button>
+        </div>
+      </article>
+    `).join('');
+  }
 }
 
 function quickFilter(status) {
