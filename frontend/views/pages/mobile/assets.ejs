@@ -137,11 +137,12 @@
         <div class="photo-preview" id="photoPreview"></div>
         <div class="photo-hint" id="photoHint">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          <span>Ketuk untuk tambah foto</span>
+          <span>Foto stiker ONT</span>
+          <small style="font-weight:600;opacity:.8;text-align:center;max-width:240px;">Tinggal foto — GPON SN &amp; MAC terisi otomatis</small>
         </div>
         <button type="button" class="photo-clear" id="photoClear" onclick="event.stopPropagation();clearPhoto()" style="display:none;">&times;</button>
       </div>
-      <input type="file" id="fPhoto" accept="image/*" style="display:none" onchange="onPhotoPick(this)">
+      <input type="file" id="fPhoto" accept="image/*" capture="environment" style="display:none" onchange="onPhotoPick(this)">
       <div class="fg"><label>Nama Aset *</label><input type="text" id="fName" placeholder="mis. Router RB5009"></div>
       <div class="fg-row">
         <div class="fg"><label>Kode Aset</label><input type="text" id="fCode" placeholder="AST-001"></div>
@@ -151,9 +152,8 @@
         <div class="fg"><label>Brand</label><input type="text" id="fBrand" placeholder="MikroTik"></div>
         <div class="fg"><label>Model</label><input type="text" id="fModel" placeholder="RB5009"></div>
       </div>
-      <div class="fg"><label>Serial Number</label><input type="text" id="fSerial" placeholder="Opsional"></div>
-      <div class="fg"><label>MAC Address</label><input type="text" id="fMac" placeholder="AA:BB:CC:DD:EE:FF"></div>
-      <button type="button" class="save-btn" style="background:#eef6ff;color:#1d4ed8;box-shadow:none;margin:0 0 14px;" onclick="document.getElementById('fPhoto').click();_scanAfterPhoto=true;">📷 Foto isi SN &amp; MAC</button>
+      <div class="fg"><label>GPON SN</label><input type="text" id="fSerial" placeholder="ZTEGXXXXXXXX" autocomplete="off"></div>
+      <div class="fg"><label>MAC Address</label><input type="text" id="fMac" placeholder="AA:BB:CC:DD:EE:FF" maxlength="17" autocomplete="off"></div>
       <div class="fg-row">
         <div class="fg"><label>Adaptor</label>
           <select id="fAdaptor"><option value="">—</option><option value="included">Termasuk</option><option value="none">Tidak ada</option></select>
@@ -183,7 +183,7 @@
     </div>
   </nav>
   <div class="toast" id="toast"></div>
-
+  <script src="/js/parseOntLabel.js?v=ast7foto"></script>
   <script>
     function getToken(){ const ls=localStorage.getItem('token'); if(ls)return ls; const m=document.cookie.match(/(?:^|;\s*)token=([^;]+)/); return m?decodeURIComponent(m[1]):null; }
     async function api(url,opts){ const t=getToken(); const headers=Object.assign({'Content-Type':'application/json'}, t?{'Authorization':'Bearer '+t}:{}); try{ const r=await fetch(url,Object.assign({credentials:'include',headers},opts||{})); if(r.status===401){location.href='/login';return null;} const x=await r.text(); try{return x?JSON.parse(x):null;}catch(_){return null;} }catch(e){return null;} }
@@ -191,7 +191,7 @@
     function fmtRp(n){ n=Number(n)||0; return 'Rp '+n.toLocaleString('id-ID'); }
     function fmtRpShort(n){ n=Number(n)||0; if(n>=1000000000)return 'Rp '+(n/1000000000).toFixed(1).replace('.0','')+'M'; if(n>=1000000)return 'Rp '+(n/1000000).toFixed(1).replace('.0','')+'jt'; if(n>=1000)return 'Rp '+Math.round(n/1000)+'rb'; return 'Rp '+n.toLocaleString('id-ID'); }
     function toast(m,t){ const el=document.getElementById('toast'); el.textContent=m; el.className='toast show'+(t?' '+t:''); setTimeout(()=>el.classList.remove('show'),2400); }
-    let _status='', _search='', _editId=null, _cats=[], _allById={}, _photoFile=null, _scanAfterPhoto=false;
+    let _status='', _search='', _editId=null, _cats=[], _allById={}, _photoFile=null;
 
     const ST_LABEL={active:'Terpasang',storage:'Gudang',repair:'Servis',damaged:'Rusak',inactive:'Nonaktif',disposed:'Dibuang',lost:'Hilang'};
     const ST_COLOR={active:'#0f9d63',storage:'#0ea5e9',repair:'#f5a623',damaged:'#f2545b',inactive:'#94a0b8',disposed:'#64748b',lost:'#8b7cf6'};
@@ -307,7 +307,6 @@
       document.getElementById('fAdaptorType').value=sp.adaptor_type||'';
       // Foto: tampilkan yang tersimpan (edit) atau kosong (tambah)
       _photoFile=null;
-      _scanAfterPhoto=false;
       setPhotoPreview(a&&a.photo_url?a.photo_url:'');
       document.getElementById('fPhoto').value='';
       document.getElementById('sheetOv').classList.add('open');
@@ -320,32 +319,49 @@
       if(url){ pv.style.backgroundImage='url('+url+')'; box.classList.add('has-photo'); clr.style.display='flex'; }
       else{ pv.style.backgroundImage=''; box.classList.remove('has-photo'); clr.style.display='none'; }
     }
+    function ensureMobileModemCat(){
+      const sel=document.getElementById('fCat');
+      if(!sel) return;
+      const cur=(sel.options[sel.selectedIndex]&&sel.options[sel.selectedIndex].text||'').toLowerCase();
+      if(/modem|ont|onu|gpon/.test(cur)) return;
+      const opt=[...sel.options].find(o=>/modem|ont|onu|gpon/i.test(o.textContent||''));
+      if(opt) sel.value=opt.value;
+    }
     function onPhotoPick(inp){
       const f=inp.files&&inp.files[0]; if(!f)return;
       if(f.size>5*1024*1024){ toast('Foto maksimal 5 MB','err'); inp.value=''; return; }
       _photoFile=f;
       const rd=new FileReader(); rd.onload=e=>setPhotoPreview(e.target.result); rd.readAsDataURL(f);
-      if(_scanAfterPhoto){ _scanAfterPhoto=false; scanMobileLabel(f); }
+      ensureMobileModemCat();
+      scanMobileLabel(f);
     }
-    function parseSnMac(text){
-      const raw=String(text||'');
-      let mac=''; const mc=raw.match(/\b([0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}\b/);
-      if(mc) mac=mc[0].replace(/-/g,':').toUpperCase();
-      let sn=''; const sl=raw.match(/(?:S\/N|SN|Serial)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-]{4,})/i);
-      if(sl) sn=sl[1].toUpperCase();
-      return {sn,mac};
+    function parseSnMac(text, codes){
+      if(typeof parseOntLabel==='function') return parseOntLabel(text, codes||[]);
+      return {sn:'',mac:''};
     }
     async function scanMobileLabel(file){
       toast('Membaca label…');
       try{
-        if(!window.Tesseract){
-          await new Promise(function(res,rej){ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+        let codes=[];
+        if(window.BarcodeDetector){
+          try{
+            const det=new BarcodeDetector({formats:['qr_code','code_128','code_39','ean_13','data_matrix']});
+            const bmp=await createImageBitmap(file);
+            codes=(await det.detect(bmp)||[]).map(c=>c.rawValue).filter(Boolean);
+          }catch(_){}
         }
-        const r=await window.Tesseract.recognize(file,'eng');
-        const p=parseSnMac(r&&r.data&&r.data.text);
+        let p=parseSnMac('',codes);
+        if(!p.sn||!p.mac){
+          if(!window.Tesseract){
+            await new Promise(function(res,rej){ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+          }
+          const r=await window.Tesseract.recognize(file,'eng',{workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',corePath:'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',langPath:'https://tessdata.projectnaptha.com/4.0.0'});
+          p=parseSnMac(r&&r.data&&r.data.text, codes);
+        }
         if(p.sn) document.getElementById('fSerial').value=p.sn;
         if(p.mac) document.getElementById('fMac').value=p.mac;
-        toast(p.sn||p.mac?'SN/MAC terisi dari foto':'Tidak ketemu SN/MAC', p.sn||p.mac?'ok':'err');
+        if(p.sn||p.mac) ensureMobileModemCat();
+        toast(p.sn||p.mac?'GPON SN / MAC terisi dari foto':'Tidak ketemu GPON SN / MAC', p.sn||p.mac?'ok':'err');
       }catch(e){ toast('Gagal baca foto','err'); }
     }
     function clearPhoto(){ _photoFile=null; document.getElementById('fPhoto').value=''; setPhotoPreview(''); }
