@@ -151,10 +151,18 @@ body.stop-home .cust-table tbody tr:nth-child(8n+7) { background: #db2777 !impor
 body.stop-home .cust-table tbody tr:nth-child(8n+8) { background: #7c3aed !important; }
 body.stop-home .cust-table td { color: #ffffff !important; background: transparent !important; }
 
+/* CID: pil terang + teks gelap. ui-login-align memaksa fill cyan/putih
+   dengan !important, jadi tanpa fill !important CID jadi tidak terbaca. */
+html body[class].stop-home .cid-badge,
+html body[class][class].stop-home .cid-badge,
+html body.stop-home .cust-table .cid-badge,
 body.stop-home .cust-table .cid-badge {
   background: #eef3ff !important;
-  color: #1d4ed8 !important;
-  -webkit-text-fill-color: #1d4ed8;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  border: 1px solid #94a3b8 !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
 }
 body.stop-home .cust-table .sb {
   background: #ffedd5 !important;
