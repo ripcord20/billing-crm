@@ -153,49 +153,43 @@ const templates = {
       // Helper: format tanggal Indonesia ("13 Mei 2026") tanpa butuh moment locale.
       // Pakai konstanta MONTHS modul (sudah Indonesia, baris 9).
       const fmtID = (m) => m.date() + ' ' + MONTHS[m.month()+1] + ' ' + m.year();
+      const { getWelcomeData, replaceVariables } = require('../utils/templateHelper');
+      const companyName = await getCompanyName();
       const dummy = {
-        // ── Identitas pelanggan ───────────────────────────────────────
-        nama:           'FLAYNET.COM',
-        cid:            'CID0042',
-        phone:          '628123456789',
-        nohp:           '628123456789',
-        email:          'budi.santoso@example.com',
-        alamat:         'Jl. Mawar No. 12, RT 03/RW 05, Depok',
-
-        // ── Layanan / paket ───────────────────────────────────────────
-        paket:          'Paket 20 Mbps Home',
-        harga_paket:    'Rp 250.000',
-        harga:          'Rp 250.000',  // alias lama
-        tgl_install:    fmtID(now.clone()),
-
-        // ── Tagihan / invoice ─────────────────────────────────────────
-        invoice:        'INV-' + now.format('DDMM') + '-00042',
-        periode:        MONTHS[now.month()+1] + ' ' + now.year(),
-        jumlah:         'Rp 250.000',
-        jatuh_tempo:    fmtID(now.clone().add(3,'days')),
-        tgl_jatuh_tempo:fmtID(now.clone().add(3,'days')),
-        duedate:        now.clone().add(3,'days').format('DD/MM/YYYY'),
-        status:         'segera jatuh tempo',
-
-        // ── Pembayaran (untuk kategori payment_confirm) ───────────────
-        tgl_bayar:      fmtID(now.clone()),
-        metode:         'Transfer BCA',
-        ref_no:         'TRF' + now.format('YYYYMMDD'),
-        due_date_baru:  fmtID(now.clone().add(30,'days')),
-
-        // ── Identitas ISP / perusahaan ────────────────────────────────
-        perusahaan:     await getCompanyName(),
-        phone_cs:       process.env.COMPANY_PHONE || process.env.SUPPORT_PHONE || '0800-1234-5678',
-        pppoe_user:     'budi.santoso',
-        static_ip:      '10.10.10.42',
-
-        // ── Link (contoh; URL nyata dibangun saat pengiriman sebenarnya) ──
-        link_invoice:        ((process.env.APP_URL || process.env.BASE_URL || 'https://domain.com').replace(/\/+$/,'')) + '/pub/invoice/42.contoh',
-        link_bayar_permanen: ((process.env.APP_URL || process.env.BASE_URL || 'https://domain.com').replace(/\/+$/,'')) + '/pub/cust/contohtokenpermanen',
-        link_permanen:       ((process.env.APP_URL || process.env.BASE_URL || 'https://domain.com').replace(/\/+$/,'')) + '/pub/cust/contohtokenpermanen'
+        ...getWelcomeData({
+          customerName: 'Budi Santoso',
+          customerId: 'CID0042',
+          customerPhone: '628123456789',
+          customerEmail: 'budi.santoso@example.com',
+          customerAddress: 'Jl. Mawar No. 12, RT 03/RW 05, Depok',
+          packageName: 'Paket 20 Mbps Home',
+          packagePriceFormatted: 'Rp 250.000',
+          installDateFormatted: fmtID(now.clone()),
+          dueDateFormatted: fmtID(now.clone().add(3, 'days')),
+          billingDay: now.date(),
+          connectionType: 'pppoe',
+          pppoeUser: 'budi.santoso',
+          staticIp: '10.10.10.42',
+          companyName,
+          companyPhone: process.env.COMPANY_PHONE || process.env.SUPPORT_PHONE || '0800-1234-5678',
+          companyEmail: 'cs@example.com',
+          companyWebsite: (process.env.APP_URL || process.env.BASE_URL || 'https://domain.com').replace(/\/+$/, ''),
+          permanentLink: ((process.env.APP_URL || process.env.BASE_URL || 'https://domain.com').replace(/\/+$/, '')) + '/pub/cust/contohtokenpermanen',
+          portalPassword: '628123456789'
+        }),
+        nama: 'Budi Santoso',
+        invoice: 'INV-' + now.format('DDMM') + '-00042',
+        periode: MONTHS[now.month()+1] + ' ' + now.year(),
+        jumlah: 'Rp 250.000',
+        duedate: now.clone().add(3,'days').format('DD/MM/YYYY'),
+        status: 'segera jatuh tempo',
+        tgl_bayar: fmtID(now.clone()),
+        metode: 'Transfer BCA',
+        ref_no: 'TRF' + now.format('YYYYMMDD'),
+        due_date_baru: fmtID(now.clone().add(30,'days')),
+        link_invoice: ((process.env.APP_URL || process.env.BASE_URL || 'https://domain.com').replace(/\/+$/,'')) + '/pub/invoice/42.contoh'
       };
-      let preview = content;
-      Object.keys(dummy).forEach(k => { preview = preview.split(`{${k}}`).join(dummy[k]); });
+      const preview = replaceVariables(content, dummy);
       res.json({ success: true, preview });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
   }

@@ -1204,13 +1204,8 @@ function parseAreaFromAddress(address) {
 // kirim via WAService. Best-effort — kegagalan tidak throw.
 // ════════════════════════════════════════════════════════════════
 function _renderWelcomeTemplate(content, ctx) {
-  if (!content) return '';
-  let out = String(content);
-  Object.keys(ctx || {}).forEach(k => {
-    const val = ctx[k] == null ? '' : String(ctx[k]);
-    out = out.split(`{${k}}`).join(val);
-  });
-  return out;
+  const { replaceVariables } = require('../utils/templateHelper');
+  return replaceVariables(content, ctx);
 }
 
 const DEFAULT_WELCOME_TPL = `🎉 *Selamat Datang di {perusahaan}!*
@@ -1255,9 +1250,6 @@ async function sendWelcomeWA(customer) {
       return `${dt.getDate()} ${months[dt.getMonth()]} ${dt.getFullYear()}`;
     } catch(_) { return String(d); }
   };
-  const fmtIDR = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
-
-  // Build context
   const pkg = customer.package || {};
 
   // Hitung jatuh tempo invoice pertama
@@ -1273,24 +1265,57 @@ async function sendWelcomeWA(customer) {
     jatuhTempoDate.setDate(jatuhTempoDate.getDate() + 30);
   }
 
-  const ctx = {
-    nama:           customer.name || '',
-    cid:            customer.customer_id || '',
-    phone:          customer.phone || '',
-    nohp:           customer.phone || '',
-    email:          customer.email || '-',
-    alamat:         customer.address || '-',
-    paket:          pkg.name || '-',
-    harga_paket:    fmtIDR(pkg.price),
-    tgl_install:    fmtDate(customer.installation_date) === '-' ? fmtDate(new Date()) : fmtDate(customer.installation_date),
-    jatuh_tempo:    fmtDate(jatuhTempoDate),
-    tgl_jatuh_tempo:fmtDate(jatuhTempoDate),  // alias
-    // Tetap dukung placeholder lama (kalau user pakai di template)
-    pppoe_user:     customer.pppoe_username || '-',
-    static_ip:      customer.static_ip || '-',
-    phone_cs:       process.env.COMPANY_PHONE || process.env.SUPPORT_PHONE || '-',
-    perusahaan:     await getCompanyName()
-  };
+  const dueDay = (() => {
+    const fromCol = parseInt(customer.billing_date, 10);
+    if (fromCol >= 1 && fromCol <= 28) return fromCol;
+    const due = String(customer.due_date || '');
+    const m = due.match(/^\d{4}-\d{2}-(\d{2})/);
+    if (m) return parseInt(m[1], 10);
+    return jatuhTempoDate.getDate();
+  })();
+
+  let extras = { companyEmail: '', companyPhone: '', companyWebsite: '', permanentLink: '' };
+  try {
+    const { AppSetting } = require('../models');
+    const rows = await AppSetting.findAll({
+      where: { key: ['invtpl_company_email', 'company_whatsapp', 'company_website'] },
+      attributes: ['key', 'value']
+    });
+    const map = {};
+    for (const r of rows) map[r.key] = (r.value || '').trim();
+    extras.companyEmail = map.invtpl_company_email || '';
+    extras.companyPhone = map.company_whatsapp || process.env.COMPANY_PHONE || process.env.SUPPORT_PHONE || '';
+    extras.companyWebsite = map.company_website || '';
+  } catch (_) {
+    extras.companyPhone = process.env.COMPANY_PHONE || process.env.SUPPORT_PHONE || '';
+  }
+  try {
+    const { getOrCreateCustomerLink } = require('../utils/templateHelper');
+    extras.permanentLink = await getOrCreateCustomerLink(customer);
+  } catch (_) {}
+
+  const { getWelcomeData } = require('../utils/templateHelper');
+  const ctx = getWelcomeData({
+    customerName: customer.name,
+    customerId: customer.customer_id,
+    customerPhone: customer.phone,
+    customerEmail: customer.email,
+    customerAddress: customer.address,
+    packageName: pkg.name,
+    packagePrice: pkg.price,
+    installDateFormatted: fmtDate(customer.installation_date) === '-' ? fmtDate(new Date()) : fmtDate(customer.installation_date),
+    dueDateFormatted: fmtDate(jatuhTempoDate),
+    billingDay: dueDay,
+    connectionType: customer.connection_type,
+    pppoeUser: customer.pppoe_username,
+    staticIp: customer.static_ip,
+    companyName: await getCompanyName(),
+    companyPhone: extras.companyPhone,
+    companyEmail: extras.companyEmail,
+    companyWebsite: extras.companyWebsite,
+    permanentLink: extras.permanentLink,
+    portalPassword: customer.phone || ''
+  });
 
   // Load template welcome aktif
   let tplContent = null;
