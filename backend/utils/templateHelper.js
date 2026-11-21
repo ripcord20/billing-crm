@@ -123,17 +123,132 @@ async function getOrCreateCustomerLink(customer) {
  */
 function replaceVariables(template, data) {
   if (!template) return '';
-  
+
   let message = template;
-  
-  // Replace each variable in the format {variable_name}
-  Object.keys(data).forEach(key => {
-    const regex = new RegExp(`\\{${key}\\}`, 'g');
+  // Ganti key terpanjang dulu supaya {package_price} tidak rusak oleh {package}.
+  const keys = Object.keys(data || {}).sort((a, b) => b.length - a.length);
+  keys.forEach(key => {
     const value = data[key] !== null && data[key] !== undefined ? data[key] : '-';
-    message = message.replace(regex, value);
+    message = message.split(`{${key}}`).join(String(value));
   });
-  
+
   return message;
+}
+
+function _appBaseUrl() {
+  return (process.env.APP_URL || process.env.BASE_URL || '').replace(/\/+$/, '');
+}
+
+function formatIdr(n) {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return 'Rp 0';
+  return 'Rp ' + num.toLocaleString('id-ID');
+}
+
+const CONN_TYPE_LABEL = {
+  pppoe: 'PPPoE',
+  static: 'Static IP',
+  hotspot: 'Hotspot'
+};
+
+/**
+ * Variabel template Selamat Datang (pelanggan baru).
+ * Menyertakan alias Indonesia + Inggris supaya template custom
+ * ({company_name}, {package_price}, {apk}, dll.) ikut terisi.
+ */
+function getWelcomeData(params) {
+  const {
+    customerName,
+    customerId,
+    customerPhone,
+    customerEmail,
+    customerAddress,
+    packageName,
+    packagePrice,
+    packagePriceFormatted,
+    installDateFormatted,
+    dueDateFormatted,
+    billingDay,
+    connectionType,
+    pppoeUser,
+    staticIp,
+    companyName,
+    companyPhone,
+    companyEmail,
+    companyWebsite,
+    permanentLink,
+    portalPassword
+  } = params || {};
+
+  const harga = packagePriceFormatted || formatIdr(packagePrice);
+  const site = String(companyWebsite || '').replace(/\/+$/, '') || _appBaseUrl();
+  const portalUrl = site ? `${site}/portal` : '/portal';
+  const apkUrl = site ? `${site}/aplikasi` : portalUrl;
+  const loginId = customerEmail || customerId || '-';
+  const password = portalPassword || customerPhone || '-';
+  const jenisTagihan = 'Bulanan';
+  const connLabel = CONN_TYPE_LABEL[String(connectionType || '').toLowerCase()] || jenisTagihan;
+  const perusahaan = companyName || '-';
+  const tglInstall = installDateFormatted || '-';
+  const nama = customerName || '-';
+  const paket = packageName || '-';
+  const feeMissing = '-';
+
+  return {
+    nama,
+    name: nama,
+    customer_name: nama,
+    cid: customerId || '-',
+    customer_id: customerId || '-',
+    phone: customerPhone || '-',
+    nohp: customerPhone || '-',
+    email: customerEmail || '-',
+    app_email: loginId,
+    alamat: customerAddress || '-',
+    address: customerAddress || '-',
+
+    paket,
+    package: paket,
+    package_name: paket,
+    harga_paket: harga,
+    package_price: harga,
+    harga,
+
+    tgl_install: tglInstall,
+    install_date: tglInstall,
+    jatuh_tempo: dueDateFormatted || '-',
+    tgl_jatuh_tempo: dueDateFormatted || '-',
+    billing_day: billingDay != null ? String(billingDay) : '-',
+    billing_date: billingDay != null ? String(billingDay) : '-',
+    billing_type: jenisTagihan,
+    connection_type: connLabel,
+
+    install_fee: feeMissing,
+    biaya_pasang: feeMissing,
+    logistic: feeMissing,
+    biaya_logistic: feeMissing,
+    bill_or_prorate: harga,
+    tagihan_awal: harga,
+    full_bill_amount: harga,
+    total_bayar: harga,
+
+    pppoe_user: pppoeUser || '-',
+    static_ip: staticIp || '-',
+    password,
+    portal_password: password,
+    phone_cs: companyPhone || '-',
+    perusahaan,
+    company: perusahaan,
+    company_name: perusahaan,
+    company_email: companyEmail || '-',
+
+    link_bayar_permanen: permanentLink || '',
+    link_permanen: permanentLink || '',
+    permanent_link: permanentLink || '',
+    portal: portalUrl,
+    apk: apkUrl,
+    aplikasi: apkUrl
+  };
 }
 
 /**
@@ -411,6 +526,7 @@ module.exports = {
   replaceVariables,
   getPaymentConfirmationData,
   getDefaultPaymentTemplate,
+  getWelcomeData,
   getInvoiceData,
   getDefaultInvoiceUnpaidTemplate,
   getDefaultInvoicePaidTemplate,
@@ -419,5 +535,6 @@ module.exports = {
   buildInvoiceLink,
   generateCustomerLinkToken,
   buildCustomerLink,
-  getOrCreateCustomerLink
+  getOrCreateCustomerLink,
+  formatIdr
 };

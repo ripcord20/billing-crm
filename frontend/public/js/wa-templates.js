@@ -79,8 +79,23 @@ const VAR_WELCOME = [
   ['{harga_paket}',  'Harga paket bulanan'],
   ['{tgl_install}',  'Tanggal pemasangan'],
   ['{jatuh_tempo}',  'Tanggal jatuh tempo invoice pertama'],
+  ['{billing_day}',  'Tanggal jatuh tempo setiap bulan'],
+  ['{billing_type}', 'Jenis tagihan (Bulanan)'],
+  ['{install_fee}',  'Biaya pasang (belum tercatat di data pelanggan → "-")'],
+  ['{bill_or_prorate}','Tagihan awal / prorata'],
+  ['{logistic}',     'Biaya logistic (belum tercatat di data pelanggan → "-")'],
+  ['{full_bill_amount}','Total yang harus dibayar di awal'],
+  ['{app_email}',    'Email / ID login portal'],
+  ['{password}',     'Password portal (default nomor HP)'],
+  ['{apk}',          'Link aplikasi pelanggan'],
+  ['{portal}',       'Link portal pelanggan'],
   ['{link_bayar_permanen}', 'Link pembayaran PERMANEN per-pelanggan (selalu tampilkan tagihan aktif terbaru, tidak berubah tiap bulan)'],
-  ['{perusahaan}',   'Nama perusahaan']
+  ['{perusahaan}',   'Nama perusahaan'],
+  ['{company_name}', 'Alias {perusahaan}'],
+  ['{name}',         'Alias {nama}'],
+  ['{package}',      'Alias {paket}'],
+  ['{package_price}','Alias {harga_paket}'],
+  ['{install_date}', 'Alias {tgl_install}']
 ];
 // Placeholder untuk template Kirim Invoice (UNPAID/OVERDUE & PAID).
 // Dipakai oleh tombol "Kirim via WA" di halaman invoice — backend pilih
