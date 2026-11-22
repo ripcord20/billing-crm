@@ -141,6 +141,154 @@ async function setupIsolirProfile(api, sequelize) {
   return { success: true, details: results };
 }
 
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+function isIsolirProfileName(name, isolirName = DEFAULT_ISOLIR_PROFILE) {
+  const n = String(name || '').trim().toLowerCase();
+  if (!n) return false;
+  if (n === String(isolirName || '').trim().toLowerCase()) return true;
+  return n.includes('isolir');
+}
+
+function resolveRestoreProfile(originalProfile, isolirProfileName = DEFAULT_ISOLIR_PROFILE, fallbackProfile = 'default') {
+  const raw = String(originalProfile || '').trim();
+  const fallback = String(fallbackProfile || '').trim() || 'default';
+  if (!raw || isIsolirProfileName(raw, isolirProfileName)) {
+    return isIsolirProfileName(fallback, isolirProfileName) ? 'default' : fallback;
+  }
+  return raw;
+}
+
+function profileUsesRadius(profile) {
+  const v = String((profile && (profile['use-radius'] || profile.use_radius)) || 'no').toLowerCase();
+  return v === 'yes' || v === 'true';
+}
+
+/**
+ * Pilih PPP profile untuk restore. Jangan jatuh ke `default` (sering use-radius=yes)
+ * kalau paket/NAS punya profile lokal — itu bikin log "authentication failed".
+ */
+async function pickRestoreProfile(api, opts = {}) {
+  const isolirName = opts.isolirProfileName || DEFAULT_ISOLIR_PROFILE;
+  const candidates = [];
+  const add = (n) => {
+    const s = String(n || '').trim();
+    if (!s || isIsolirProfileName(s, isolirName)) return;
+    if (!candidates.includes(s)) candidates.push(s);
+  };
+  add(opts.originalProfile);
+  add(opts.packageProfile);
+  add(opts.fallbackProfile);
+
+  let all = [];
+  try { all = await runWithRetry(api, ['/ppp/profile/print']); } catch (_) { all = []; }
+  const byName = {};
+  for (const p of all || []) {
+    if (p && p.name) byName[p.name] = p;
+  }
+
+  for (const n of candidates) {
+    const p = byName[n];
+    if (p && !profileUsesRadius(p)) return n;
+  }
+  for (const n of candidates) {
+    if (byName[n]) return n;
+  }
+  for (const p of all || []) {
+    const n = String(p.name || '');
+    if (!n || isIsolirProfileName(n, isolirName) || profileUsesRadius(p)) continue;
+    const remote = String(p['remote-address'] || p.remoteAddress || '');
+    if (/isolir/i.test(remote)) continue;
+    if (/fiberix|skynet|^pppoe/i.test(n)) return n;
+  }
+  if (byName.default && !profileUsesRadius(byName.default)) return 'default';
+  return candidates[0] || 'default';
+}
+
+function nameMatches(rowName, username) {
+  return String(rowName || '').toLowerCase() === String(username || '').toLowerCase();
+}
+
+async function findPppSecrets(api, username) {
+  const want = String(username || '');
+  if (!want) return [];
+  try {
+    const exact = await runWithRetry(api, ['/ppp/secret/print', '?name=' + want]);
+    if (exact && exact.length) return exact;
+  } catch (_) { /* fallback ke scan nama case-insensitive */ }
+  try {
+    const all = await runWithRetry(api, ['/ppp/secret/print']);
+    return (all || []).filter(s => nameMatches(s.name, want));
+  } catch (_) {
+    return [];
+  }
+}
+
+async function findActivePppSessions(api, username) {
+  const want = String(username || '');
+  if (!want) return [];
+  try {
+    const exact = await runWithRetry(api, ['/ppp/active/print', '?name=' + want]);
+    const hit = (exact || []).filter(s => nameMatches(s.name, want));
+    if (hit.length) return hit;
+  } catch (_) { /* fallback ke scan semua sesi */ }
+  const all = await runWithRetry(api, ['/ppp/active/print']);
+  return (all || []).filter(s => nameMatches(s.name, want));
+}
+
+async function removeActiveSession(api, sess) {
+  const id = sess && sess['.id'];
+  if (!id) throw new Error('PPP session tanpa .id');
+  // RouterOS v7 REST: DELETE /ppp/active/%2A<id> sering "no such command prefix".
+  // CLI-style `remove numbers=<id>` paling kompatibel (native + REST).
+  const attempts = [
+    ['/ppp/active/remove', '=numbers=' + id],
+    ['/ppp/active/remove', '=.id=' + id],
+  ];
+  let lastErr;
+  for (const words of attempts) {
+    try {
+      await runWithRetry(api, words, 1);
+      return;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('kick PPP gagal');
+}
+
+/**
+ * Putuskan sesi PPP aktif supaya CPE reconnect dan dapat IP dari profile baru.
+ * Tanpa kick, MikroTik tetap memakai IP isolir sampai sesi mati sendiri.
+ */
+async function kickActivePppSessions(api, username, opts = {}) {
+  const first = await findActivePppSessions(api, username);
+  let kicked = 0;
+  const errors = [];
+  const retryMs = opts.retryDelayMs == null ? 350 : opts.retryDelayMs;
+
+  async function tryKick(sessions) {
+    for (const sess of sessions) {
+      try {
+        await removeActiveSession(api, sess);
+        kicked++;
+      } catch (e) {
+        errors.push(e.message || String(e));
+      }
+    }
+  }
+
+  await tryKick(first);
+  if (first.length && retryMs > 0) {
+    await sleep(retryMs);
+    const still = await findActivePppSessions(api, username);
+    if (still.length) await tryKick(still);
+  }
+  return { found: first.length, kicked, errors };
+}
+
 /**
  * Isolir customer PPPoE: backup profile asli → switch ke isolir-profile → kick.
  *
@@ -148,22 +296,35 @@ async function setupIsolirProfile(api, sequelize) {
  * @param {string} pppoeUsername - nama PPP secret
  * @param {object} sequelize - untuk read settings + update customer.pppoe_profile_original
  * @param {number} customerId - untuk update DB
+ * @param {object} [opts]
  * @returns {object} { success, originalProfile, message }
  */
-async function isolirPPPoEUser(api, pppoeUsername, sequelize, customerId) {
+async function isolirPPPoEUser(api, pppoeUsername, sequelize, customerId, opts = {}) {
   if (!pppoeUsername) throw new Error('PPPoE username kosong');
   const cfg = await getPPPoESettings(sequelize);
 
   // ── 1. Ambil profile asli dari /ppp/secret ──
-  const secrets = await runWithRetry(api, ['/ppp/secret/print', '?name=' + pppoeUsername]);
+  const secrets = await findPppSecrets(api, pppoeUsername);
   if (secrets.length === 0) {
-    throw new Error(`PPP secret "${pppoeUsername}" tidak ditemukan di MikroTik`);
+    if (!opts.allowMissingSecret) {
+      throw new Error(`PPP secret "${pppoeUsername}" tidak ditemukan di MikroTik`);
+    }
+    const kick = await kickActivePppSessions(api, pppoeUsername, opts);
+    return {
+      success: true,
+      originalProfile: null,
+      kicked: kick.kicked,
+      found: kick.found,
+      secretRestored: false,
+      kickErrors: kick.errors,
+      message: `Secret tidak ada, ${kick.kicked} session di-kick`
+    };
   }
   const secret = secrets[0];
   const originalProfile = String(secret.profile || 'default');
 
   // Hindari self-overwrite kalau sudah ter-isolir (re-isolir)
-  if (originalProfile !== cfg.profileName) {
+  if (originalProfile !== cfg.profileName && !opts.skipOriginalBackup) {
     // Backup ke DB SEBELUM switch — supaya restore selalu punya referensi
     await sequelize.query(
       'UPDATE customers SET pppoe_profile_original=? WHERE id=?',
@@ -180,22 +341,17 @@ async function isolirPPPoEUser(api, pppoeUsername, sequelize, customerId) {
   ]);
 
   // ── 3. Kick session aktif (kalau ada) → user reconnect dengan profile baru ──
-  let kicked = 0;
-  try {
-    const active = await runWithRetry(api, ['/ppp/active/print', '?name=' + pppoeUsername]);
-    for (const sess of active) {
-      if (sess['.id']) {
-        await runWithRetry(api, ['/ppp/active/remove', '=.id=' + sess['.id']]);
-        kicked++;
-      }
-    }
-  } catch (_) { /* kick gagal tidak fatal */ }
+  const kick = await kickActivePppSessions(api, pppoeUsername, opts);
 
   return {
     success: true,
     originalProfile,
-    kicked,
-    message: `Profile diubah ke "${cfg.profileName}", ${kicked} session di-kick`
+    kicked: kick.kicked,
+    found: kick.found,
+    secretRestored: true,
+    kickErrors: kick.errors,
+    message: `Profile diubah ke "${cfg.profileName}", ${kick.kicked} session di-kick`
+      + (kick.errors.length ? ` (kick error: ${kick.errors[0]})` : '')
   };
 }
 
@@ -205,42 +361,49 @@ async function isolirPPPoEUser(api, pppoeUsername, sequelize, customerId) {
  * @param {object} api - MikroTik API client
  * @param {string} pppoeUsername - nama PPP secret
  * @param {string} originalProfile - dari customers.pppoe_profile_original
+ * @param {object} [opts]
  * @returns {object} { success, kicked, message }
  */
-async function restorePPPoEUser(api, pppoeUsername, originalProfile) {
+async function restorePPPoEUser(api, pppoeUsername, originalProfile, opts = {}) {
   if (!pppoeUsername) throw new Error('PPPoE username kosong');
-  const targetProfile = originalProfile || 'default';
+  const isolirName = opts.isolirProfileName || DEFAULT_ISOLIR_PROFILE;
+  const targetProfile = await pickRestoreProfile(api, {
+    originalProfile,
+    isolirProfileName: isolirName,
+    packageProfile: opts.packageProfile,
+    fallbackProfile: opts.fallbackProfile
+  });
 
-  const secrets = await runWithRetry(api, ['/ppp/secret/print', '?name=' + pppoeUsername]);
-  if (secrets.length === 0) {
-    throw new Error(`PPP secret "${pppoeUsername}" tidak ditemukan di MikroTik`);
-  }
-  const secret = secrets[0];
-  if (!secret['.id']) throw new Error('PPP secret tidak punya ID');
-
-  // Restore profile
-  await runWithRetry(api, [
-    '/ppp/secret/set',
-    '=.id=' + secret['.id'],
-    '=profile=' + targetProfile
-  ]);
-
-  // Kick session aktif → reconnect dengan profile normal
-  let kicked = 0;
-  try {
-    const active = await runWithRetry(api, ['/ppp/active/print', '?name=' + pppoeUsername]);
-    for (const sess of active) {
-      if (sess['.id']) {
-        await runWithRetry(api, ['/ppp/active/remove', '=.id=' + sess['.id']]);
-        kicked++;
-      }
+  const secrets = await findPppSecrets(api, pppoeUsername);
+  let secretRestored = false;
+  if (!secrets.length) {
+    if (!opts.allowMissingSecret) {
+      throw new Error(`PPP secret "${pppoeUsername}" tidak ditemukan di MikroTik`);
     }
-  } catch (_) { /* kick gagal tidak fatal */ }
+  } else {
+    const secret = secrets[0];
+    if (!secret['.id']) throw new Error('PPP secret tidak punya ID');
+
+    await runWithRetry(api, [
+      '/ppp/secret/set',
+      '=.id=' + secret['.id'],
+      '=profile=' + targetProfile,
+      '=disabled=no'
+    ]);
+    secretRestored = true;
+  }
+
+  // Kick session aktif → reconnect dengan profile normal (IP PPPoE, bukan isolir-pool)
+  const kick = await kickActivePppSessions(api, pppoeUsername, opts);
 
   return {
     success: true,
-    kicked,
-    message: `Profile dipulihkan ke "${targetProfile}", ${kicked} session di-kick`
+    kicked: kick.kicked,
+    found: kick.found,
+    secretRestored,
+    kickErrors: kick.errors,
+    message: `Profile dipulihkan ke "${targetProfile}", ${kick.kicked} session di-kick`
+      + (kick.errors.length ? ` (kick error: ${kick.errors[0]})` : '')
   };
 }
 
@@ -251,4 +414,10 @@ module.exports = {
   setupIsolirProfile,
   isolirPPPoEUser,
   restorePPPoEUser,
+  kickActivePppSessions,
+  findActivePppSessions,
+  findPppSecrets,
+  isIsolirProfileName,
+  resolveRestoreProfile,
+  pickRestoreProfile,
 };
