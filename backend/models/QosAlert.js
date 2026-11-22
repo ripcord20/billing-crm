@@ -29,6 +29,10 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: false
     },
+    device_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
     target_key: {
       type: DataTypes.STRING(160),
       allowNull: true
