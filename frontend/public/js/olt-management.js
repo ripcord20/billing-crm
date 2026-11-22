@@ -1660,11 +1660,11 @@ const OltMgmt = {
         return `<span class="card-pill ${cls}" style="margin-left:5px;font-size:10px">${esc(lbl)}</span>`;
       };
       body.innerHTML = this.vlans.map(v => `<tr class="vlan-row" style="cursor:pointer" onclick="OltMgmt.openVlanDetail(${v.vid})">
-        <td><span class="onu-if">${v.vid}</span></td>
-        <td>${v.name ? esc(v.name) : '<span class="mut">—</span>'}${(v.sources || []).map(srcBadge).join('')}</td>
-        <td>${v.type ? esc(v.type) : '<span class="mut">—</span>'}</td>
-        <td>${v.ports ? `<span class="onu-sn">${esc(v.ports)}</span>` : '<span class="mut">—</span>'}</td>
-        <td onclick="event.stopPropagation()"><div class="row-acts">
+        <td data-label="VLAN ID"><span class="onu-if">${v.vid}</span></td>
+        <td data-label="Nama">${v.name ? esc(v.name) : '<span class="mut">—</span>'}${(v.sources || []).map(srcBadge).join('')}</td>
+        <td data-label="Type">${v.type ? esc(v.type) : '<span class="mut">—</span>'}</td>
+        <td data-label="Port">${v.ports ? `<span class="onu-sn vlan-ports">${esc(v.ports)}</span>` : '<span class="mut">—</span>'}</td>
+        <td data-label="Aksi" onclick="event.stopPropagation()"><div class="row-acts">
           <button class="ra info" title="Detail VLAN" onclick="OltMgmt.openVlanDetail(${v.vid})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
           <button class="ra edit" title="Edit nama VLAN" onclick="OltMgmt.openVlanDetail(${v.vid}, true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
           <button class="ra del" title="Hapus VLAN" onclick="OltMgmt.deleteVlan(${v.vid})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>
@@ -2336,7 +2336,7 @@ const OltMgmt = {
       const d = res.data || {};
       let html = '<div style="margin-top:14px;padding-top:14px;border-top:1px solid #e2e8f0">';
       // WAN IP
-      html += '<div style="font-weight:600;font-size:13px;margin-bottom:8px;color:#334155">WAN IP Pelanggan</div>';
+      html += '<div class="ot-sec-title">WAN IP Pelanggan</div>';
       if (d.wan && d.wan.length) {
         d.wan.forEach(w => {
           html += `<div class="det-grid" style="margin-bottom:8px">
@@ -2350,10 +2350,10 @@ const OltMgmt = {
         html += '<div class="info-note" style="margin-bottom:10px">Belum ada WAN IP — ONU mungkin offline, belum dapat IP, atau dalam mode bridge.</div>';
       }
       // MAC list
-      html += `<div style="font-weight:600;font-size:13px;margin:12px 0 8px;color:#334155">MAC Address Terdeteksi (${d.mac_count || 0})</div>`;
+      html += `<div class="ot-sec-title" style="margin:12px 0 8px">MAC Address Terdeteksi (${d.mac_count || 0})</div>`;
       if (d.macs && d.macs.length) {
         html += '<div style="display:flex;flex-direction:column;gap:4px">' + d.macs.slice(0, 20).map(m =>
-          `<div class="mono" style="font-size:12.5px;color:#475569">${esc(m.mac)}${m.vlan ? ` <span style="color:#94a3b8">· VLAN ${m.vlan}</span>` : ''}</div>`
+          `<div class="mono ot-mac-line">${esc(m.mac)}${m.vlan ? ` <span class="ot-mac-vlan">· VLAN ${m.vlan}</span>` : ''}</div>`
         ).join('') + '</div>';
       } else {
         html += `<div style="color:var(--faint);font-size:13px">${d.mac_count ? `${d.mac_count} MAC (detail tidak tersedia)` : 'Tidak ada MAC terdeteksi'}</div>`;
@@ -2449,7 +2449,7 @@ const OltMgmt = {
           const portRef = u.gpon_olt || (u.port != null ? String(u.port) : '');
           return `<tr>
           <td><span class="onu-if">${esc(portRef || '—')}</span></td>
-          <td><span class="onu-sn" style="font-size:12.5px;color:#334155">${esc(u.sn)}</span></td>
+          <td><span class="onu-sn" style="font-size:12.5px">${esc(u.sn)}</span></td>
           <td><span class="st-pill st-disabled">${esc(u.state||'unknown')}</span></td>
           <td style="text-align:right"><button class="btn btn-green btn-sm" onclick="OltMgmt.authorizeFromUncfg('${esc(portRef)}','${esc(u.sn)}')">+ Authorize</button></td>
         </tr>`;
@@ -2501,7 +2501,7 @@ const OltMgmt = {
       <div class="ot-modal-hdr"><h3>${esc(title)}</h3>
         <button class="ot-modal-close" onclick="document.getElementById('_oltConfirm').remove()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
-      <div class="ot-modal-body"><div style="font-size:13.5px;color:#334155;line-height:1.55">${bodyHtml}</div></div>
+      <div class="ot-modal-body"><div class="ot-confirm-msg">${bodyHtml}</div></div>
       <div class="ot-modal-foot"><div></div><div class="ot-modal-foot-r">
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('_oltConfirm').remove()">Batal</button>
         <button class="btn btn-sm" id="_oltConfirmYes" style="background:${c};border-color:${c};color:#fff">Ya, Lanjutkan</button>
