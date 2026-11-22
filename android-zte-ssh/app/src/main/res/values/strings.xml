@@ -17,6 +17,8 @@
     <string name="connect">Hubungkan</string>
     <string name="disconnect">Putuskan</string>
     <string name="send">Kirim</string>
+    <string name="hide_kb">Tutup</string>
+    <string name="hide_kb_desc">Tutup keyboard</string>
     <string name="copy">Salin</string>
     <string name="paste">Tempel</string>
     <string name="copied">Output disalin ke clipboard</string>
@@ -36,7 +38,7 @@
     <string name="keep_channel_desc">Menjaga SSH/Telnet tetap hidup saat pindah aplikasi</string>
     <string name="keep_title">ZTE SSH terhubung</string>
     <string name="keep_text">Sesi %1$s tetap hidup. Ketuk untuk kembali, atau Putuskan.</string>
-    <string name="howto">Cara pakai:\n1. HP harus satu Wi-Fi / VPN dengan OLT.\n2. Isi IP, user, password, lalu Hubungkan.\n3. C320 sering Telnet port 23 (bukan SSH 22).\n4. Di terminal: ketik perintah, tap chip cepat, Tempel, atau Skrip.\n5. Pustaka skrip: simpan perintah ONT (nama + catatan + isi). Placeholder {SN} {PON} diisi saat mengambil. Ketuk Kirim setelah cek.\n6. Panah atas = perintah terakhir, panah bawah = berikutnya.\n7. Boleh pindah ke WhatsApp/catatan — sesi SSH tidak timeout cepat. Hentikan dari notifikasi jika selesai.\n8. Salin = copy output. Blok teks lalu Salin = copy yang terpilih saja.\n9. Tempel banyak baris lalu Kirim — dikirim satu per satu (~120 ms).</string>
+    <string name="howto">Cara pakai:\n1. HP harus satu Wi-Fi / VPN dengan OLT.\n2. Isi IP, user, password, lalu Hubungkan.\n3. C320 sering Telnet port 23 (bukan SSH 22).\n4. Di terminal: ketuk kotak perintah untuk mengetik. Chip cepat, Tempel, atau Skrip juga bisa.\n5. Tutup keyboard: tombol Tutup, ketuk output terminal, atau Back. Keyboard tidak dipaksa tetap terbuka.\n6. Pustaka skrip: simpan perintah ONT (nama + catatan + isi). Placeholder {SN} {PON} diisi saat mengambil. Ketuk Kirim setelah cek.\n7. Panah atas = perintah terakhir, panah bawah = berikutnya.\n8. Boleh pindah ke WhatsApp/catatan — sesi SSH tidak timeout cepat. Hentikan dari notifikasi jika selesai.\n9. Salin = copy output. Blok teks lalu Salin = copy yang terpilih saja.\n10. Tempel banyak baris lalu Kirim — dikirim satu per satu (~120 ms).</string>
     <string name="script">Skrip</string>
     <string name="scripts_title">Pustaka skrip</string>
     <string name="scripts_hint_edit">Ketuk skrip untuk mengubah. Long-press juga membuka editor. Skrip tersimpan di HP ini, bukan di OLT.</string>

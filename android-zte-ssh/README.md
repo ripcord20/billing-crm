@@ -4,15 +4,15 @@ Aplikasi konsol **SSH / Telnet** untuk OLT ZTE C300 / C320. Bukan WebView CRM: H
 
 Handshake SSH memakai algoritma OLT lama (ssh-rsa, group1, 3des) plus keyboard-interactive, sama seperti klien CLI Fiberix.
 
-Versi **1.2.1** menargetkan Android 16 (`targetSdk 36`) dan paket AAB untuk unggah Play Store. Pustaka skrip CLI tersimpan di HP (nama, catatan, perintah, placeholder `{SN}`). Kotak perintah di baris penuh di bawah tombol. Langkah Console: [PLAY_STORE.md](PLAY_STORE.md).
+Versi **1.2.2** menargetkan Android 16 (`targetSdk 36`) dan paket AAB untuk unggah Play Store. Pustaka skrip CLI tersimpan di HP (nama, catatan, perintah, placeholder `{SN}`). Kotak perintah di baris penuh di bawah tombol. Keyboard terminal bisa ditutup (tombol Tutup, ketuk output, atau Back). Langkah Console: [PLAY_STORE.md](PLAY_STORE.md).
 
 ## Unduh
 
 Langsung dari GitHub (tanpa menunggu deploy CRM):
 
-- APK: https://github.com/ripcord20/billing-crm/raw/cursor/zte-ssh-apk-9481/frontend/public/apk/ZTE-SSH.apk
-- ZIP (jika Chrome memblokir APK): https://github.com/ripcord20/billing-crm/raw/cursor/zte-ssh-apk-9481/frontend/public/apk/ZTE-SSH.zip
-- Kebijakan privasi: https://github.com/ripcord20/billing-crm/raw/cursor/zte-ssh-apk-9481/frontend/public/apk/privacy.html
+- APK: https://github.com/ripcord20/billing-crm/raw/cursor/olt-ssh-hide-kb-4127/frontend/public/apk/ZTE-SSH.apk
+- ZIP (jika Chrome memblokir APK): https://github.com/ripcord20/billing-crm/raw/cursor/olt-ssh-hide-kb-4127/frontend/public/apk/ZTE-SSH.zip
+- Kebijakan privasi: https://github.com/ripcord20/billing-crm/raw/cursor/olt-ssh-hide-kb-4127/frontend/public/apk/privacy.html
 
 Setelah CRM di-deploy: **OLT Management → Unduh APK SSH** membuka `/apk/` (tombol APK + ZIP). Privasi: `/apk/privacy.html`.
 
@@ -24,7 +24,7 @@ Sideload internal tetap didukung. Play Store memakai file **AAB**, bukan APK.
 2. Isi IP, user, password → **Hubungkan**. Profil tersimpan terenkripsi di HP (Android Keystore).
 3. C320 sering **Telnet port 23**; SSH port 22.
 4. Password enable opsional — dikirim setelah `terminal length 0`.
-5. Ketuk kotak perintah atau layar terminal supaya keyboard muncul, lalu ketik. Chip: `show card`, `show gpon onu uncfg`, `show processor`, dll. Panah **atas** = perintah terakhir, panah **bawah** = berikutnya. Saran perintah muncul di atas kotak; kata salah (yang sudah selesai) digarisbawahi merah.
+5. Ketuk **kotak perintah** supaya keyboard muncul, lalu ketik. Chip: `show card`, `show gpon onu uncfg`, `show processor`, dll. Panah **atas** = perintah terakhir, panah **bawah** = berikutnya. Saran perintah muncul di atas kotak; kata salah (yang sudah selesai) digarisbawahi merah. Tutup keyboard dengan **Tutup**, ketuk output terminal, atau Back.
 5b. **Pustaka skrip** (tombol Skrip di terminal, atau di layar login): simpan dokumentasi + perintah ONT. Placeholder `{PON}` `{SN}` diisi saat mengambil. Skrip masuk ke kotak dulu — baru **Kirim** ke OLT.
 6. Boleh pindah ke WhatsApp/catatan — keepalive SSH + notifikasi menjaga sesi. Hentikan dari **Putuskan** di notifikasi.
 7. **Salin** = copy output terminal ke clipboard (kalau ada teks terpilih, hanya itu).

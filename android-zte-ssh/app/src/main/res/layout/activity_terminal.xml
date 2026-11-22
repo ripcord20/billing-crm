@@ -117,6 +117,21 @@
             android:orientation="horizontal">
 
             <Button
+                android:id="@+id/btnHideKb"
+                style="@style/Widget.ZteSsh.Btn"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_btn_ghost"
+                android:contentDescription="@string/hide_kb_desc"
+                android:minWidth="0dp"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:text="@string/hide_kb"
+                android:textColor="@color/muted"
+                android:textSize="13sp" />
+
+            <Button
                 android:id="@+id/btnScripts"
                 style="@style/Widget.ZteSsh.Btn"
                 android:layout_width="wrap_content"

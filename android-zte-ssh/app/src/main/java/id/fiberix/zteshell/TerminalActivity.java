@@ -38,10 +38,13 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 public class TerminalActivity extends AppCompatActivity implements OltSession.Listener {
     private static final long PASTE_LINE_MS = 120L;
@@ -96,9 +99,10 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         setContentView(R.layout.activity_terminal);
         InsetFit.apply(findViewById(R.id.termRoot));
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        // Jangan STATE_VISIBLE / SHOW_FORCED: Gboard mengambang tidak bisa ditutup.
         getWindow().setSoftInputMode(
                 WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
-                        | WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+                        | WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
 
         String id = getIntent().getStringExtra(LoginActivity.EXTRA_PROFILE_ID);
         OltProfile profile = new ProfileStore(this).find(id);
@@ -152,13 +156,22 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
                     LinearLayout.LayoutParams.WRAP_CONTENT);
             lp.setMarginEnd(pad);
             b.setLayoutParams(lp);
-            b.setOnClickListener(v -> sendLine(c));
+            b.setOnClickListener(v -> {
+                hideCommandIme();
+                sendLine(c);
+            });
             chips.addView(b);
         }
 
-        findViewById(R.id.btnCopy).setOnClickListener(v -> copyOutput());
-        findViewById(R.id.btnScripts).setOnClickListener(v ->
-                pickScript.launch(ScriptLibraryActivity.pickIntent(this, cmd.getText().toString())));
+        findViewById(R.id.btnCopy).setOnClickListener(v -> {
+            hideCommandIme();
+            copyOutput();
+        });
+        findViewById(R.id.btnHideKb).setOnClickListener(v -> hideCommandIme());
+        findViewById(R.id.btnScripts).setOnClickListener(v -> {
+            hideCommandIme();
+            pickScript.launch(ScriptLibraryActivity.pickIntent(this, cmd.getText().toString()));
+        });
         findViewById(R.id.btnPaste).setOnClickListener(v -> pasteIntoBox());
         findViewById(R.id.btnHistUp).setOnClickListener(v -> historyUp());
         findViewById(R.id.btnHistDown).setOnClickListener(v -> historyDown());
@@ -167,10 +180,6 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
             if (session != null) session.disconnect();
             finish();
         });
-        cmd.setOnClickListener(v -> showCommandIme());
-        cmd.setOnFocusChangeListener((v, hasFocus) -> {
-            if (hasFocus) showCommandIme();
-        });
         cmd.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 v.requestFocus();
@@ -178,10 +187,21 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
             }
             return false;
         });
-        // Tap layar terminal = ketik perintah (seperti klien SSH biasa).
-        View.OnClickListener openIme = v -> showCommandIme();
-        scroll.setOnClickListener(openIme);
-        out.setOnClickListener(openIme);
+        // Ketuk output = tutup keyboard supaya tabel ONU kelihatan.
+        View.OnClickListener closeIme = v -> hideCommandIme();
+        scroll.setOnClickListener(closeIme);
+        out.setOnClickListener(closeIme);
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (shouldConsumeBackToHideIme()) {
+                    hideCommandIme();
+                    return;
+                }
+                setEnabled(false);
+                getOnBackPressedDispatcher().onBackPressed();
+            }
+        });
         cmd.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEND
                     || actionId == EditorInfo.IME_ACTION_DONE
@@ -218,7 +238,6 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         append("[menghubungkan ke " + profile.host + "…]\n");
         session = new OltSession(profile, this);
         session.connect();
-        cmd.post(this::showCommandIme);
     }
 
     private void requestNotifyPermission() {
@@ -329,24 +348,54 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
 
     private void showCommandIme() {
         if (cmd == null) return;
+        cmd.setShowSoftInputOnFocus(true);
         cmd.setFocusable(true);
         cmd.setFocusableInTouchMode(true);
         cmd.requestFocus();
         cmd.post(() -> {
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) {
-                imm.restartInput(cmd);
-                imm.showSoftInput(cmd, InputMethodManager.SHOW_FORCED);
-            }
-            if (Build.VERSION.SDK_INT >= 30) {
-                try {
-                    if (cmd.getWindowInsetsController() != null) {
-                        cmd.getWindowInsetsController().show(WindowInsets.Type.ime());
-                    }
-                } catch (Exception ignored) {
-                }
+                imm.showSoftInput(cmd, InputMethodManager.SHOW_IMPLICIT);
             }
         });
+    }
+
+    private void hideCommandIme() {
+        dismissSuggestions();
+        if (cmd != null) {
+            cmd.setShowSoftInputOnFocus(false);
+            cmd.clearFocus();
+        }
+        View tokenView = cmd != null ? cmd : getWindow().getDecorView();
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null && tokenView.getWindowToken() != null) {
+            imm.hideSoftInputFromWindow(tokenView.getWindowToken(), 0);
+        }
+        if (Build.VERSION.SDK_INT >= 30) {
+            try {
+                if (getWindow().getInsetsController() != null) {
+                    getWindow().getInsetsController().hide(WindowInsets.Type.ime());
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        if (cmd != null) {
+            cmd.post(() -> cmd.setShowSoftInputOnFocus(true));
+        }
+    }
+
+    private boolean shouldConsumeBackToHideIme() {
+        if (cmd != null && cmd.hasFocus()) return true;
+        return isImeVisible();
+    }
+
+    private boolean isImeVisible() {
+        if (Build.VERSION.SDK_INT >= 30) {
+            WindowInsets insets = getWindow().getDecorView().getRootWindowInsets();
+            if (insets != null && insets.isVisible(WindowInsets.Type.ime())) return true;
+        }
+        WindowInsetsCompat compat = ViewCompat.getRootWindowInsets(getWindow().getDecorView());
+        return compat != null && compat.isVisible(WindowInsetsCompat.Type.ime());
     }
 
     private void copyOutput() {
@@ -421,7 +470,7 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
     private void sendFromBox() {
         String raw = cmd.getText().toString();
         cmd.setText("");
-        showCommandIme();
+        hideCommandIme();
         String[] lines = raw.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1);
         int n = lines.length;
         if (n > 0 && lines[n - 1].isEmpty()) n--;
@@ -467,9 +516,19 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         buf.append(s);
         if (buf.length() > 120_000) buf.delete(0, buf.length() - 80_000);
         boolean cmdHadFocus = cmd != null && cmd.hasFocus();
+        boolean imeWasVisible = isImeVisible();
         out.setText(buf.toString());
         scrollToEnd();
-        if (cmdHadFocus) cmd.requestFocus();
+        if (!cmdHadFocus) return;
+        if (imeWasVisible) {
+            showCommandIme();
+            return;
+        }
+        cmd.setShowSoftInputOnFocus(false);
+        cmd.requestFocus();
+        cmd.post(() -> {
+            if (cmd != null) cmd.setShowSoftInputOnFocus(true);
+        });
     }
 
     /** Scroll tanpa fullScroll(FOCUS_DOWN) — itu memindah fokus ke TextView dan menutup keyboard. */
@@ -492,6 +551,30 @@ public class TerminalActivity extends AppCompatActivity implements OltSession.Li
         append("\n[" + reason + "]\n");
         OltKeepAliveService.stop(this);
         releaseWakeLock();
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (ev.getAction() == MotionEvent.ACTION_DOWN
+                && (suggestionPopup == null || !suggestionPopup.isShowing())
+                && isTouchOnTerminalOutput(ev)) {
+            hideCommandIme();
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+
+    private boolean isTouchOnTerminalOutput(MotionEvent ev) {
+        return isTouchInside(scroll, ev) || isTouchInside(out, ev);
+    }
+
+    private static boolean isTouchInside(View v, MotionEvent ev) {
+        if (v == null || v.getWidth() <= 0 || v.getHeight() <= 0) return false;
+        int[] loc = new int[2];
+        v.getLocationOnScreen(loc);
+        float x = ev.getRawX();
+        float y = ev.getRawY();
+        return x >= loc[0] && x <= loc[0] + v.getWidth()
+                && y >= loc[1] && y <= loc[1] + v.getHeight();
     }
 
     @Override
