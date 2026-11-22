@@ -1,5 +1,11 @@
 const { getMikrotikInstance, getMikrotikInstanceByDevice } = require('../services/MikrotikService');
 const logger = require('../utils/logger');
+const {
+  isAssignedIpv4,
+  findRemoteAddressClash,
+  clashMessage
+} = require('../utils/pppoeDuplicateIp');
+const { scanDuplicateIps } = require('../services/PppoeDuplicateIpService');
 
 // Helper: ambil device_id dari query/header lalu return instance MikroTik
 function resolveDeviceId(req) {
@@ -104,6 +110,23 @@ class PPPoEController {
     }
   }
 
+  // GET /api/mikrotik/pppoe/duplicate-ips
+  // Cek IP yang dipakai ≥ 2 user PPPoE: secret MikroTik, sesi aktif, dan data pelanggan.
+  async duplicateIps(req, res) {
+    try {
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      const all = String(req.query.all || '1') !== '0';
+      const data = await scanDuplicateIps({
+        deviceId: resolveDeviceId(req),
+        allRouters: all
+      });
+      res.json({ success: true, data, total: data.summary.total_groups });
+    } catch (err) {
+      logger.error(`PPPoE duplicate-ips error: ${err.message}`);
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
   // GET /api/mikrotik/pppoe/profiles
   async getProfiles(req, res) {
     try {
@@ -116,12 +139,25 @@ class PPPoEController {
     }
   }
 
+  async _assertUniqueRemoteAddress(mt, remoteAddress, opts = {}) {
+    const ra = (remoteAddress || '').trim();
+    if (!isAssignedIpv4(ra)) return;
+    const secrets = await mt.getPPPoESecrets();
+    const clash = findRemoteAddressClash(secrets, ra, opts);
+    if (clash) {
+      const err = new Error(clashMessage(ra, clash.name));
+      err.status = 400;
+      throw err;
+    }
+  }
+
   // POST /api/mikrotik/pppoe/secrets
   async createSecret(req, res) {
     try {
       const mt = await getMt(req);
       if (!req.body.name)     return res.status(400).json({ success:false, message:'Username wajib diisi' });
       if (!req.body.password) return res.status(400).json({ success:false, message:'Password wajib diisi' });
+      await this._assertUniqueRemoteAddress(mt, req.body.remoteAddress, { excludeName: req.body.name });
       await mt.createPPPoESecret(req.body);
       // null response = ECONNRESET after write = operation succeeded
       res.json({ success: true, message: 'User PPPoE berhasil dibuat' });
@@ -135,6 +171,10 @@ class PPPoEController {
   async updateSecret(req, res) {
     try {
       const mt = await getMt(req);
+      await this._assertUniqueRemoteAddress(mt, req.body.remoteAddress, {
+        excludeId: req.params.id,
+        excludeName: req.body.name
+      });
       await mt.updatePPPoESecret(req.params.id, req.body);
       res.json({ success: true, message: 'User PPPoE berhasil diupdate' });
     } catch (err) {

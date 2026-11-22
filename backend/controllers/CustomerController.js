@@ -5,6 +5,36 @@ const { generateUniqueCustomerId, paginateResponse } = require('../utils/helpers
 const { getCompanyName } = require('../utils/companyInfo');
 const InfraSync = require('../services/CustomerInfraSyncService');
 const { applyTenantWhere, getTenantId, assertCustomerTenant, isTenantOwner } = require('../utils/tenantScope');
+const { isAssignedIpv4, normalizeIp } = require('../utils/pppoeDuplicateIp');
+
+async function assertUniqueStaticIp(ip, excludeId) {
+  const trimmed = String(ip || '').trim();
+  if (!trimmed) return;
+  if (!isAssignedIpv4(trimmed)) {
+    const err = new Error('IP Statis tidak valid (harus IPv4, contoh 10.8.0.10)');
+    err.status = 400;
+    throw err;
+  }
+  const norm = normalizeIp(trimmed);
+  const where = {
+    static_ip: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] }
+  };
+  if (excludeId) where.id = { [Op.ne]: excludeId };
+  const others = await Customer.findAll({
+    where,
+    attributes: ['id', 'customer_id', 'name', 'pppoe_username', 'static_ip'],
+    raw: true
+  });
+  const clash = others.find((c) => normalizeIp(c.static_ip) === norm);
+  if (clash) {
+    const who = clash.pppoe_username
+      ? `${clash.name} (${clash.customer_id} / PPPoE ${clash.pppoe_username})`
+      : `${clash.name} (${clash.customer_id})`;
+    const err = new Error(`IP ${norm} sudah dipakai pelanggan lain: ${who}`);
+    err.status = 400;
+    throw err;
+  }
+}
 
 class CustomerController {
   async index(req, res) {
@@ -154,6 +184,8 @@ class CustomerController {
       // Jangan izinkan field internal di-set dari input bebas.
       delete data.public_link_token;
 
+      await assertUniqueStaticIp(data.static_ip);
+
       // Auto-generate token link pembayaran permanen untuk pelanggan baru.
       try {
         const { generateCustomerLinkToken } = require('../utils/templateHelper');
@@ -271,6 +303,10 @@ class CustomerController {
       delete sanitized.customer_id;           // hanya boleh diubah via updatePortalCredentials (validasi unique)
       delete sanitized.last_portal_login;     // diset otomatis oleh sistem saat login
       delete sanitized.public_link_token;     // hanya via endpoint payment-link (generate/revoke)
+
+      if (sanitized.static_ip !== undefined) {
+        await assertUniqueStaticIp(sanitized.static_ip, customer.id);
+      }
 
       await customer.update(sanitized);
       const full = await Customer.findByPk(customer.id, {

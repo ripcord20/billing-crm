@@ -263,6 +263,43 @@
     .svc-badge.svc-any   { background:#f1f5f9; color:#475569; }
     .btn-blue { background:#2563eb; border-color:#2563eb; color:#fff; }
     .btn-blue:hover { background:#1d4ed8; }
+
+    /* ── Duplicate IP banner ── */
+    .pp-dup-banner {
+      display:none;
+      border:1.5px solid #fecaca;
+      background:#fef2f2;
+      border-radius:14px;
+      padding:14px 16px;
+      margin-bottom:16px;
+    }
+    .pp-dup-banner.show { display:block; }
+    .pp-dup-banner.ok { border-color:#bbf7d0; background:#f0fdf4; }
+    .pp-dup-banner.loading { border-color:#e2e8f0; background:#f8fafc; }
+    .pp-dup-hdr { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .pp-dup-title { font-size:14px; font-weight:800; color:#991b1b; margin:0 0 4px; }
+    .pp-dup-banner.ok .pp-dup-title { color:#166534; }
+    .pp-dup-banner.loading .pp-dup-title { color:#334155; }
+    .pp-dup-sub { font-size:12.5px; color:#7f1d1d; margin:0; line-height:1.5; }
+    .pp-dup-banner.ok .pp-dup-sub, .pp-dup-banner.loading .pp-dup-sub { color:#64748b; }
+    .pp-dup-list { margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+    .pp-dup-card {
+      background:#fff; border:1px solid #fecaca; border-radius:10px;
+      padding:10px 12px; font-size:13px;
+    }
+    .pp-dup-card .ip { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-weight:800; color:#b91c1c; }
+    .pp-dup-card .meta { font-size:11px; color:#94a3b8; margin-left:6px; }
+    .pp-dup-users { margin:6px 0 0; padding:0; list-style:none; display:flex; flex-wrap:wrap; gap:6px; }
+    .pp-dup-users li {
+      background:#fef2f2; border:1px solid #fecaca; color:#7f1d1d;
+      border-radius:999px; padding:3px 9px; font-size:12px; font-weight:600;
+    }
+    .ip-dup {
+      display:inline-flex; align-items:center; gap:4px;
+      background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;
+      padding:2px 8px; border-radius:6px; font-weight:700; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    }
+    tr.pp-dup-row td { background:#fef2f2; }
   
   </style>
 </head>
@@ -289,6 +326,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
             Refresh
           </button>
+          <button class="btn btn-outline btn-sm" id="btnDupIp" onclick="scanDuplicateIps(true)" title="Cek IP yang dipakai lebih dari satu user PPPoE">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Cek IP Ganda
+          </button>
           <button class="btn btn-outline btn-sm" id="btnBulkPppoe" onclick="PppoeBulk.open()" title="Buat user PPPoE massal dari Excel">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             Bulk Create
@@ -299,6 +340,8 @@
           </button>
         </div>
       </div>
+
+      <div id="ppDupBanner" class="pp-dup-banner" aria-live="polite"></div>
 
       <!-- Stat cards -->
       <div class="pp-cards">
@@ -625,6 +668,10 @@
   var _sparkHist = { total: [], pppoe: [], enabled: [], disabled: [], offline: [] };
   var SPARK_W = 72, SPARK_H = 36, SPARK_MAX = 20;
   var SPARK_COLORS = { total:'#2563eb', pppoe:'#16a34a', enabled:'#16a34a', disabled:'#dc2626', offline:'#d97706' };
+  var _dupIpSet = {};
+  var _dupFromApi = {};
+  var _dupScanBusy = false;
+  var _dupScanDone = false;
 
   // ── Utils ───────────────────────────────────────────────────
   function esc(s) {
@@ -632,6 +679,154 @@
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
       .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
+
+  function _isAssignedIpv4(v) {
+    var s = String(v == null ? '' : v).trim().replace(/\/32$/i, '');
+    var m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(s);
+    if (!m) return false;
+    return m.slice(1).every(function(n){ var x = parseInt(n, 10); return x >= 0 && x <= 255; });
+  }
+  function _normIp(v) {
+    var s = String(v == null ? '' : v).trim().replace(/\/32$/i, '');
+    var m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(s);
+    if (!m) return s;
+    return m.slice(1).map(function(n){ return String(parseInt(n, 10)); }).join('.');
+  }
+  function _groupDupIps(list, getIp, getUser) {
+    var map = {};
+    (list || []).forEach(function(item){
+      var ip = _normIp(getIp(item));
+      if (!_isAssignedIpv4(ip)) return;
+      if (!map[ip]) map[ip] = [];
+      map[ip].push(item);
+    });
+    var out = [];
+    Object.keys(map).forEach(function(ip){
+      var keys = {};
+      map[ip].forEach(function(u){
+        var k = String(getUser(u) || '').trim().toLowerCase();
+        if (k) keys[k] = true;
+      });
+      if (Object.keys(keys).length >= 2) out.push({ ip: ip, count: Object.keys(keys).length, users: map[ip] });
+    });
+    return out;
+  }
+  function localSecretDupes() {
+    return _groupDupIps(_secrets, function(s){ return s.remoteAddress; }, function(s){ return s.name; });
+  }
+  function localSessionDupes() {
+    return _groupDupIps(_sessions, function(s){ return s.address; }, function(s){ return s.name; });
+  }
+  function markDupSet(groups) {
+    (groups || []).forEach(function(g){ if (g && g.ip) _dupIpSet[g.ip] = true; });
+  }
+  function rebuildDupSetFromLocal() {
+    _dupIpSet = Object.assign({}, _dupFromApi);
+    markDupSet(localSecretDupes());
+    markDupSet(localSessionDupes());
+  }
+  function ipCell(ip) {
+    var n = _normIp(ip);
+    if (!n) return '—';
+    if (_dupIpSet[n]) return '<span class="ip-dup" title="IP ini dipakai lebih dari satu user">' + esc(n) + ' · ganda</span>';
+    return esc(n);
+  }
+  function renderDupBanner(payload, state) {
+    var el = document.getElementById('ppDupBanner');
+    if (!el) return;
+    if (state === 'loading') {
+      el.className = 'pp-dup-banner show loading';
+      el.innerHTML = '<div class="pp-dup-hdr"><div><p class="pp-dup-title">Memeriksa IP ganda…</p><p class="pp-dup-sub">Scan secret PPPoE di router dan data pelanggan.</p></div></div>';
+      return;
+    }
+    function mergeLocal(apiGroups, localGroups) {
+      var seen = {};
+      (apiGroups || []).forEach(function(g){ if (g && g.ip) seen[g.ip] = true; });
+      var extra = (localGroups || []).filter(function(g){ return g && g.ip && !seen[g.ip]; });
+      return (apiGroups || []).concat(extra);
+    }
+    var data = payload || {};
+    var secrets = mergeLocal(data.secrets, localSecretDupes());
+    var sessions = mergeLocal(data.sessions, localSessionDupes());
+    var customers = data.customers || [];
+    var errors = data.errors || [];
+    var total = secrets.length + sessions.length + customers.length;
+    _dupFromApi = {};
+    (secrets || []).forEach(function(g){ if (g && g.ip) _dupFromApi[g.ip] = true; });
+    (sessions || []).forEach(function(g){ if (g && g.ip) _dupFromApi[g.ip] = true; });
+    (customers || []).forEach(function(g){ if (g && g.ip) _dupFromApi[g.ip] = true; });
+    rebuildDupSetFromLocal();
+
+    if (!total) {
+      el.className = 'pp-dup-banner show ok';
+      var errNote = errors.length
+        ? ' Beberapa router gagal di-scan: ' + errors.map(function(e){ return esc(e.device_name || '') + ' (' + esc(e.message || '') + ')'; }).join('; ') + '.'
+        : '';
+      el.innerHTML =
+        '<div class="pp-dup-hdr"><div>' +
+          '<p class="pp-dup-title">Tidak ada IP yang dipakai 2 user PPPoE</p>' +
+          '<p class="pp-dup-sub">Dicek secret MikroTik, sesi aktif, dan IP statis pelanggan.' + errNote + '</p>' +
+        '</div></div>';
+      return;
+    }
+
+    function userPills(users, kind) {
+      return '<ul class="pp-dup-users">' + (users || []).map(function(u){
+        var label = kind === 'customer'
+          ? (u.name || '-') + (u.pppoe_username ? ' · ' + u.pppoe_username : '')
+          : (u.name || '-');
+        if (u.disabled) label += ' (disabled)';
+        return '<li>' + esc(label) + '</li>';
+      }).join('') + '</ul>';
+    }
+    function cards(groups, kind, label) {
+      return (groups || []).map(function(g){
+        var src = g.device_name ? ' · ' + g.device_name : '';
+        return '<div class="pp-dup-card"><span class="ip">' + esc(g.ip) + '</span>' +
+          '<span class="meta">' + esc(label) + ' · ' + g.count + ' user' + esc(src) + '</span>' +
+          userPills(g.users, kind) + '</div>';
+      }).join('');
+    }
+
+    el.className = 'pp-dup-banner show';
+    el.innerHTML =
+      '<div class="pp-dup-hdr"><div>' +
+        '<p class="pp-dup-title">' + total + ' IP dipakai lebih dari satu user PPPoE</p>' +
+        '<p class="pp-dup-sub">Secret: ' + secrets.length + ' · Sesi aktif: ' + sessions.length + ' · Data pelanggan: ' + customers.length +
+          (errors.length ? ' · Router gagal: ' + errors.length : '') +
+        '</p></div></div>' +
+      '<div class="pp-dup-list">' +
+        cards(secrets, 'secret', 'PPP secret') +
+        cards(sessions, 'session', 'Sesi aktif') +
+        cards(customers, 'customer', 'Pelanggan') +
+      '</div>';
+  }
+  async function scanDuplicateIps(manual) {
+    if (_dupScanBusy) return;
+    _dupScanBusy = true;
+    if (manual || !_dupScanDone) renderDupBanner(null, 'loading');
+    try {
+      var r = await App.api(_withDev('/mikrotik/pppoe/duplicate-ips?all=1'));
+      if (r && r.success) {
+        renderDupBanner(r.data);
+        if (_activeTab === 'secrets') renderSecrets();
+        else renderSessions();
+      } else {
+        var local = { secrets: localSecretDupes(), sessions: localSessionDupes(), customers: [], errors: [{ device_name: 'API', message: (r && r.message) || 'gagal' }] };
+        renderDupBanner(local);
+      }
+    } catch (e) {
+      renderDupBanner({
+        secrets: localSecretDupes(),
+        sessions: localSessionDupes(),
+        customers: [],
+        errors: [{ device_name: 'API', message: e.message || 'gagal' }]
+      });
+    }
+    _dupScanDone = true;
+    _dupScanBusy = false;
+  }
+  window.scanDuplicateIps = scanDuplicateIps;
 
   function showToast(msg, type, dur) {
     var d = document.createElement('div');
@@ -957,11 +1152,13 @@
     tbody.innerHTML = list.map(function(s, i){
       var svc = (s.service || 'pppoe').toLowerCase();
       var svcClass = svc === 'pppoe' ? 'svc-pppoe' : svc === 'l2tp' ? 'svc-l2tp' : svc === 'pptp' ? 'svc-pptp' : 'svc-any';
-      return '<tr data-session-id="' + esc(s.id) + '" data-session-name="' + esc(s.name) + '">' +
+      var sessIp = _normIp(s.address);
+      var dupRow = sessIp && _dupIpSet[sessIp] ? ' class="pp-dup-row"' : '';
+      return '<tr' + dupRow + ' data-session-id="' + esc(s.id) + '" data-session-name="' + esc(s.name) + '">' +
         '<td class="num-cell">' + (i+1) + '</td>' +
         '<td class="username-cell" data-label="Username">' + esc(s.name) + '</td>' +
         '<td data-label="Service"><span class="svc-badge ' + svcClass + '">' + esc(svc.toUpperCase()) + '</span></td>' +
-        '<td data-label="IP Address"><span class="ip-badge">' + (esc(s.address) || '—') + '</span></td>' +
+        '<td data-label="IP Address"><span class="ip-badge">' + ipCell(s.address) + '</span></td>' +
         '<td class="mac-cell" data-label="Caller ID / MAC">' + (esc(s.callerID) || '—') + '</td>' +
         '<td data-label="Uptime"><span class="uptime-badge">' +
           '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>' +
@@ -1060,9 +1257,11 @@
     await Promise.allSettled([sessReq, secReq]);
 
     // Setelah keduanya siap, baru update cards & render tab aktif
+    rebuildDupSetFromLocal();
     updateSparkCards();
     if (_activeTab === 'sessions') renderSessions();
     else renderSecrets();
+    if (!_dupScanDone && !_dupScanBusy) scanDuplicateIps(false);
   }
   window.refreshAll = refreshAll;
 
@@ -1134,13 +1333,15 @@
         statusBadge = '<span class="svc-badge" style="background:#fffbeb;color:#b45309;border:1px solid #fde68a">OFFLINE</span>';
       }
 
-      return '<tr data-secret-id="' + esc(s.id) + '" data-secret-name="' + esc(s.name) + '" data-secret-disabled="' + (s.disabled?'1':'0') + '">' +
+      var remoteIp = _normIp(s.remoteAddress);
+      var dupRow = remoteIp && _dupIpSet[remoteIp] ? ' class="pp-dup-row"' : '';
+      return '<tr' + dupRow + ' data-secret-id="' + esc(s.id) + '" data-secret-name="' + esc(s.name) + '" data-secret-disabled="' + (s.disabled?'1':'0') + '">' +
         '<td class="num-cell">' + (i+1) + '</td>' +
         '<td class="username-cell" data-label="Username">' + esc(s.name) + '</td>' +
         '<td data-label="Service"><span class="svc-badge ' + svcClass + '">' + esc(svc.toUpperCase()) + '</span></td>' +
         '<td data-label="Profile">' + (esc(s.profile) || '—') + '</td>' +
         '<td class="mac-cell" data-label="Local IP">' + (esc(s.localAddress) || '—') + '</td>' +
-        '<td class="mac-cell" data-label="Remote IP">' + (esc(s.remoteAddress) || '—') + '</td>' +
+        '<td class="mac-cell" data-label="Remote IP">' + ipCell(s.remoteAddress) + '</td>' +
         '<td data-label="Status">' + statusBadge + '</td>' +
         '<td data-label="Comment" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(s.comment) + '">' + (esc(s.comment) || '—') + '</td>' +
         '<td data-label="Aksi">' +
@@ -1382,6 +1583,19 @@
     var pass = document.getElementById('f-password').value;
     if (!name) { showToast('Username wajib diisi', 'error'); return; }
     if (!id && !pass) { showToast('Password wajib diisi untuk user baru', 'error'); return; }
+
+    var wantRemote = document.getElementById('f-remote-address').value.trim();
+    if (_isAssignedIpv4(wantRemote)) {
+      var clash = _secrets.find(function(s){
+        if (id && String(s.id) === String(id)) return false;
+        if (String(s.name || '').toLowerCase() === name.toLowerCase()) return false;
+        return _isAssignedIpv4(s.remoteAddress) && _normIp(s.remoteAddress) === _normIp(wantRemote);
+      });
+      if (clash) {
+        showToast('IP ' + _normIp(wantRemote) + ' sudah dipakai user PPPoE "' + clash.name + '"', 'error', 6000);
+        return;
+      }
+    }
 
     var body = {
       name: name,

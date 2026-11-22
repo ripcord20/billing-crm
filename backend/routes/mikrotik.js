@@ -35,6 +35,7 @@ router.get('/queues/:queue_name/history',     authenticate, getQueueHistory);
 // ── PPPOE ────────────────────────────────────────────────────
 router.get('/pppoe/active',                authenticate, PPPoEController.activeSessions.bind(PPPoEController));
 router.get('/pppoe/secrets',               authenticate, PPPoEController.secrets.bind(PPPoEController));
+router.get('/pppoe/duplicate-ips',         authenticate, PPPoEController.duplicateIps.bind(PPPoEController));
 router.get('/pppoe/stats',                 authenticate, PPPoEController.stats.bind(PPPoEController));
 router.get('/pppoe/profiles',              authenticate, PPPoEController.getProfiles.bind(PPPoEController));
 router.post('/pppoe/disconnect/:id',       authenticate, authorize('superadmin','admin'), logActivity('disconnect','pppoe'), PPPoEController.disconnect.bind(PPPoEController));

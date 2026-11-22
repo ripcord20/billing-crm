@@ -31,6 +31,7 @@
 
 const { getMikrotikInstanceByDevice } = require('./MikrotikService');
 const logger = require('../utils/logger');
+const { isAssignedIpv4, normalizeIp } = require('../utils/pppoeDuplicateIp');
 
 // ── Default tuning ───────────────────────────────────────────────────────────
 // CONCURRENCY 3 aman untuk RB450G / hEX / RB1100 ke atas.
@@ -213,7 +214,7 @@ function extractMikrotikId(res) {
 // PROSES SATU ITEM
 // ─────────────────────────────────────────────────────────────────────────────
 async function processItem(item, ctx) {
-  const { mt, existingSet, existingIdMap, profileSet, opts, counters } = ctx;
+  const { mt, existingSet, existingIdMap, existingIpMap, profileSet, opts, counters } = ctx;
 
   const uname = String(item.username || '').trim();
   const unameLower = uname.toLowerCase();
@@ -222,6 +223,23 @@ async function processItem(item, ctx) {
     // ── Guard 1: username sudah ada di router ──────────────────
     if (existingSet.has(unameLower)) {
       if (opts.onDuplicate === 'overwrite') {
+        const overwriteIp = item.remote_address && isAssignedIpv4(item.remote_address)
+          ? normalizeIp(item.remote_address)
+          : null;
+        if (overwriteIp && existingIpMap) {
+          const owner = existingIpMap.get(overwriteIp);
+          if (owner && String(owner).toLowerCase() !== unameLower) {
+            await item.update({
+              status: 'failed',
+              error: `IP ${overwriteIp} sudah dipakai user PPPoE "${owner}"`,
+              attempts: item.attempts + 1,
+              processed_at: new Date(),
+            });
+            counters.failed++;
+            return;
+          }
+          existingIpMap.set(overwriteIp, uname);
+        }
         let existingId = existingIdMap.get(unameLower);
         // Snapshot awal bisa saja tidak memuat .id (mis. router baru merespons
         // sebagian). Cari ulang sebelum menyerah.
@@ -279,6 +297,27 @@ async function processItem(item, ctx) {
       return;
     }
 
+    // ── Guard 1b: IP statis sudah dipakai user lain ────────────
+    const wantIp = item.remote_address && isAssignedIpv4(item.remote_address)
+      ? normalizeIp(item.remote_address)
+      : null;
+    if (wantIp && existingIpMap) {
+      const owner = existingIpMap.get(wantIp);
+      if (owner && String(owner).toLowerCase() !== unameLower) {
+        await item.update({
+          status: 'failed',
+          error: `IP ${wantIp} sudah dipakai user PPPoE "${owner}"`,
+          attempts: item.attempts + 1,
+          processed_at: new Date(),
+        });
+        counters.failed++;
+        return;
+      }
+      // Reservasi segera supaya item paralel dalam batch yang sama tidak
+      // mengambil IP yang sama.
+      existingIpMap.set(wantIp, uname);
+    }
+
     // ── Guard 2: profile harus ada di router ───────────────────
     // Ini penyebab kegagalan massal paling umum. Router menolak create
     // kalau profile tidak dikenal, dan errornya tidak selalu jelas.
@@ -297,6 +336,7 @@ async function processItem(item, ctx) {
     // ── Dry run: simulasi tanpa menulis ke router ──────────────
     if (opts.dryRun) {
       existingSet.add(unameLower); // supaya duplikat dalam file ikut ke-detect
+      if (wantIp && existingIpMap) existingIpMap.set(wantIp, uname);
       await item.update({
         status: 'ok',
         error: '[dry-run] tidak ditulis ke router',
@@ -347,6 +387,12 @@ async function processItem(item, ctx) {
     if (ctx.throttle) ctx.throttle.recordSuccess();
 
   } catch (e) {
+    const failIp = item.remote_address && isAssignedIpv4(item.remote_address)
+      ? normalizeIp(item.remote_address)
+      : null;
+    if (failIp && existingIpMap && String(existingIpMap.get(failIp) || '').toLowerCase() === unameLower) {
+      existingIpMap.delete(failIp);
+    }
     const attempts = item.attempts + 1;
     const msg = e.message || String(e);
 
@@ -420,11 +466,16 @@ async function runJob(jobId) {
     const existingSecrets = await mt.getPPPoESecrets().catch(() => []);
     const existingSet   = new Set();
     const existingIdMap = new Map();
+    const existingIpMap = new Map(); // IPv4 remote-address → username
     (existingSecrets || []).forEach(s => {
       const n = String(s.name || '').toLowerCase();
       if (!n) return;
       existingSet.add(n);
       if (s.id) existingIdMap.set(n, s.id);
+      if (isAssignedIpv4(s.remoteAddress)) {
+        const ip = normalizeIp(s.remoteAddress);
+        if (!existingIpMap.has(ip)) existingIpMap.set(ip, s.name);
+      }
     });
 
     const profiles = await mt.getPPPoEProfiles().catch(() => []);
@@ -439,7 +490,7 @@ async function runJob(jobId) {
     // laju tetap persis seperti yang dia pilih.
     const throttle = new AdaptiveThrottle(concurrency, delayMs, opts.adaptiveThrottle !== false);
     const batchState = { hadError: false };
-    const ctx = { mt, existingSet, existingIdMap, profileSet, opts, counters, throttle, batchState };
+    const ctx = { mt, existingSet, existingIdMap, existingIpMap, profileSet, opts, counters, throttle, batchState };
 
     // ── Loop batch ────────────────────────────────────────────
     let guard = 0;
