@@ -1059,6 +1059,7 @@ const startServer = async () => {
         catch (e) { logger.warn(`Sync ${label} skipped: ` + e.message); }
       };
       await safeSync(db.ResellerPackagePrice,    'reseller_package_prices');
+      await safeSync(db.HotspotRadiusUser,       'hotspot_radius_users');
       await safeSync(db.ResellerVoucherLog,      'reseller_voucher_logs');
       await safeSync(db.ResellerPromo,           'reseller_promos');
       await safeSync(db.ResellerPromoRedemption, 'reseller_promo_redemptions');

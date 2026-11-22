@@ -1005,7 +1005,7 @@
             <span class="sc-num" id="s-total">—</span>
             <div class="sc-meta">
               <span class="sc-pill sc-pill-neu" id="sc-pill-users">—</span>
-              <span class="sc-sub" id="sc-sub-users">Semua user hotspot</span>
+              <span class="sc-sub" id="sc-sub-users">Semua user hotspot (RADIUS)</span>
             </div>
           </div>
           <div class="sc-spark">
@@ -1625,8 +1625,8 @@
         <div style="padding:18px 20px;display:grid;gap:16px">
           <p style="font-size:12.5px;color:var(--text2);margin:0;line-height:1.55">
             Hapus voucher yang sudah selesai pakai (kuota habis) atau lama tidak terjual.
-            Ini menjaga MikroTik tidak overflow di <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-family:var(--fm);font-size:11px">/ip/hotspot/user</code>
-            yang bisa memperlambat sistem kalau jumlahnya ribuan.
+            User/voucher hotspot sekarang di FreeRADIUS (<code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-family:var(--fm);font-size:11px">radcheck</code>),
+            bukan di <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-family:var(--fm);font-size:11px">/ip/hotspot/user</code>.
           </p>
 
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
