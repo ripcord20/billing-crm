@@ -5,7 +5,7 @@
   <title><%= title %> - <%= appName %></title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="stylesheet" href="/css/pppoe-palette.css?v=pp1">
+  <link rel="stylesheet" href="/css/pppoe-palette.css?v=pp2">
   <style>
     :root {
       --pp-blue:#2563eb;  --pp-blue-d:#1d4ed8; --pp-blue-l:#eff6ff;
@@ -24,6 +24,9 @@
     .pp-hdr-l h1 { font-size:22px; font-weight:800; color:var(--text); margin:0 0 4px; display:flex; align-items:center; gap:10px; }
     .pp-hdr-l p  { font-size:13px; color:var(--muted); margin:0; }
     .pp-hdr-r    { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .pp-hdr-actions { display:contents; }
+    #btnDupIp { border-color:#f59e0b; color:#b45309; background:#fffbeb; }
+    #btnDupIp:hover { background:#fef3c7; border-color:#d97706; }
 
     .btn { display:inline-flex; align-items:center; gap:6px; padding:9px 16px; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; border:1.5px solid; transition:all .15s; white-space:nowrap; font-family:inherit; }
     .btn svg { width:15px; height:15px; flex-shrink:0; }
@@ -41,7 +44,19 @@
     .act-ico.pause:hover  { background:#fffbeb; border-color:#fde68a; color:#d97706; }
     .act-ico.play:hover   { background:#f0fdf4; border-color:#bbf7d0; color:#16a34a; }
     .act-ico.del:hover    { background:#fef2f2; border-color:#fecaca; color:#dc2626; }
-    @media(max-width:640px){ .pp-acts{ gap:8px; } .act-ico{ width:34px; height:34px; } }
+    @media(max-width:640px){
+      .pp-acts{ gap:8px; } .act-ico{ width:34px; height:34px; }
+      .pp-hdr-r { width:100%; }
+      .pp-hdr-actions {
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:8px;
+        width:100%;
+        order:5;
+      }
+      .pp-hdr-actions .btn { width:100%; justify-content:center; min-height:40px; }
+      #btnDupIp { grid-column:1 / -1; }
+    }
     .btn-sm { padding:5px 12px; font-size:12px; border-radius:8px; }
 
     /* Live chip */
@@ -326,18 +341,20 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
             Refresh
           </button>
-          <button class="btn btn-outline btn-sm" id="btnDupIp" onclick="scanDuplicateIps(true)" title="Cek IP yang dipakai lebih dari satu user PPPoE">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            Cek IP Ganda
-          </button>
-          <button class="btn btn-outline btn-sm" id="btnBulkPppoe" onclick="PppoeBulk.open()" title="Buat user PPPoE massal dari Excel">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Bulk Create
-          </button>
-          <button class="btn btn-blue btn-sm" id="btnAddUser" onclick="openUserModal(null)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Tambah User PPPoE
-          </button>
+          <div class="pp-hdr-actions">
+            <button class="btn btn-outline btn-sm" id="btnDupIp" onclick="scanDuplicateIps(true)" title="Cek IP yang dipakai lebih dari satu user PPPoE">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Cek IP Ganda
+            </button>
+            <button class="btn btn-outline btn-sm" id="btnBulkPppoe" onclick="PppoeBulk.open()" title="Buat user PPPoE massal dari Excel">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Bulk Create
+            </button>
+            <button class="btn btn-blue btn-sm" id="btnAddUser" onclick="openUserModal(null)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Tambah User PPPoE
+            </button>
+          </div>
         </div>
       </div>
 

@@ -98,6 +98,45 @@ body.pp-home .btn-outline {
   border-color: rgba(34, 211, 238, 0.4) !important;
 }
 
+body.pp-home #btnDupIp {
+  background: rgba(245, 158, 11, 0.16) !important;
+  border-color: rgba(251, 191, 36, 0.55) !important;
+  color: #fbbf24 !important;
+}
+
+body.pp-home .pp-dup-banner {
+  background: rgba(127, 29, 29, 0.35) !important;
+  border-color: rgba(248, 113, 113, 0.55) !important;
+}
+body.pp-home .pp-dup-banner.ok {
+  background: rgba(6, 95, 70, 0.35) !important;
+  border-color: rgba(52, 211, 153, 0.45) !important;
+}
+body.pp-home .pp-dup-banner.loading {
+  background: rgba(16, 12, 34, 0.9) !important;
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+body.pp-home .pp-dup-title,
+body.pp-home .pp-dup-sub,
+body.pp-home .pp-dup-card,
+body.pp-home .pp-dup-card .ip,
+body.pp-home .pp-dup-card .meta,
+body.pp-home .pp-dup-users li {
+  color: #f8fafc !important;
+}
+body.pp-home .pp-dup-card,
+body.pp-home .pp-dup-users li {
+  background: #100c22 !important;
+  border-color: rgba(248, 113, 113, 0.45) !important;
+}
+body.pp-home .pp-dup-banner.ok .pp-dup-title { color: #6ee7b7 !important; }
+body.pp-home tr.pp-dup-row td { background: #7f1d1d !important; }
+body.pp-home .ip-dup {
+  background: rgba(248, 113, 113, 0.2) !important;
+  border-color: rgba(248, 113, 113, 0.55) !important;
+  color: #fecaca !important;
+}
+
 body.pp-home .btn-blue,
 body.pp-home .btn-pp-save {
   background: linear-gradient(135deg, #0891b2, #4f46e5 58%, #ff4ecd) !important;
