@@ -1,0 +1,10 @@
+node_modules/
+*.log
+dist/win/
+android/.gradle
+android/build
+android/local.properties
+android/app/build
+android/app/src/main/assets/viewer
+.idea
+*.iml

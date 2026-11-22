@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.FiberixRemote" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:statusBarColor">#1d4f91</item>
+        <item name="android:navigationBarColor">#e8eef7</item>
+        <item name="android:windowBackground">#f3f1ea</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
