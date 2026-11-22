@@ -18,6 +18,7 @@
  *                         Role finance akan di-redirect ke /finance.
  *   - isFinanceRole     : utility check role.
  *   - isFinanceAreaUser : utility — return true untuk admin/superadmin/finance.
+ *   - allowCustomerArea : halaman /customers (+ profil). Finance-area + NOC.
  */
 
 function _roleName(req) {
@@ -31,6 +32,11 @@ function isFinanceRole(req) {
 function isFinanceAreaUser(req) {
   const r = _roleName(req);
   return r === 'superadmin' || r === 'admin' || r === 'finance' || r === 'tenant_owner';
+}
+
+/** Halaman data pelanggan: finance-area + NOC (daftar pelanggan baru). */
+function isCustomerAreaUser(req) {
+  return isFinanceAreaUser(req) || _roleName(req) === 'noc';
 }
 
 /**
@@ -47,6 +53,22 @@ function allowFinanceArea(req, res, next) {
     title: 'Akses Ditolak',
     layout: false,
     message: 'Anda tidak punya akses ke modul Finance.'
+  });
+}
+
+/**
+ * Page-level guard untuk /customers dan profil pelanggan.
+ * Izinkan superadmin/admin/finance/tenant_owner/noc.
+ */
+function allowCustomerArea(req, res, next) {
+  if (!req.user) return res.redirect('/login');
+  if (isCustomerAreaUser(req)) return next();
+
+  if (_roleName(req) === 'technician') return res.redirect('/technician');
+  return res.status(403).render('pages/403', {
+    title: 'Akses Ditolak',
+    layout: false,
+    message: 'Anda tidak punya akses ke data pelanggan.'
   });
 }
 
@@ -85,7 +107,9 @@ function apiBlockFinanceArea(req, res, next) {
 module.exports = {
   isFinanceRole,
   isFinanceAreaUser,
+  isCustomerAreaUser,
   allowFinanceArea,
+  allowCustomerArea,
   blockFinanceArea,
   apiAllowFinanceArea,
   apiBlockFinanceArea,

@@ -134,7 +134,9 @@ router.use('/app-settings', authenticate, (req, res, next) => {
 // ═══════════════════════════════════════════════════════════════════
 // NOC ROLE — API ACCESS RESTRICTIONS
 // Role 'noc' fokus monitoring jaringan. TIDAK boleh akses modul billing,
-// payments, customers (admin), packages, keuangan, settings, users, dll.
+// payments, keuangan, settings, users, dll.
+// Pengecualian pelanggan: view/create/update (permission customer_*),
+// tanpa hapus. GET /packages boleh untuk dropdown form daftar pelanggan.
 // API monitoring/devices/mikrotik/genieacs/hotspot tetap accessible.
 // ═══════════════════════════════════════════════════════════════════
 const _nocBlockedPrefixes = [
@@ -143,11 +145,9 @@ const _nocBlockedPrefixes = [
   '/keuangan',          // keuangan
   '/finance',           // finance dashboard endpoints
   '/laporan',           // laporan keuangan
-  '/packages',          // paket layanan (price)
   '/voucher',
   '/voucher-template',
   '/invoice-template',
-  '/customers',         // customer CRUD (NOC bisa cek dari monitoring)
   '/wa',                // WA gateway full (NOC bisa lihat status, tapi tidak kirim)
   '/whatsapp',
   '/broadcast',
@@ -168,6 +168,11 @@ for (const p of _nocBlockedPrefixes) {
 }
 // Settings: GET boleh, mutasi tidak
 router.use('/app-settings', authenticate, (req, res, next) => {
+  if (req.method === 'GET') return next();
+  return apiBlockNocArea(req, res, next);
+});
+// Paket: GET boleh (dropdown form pelanggan), mutasi tidak
+router.use('/packages', authenticate, (req, res, next) => {
   if (req.method === 'GET') return next();
   return apiBlockNocArea(req, res, next);
 });
