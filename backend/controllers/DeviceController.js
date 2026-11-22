@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const { paginateResponse } = require('../utils/helpers');
 const net = require('net');
 const logger = require('../utils/logger');
+const { presentDeviceMetrics, normalizeCpuPercent, normalizeMemPercent } = require('../utils/deviceMetrics');
 
 class DeviceController {
   async index(req, res) {
@@ -26,7 +27,7 @@ class DeviceController {
         order: [['name', 'ASC']]
       });
 
-      res.json({ success: true, ...paginateResponse(rows, count, page, limit) });
+      res.json({ success: true, ...paginateResponse(rows.map(presentDeviceMetrics), count, page, limit) });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
@@ -298,7 +299,7 @@ class DeviceController {
         attributes: ['id', 'name', 'ip_address', 'type', 'status', 'cpu_load', 'memory_usage', 'uptime', 'last_polled'],
         order: [['name', 'ASC']]
       });
-      res.json({ success: true, data: devices });
+      res.json({ success: true, data: devices.map(presentDeviceMetrics) });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
@@ -521,9 +522,9 @@ class DeviceController {
           if (result.resource) {
             await device.update({
               status: 'online',
-              cpu_load: result.resource.cpuLoad,
+              cpu_load: normalizeCpuPercent(result.resource.cpuLoad),
               memory_usage: result.resource.totalMemory > 0
-                ? Math.round(((result.resource.totalMemory - result.resource.freeMemory) / result.resource.totalMemory) * 100)
+                ? normalizeMemPercent(((result.resource.totalMemory - result.resource.freeMemory) / result.resource.totalMemory) * 100)
                 : 0,
               uptime: result.resource.uptime,
               firmware: result.resource.version,

@@ -276,6 +276,9 @@ function setGaugeColor(el, val) {
 function updateTrafficSummary(d) {
   $('rxVal').textContent = (d.totalRxMbps || 0).toFixed(2);
   $('txVal').textContent = (d.totalTxMbps || 0).toFixed(2);
+  const scope = d.trafficScope || (d.trafficIfaces && d.trafficIfaces.join(', '));
+  const hint = $('trafficScopeHint');
+  if (hint) hint.textContent = scope ? ('Uplink: ' + scope) : '';
 }
 
 // ── Interface grid ────────────────────────────────────────────
