@@ -585,8 +585,8 @@ async function loadCustomers() {
   if (!data.data?.length) {
     if (tbody) tbody.innerHTML =
       '<tr><td colspan="9">' +
-        '<div class="empty-state" style="padding:48px 16px;text-align:center;color:#94a3b8;">' +
-          '<svg width="56" height="56" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="display:block;margin:0 auto 12px;color:#cbd5e1;">' +
+        '<div class="empty-state" style="padding:48px 16px;text-align:center;color:#64748b;">' +
+          '<svg width="56" height="56" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="display:block;margin:0 auto 12px;color:#94a3b8;">' +
             '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/>' +
           '</svg>' +
           '<p style="margin:0;font-size:13.5px;color:#64748b;">Tidak ada data customer</p>' +
@@ -610,13 +610,13 @@ async function loadCustomers() {
       c.latest_due_date = c.due_date;
     }
 
-    var dueDateHtml = '<span style="color:#94a3b8">–</span>';
+    var dueDateHtml = '<span class="due-empty">–</span>';
     if (c.latest_due_date) {
       var due      = new Date(c.latest_due_date+'T00:00:00');
       var diffDays = Math.round((due - today)/86400000);
       var fmtDue   = due.toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'});
       if (c.latest_invoice_status === 'paid') {
-        dueDateHtml = fmtDue+' <span style="font-size:10px;background:#f0fdf4;color:#16a34a;padding:1px 6px;border-radius:4px;font-weight:700">Lunas</span>';
+        dueDateHtml = fmtDue+' <span class="due-paid">Lunas</span>';
       } else if (diffDays < 0) {
         dueDateHtml = '<span style="color:#dc2626;font-weight:600">'+fmtDue+'</span><br><span style="font-size:10px;color:#dc2626">'+Math.abs(diffDays)+' hari lalu</span>';
       } else if (diffDays === 0) {
@@ -661,18 +661,18 @@ async function loadCustomers() {
           + '<div class="av-circle" style="background:'+color+'">'+initial+'</div>'
           + '<div>'
             + '<a href="/customers/profile/'+c.id+'" class="cust-name-link">'+_esc(c.name)+'</a>'
-            + (addrShort ? '<div style="font-size:11px;color:#6b7fa8;margin-top:1px;max-width:160px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+addrShort+'</div>' : '')
+            + (addrShort ? '<div class="cust-addr" style="font-size:11px;margin-top:1px;max-width:160px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+addrShort+'</div>' : '')
           + '</div>'
         + '</div>'
       + '</td>'
-      + '<td style="color:#6b7fa8">'+_esc(c.phone||'–')+'</td>'
+      + '<td class="cust-phone">'+_esc(c.phone||'–')+'</td>'
       + '<td>'
-        + '<div style="font-weight:600;font-size:13px;color:#0d1b3e">'+pkgName+'</div>'
-        + (c.pppoe_username ? '<div style="font-size:10px;color:#94a3b8;font-family:monospace">'+_esc(c.pppoe_username)+'</div>' : '')
-        + (c.static_ip ? '<div style="font-size:10px;color:#2563eb;font-family:monospace">IP: '+_esc(c.static_ip)+'</div>' : '')
+        + '<div class="cust-pkg">'+pkgName+'</div>'
+        + (c.pppoe_username ? '<div class="cust-pppoe">'+_esc(c.pppoe_username)+'</div>' : '')
+        + (c.static_ip ? '<div class="cust-ip">IP: '+_esc(c.static_ip)+'</div>' : '')
       + '</td>'
-      + '<td style="font-weight:700;color:#1a6ef5;font-size:13px">'+price+'</td>'
-      + '<td style="color:#6b7fa8">'+actDate+'</td>'
+      + '<td class="cust-price">'+price+'</td>'
+      + '<td class="cust-date">'+actDate+'</td>'
       + '<td><div style="line-height:1.5">'+dueDateHtml+'</div></td>'
       + '<td><span class="sb '+stCls+'"><span class="sb-dot" style="background:'+stDot+'"></span>'+stLabel+'</span></td>'
       + '<td style="text-align:right;padding-right:18px">'
@@ -1182,7 +1182,7 @@ function setIdStatus(type, id) {
   const el = document.getElementById('custIdStatus');
   if (!el) return;
   const map = {
-    hint:      '<span style="color:#adb5bd;font-size:11px;">Berikutnya: <b>' + _esc(id) + '</b></span>',
+    hint:      '<span style="color:#475569;font-size:11px;">Berikutnya: <b>' + _esc(id) + '</b></span>',
     auto:      '<span style="color:#25d366;font-size:11px;font-weight:600;">✓ Otomatis: ' + _esc(id) + '</span>',
     available: '<span style="color:#25d366;font-size:11px;font-weight:600;">✓ ID tersedia</span>',
     taken:     '<span style="color:#dc2626;font-size:11px;font-weight:600;">✗ ID sudah digunakan</span>',
