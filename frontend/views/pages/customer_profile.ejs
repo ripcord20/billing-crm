@@ -10,7 +10,7 @@
   <style>
     :root{
       --pg:#f0f4fb;--white:#fff;--border:#e4ecf7;
-      --text:#0d1b3e;--text2:#4a5a7a;--muted:#8898b8;
+      --text:#0d1b3e;--text2:#334155;--muted:#475569;
       --blue:#1a6ef5;--blue2:#0047cc;--green:#00c896;--red:#f5365c;
       --orange:#fb8c00;--cyan:#0891b2;
     }
@@ -70,9 +70,9 @@
 
     /* Badges */
     .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;gap:4px;}
-    .bg{background:#e6fff7;color:#007a5e;} .br{background:#fff0f2;color:var(--red);}
-    .by{background:#fffbeb;color:#b45309;} .bb{background:#eef3ff;color:var(--blue);}
-    .bgy{background:#f1f5f9;color:#64748b;}
+    .bg{background:#d1fae5;color:#065f46;} .br{background:#fee2e2;color:#991b1b;}
+    .by{background:#fef3c7;color:#92400e;} .bb{background:#dbeafe;color:#1e3a8a;}
+    .bgy{background:#e2e8f0;color:#1e293b;}
 
     /* Buttons */
     .btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:11px;font-size:13px;font-weight:700;text-decoration:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap;}
@@ -278,6 +278,25 @@
     .traf-leg{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;}
     .traf-leg-dl{width:10px;height:3px;background:#2563eb;border-radius:2px;}
     .traf-leg-ul{width:10px;height:3px;background:#f97316;border-radius:2px;}
+
+    /* Chip text must stay dark on light pills — never inherit body/theme color */
+    .cp-page .badge{color:#0f172a;}
+    .cp-page .badge.bg,.cp-page .uso-on,.cp-page .ont-online,.cp-page .qr-ok{background:#d1fae5!important;color:#065f46!important;}
+    .cp-page .badge.bb{background:#dbeafe!important;color:#1e3a8a!important;}
+    .cp-page .badge.br,.cp-page .ont-offline,.cp-page .qr-err{background:#fee2e2!important;color:#991b1b!important;}
+    .cp-page .badge.by,.cp-page .ont-warn{background:#fef3c7!important;color:#92400e!important;}
+    .cp-page .badge.bgy,.cp-page .uso-off{background:#e2e8f0!important;color:#1e293b!important;}
+    .cp-hero,.cp-card,.cp-panel,.traf-card,.cp-maphero,.doc-card,.stat-m,.tl-bub{color:#0f172a;}
+    .cp-fl,.ilbl,.stat-ml,.cp-card-title,.dtbl th,.cp-sub,.cmp-lbl,.traf-note-txt,.tl-dl,.tl-tm,.tl-sub,.doc-meta,.doc-card-hd .ds,.empty-st{color:#475569;}
+    .cp-name,.cp-fv,.ival,.dtbl td,.tl-txt,.doc-card-hd .dt,.doc-btn{color:#0f172a;}
+    .cp-ph-crumb{color:#334155;font-weight:600;}
+    .td-muted{color:#475569;}
+    .td-amt{color:#1e3a8a;font-weight:700;}
+
+    [data-theme="dark"] .cp-ph-left h1{color:#e8eef9;}
+    [data-theme="dark"] .cp-ph-sub{color:#94a3b8;}
+    [data-theme="dark"] .cp-ph-sub a{color:#93c5fd;}
+    [data-theme="dark"] .cp-ph-crumb{color:#cbd5e1;}
   </style>
 </head>
 <body>
@@ -443,11 +462,11 @@ async function loadProfile() {
       if (duePaid) {
         // Sudah bayar periode ini — tampilkan due date berikutnya dengan badge hijau
         if (dff <= 0) {
-          dueHtml = dfs + '<br><span class="badge bg" style="font-size:10px;margin-top:3px">✓ Lunas · Jatuh tempo hari ini</span>';
+          dueHtml = dfs + '<br><span class="badge bg" style="font-size:10px;margin-top:3px;display:inline-flex">✓ Lunas · Jatuh tempo hari ini</span>';
         } else if (dff <= 7) {
-          dueHtml = dfs + '<br><span class="badge bg" style="font-size:10px;margin-top:3px">✓ Lunas · '+dff+' hari lagi</span>';
+          dueHtml = dfs + '<br><span class="badge bg" style="font-size:10px;margin-top:3px;display:inline-flex">✓ Lunas · '+dff+' hari lagi</span>';
         } else {
-          dueHtml = dfs + '<br><span class="badge bg" style="font-size:10px;margin-top:3px">✓ Lunas periode ini</span>';
+          dueHtml = dfs + '<br><span class="badge bg" style="font-size:10px;margin-top:3px;display:inline-flex">✓ Lunas periode ini</span>';
         }
       } else {
         // Belum bayar — tampilkan status merah/orange
@@ -517,7 +536,7 @@ async function loadProfile() {
             var sc={paid:'bg',unpaid:'by',overdue:'br',cancelled:'bgy'}[inv.status]||'bgy';
             return '<tr>'
               +'<td data-label="Invoice" style="font-family:monospace;font-size:12px">'+esc(inv.invoice_no||String(inv.id||''))+'</td>'
-              +'<td data-label="Periode" style="color:var(--muted)">'+(inv.period_month||'—')+'/'+(inv.period_year||'—')+'</td>'
+              +'<td data-label="Periode" class="td-muted">'+(inv.period_month||'—')+'/'+(inv.period_year||'—')+'</td>'
               +'<td data-label="Nominal" style="font-weight:700">'+fmtRp(inv.amount)+'</td>'
               +'<td data-label="Jatuh Tempo"><div style="font-size:12px">'+fmtD(inv.due_date)+'</div>'+(inv.paid_date?'<div style="font-size:11px;color:var(--green);margin-top:1px">Lunas '+fmtD(inv.paid_date)+'</div>':'')+'</td>'
               +'<td data-label="Status"><span class="badge '+sc+'">'+esc(inv.status||'')+'</span></td>'
@@ -532,11 +551,11 @@ async function loadProfile() {
       : (function(){
           var rows=payments.map(function(p){
             return '<tr>'
-              +'<td data-label="Tanggal" style="font-family:monospace;font-size:11.5px;color:var(--muted)">'+fmtD(p.payment_date)+'</td>'
-              +'<td data-label="Jumlah" style="font-weight:700;color:var(--blue)">'+fmtRp(p.amount)+'</td>'
+              +'<td data-label="Tanggal" class="td-muted" style="font-family:monospace;font-size:11.5px">'+fmtD(p.payment_date)+'</td>'
+              +'<td data-label="Jumlah" class="td-amt">'+fmtRp(p.amount)+'</td>'
               +'<td data-label="Metode"><span class="badge bb">'+esc(p.payment_method||p.method||'—')+'</span></td>'
               +'<td data-label="Invoice" style="font-family:monospace;font-size:11.5px">'+esc(p.invoice_no||'—')+'</td>'
-              +'<td data-label="Oleh" style="font-size:12px;color:var(--muted)">'+esc(p.validated_by||p.created_by||'—')+'</td>'
+              +'<td data-label="Oleh" class="td-muted" style="font-size:12px">'+esc(p.validated_by||p.created_by||'—')+'</td>'
               +'</tr>';
           }).join('');
           return '<table class="dtbl"><thead><tr><th>Tanggal</th><th>Jumlah</th><th>Metode</th><th>Invoice</th><th>Dicatat Oleh</th></tr></thead><tbody>'+rows+'</tbody></table>';
@@ -565,7 +584,7 @@ async function loadProfile() {
         +'<p class="cp-ph-sub">'
           +'<a href="/customers" style="color:var(--blue);text-decoration:none;font-weight:600">Data Pelanggan</a>'
           +'<svg width="12" height="12" fill="none" stroke="#94a3b8" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>'
-          +'<span style="color:#374151;font-weight:600">'+esc(c.name)+'</span>'
+          +'<span class="cp-ph-crumb">'+esc(c.name)+'</span>'
         +'</p>'
       +'</div>'
       +'<div class="cp-ph-right"></div>'
@@ -595,7 +614,7 @@ async function loadProfile() {
         +'</div>'
         +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">'
           +'<div class="cp-name">'+esc(c.name)+'</div>'
-          +'<span class="badge '+sbc+'">'+sbl+'</span>'+pkgBadge
+          +'<span class="badge '+sbc+'" style="background:'+stBadgeBg+';color:'+stBadgeClr+'">'+sbl+'</span>'+pkgBadge
         +'</div>'
         +'<div class="cp-sub">'+esc(c.email||'')+'</div>'
         +'<div class="cp-infogrid">'
@@ -604,7 +623,7 @@ async function loadProfile() {
           +'<div class="cp-fi"><div class="cp-fl">Harga Paket</div><div class="cp-fv" style="color:var(--blue)">'+priceStr+'</div></div>'
           +'<div class="cp-fi"><div class="cp-fl">Aktivasi</div><div class="cp-fv">'+fmtD(c.installation_date||c.activation_date)+'</div></div>'
           +'<div class="cp-fi"><div class="cp-fl">Jatuh Tempo</div><div class="cp-fv">'+dueHtml+'</div></div>'
-          +(c.address ? '<div class="cp-fi"><div class="cp-fl">Alamat</div><div class="cp-fv" style="font-size:13px;font-weight:500;color:var(--text2)">'+esc(c.address.substring(0,50))+'</div></div>' : '')
+          +(c.address ? '<div class="cp-fi"><div class="cp-fl">Alamat</div><div class="cp-fv" style="font-size:13px;font-weight:500">'+esc(c.address.substring(0,50))+'</div></div>' : '')
         +'</div>'
       +'</div>'
     +'</div>'
@@ -2346,7 +2365,7 @@ loadProfile();
   </div>
 </div>
 <style>
-  .efl{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;}
+  .efl{font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;}
   .efc{width:100%;padding:9px 12px;border:1.5px solid #e4ecf7;border-radius:10px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;color:#0d1b3e;background:#f8fafd;box-sizing:border-box;transition:border .15s;}
   .efc:focus{border-color:#1a6ef5;background:#fff;}
   textarea.efc{resize:vertical;}
@@ -2356,7 +2375,7 @@ loadProfile();
   .epm-sec{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:10px 0 2px;padding-bottom:7px;border-bottom:1.5px solid #e4ecf7;}
   .epm-sec:first-child{margin-top:0;}
   .epm-sec-t{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#1a6ef5;}
-  .epm-sec-h{font-size:11px;font-weight:400;color:#94a3b8;}
+  .epm-sec-h{font-size:11px;font-weight:400;color:#475569;}
   .epm-loc-btn{padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:8px;display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;}
   .epm-loc-btn:hover{background:#dbeafe;}
   #ep-map .map-toggle{display:flex;gap:0;background:#fff;border:1px solid #e4ecf7;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(15,40,90,.12);}
