@@ -151,8 +151,9 @@ function initMap(lat, lng, t) {
   if (!el) return;
 
   leafletMap = L.map('tdMap', { zoomControl: true }).setView([lat, lng], 15);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap'
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19, 
+    attribution: 'Tiles &copy; Esri'
   }).addTo(leafletMap);
 
   // Ticket marker

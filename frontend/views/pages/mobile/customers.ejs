@@ -490,7 +490,7 @@
           if(typeof L==='undefined')return;
           try{
             const m=L.map('dmMap',{zoomControl:false,attributionControl:false,dragging:true}).setView([lat,lng],16);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(m);
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'}).addTo(m);
             L.marker([lat,lng]).addTo(m);
             setTimeout(()=>m.invalidateSize(),150);
           }catch(e){}
@@ -750,7 +750,7 @@
     function initAfMap(){
       if(_mapInit || typeof L==='undefined')return;
       _afMap=L.map('afMap',{zoomControl:true,attributionControl:false}).setView(AF_DEFAULT,13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(_afMap);
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'}).addTo(_afMap);
       _afMarker=L.marker(AF_DEFAULT,{draggable:true}).addTo(_afMap);
       _afMarker.on('dragend',function(){ const p=_afMarker.getLatLng(); setLatLng(p.lat,p.lng); });
       _afMap.on('click',function(e){ _afMarker.setLatLng(e.latlng); setLatLng(e.latlng.lat,e.latlng.lng); });

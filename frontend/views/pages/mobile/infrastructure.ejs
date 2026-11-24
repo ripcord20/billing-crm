@@ -151,7 +151,7 @@
     function initMap(){
       if(_mapReady||typeof L==='undefined')return;
       _map=L.map('infMap',{zoomControl:true,attributionControl:false}).setView([-6.4,106.8],12);
-      _tileStreet=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19});
+      _tileStreet=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'});
       // Satelit: pakai Google (domain mt0-3.google.com sudah diizinkan CSP).
       _tileSat=L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{maxZoom:20,subdomains:['mt0','mt1','mt2','mt3']});
       _tileStreet.addTo(_map);

@@ -448,7 +448,7 @@
     setTimeout(function () {
       if (!_pmMap) {
         _pmMap = L.map('pmMap', { zoomControl: true, attributionControl: false });
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(_pmMap);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles &copy; Esri' }).addTo(_pmMap);
       }
       _pmMap.setView([lat, lng], 16);
       if (_pmMarker) { _pmMarker.setLatLng([lat, lng]); }
@@ -740,8 +740,8 @@
   function ensureMap() {
     if (_map) return _map;
     _map = L.map('collMap', { scrollWheelZoom: true });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, attribution: '&copy; OpenStreetMap'
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19, attribution: 'Tiles &copy; Esri'
     }).addTo(_map);
     _map.setView([-2.5, 118], 5); // default Indonesia
     _mapLayer = L.layerGroup().addTo(_map);
