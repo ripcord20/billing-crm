@@ -394,7 +394,7 @@
         <div class="grow-stats">
           <div class="grow-stat"><div class="gs-val" id="gsTotal">–</div><div class="gs-lbl">Total pelanggan</div></div>
           <div class="grow-stat"><div class="gs-val" id="gsAvg">–</div><div class="gs-lbl">Rata-rata/bln</div></div>
-          <div class="grow-stat"><div class="gs-val" id="gsRate">–</div><div class="gs-lbl">Pertumbuhan</div></div>
+          <div class="grow-stat"><div class="gs-val" id="gsRate">–</div><div class="gs-lbl" id="gsRateLbl">Pertumbuhan</div></div>
         </div>
         <div class="grow-list-head">
           <span id="growListTitle">Pelanggan baru bulan ini</span>
@@ -701,7 +701,10 @@
       document.getElementById('gsAvg').textContent = avg;
       const rate=sm.growth_rate;
       const gsRate=document.getElementById('gsRate');
-      gsRate.textContent = (rate!=null?((rate>0?'+':'')+rate+'%'):'–');
+      const gsRateLbl=document.getElementById('gsRateLbl');
+      const ratePct = rate!=null?((rate>0?'+':'')+rate+'%'):'–';
+      gsRate.textContent = (newThis!=null ? ((newThis>0?'+':'')+newThis+' orang') : ratePct);
+      if (gsRateLbl) gsRateLbl.textContent = (newThis!=null ? ratePct : 'Pertumbuhan');
       gsRate.style.color = (rate>0?'#0284c7':(rate<0?'#e2585f':'#1f3849'));
 
       try{ if(typeof pushInsight==='function' && newThis>0){ pushInsight('growth','<b>+'+newThis+' pelanggan baru</b> bulan ini. Total kini <b>'+(sm.total_customers||0)+'</b> pelanggan.'); } }catch(_){}

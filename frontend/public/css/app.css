@@ -1036,6 +1036,8 @@ input, select, textarea { font-family: inherit; }
 .customer-growth-stats {
   display: flex;
   gap: 16px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .growth-stat {
@@ -1048,6 +1050,7 @@ input, select, textarea { font-family: inherit; }
   font-size: 16px;
   font-weight: 700;
   color: var(--text);
+  white-space: nowrap;
 }
 
 .growth-value.green {

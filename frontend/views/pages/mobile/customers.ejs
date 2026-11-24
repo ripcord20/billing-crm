@@ -674,8 +674,10 @@
       const rows=j.data.monthly_data||[];
       const sum=j.data.summary||{};
       const gr=Number(sum.growth_rate)||0;
+      const nNew=Number(sum.current_month_new);
       const badge=document.getElementById('growthBadge');
-      badge.textContent=(gr>0?'▲ +':(gr<0?'▼ ':''))+gr+'%';
+      const pct=(gr>0?'▲ +':(gr<0?'▼ ':''))+gr+'%';
+      badge.textContent=Number.isFinite(nNew) ? ((nNew>0?'+':'')+nNew+' orang · '+pct) : pct;
       badge.className='cc-badge'+(gr>0?' up':(gr<0?' down':''));
       drawGrowth(rows);
     }
