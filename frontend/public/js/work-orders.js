@@ -15,6 +15,8 @@ let deletingId  = null;
 let viewingId   = null;
 let techType    = 'user';  // 'user' | 'manual'
 let activeStatusFilter = '';
+let custSearchTimer = null;
+let custActiveIdx = -1;
 
 function authH() {
   return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` };
@@ -58,15 +60,123 @@ async function loadUsers() {
   } catch(e) {}
 }
 
+function parseCustomerList(j) {
+  if (!j || !j.success) return [];
+  if (Array.isArray(j.data)) return j.data;
+  if (Array.isArray(j.data?.customers)) return j.data.customers;
+  return [];
+}
+function mergeCustomers(rows) {
+  const byId = new Map(allCustomers.map(c => [String(c.id), c]));
+  (rows || []).forEach(c => { if (c && c.id != null) byId.set(String(c.id), c); });
+  allCustomers = Array.from(byId.values());
+}
+function customerLabel(c) {
+  if (!c) return '';
+  const cid = c.customer_id ? '[' + c.customer_id + '] ' : '';
+  return cid + (c.name || '');
+}
+function customerHaystack(c) {
+  return [c.customer_id, c.name, c.phone, c.pppoe_username, c.address]
+    .map(v => String(v || '').toLowerCase()).join(' ');
+}
+function filterCustomersLocal(q) {
+  const s = String(q || '').trim().toLowerCase();
+  if (!s) return allCustomers.slice(0, 30);
+  return allCustomers.filter(c => customerHaystack(c).includes(s)).slice(0, 40);
+}
+function setCustomerPick(c) {
+  const hid = document.getElementById('f_customer_id');
+  const inp = document.getElementById('f_customer_search');
+  const clr = document.getElementById('f_customer_clear');
+  if (!hid || !inp) return;
+  if (!c) {
+    hid.value = '';
+    inp.value = '';
+    if (clr) clr.hidden = true;
+    closeCustResults();
+    return;
+  }
+  hid.value = String(c.id);
+  inp.value = customerLabel(c);
+  if (clr) clr.hidden = false;
+  closeCustResults();
+}
+function closeCustResults() {
+  const box = document.getElementById('f_customer_results');
+  const inp = document.getElementById('f_customer_search');
+  if (box) { box.hidden = true; box.innerHTML = ''; }
+  if (inp) inp.setAttribute('aria-expanded', 'false');
+  custActiveIdx = -1;
+}
+function renderCustResults(rows, q) {
+  const box = document.getElementById('f_customer_results');
+  const inp = document.getElementById('f_customer_search');
+  if (!box) return;
+  if (!rows.length) {
+    const empty = q ? 'Tidak ada pelanggan yang cocok' : 'Ketik nama, CID, atau HP';
+    box.innerHTML = '<div class="wo-cust-empty">' + empty + '</div>';
+    box.hidden = false;
+    if (inp) inp.setAttribute('aria-expanded', 'true');
+    custActiveIdx = -1;
+    return;
+  }
+  box.innerHTML = rows.map((c, i) => {
+    const meta = [c.customer_id, c.phone].filter(Boolean).map(esc).join(' · ');
+    return '<div class="wo-cust-item" role="option" data-id="' + esc(c.id) + '" data-idx="' + i + '">'
+      + '<div class="wo-cust-item-name">' + esc(c.name || '') + '</div>'
+      + (meta ? '<div class="wo-cust-item-meta">' + meta + '</div>' : '')
+      + '</div>';
+  }).join('');
+  box.hidden = false;
+  if (inp) inp.setAttribute('aria-expanded', 'true');
+  custActiveIdx = 0;
+  highlightCustItem();
+}
+function highlightCustItem() {
+  const items = document.querySelectorAll('#f_customer_results .wo-cust-item');
+  items.forEach((el, i) => el.classList.toggle('active', i === custActiveIdx));
+  const cur = items[custActiveIdx];
+  if (cur) cur.scrollIntoView({ block: 'nearest' });
+}
+function pickCustomerById(id) {
+  const c = allCustomers.find(x => String(x.id) === String(id));
+  setCustomerPick(c || null);
+}
+function showCustResults(q) {
+  renderCustResults(filterCustomersLocal(q), q);
+}
+async function searchCustomersRemote(q) {
+  const s = String(q || '').trim();
+  if (s.length < 2) return;
+  try {
+    const r = await fetch(`${API}/customers?search=${encodeURIComponent(s)}&limit=40`, { headers: authH() });
+    const j = await r.json();
+    mergeCustomers(parseCustomerList(j));
+    const inp = document.getElementById('f_customer_search');
+    if (inp && inp.value.trim() === s) showCustResults(s);
+  } catch (e) {}
+}
+function onCustomerSearchInput() {
+  const hid = document.getElementById('f_customer_id');
+  const inp = document.getElementById('f_customer_search');
+  const clr = document.getElementById('f_customer_clear');
+  if (hid) hid.value = '';
+  if (clr) clr.hidden = !(inp && inp.value);
+  const q = inp ? inp.value : '';
+  showCustResults(q);
+  clearTimeout(custSearchTimer);
+  custSearchTimer = setTimeout(() => searchCustomersRemote(q), 220);
+}
+
 async function loadCustomers() {
   try {
     const r = await fetch(`${API}/customers?limit=500`, { headers: authH() });
     const j = await r.json();
-    allCustomers = j.success ? (j.data?.customers||j.data||[]) : [];
-    const opts = '<option value="">— Pilih customer (opsional) —</option>' +
-      allCustomers.map(c=>`<option value="${c.id}">[${esc(c.customer_id)}] ${esc(c.name)}</option>`).join('');
-    document.getElementById('f_customer_id').innerHTML = opts;
-  } catch(e) {}
+    allCustomers = parseCustomerList(j);
+  } catch (e) {
+    allCustomers = [];
+  }
 }
 
 async function loadTickets() {
@@ -486,6 +596,7 @@ function openEdit(id) {
 }
 
 function closeModal() {
+  closeCustResults();
   document.getElementById('woModal').classList.remove('active');
   editingId = null;
 }
@@ -499,7 +610,7 @@ function clearForm() {
   document.getElementById('f_status').value     = 'pending';
   document.getElementById('f_scheduled_date').value = '';
   document.getElementById('f_assigned_user_id').value = '';
-  document.getElementById('f_customer_id').value = '';
+  setCustomerPick(null);
   document.getElementById('f_ticket_id').value   = '';
   setTechType('user');
 }
@@ -513,7 +624,14 @@ function fillForm(w) {
   document.getElementById('f_scheduled_date').value   = w.scheduled_date||'';
   document.getElementById('f_location_address').value = w.location_address||'';
   document.getElementById('f_notes').value            = w.notes||'';
-  document.getElementById('f_customer_id').value      = w.customer_id||'';
+  if (w.customer_id) {
+    const fromList = allCustomers.find(c => String(c.id) === String(w.customer_id));
+    const picked = fromList || Object.assign({ id: w.customer_id }, w.customer || {});
+    mergeCustomers([picked]);
+    setCustomerPick(picked);
+  } else {
+    setCustomerPick(null);
+  }
   document.getElementById('f_ticket_id').value        = w.ticket_id||'';
 
   if (w.assigned_user_id) {
@@ -548,7 +666,7 @@ async function saveWO() {
   const scheduled_date= document.getElementById('f_scheduled_date').value||null;
   const location_address = document.getElementById('f_location_address').value.trim()||null;
   const notes         = document.getElementById('f_notes').value.trim()||null;
-  const customer_id   = document.getElementById('f_customer_id').value||null;
+  const customer_id   = document.getElementById('f_customer_id').value || null;
   const ticket_id     = document.getElementById('f_ticket_id').value||null;
 
   let assigned_user_id = null, technician_name = null, technician_phone = null;
@@ -637,6 +755,42 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('woSearch')?.addEventListener('input',()=>{ clearTimeout(t);t=setTimeout(renderTable,300); });
   ['filterStatus','filterType','filterPriority'].forEach(id=>{
     document.getElementById(id)?.addEventListener('change',()=>{ activeStatusFilter=''; renderTable(); });
+  });
+
+  const custInp = document.getElementById('f_customer_search');
+  const custBox = document.getElementById('f_customer_results');
+  const custClr = document.getElementById('f_customer_clear');
+  custInp?.addEventListener('input', onCustomerSearchInput);
+  custInp?.addEventListener('focus', () => showCustResults(custInp.value));
+  custInp?.addEventListener('keydown', (e) => {
+    const items = document.querySelectorAll('#f_customer_results .wo-cust-item');
+    if (e.key === 'Escape') { closeCustResults(); return; }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (document.getElementById('f_customer_results')?.hidden) showCustResults(custInp.value);
+      else if (items.length) { custActiveIdx = Math.min(custActiveIdx + 1, items.length - 1); highlightCustItem(); }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (items.length) { custActiveIdx = Math.max(custActiveIdx - 1, 0); highlightCustItem(); }
+    } else if (e.key === 'Enter') {
+      if (!document.getElementById('f_customer_results')?.hidden && items[custActiveIdx]) {
+        e.preventDefault();
+        pickCustomerById(items[custActiveIdx].dataset.id);
+      }
+    }
+  });
+  custBox?.addEventListener('mousedown', (e) => {
+    const item = e.target.closest('.wo-cust-item');
+    if (!item) return;
+    e.preventDefault();
+    pickCustomerById(item.dataset.id);
+  });
+  custClr?.addEventListener('click', () => {
+    setCustomerPick(null);
+    document.getElementById('f_customer_search')?.focus();
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#woCustPick')) closeCustResults();
   });
 
   loadAll();
