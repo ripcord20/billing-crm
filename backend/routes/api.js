@@ -328,6 +328,11 @@ router.get('/customers/:id', authenticate, demoGuard, CustomerController.show);
 router.put('/customers/:id', authenticate, demoGuard, hasPermission('customer_update'), logActivity('update', 'customer'), CustomerController.update);
 router.delete('/customers/:id', authenticate, demoGuard, hasPermission('customer_delete'), logActivity('delete', 'customer'), CustomerController.destroy);
 
+// Remote GUI modem (IP privat PPPoE/statis). Teknisi harus di overlay WireGuard.
+router.get('/customers/:id/modem-remote',
+  authenticate, demoGuard,
+  CustomerController.modemRemote);
+
 // ── Portal Credentials (admin-only) ───────────────────────────────────
 // Admin mengubah customer_id & password yang dipakai pelanggan
 // untuk login ke Customer Portal. Password di-bcrypt di controller —
