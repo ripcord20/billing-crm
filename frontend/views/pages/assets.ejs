@@ -1043,7 +1043,40 @@
     height: 32px !important;
   }
 }
-    
+
+    .ast-cust-pick { position: relative; }
+    .ast-cust-q {
+      width: 100%;
+      padding: 11px 14px 11px 38px !important;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2364748b' stroke-width='2'><circle cx='7' cy='7' r='5.5'/><path d='M11 11l3.5 3.5'/></svg>");
+      background-repeat: no-repeat;
+      background-position: 12px 50%;
+    }
+    .ast-cust-dd {
+      margin-top: 6px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      max-height: min(52vh, 280px);
+      overflow-y: auto;
+      background: var(--bg-card, #fff);
+      -webkit-overflow-scrolling: touch;
+    }
+    .ast-cust-item {
+      display: block; width: 100%; text-align: left;
+      padding: 11px 12px; border: 0; border-bottom: 1px solid var(--border);
+      background: transparent; color: var(--text); font: inherit; font-size: 13px;
+      cursor: pointer;
+    }
+    .ast-cust-item:last-child { border-bottom: 0; }
+    .ast-cust-item:hover, .ast-cust-item.on { background: #eff6ff; color: #1d4ed8; }
+    .ast-cust-empty { padding: 12px; font-size: 12px; color: var(--text-muted, #64748b); }
+    [data-theme="dark"] .ast-cust-dd { background: #121a2b; border-color: #243049; }
+    [data-theme="dark"] .ast-cust-item { color: #e8eef9; border-bottom-color: #243049; }
+    [data-theme="dark"] .ast-cust-item:hover, [data-theme="dark"] .ast-cust-item.on { background: #16325c; color: #93c5fd; }
+    body.asset-home .ast-cust-dd, body.ast-home .ast-cust-dd { background: #141028; border-color: rgba(255,255,255,.12); }
+    body.asset-home .ast-cust-item, body.ast-home .ast-cust-item { color: #f8fafc; border-bottom-color: rgba(255,255,255,.1); }
+    body.asset-home .ast-cust-item:hover, body.asset-home .ast-cust-item.on,
+    body.ast-home .ast-cust-item:hover, body.ast-home .ast-cust-item.on { background: rgba(34,211,238,.14); color: #67e8f9; }
 
   </style>
 </head>
@@ -1419,7 +1452,11 @@
         </div>
         <div class="form-group">
           <label>Assign ke Customer</label>
-          <select id="fCustomer"><option value="">— Tidak di-assign —</option></select>
+          <div class="ast-cust-pick">
+            <input type="hidden" id="fCustomer" value="">
+            <input type="search" id="fCustomerQ" class="ast-cust-q" placeholder="Cari nama / CID pelanggan..." autocomplete="off" inputmode="search">
+            <div class="ast-cust-dd" id="fCustomerDd" hidden></div>
+          </div>
         </div>
         <div class="form-group">
           <label>Assign ke Infrastruktur / ODP</label>
@@ -1529,7 +1566,11 @@
     </div>
     <div class="form-group" style="margin-bottom:12px;">
       <label>Assign ke Customer</label>
-      <select id="aCustomer"><option value="">— Tidak di-assign —</option></select>
+      <div class="ast-cust-pick">
+        <input type="hidden" id="aCustomer" value="">
+        <input type="search" id="aCustomerQ" class="ast-cust-q" placeholder="Cari nama / CID pelanggan..." autocomplete="off" inputmode="search">
+        <div class="ast-cust-dd" id="aCustomerDd" hidden></div>
+      </div>
     </div>
     <div class="form-group" style="margin-bottom:12px;">
       <label>Assign ke Infrastruktur / ODP</label>
@@ -1568,7 +1609,7 @@
   </div>
 </div>
 
-<script src="/js/assets.js?v=adp1"></script>
+<script src="/js/assets.js?v=adp1csrch"></script>
 
 <script>
 (function(){

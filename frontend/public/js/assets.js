@@ -14,6 +14,7 @@ let customers    = [];
 let infras       = [];
 let onts         = [];
 let activeAssetId = null;
+let activeAsset   = null;
 let searchTimer   = null;
 
 // ApexCharts instances
@@ -32,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadCustomerOptions();
   loadInfraOptions();
   loadOntOptions();
+  bindCustPickers();
   initCharts();
 });
 
@@ -293,19 +295,103 @@ async function loadCategories() {
   } catch(e) {}
 }
 
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[ch]));
+}
+function custLabel(c) {
+  if (!c) return '';
+  return '[' + (c.customer_id || c.id) + '] ' + (c.name || '');
+}
+function filterCustList(q) {
+  const s = String(q || '').trim().toLowerCase();
+  if (!s) return customers.slice(0, 80);
+  return customers.filter(c => {
+    const blob = ((c.customer_id || '') + ' ' + (c.name || '') + ' ' + (c.phone || '')).toLowerCase();
+    return blob.includes(s);
+  }).slice(0, 80);
+}
+function renderCustDd(hiddenId, q) {
+  const dd = $(hiddenId + 'Dd');
+  const hid = $(hiddenId);
+  if (!dd || !hid) return;
+  const selId = hid.value;
+  const list = filterCustList(q);
+  let html = '<button type="button" class="ast-cust-item' + (selId ? '' : ' on') + '" data-id="" data-pick="' + hiddenId + '">— Tidak di-assign —</button>';
+  list.forEach(c => {
+    const on = String(c.id) === String(selId) ? ' on' : '';
+    html += '<button type="button" class="ast-cust-item' + on + '" data-id="' + c.id + '" data-pick="' + hiddenId + '">' + escHtml(custLabel(c)) + '</button>';
+  });
+  if (!list.length && String(q || '').trim()) {
+    html += '<div class="ast-cust-empty">Tidak ketemu. Ketik nama atau CID, contoh ARB atau CID428.</div>';
+  }
+  dd.innerHTML = html;
+  dd.hidden = false;
+}
+function setCustPick(hiddenId, customerId) {
+  const hid = $(hiddenId); if (!hid) return;
+  hid.value = customerId ? String(customerId) : '';
+  const q = $(hiddenId + 'Q');
+  if (!q) return;
+  if (!hid.value) { q.value = ''; return; }
+  const c = customers.find(x => String(x.id) === hid.value);
+  q.value = c ? custLabel(c) : '';
+}
+function bindCustPickers() {
+  ['fCustomer', 'aCustomer'].forEach(id => {
+    const q = $(id + 'Q');
+    if (!q || q._bound) return;
+    q._bound = true;
+    let t = null;
+    q.addEventListener('focus', () => renderCustDd(id, q.value));
+    q.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { const dd = $(id + 'Dd'); if (dd) dd.hidden = true; q.blur(); return; }
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const first = $(id + 'Dd') && $(id + 'Dd').querySelector('.ast-cust-item[data-id]:not([data-id=""])');
+      if (first) first.click();
+    });
+    q.addEventListener('input', () => {
+      $(id).value = '';
+      renderCustDd(id, q.value);
+      clearTimeout(t);
+      const term = q.value.trim();
+      if (term.length < 2) return;
+      t = setTimeout(async () => {
+        try {
+          const r = await fetch('/api/customers?limit=50&search=' + encodeURIComponent(term));
+          const j = await r.json();
+          if (!j.success) return;
+          (j.data || []).forEach(c => {
+            if (!customers.some(x => String(x.id) === String(c.id))) customers.push(c);
+          });
+          if (document.activeElement === q) renderCustDd(id, q.value);
+        } catch (e) {}
+      }, 280);
+    });
+  });
+  document.addEventListener('click', (e) => {
+    const item = e.target.closest('.ast-cust-item');
+    if (item) {
+      const id = item.getAttribute('data-pick');
+      setCustPick(id, item.getAttribute('data-id'));
+      const dd = $(id + 'Dd');
+      if (dd) dd.hidden = true;
+      return;
+    }
+    if (!e.target.closest('.ast-cust-pick')) {
+      ['fCustomerDd', 'aCustomerDd'].forEach(did => { const d = $(did); if (d) d.hidden = true; });
+    }
+  });
+}
+
 async function loadCustomerOptions() {
   try {
     const r = await fetch('/api/customers?limit=500&status=active');
     const j = await r.json();
     if (!j.success) return;
     customers = j.data || [];
-    ['fCustomer','aCustomer'].forEach(id => {
-      const s = $(id); if (!s) return;
-      s.innerHTML = '<option value="">— Tidak di-assign —</option>';
-      customers.forEach(c => {
-        s.innerHTML += `<option value="${c.id}">[${c.customer_id}] ${c.name}</option>`;
-      });
-    });
   } catch(e) {}
 }
 
@@ -452,6 +538,7 @@ function openAddAsset() {
   $('editAssetId').value = '';
   ['fName', 'fBrand', 'fModel', 'fSerial', 'fMac', 'fPurchaseDate', 'fPrice', 'fVendor', 'fWarranty', 'fLocation', 'fNotes', 'fAdaptor', 'fAdaptorType'].forEach(id => { const el = $(id); if (el) el.value = ''; });
   ['fCategory', 'fStatus', 'fCondition', 'fCustomer', 'fInfra', 'fOnt'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+  setCustPick('fCustomer', '');
   setScanStatus('');
   if ($('scanPreview')) { $('scanPreview').style.display = 'none'; $('scanPreview').src = ''; }
   applyAssetFormMode();
@@ -480,6 +567,7 @@ async function openEdit(id) {
     $('fWarranty').value = a.warranty_until || '';
     $('fLocation').value = a.location || '';
     $('fCustomer').value = a.customer_id || '';
+    setCustPick('fCustomer', a.customer_id || '');
     $('fInfra').value = a.infrastructure_id || '';
     $('fOnt').value = a.ont_device_id || '';
     $('fNotes').value = a.notes || '';
@@ -540,6 +628,7 @@ async function viewAsset(id) {
     const j = await r.json();
     if (!j.success) return;
     const a = j.data;
+    activeAsset = a;
 
     $('detailTitle').textContent = 'Detail Asset';
     $('dName').textContent       = a.name;
@@ -652,6 +741,9 @@ function openAssignModal() {
   $('aInfra').value    = '';
   $('aLocation').value = '';
   $('aNote').value     = '';
+  setCustPick('aCustomer', activeAsset && activeAsset.customer_id);
+  const q = $('aCustomerQ');
+  if (q) setTimeout(() => q.focus(), 50);
   openModal('assignModal');
 }
 
