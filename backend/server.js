@@ -438,7 +438,7 @@ const startServer = async () => {
         defaults: {
           name: 'noc',
           display_name: 'Admin NOC',
-          description: 'Akses khusus monitoring jaringan: traffic, PPPoE, OLT/ONT, devices, dan infrastructure.',
+          description: 'Akses khusus monitoring jaringan: traffic, PPPoE, OLT/ONT, devices, infrastructure, dan daftar pelanggan baru.',
           is_system: true
         }
       });

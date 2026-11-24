@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { User, Role, Permission, Tenant } = require('../models');
+const { grantsForRole } = require('./roleGrants');
 
 // Bangun URL redirect ke /login sambil menyimpan tujuan awal (?next=...).
 // Hanya path internal yang aman (diawali '/', bukan '//' atau 'http') yang
@@ -119,14 +120,10 @@ const hasPermission = (...permissions) => {
       return next();
     }
     // ── Role-based grant: izin tambahan yang melekat ke role tertentu tanpa
-    //    perlu seed permission ke DB. Role 'finance' kini boleh mengelola
-    //    pelanggan penuh (create/update/delete) seperti admin.
+    //    perlu seed permission ke DB. finance = CRUD pelanggan; tenant_owner
+    //    dan noc = view/create/update (tanpa hapus).
     const roleName = (req.user.role?.name || '').toLowerCase();
-    const ROLE_GRANTS = {
-      finance: ['customer_view', 'customer_create', 'customer_update', 'customer_delete'],
-      tenant_owner: ['customer_view', 'customer_create', 'customer_update'],
-    };
-    const granted = ROLE_GRANTS[roleName] || [];
+    const granted = grantsForRole(roleName);
     if (granted.length && permissions.some(p => granted.includes(p))) {
       return next();
     }
