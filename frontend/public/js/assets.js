@@ -90,6 +90,10 @@ function applyAssetFormMode() {
   const modem = isModemCategory(catId);
   const form = $('assetForm');
   if (form) form.classList.toggle('modem-mode', modem);
+  const lbl = $('lblSerial');
+  const serial = $('fSerial');
+  if (lbl) lbl.textContent = modem ? 'GPON SN' : 'Nomor Seri';
+  if (serial) serial.placeholder = modem ? 'ZTEGXXXXXXXX' : 'Nomor seri';
 }
 
 function readModemSpecs() {
@@ -123,37 +127,37 @@ function adaptorCell(a) {
   return '—';
 }
 
-function parseSnMacFromText(text) {
-  const raw = String(text || '').replace(/\r/g, '\n');
-  let mac = '';
-  const macColon = raw.match(/\b([0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}\b/);
-  if (macColon) mac = macColon[0].replace(/-/g, ':').toUpperCase();
-  if (!mac) {
-    const compact = raw.match(/\b[0-9A-Fa-f]{12}\b/);
-    if (compact) mac = compact[0].toUpperCase().match(/.{2}/g).join(':');
+function parseSnMacFromText(text, barcodes) {
+  if (typeof parseOntLabel === 'function') return parseOntLabel(text, barcodes);
+  return { sn: '', mac: '' };
+}
+
+function defaultScanHint() {
+  return 'Tidak perlu ketik SN dan MAC. Tinggal foto stiker ONT.';
+}
+
+function ensureModemCategory() {
+  const sel = $('fCategory');
+  if (!sel) return;
+  if (typeof isCableCategory === 'function' && isCableCategory(sel.value)) return;
+  if (isModemCategory(sel.value)) {
+    applyAssetFormMode();
+    return;
   }
-  let sn = '';
-  const labeled = raw.match(/(?:S\/N|SN|Serial(?:\s*No\.?|\s*Number)?)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-]{4,})/i);
-  if (labeled) sn = labeled[1].toUpperCase();
-  if (!sn) {
-    const lines = raw.split(/\n+/).map(l => l.trim()).filter(Boolean);
-    for (const line of lines) {
-      const m = line.match(/\b([A-Z0-9]{8,})\b/);
-      if (m && m[1].replace(/[^0-9A-F]/gi, '').length !== 12) { sn = m[1].toUpperCase(); break; }
-    }
-  }
-  if (sn && mac && sn.replace(/[^0-9A-F]/g, '') === mac.replace(/[^0-9A-F]/g, '')) sn = '';
-  return { sn, mac };
+  const opt = [...sel.options].find(o => /modem|ont|onu|gpon/i.test(o.textContent || ''));
+  if (opt) sel.value = opt.value;
+  applyAssetFormMode();
 }
 
 function scanLabelPhoto() {
+  ensureModemCategory();
   const inp = $('fScanFile');
   if (inp) inp.click();
 }
 
 function setScanStatus(msg) {
   const el = $('scanStatus');
-  if (el) el.textContent = msg || '';
+  if (el) el.textContent = msg || defaultScanHint();
 }
 
 async function onScanLabelFile(input) {
@@ -164,28 +168,30 @@ async function onScanLabelFile(input) {
     preview.src = URL.createObjectURL(file);
     preview.style.display = 'block';
   }
+  ensureModemCategory();
   setScanStatus('Membaca label…');
   try {
-    let text = '';
+    let codes = [];
     if (window.BarcodeDetector) {
       try {
         const det = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'data_matrix'] });
         const bmp = await createImageBitmap(file);
-        const codes = await det.detect(bmp);
-        text = (codes || []).map(c => c.rawValue).filter(Boolean).join('\n');
+        const found = await det.detect(bmp);
+        codes = (found || []).map(c => c.rawValue).filter(Boolean);
       } catch (e) { /* fallback OCR */ }
     }
-    if (!text) {
-      text = await ocrLabelImage(file);
+    let parsed = parseSnMacFromText('', codes);
+    if (!parsed.sn || !parsed.mac) {
+      const text = await ocrLabelImage(file);
+      parsed = parseSnMacFromText(text, codes);
     }
-    const parsed = parseSnMacFromText(text);
     if (parsed.sn && $('fSerial')) $('fSerial').value = parsed.sn;
     if (parsed.mac && $('fMac')) $('fMac').value = parsed.mac;
     if (parsed.sn || parsed.mac) {
-      setScanStatus((parsed.sn ? 'SN ' + parsed.sn : '') + (parsed.sn && parsed.mac ? ' · ' : '') + (parsed.mac ? 'MAC ' + parsed.mac : ''));
-      applyAssetFormMode();
+      ensureModemCategory();
+      setScanStatus((parsed.sn ? 'GPON SN ' + parsed.sn : '') + (parsed.sn && parsed.mac ? ' · ' : '') + (parsed.mac ? 'MAC ' + parsed.mac : ''));
     } else {
-      setScanStatus('Tidak ketemu SN/MAC. Isi manual atau foto lebih dekat.');
+      setScanStatus('Tidak ketemu GPON SN / MAC. Isi manual atau foto lebih dekat.');
     }
   } catch (e) {
     setScanStatus('Gagal baca foto: ' + (e.message || e));
@@ -209,7 +215,15 @@ function loadTesseract() {
 
 async function ocrLabelImage(file) {
   const Tesseract = await loadTesseract();
-  const result = await Tesseract.recognize(file, 'eng', { logger: () => {} });
+  const result = await Promise.race([
+    Tesseract.recognize(file, 'eng', {
+      logger: () => {},
+      workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+      corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
+      langPath: 'https://tessdata.projectnaptha.com/4.0.0'
+    }),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('OCR timeout')), 25000))
+  ]);
   return (result && result.data && result.data.text) || '';
 }
 
@@ -452,7 +466,7 @@ function openAddAsset() {
   $('editAssetId').value = '';
   ['fName', 'fBrand', 'fModel', 'fSerial', 'fMac', 'fPurchaseDate', 'fPrice', 'fVendor', 'fWarranty', 'fLocation', 'fNotes', 'fAdaptor', 'fAdaptorType'].forEach(id => { const el = $(id); if (el) el.value = ''; });
   ['fCategory', 'fStatus', 'fCondition', 'fCustomer', 'fInfra', 'fOnt'].forEach(id => { const el = $(id); if (el) el.value = ''; });
-  setScanStatus('');
+  setScanStatus(defaultScanHint());
   if ($('scanPreview')) { $('scanPreview').style.display = 'none'; $('scanPreview').src = ''; }
   applyAssetFormMode();
   openModal('assetModal');
@@ -484,6 +498,8 @@ async function openEdit(id) {
     $('fOnt').value = a.ont_device_id || '';
     $('fNotes').value = a.notes || '';
     fillModemFields(a);
+    setScanStatus(defaultScanHint());
+    if ($('scanPreview')) { $('scanPreview').style.display = 'none'; $('scanPreview').src = ''; }
     applyAssetFormMode();
     openModal('assetModal');
   } catch(e) { alert('Gagal memuat data asset'); }

@@ -354,6 +354,9 @@
     /* ── Form ────────────────────────────────────────────── */
     .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    @media (max-width: 768px) {
+      .form-grid-2, .form-grid-3 { grid-template-columns: 1fr !important; }
+    }
     .form-group { display: flex; flex-direction: column; gap: 6px; }
     .form-group label { 
       font-size: 13px; 
@@ -402,6 +405,7 @@
       border-radius: 2px;
     }
     #assetForm:not(.modem-mode) .modem-only { display: none !important; }
+    #assetForm.cable-mode .scan-col { display: none !important; }
     .scan-row { display:flex; gap:8px; align-items:flex-end; }
     .scan-row .form-group { flex:1; min-width:0; }
     .btn-scan {
@@ -412,8 +416,25 @@
     }
     .btn-scan:hover { border-color:#3b82f6; color:#2563eb; }
     [data-theme="dark"] .btn-scan { background:#0f172a; color:#e8eef9; border-color:#243049; }
-    .scan-status { font-size:11px; color:var(--text-muted); margin-top:4px; min-height:16px; }
-    .scan-preview { display:none; margin-top:8px; max-width:160px; border-radius:8px; border:1px solid var(--border); }
+    .btn-scan-hero {
+      width:100%; min-height:96px; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:6px; padding:16px 12px;
+      border-radius:14px; border:2px dashed #3b82f6; background:#eff6ff;
+      color:#1d4ed8; font-size:15px; font-weight:800; cursor:pointer;
+      font-family:inherit; text-align:center; line-height:1.25;
+    }
+    .btn-scan-hero small { display:block; font-size:12px; font-weight:600; opacity:.85; }
+    .btn-scan-hero:hover { background:#dbeafe; }
+    [data-theme="dark"] .btn-scan-hero {
+      background:#0b1a33; color:#93c5fd; border-color:#3b82f6;
+    }
+    [data-theme="dark"] .btn-scan-hero:hover { background:#132544; }
+    .scan-status { font-size:12px; color:var(--text-muted); margin-top:8px; min-height:16px; font-weight:600; }
+    .scan-preview {
+      display:none; margin-top:10px; width:100%; max-height:220px;
+      object-fit:contain; border-radius:12px; border:1px solid var(--border);
+      background:#0f172a;
+    }
 
     /* ── Detail panel ─────────────────────────────────────── */
     .detail-layout {
@@ -1272,7 +1293,7 @@
                   <th>Kode / Nama</th>
                   <th>Kategori</th>
                   <th>Brand / Model</th>
-                  <th>S/N</th>
+                  <th>GPON SN</th>
                   <th>Adaptor</th>
                   <th>Status</th>
                   <th>Kondisi</th>
@@ -1346,19 +1367,23 @@
           <label>Model</label>
           <input type="text" id="fModel" placeholder="F660, hEX, EG8141A5...">
         </div>
-        <div class="form-group">
-          <label>Nomor Seri (S/N)</label>
-          <input type="text" id="fSerial" placeholder="SN atau MAC Address">
-          <div class="scan-row" style="margin-top:8px;">
-            <button type="button" class="btn-scan" onclick="scanLabelPhoto()">📷 Foto SN / MAC</button>
-            <input type="file" id="fScanFile" accept="image/*" capture="environment" style="display:none" onchange="onScanLabelFile(this)">
-          </div>
-          <div class="scan-status" id="scanStatus"></div>
+        <div class="form-group scan-col" style="grid-column:1/-1">
+          <label>Foto label</label>
+          <button type="button" class="btn-scan-hero" onclick="scanLabelPhoto()">
+            <span>📷 Foto stiker ONT</span>
+            <small>Tinggal foto — GPON SN dan MAC terisi otomatis</small>
+          </button>
+          <input type="file" id="fScanFile" accept="image/*" capture="environment" style="display:none" onchange="onScanLabelFile(this)">
           <img id="scanPreview" class="scan-preview" alt="Preview label">
+          <div class="scan-status" id="scanStatus">Tidak perlu ketik SN dan MAC.</div>
         </div>
-        <div class="form-group modem-only">
+        <div class="form-group" style="grid-column:1/-1">
+          <label id="lblSerial">GPON SN</label>
+          <input type="text" id="fSerial" placeholder="ZTEGXXXXXXXX" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
           <label>MAC Address</label>
-          <input type="text" id="fMac" placeholder="AA:BB:CC:DD:EE:FF">
+          <input type="text" id="fMac" placeholder="AA:BB:CC:DD:EE:FF" maxlength="17" autocomplete="off" spellcheck="false" style="font-family:'DM Mono',ui-monospace,monospace;letter-spacing:.02em">
         </div>
         <div class="form-group">
           <label>Kondisi</label>
@@ -1490,7 +1515,7 @@
         <div class="detail-grid" style="margin-bottom:16px;">
           <div class="detail-item"><label>Kategori</label><span id="dCat"></span></div>
           <div class="detail-item"><label>Brand / Model</label><span id="dBrandModel"></span></div>
-          <div class="detail-item"><label>Nomor Seri</label><span id="dSerial"></span></div>
+          <div class="detail-item"><label>GPON SN</label><span id="dSerial"></span></div>
           <div class="detail-item" id="dMacRow" style="display:none"><label>MAC Address</label><span id="dMac"></span></div>
           <div class="detail-item" id="dAdaptorRow" style="display:none"><label>Adaptor</label><span id="dAdaptor"></span></div>
           <div class="detail-item"><label>Tanggal Beli</label><span id="dPurchDate"></span></div>
@@ -1568,7 +1593,8 @@
   </div>
 </div>
 
-<script src="/js/assets.js?v=adp1"></script>
+<script src="/js/parseOntLabel.js?v=gpon1"></script>
+<script src="/js/assets.js?v=ast8ocr"></script>
 
 <script>
 (function(){
