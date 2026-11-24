@@ -458,6 +458,13 @@ async function loadCustomerGrowth() {
     // Update summary stats
     const s = data.data.summary;
     setText('totalCustomersGrowth', s.total_customers);
+    const newCount = Number(s.current_month_new);
+    const growthNewEl = document.getElementById('growthNewCount');
+    if (growthNewEl) {
+      const n = Number.isFinite(newCount) ? newCount : 0;
+      growthNewEl.textContent = (n > 0 ? '+' : '') + n + ' orang';
+      growthNewEl.style.color = n > 0 ? '#22c55e' : (n < 0 ? '#ef4444' : '');
+    }
     const growthRateEl = document.getElementById('growthRate');
     if (growthRateEl) {
       growthRateEl.textContent = (s.growth_rate > 0 ? '+' : '') + s.growth_rate + '%';
