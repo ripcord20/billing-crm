@@ -32,9 +32,6 @@
   <meta name="theme-color" content="<%= cDark %>">
   <meta name="robots" content="noindex,nofollow">
   <title><%= cfg.title %> · <%= appName %></title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     :root {
@@ -533,6 +530,21 @@
       margin: 10px 0 0; font-weight: 500;
     }
     .pay-card .btn { width: 100%; margin-top: 12px; }
+    .pay-result {
+      display: none;
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+    }
+    .pay-result.show { display: block; }
+    .pay-result .amt {
+      font-size: 22px; font-weight: 700; letter-spacing: -0.03em;
+      color: var(--text); margin: 4px 0 2px;
+    }
+    .pay-result .meta { font-size: 13px; color: var(--text-mute); }
 
     /* ── Help card ── */
     .help-card {
@@ -713,11 +725,10 @@
         Bayar tanpa login
       </h2>
       <p class="pay-hint">
-        Aplikasi, OTP WhatsApp, dan login portal tidak dibutuhkan.
-        Isi CID dan 4 digit terakhir nomor HP, lalu bayar tagihan.
-        Rekening/QRIS di bawah juga bisa dipakai langsung, atau dari HP lain yang masih ada kuota.
+        Cukup tekan <b>Lanjut bayar tagihan</b> — tidak perlu aplikasi, OTP WhatsApp, atau login portal.
+        Tagihan tampil di halaman ini, lalu transfer ke rekening di bawah (bisa juga dari HP lain yang ada kuota).
       </p>
-      <form id="payForm" action="<%= publicBase %>/p/cek-tagihan" method="post">
+      <form id="payForm" action="/p/cek-tagihan" method="post">
         <div class="pay-row">
           <div class="pay-field">
             <label for="payCid">CID pelanggan</label>
@@ -731,6 +742,11 @@
         <div class="pay-err" id="payErr"></div>
         <button type="submit" class="btn btn-primary" id="payBtn">Lanjut bayar tagihan</button>
       </form>
+      <div class="pay-result" id="payResult">
+        <div class="meta" id="payResultMeta"></div>
+        <div class="amt" id="payResultAmt"></div>
+        <div class="meta" id="payResultHint">Transfer ke rekening BCA atau BNI di bawah, lalu simpan bukti.</div>
+      </div>
     </div>
 
     <!-- ── BANK ACCOUNTS ── -->
@@ -749,9 +765,7 @@
       <div class="bank-list" id="banksList">
         <% payBanks.forEach(function(acc) { %>
           <div class="bank-row">
-            <div class="bank-logo">
-              <% if (acc.logo_url) { %><img src="<%= acc.logo_url %>" alt=""><% } else { %><%= String(acc.provider || 'BANK').toUpperCase().slice(0, 4) %><% } %>
-            </div>
+            <div class="bank-logo"><%= String(acc.provider || 'BANK').toUpperCase().slice(0, 4) %></div>
             <div class="bank-info">
               <div class="bank-name">
                 <%= String(acc.provider || '').toUpperCase() %>
@@ -811,18 +825,6 @@
 
     <!-- ── ACTIONS ── -->
     <div class="actions">
-      <a href="<%= portalLoginUrl %>" class="btn btn-primary">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-          <polyline points="10 17 15 12 10 7"/>
-          <line x1="15" y1="12" x2="3" y2="12"/>
-        </svg>
-        Portal (CID + password)
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="5" y1="12" x2="19" y2="12"/>
-          <polyline points="12 5 19 12 12 19"/>
-        </svg>
-      </a>
       <% if (brand.company_whatsapp) {
         let waNum = String(brand.company_whatsapp).replace(/[^0-9]/g,'');
         if (waNum.startsWith('0')) waNum = '62' + waNum.slice(1);
@@ -832,16 +834,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
           </svg>
-          Hubungi Admin
-        </a>
-      <% } else { %>
-        <a href="<%= portalLoginUrl %>" class="btn btn-secondary">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-            <line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
-          Pusat Bantuan
+          Hubungi Admin (kuota seluler)
         </a>
       <% } %>
     </div>
@@ -919,7 +912,6 @@
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
   }
   function bankLogo(account) {
-    if (account.logo_url) return '<img src="' + escapeHtml(account.logo_url) + '" alt="">';
     const provider = (account.provider || '').toUpperCase().slice(0, 4);
     return escapeHtml(provider || 'BANK');
   }
@@ -944,21 +936,36 @@
         return;
       }
       btn.disabled = true;
-      var lookupUrl = <%= JSON.stringify((typeof publicBase !== 'undefined' && publicBase) ? (publicBase + '/p/cek-tagihan') : '/p/cek-tagihan') %>;
-      var invoiceBase = <%= JSON.stringify((typeof publicBase !== 'undefined' && publicBase) ? publicBase : '') %>;
-      fetch(lookupUrl, {
+      fetch('/p/cek-tagihan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cid: cid, phone4: phone4 })
       }).then(function(r) { return r.json(); }).then(function(data) {
-        if (data && data.success && data.pay_path) {
-          window.location.href = invoiceBase + data.pay_path;
+        if (data && data.success && data.invoice) {
+          var inv = data.invoice;
+          var amt = Number(inv.amount || 0);
+          var rp = 'Rp ' + amt.toLocaleString('id-ID');
+          document.getElementById('payResultMeta').textContent =
+            (data.customer && data.customer.name ? data.customer.name + ' · ' : '') +
+            (inv.period || '') + (inv.number ? ' · ' + inv.number : '');
+          document.getElementById('payResultAmt').textContent = rp;
+          document.getElementById('payResultHint').textContent = data.has_unpaid
+            ? 'Transfer sebesar nominal di atas ke BCA atau BNI, lalu simpan bukti.'
+            : (data.message || 'Tidak ada tagihan yang belum lunas.');
+          document.getElementById('payResult').classList.add('show');
+          var banks = document.getElementById('banksSection');
+          if (banks) banks.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
+        if (data && data.success && data.has_invoice === false) {
+          err.textContent = data.message || 'Belum ada tagihan untuk akun ini.';
+          err.style.display = 'block';
           return;
         }
         err.textContent = (data && data.message) || 'Data tidak cocok. Periksa CID dan nomor HP.';
         err.style.display = 'block';
       }).catch(function() {
-        err.textContent = 'Tidak dapat terhubung. Coba salin rekening di bawah, atau buka dari HP lain.';
+        err.textContent = 'Tidak dapat terhubung. Salin rekening di bawah, atau bayar dari HP lain.';
         err.style.display = 'block';
       }).then(function() { btn.disabled = false; });
     });

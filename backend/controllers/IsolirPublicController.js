@@ -48,13 +48,24 @@ function absUrl(base, path) {
   return p;
 }
 
+// Aset di halaman isolir harus same-origin. Kalau diubah ke https://fiberix.my.id
+// saat halaman dibuka dari IP LAN, CSP 'self' memblokir gambar (logo pecah)
+// dan fetch ke APP_URL terasa berat.
+function sameOriginAsset(url) {
+  const p = String(url || '').trim();
+  if (!p) return '';
+  if (p.startsWith('/')) return p;
+  const m = p.match(/^https?:\/\/[^/]+(\/.*)$/i);
+  if (m) return m[1];
+  return '';
+}
+
 async function loadPaymentAccounts() {
   const row = await AppSetting.findOne({ where: { key: 'payment_accounts' } });
   if (!row || !row.value) return [];
   try {
     const parsed = JSON.parse(row.value);
     if (!Array.isArray(parsed)) return [];
-    const base = publicBaseUrl();
     return parsed
       .filter(a => a && a.is_active !== false)
       .map(a => ({
@@ -62,7 +73,7 @@ async function loadPaymentAccounts() {
         provider:       a.provider || '',
         account_number: a.account_number || '',
         account_owner:  a.account_owner || '',
-        logo_url:       absUrl(base, a.logo_url || ''),
+        logo_url:       sameOriginAsset(a.logo_url || ''),
       }));
   } catch {
     return [];
@@ -110,7 +121,7 @@ exports.renderPage = async (req, res) => {
   const brand = {
     company_name:     companyName,
     app_name:         appName,
-    logo_url:         absUrl(publicBase, logoUrl),
+    logo_url:         sameOriginAsset(logoUrl) || absUrl(publicBase, logoUrl),
     company_whatsapp: companyWa,
   };
   const pageConfig = {
