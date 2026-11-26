@@ -70,10 +70,13 @@ const lookupLimiter = rateLimit({
   legacyHeaders: false,
   message: { success: false, message: 'Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.' }
 });
-// CORS khusus endpoint lookup: izinkan domain landing (boleh >1, pisah koma).
+// CORS khusus endpoint lookup: izinkan domain landing (boleh >1, pisah koma)
+// plus APP_URL supaya form bayar di halaman isolir bisa memanggil endpoint ini.
 function lookupCors(req, res, next) {
   const allowed = String(process.env.LANDING_URL || '')
     .split(',').map(s => s.trim().replace(/\/+$/, '')).filter(Boolean);
+  const appUrl = String(process.env.APP_URL || process.env.BASE_URL || '').replace(/\/+$/, '');
+  if (appUrl && !allowed.includes(appUrl)) allowed.push(appUrl);
   const origin = (req.headers.origin || '').replace(/\/+$/, '');
   if (allowed.length && allowed.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);

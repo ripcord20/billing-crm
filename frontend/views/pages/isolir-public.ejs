@@ -1,5 +1,10 @@
 <%
   pageConfig = pageConfig || {};
+  accounts = accounts || [];
+  publicBase = publicBase || '';
+  portalLoginUrl = portalLoginUrl || ((publicBase || '') + '/portal/login');
+  const payBanks = accounts.filter(a => a && a.type !== 'qris');
+  const payQris = accounts.filter(a => a && a.type === 'qris');
   const cfg = {
     title:     pageConfig.title     || 'Layanan Anda Sedang Diisolir',
     subtitle:  pageConfig.subtitle  || 'Akses internet diblokir karena ada tagihan yang belum dibayar. Silakan login portal untuk melihat detail tagihan dan melakukan pembayaran.',
@@ -488,6 +493,47 @@
       to   { opacity: 1; transform: scale(1); }
     }
 
+    /* ── Pay without login ── */
+    .pay-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 22px 22px 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+    @media (max-width: 640px) { .pay-card { padding: 18px 16px; border-radius: 16px; } }
+    .pay-card h2 {
+      font-size: 15px; font-weight: 600; margin: 0 0 8px;
+      letter-spacing: -0.01em; color: var(--text);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .pay-card h2 svg { width: 18px; height: 18px; stroke: var(--text-mute); }
+    .pay-hint {
+      font-size: 13px; color: var(--text-mute); line-height: 1.55;
+      margin: 0 0 16px;
+    }
+    .pay-row {
+      display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 10px;
+    }
+    @media (max-width: 560px) { .pay-row { grid-template-columns: 1fr; } }
+    .pay-field label {
+      display: block; font-size: 12px; font-weight: 600;
+      color: var(--text-mute); margin-bottom: 6px;
+    }
+    .pay-field input {
+      width: 100%; padding: 12px 14px;
+      border: 1px solid var(--border); border-radius: 12px;
+      font-family: inherit; font-size: 15px; color: var(--text);
+      background: var(--surface-2); outline: none;
+    }
+    .pay-field input:focus { border-color: var(--brand); background: #fff; }
+    .pay-err {
+      display: none; color: var(--danger); font-size: 13px;
+      margin: 10px 0 0; font-weight: 500;
+    }
+    .pay-card .btn { width: 100%; margin-top: 12px; }
+
     /* ── Help card ── */
     .help-card {
       background: var(--warning-soft);
@@ -658,8 +704,37 @@
       <p class="desc"><%= cfg.subtitle %></p>
     </div>
 
-    <!-- ── BANK ACCOUNTS (loaded via JS) ── -->
-    <div class="section-card" id="banksSection" style="display:none;">
+    <div class="pay-card" id="payCard">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="5" width="20" height="14" rx="2"/>
+          <line x1="2" y1="10" x2="22" y2="10"/>
+        </svg>
+        Bayar tanpa login
+      </h2>
+      <p class="pay-hint">
+        Aplikasi, OTP WhatsApp, dan login portal tidak dibutuhkan.
+        Isi CID dan 4 digit terakhir nomor HP, lalu bayar tagihan.
+        Rekening/QRIS di bawah juga bisa dipakai langsung, atau dari HP lain yang masih ada kuota.
+      </p>
+      <form id="payForm" action="<%= publicBase %>/p/cek-tagihan" method="post">
+        <div class="pay-row">
+          <div class="pay-field">
+            <label for="payCid">CID pelanggan</label>
+            <input id="payCid" name="cid" type="text" autocomplete="username" placeholder="CID527" required>
+          </div>
+          <div class="pay-field">
+            <label for="payPhone4">4 digit akhir HP</label>
+            <input id="payPhone4" name="phone4" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="1234" required>
+          </div>
+        </div>
+        <div class="pay-err" id="payErr"></div>
+        <button type="submit" class="btn btn-primary" id="payBtn">Lanjut bayar tagihan</button>
+      </form>
+    </div>
+
+    <!-- ── BANK ACCOUNTS ── -->
+    <div class="section-card" id="banksSection" style="<%= accounts.length ? '' : 'display:none;' %>">
       <div class="section-head">
         <h2>
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -669,9 +744,57 @@
           </svg>
           Metode Pembayaran
         </h2>
-        <span class="count-pill" id="banksCount"></span>
+        <span class="count-pill" id="banksCount"><% if (accounts.length) { %><%= accounts.length %> metode<% } %></span>
       </div>
-      <div class="bank-list" id="banksList"></div>
+      <div class="bank-list" id="banksList">
+        <% payBanks.forEach(function(acc) { %>
+          <div class="bank-row">
+            <div class="bank-logo">
+              <% if (acc.logo_url) { %><img src="<%= acc.logo_url %>" alt=""><% } else { %><%= String(acc.provider || 'BANK').toUpperCase().slice(0, 4) %><% } %>
+            </div>
+            <div class="bank-info">
+              <div class="bank-name">
+                <%= String(acc.provider || '').toUpperCase() %>
+                <% if (acc.type === 'ewallet') { %><span class="bank-type-tag ewallet">E-Wallet</span><% } %>
+              </div>
+              <div class="bank-account"><%= acc.account_number %></div>
+              <% if (acc.account_owner) { %><div class="bank-owner">a.n. <%= acc.account_owner %></div><% } %>
+            </div>
+            <% if (acc.account_number) { %>
+              <button type="button" class="bank-copy" data-copy="<%= acc.account_number %>" data-copy-label="Nomor rekening">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+                <span class="label-text">Salin</span>
+              </button>
+            <% } %>
+          </div>
+        <% }); %>
+        <% payQris.forEach(function(q) { %>
+          <div class="qris-card">
+            <div class="qris-head">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"/>
+                <rect x="14" y="3" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/>
+                <path d="M14 14h2M14 17h5M14 20h3M17 14h4"/>
+              </svg>
+              QRIS
+              <span class="qris-badge">Scan &amp; Bayar</span>
+            </div>
+            <% if (q.logo_url) { %>
+              <div class="qris-img-wrap" data-qris-zoom="<%= q.logo_url %>">
+                <img src="<%= q.logo_url %>" alt="QRIS" class="qris-img" loading="lazy">
+              </div>
+            <% } else { %>
+              <div class="qris-placeholder">QR code belum di-upload<br>oleh admin</div>
+            <% } %>
+            <% if (q.account_owner) { %><div class="qris-owner">a.n. <%= q.account_owner %></div><% } %>
+            <div class="qris-hint">Scan QR di atas pakai GoPay, OVO, DANA, ShopeePay, atau m-banking. Kalau jaringan isolir menolak aplikasi e-wallet, scan dari HP lain yang ada kuota.</div>
+          </div>
+        <% }); %>
+      </div>
     </div>
 
     <!-- ── HELP TEXT ── -->
@@ -688,13 +811,13 @@
 
     <!-- ── ACTIONS ── -->
     <div class="actions">
-      <a href="/portal/login" class="btn btn-primary">
+      <a href="<%= portalLoginUrl %>" class="btn btn-primary">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
           <polyline points="10 17 15 12 10 7"/>
           <line x1="15" y1="12" x2="3" y2="12"/>
         </svg>
-        Masuk ke Portal
+        Portal (CID + password)
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="5" y1="12" x2="19" y2="12"/>
           <polyline points="12 5 19 12 12 19"/>
@@ -712,7 +835,7 @@
           Hubungi Admin
         </a>
       <% } else { %>
-        <a href="/portal/login" class="btn btn-secondary">
+        <a href="<%= portalLoginUrl %>" class="btn btn-secondary">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/>
             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
@@ -806,7 +929,45 @@
     return '';
   }
 
-  fetch('/p/isolir/payment-accounts', { cache: 'no-store' })
+  var payForm = document.getElementById('payForm');
+  if (payForm) {
+    payForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var err = document.getElementById('payErr');
+      var btn = document.getElementById('payBtn');
+      var cid = (document.getElementById('payCid').value || '').trim();
+      var phone4 = String(document.getElementById('payPhone4').value || '').replace(/\D/g, '').slice(-4);
+      err.style.display = 'none';
+      if (!cid || phone4.length !== 4) {
+        err.textContent = 'Masukkan CID dan 4 digit terakhir nomor HP.';
+        err.style.display = 'block';
+        return;
+      }
+      btn.disabled = true;
+      var lookupUrl = <%= JSON.stringify((typeof publicBase !== 'undefined' && publicBase) ? (publicBase + '/p/cek-tagihan') : '/p/cek-tagihan') %>;
+      var invoiceBase = <%= JSON.stringify((typeof publicBase !== 'undefined' && publicBase) ? publicBase : '') %>;
+      fetch(lookupUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cid: cid, phone4: phone4 })
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data && data.success && data.pay_path) {
+          window.location.href = invoiceBase + data.pay_path;
+          return;
+        }
+        err.textContent = (data && data.message) || 'Data tidak cocok. Periksa CID dan nomor HP.';
+        err.style.display = 'block';
+      }).catch(function() {
+        err.textContent = 'Tidak dapat terhubung. Coba salin rekening di bawah, atau buka dari HP lain.';
+        err.style.display = 'block';
+      }).then(function() { btn.disabled = false; });
+    });
+  }
+
+  var banksListEl = document.getElementById('banksList');
+  if (banksListEl && banksListEl.children.length) {
+    /* rekening sudah di-render server-side — jangan ditimpa */
+  } else fetch('/p/isolir/payment-accounts', { cache: 'no-store' })
     .then(r => r.json())
     .then(data => {
       const list = (data && data.accounts) || [];
