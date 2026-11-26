@@ -8,9 +8,11 @@
  *   - Brand info (logo, nama)
  *   - Pesan pemberitahuan (judul, subtitle dari Pengaturan)
  *   - Rekening pembayaran (dari Settings)
- *   - CTA ke portal pelanggan + WhatsApp admin
+ *   - CTA bayar tanpa login (CID + 4 digit HP → /pub/invoice)
+ *   - CTA portal (password / nomor HP) — tidak memakai OTP WhatsApp
  *
- * Pelanggan login ke portal sendiri untuk lihat detail tagihan & bayar.
+ * Pelanggan isolir tidak punya internet penuh, jadi pembayaran harus
+ * bisa dari halaman ini tanpa aplikasi, tanpa OTP, dan tanpa WhatsApp.
  *
  * Keuntungan vs lookup approach:
  *   - Zero DB query untuk customer
@@ -34,6 +36,50 @@ async function getSetting(key, fallback = '') {
   }
 }
 
+function publicBaseUrl() {
+  return String(process.env.APP_URL || process.env.BASE_URL || '').replace(/\/+$/, '');
+}
+
+function absUrl(base, path) {
+  if (!path) return '';
+  const p = String(path).trim();
+  if (/^https?:\/\//i.test(p) || /^data:/i.test(p)) return p;
+  if (p.startsWith('/') && base) return base + p;
+  return p;
+}
+
+// Aset di halaman isolir harus same-origin. Kalau diubah ke https://fiberix.my.id
+// saat halaman dibuka dari IP LAN, CSP 'self' memblokir gambar (logo pecah)
+// dan fetch ke APP_URL terasa berat.
+function sameOriginAsset(url) {
+  const p = String(url || '').trim();
+  if (!p) return '';
+  if (p.startsWith('/')) return p;
+  const m = p.match(/^https?:\/\/[^/]+(\/.*)$/i);
+  if (m) return m[1];
+  return '';
+}
+
+async function loadPaymentAccounts() {
+  const row = await AppSetting.findOne({ where: { key: 'payment_accounts' } });
+  if (!row || !row.value) return [];
+  try {
+    const parsed = JSON.parse(row.value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(a => a && a.is_active !== false)
+      .map(a => ({
+        type:           a.type || 'bank',
+        provider:       a.provider || '',
+        account_number: a.account_number || '',
+        account_owner:  a.account_owner || '',
+        logo_url:       sameOriginAsset(a.logo_url || ''),
+      }));
+  } catch {
+    return [];
+  }
+}
+
 function normalizeIp(rawIp, xff) {
   let ip = String(rawIp || '').trim();
   if (xff) {
@@ -54,10 +100,11 @@ exports.renderPage = async (req, res) => {
   const clientIp = normalizeIp(req.ip || req.connection?.remoteAddress || '', xff);
 
   // ── Ambil brand & customisasi halaman ──
+  const publicBase = publicBaseUrl();
   const [
     companyName, appName, logoUrl, companyWa,
     pageTitle, pageSubtitle, pageColor,
-    pageFooter, pageHelpText
+    pageFooter, pageHelpText, accounts
   ] = await Promise.all([
     getSetting('company_name', ''),
     getSetting('app_name', ''),
@@ -68,12 +115,13 @@ exports.renderPage = async (req, res) => {
     getSetting('isolir_page_color', ''),
     getSetting('isolir_page_footer', ''),
     getSetting('isolir_page_help_text', ''),
+    loadPaymentAccounts(),
   ]);
 
   const brand = {
     company_name:     companyName,
     app_name:         appName,
-    logo_url:         logoUrl,
+    logo_url:         sameOriginAsset(logoUrl) || absUrl(publicBase, logoUrl),
     company_whatsapp: companyWa,
   };
   const pageConfig = {
@@ -96,6 +144,9 @@ exports.renderPage = async (req, res) => {
     brand,
     pageConfig,
     clientIp,
+    accounts,
+    publicBase,
+    portalLoginUrl: (publicBase || '') + '/portal/login',
     layout:   false,
   });
 };
@@ -107,24 +158,7 @@ exports.renderPage = async (req, res) => {
  */
 exports.getPaymentAccounts = async (req, res) => {
   try {
-    const row = await AppSetting.findOne({ where: { key: 'payment_accounts' } });
-    let list = [];
-    if (row && row.value) {
-      try {
-        const parsed = JSON.parse(row.value);
-        if (Array.isArray(parsed)) {
-          list = parsed
-            .filter(a => a && a.is_active !== false)
-            .map(a => ({
-              type:           a.type || 'bank',
-              provider:       a.provider || '',
-              account_number: a.account_number || '',
-              account_owner:  a.account_owner || '',
-              logo_url:       a.logo_url || '',
-            }));
-        }
-      } catch { list = []; }
-    }
+    const list = await loadPaymentAccounts();
     res.set('Cache-Control', 'public, max-age=60');
     res.json({ accounts: list });
   } catch (e) {
