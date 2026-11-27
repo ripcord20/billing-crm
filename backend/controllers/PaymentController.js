@@ -3,6 +3,8 @@ const { resolvePromiseDate, normalizeBulkPayload } = require('../utils/paymentEx
 const { applyTenantSql, assertCustomerTenant, getTenantId } = require('../utils/tenantScope');
 const { Op } = require('sequelize');
 const { generateInvoiceNumber } = require('../utils/helpers');
+const { periodDueDateForCustomer } = require('../utils/billingDates');
+const { isCustomerPeriodConflict } = require('../utils/billingGuards');
 const moment = require('moment');
 const logger = require('../utils/logger');
 
@@ -340,17 +342,27 @@ class PaymentController {
             attempts++;
           } catch(_) { attempts++; }
         }
-        invoice = await Invoice.create({
-          invoice_number: invoiceNumber,
-          customer_id,
-          amount: invAmount,
-          tax: 0,
-          total: invAmount,
-          status: 'unpaid',
-          due_date: due_date_after,
-          period_month: pm,
-          period_year: py
-        }, { transaction: t });
+        try {
+          invoice = await Invoice.create({
+            invoice_number: invoiceNumber,
+            customer_id,
+            amount: invAmount,
+            tax: 0,
+            total: invAmount,
+            status: 'unpaid',
+            due_date: periodDueDateForCustomer(customer, pm, py) || moment(`${py}-${String(pm).padStart(2,'0')}-10`).format('YYYY-MM-DD'),
+            period_month: pm,
+            period_year: py
+          }, { transaction: t });
+        } catch (createErr) {
+          if (isCustomerPeriodConflict(createErr) || createErr.name === 'SequelizeUniqueConstraintError') {
+            invoice = await Invoice.findOne({
+              where: { customer_id, period_month: pm, period_year: py },
+              transaction: t
+            });
+          }
+          if (!invoice) throw createErr;
+        }
       }
 
       const payMethod = METHODS.includes(method) ? method : 'cash';

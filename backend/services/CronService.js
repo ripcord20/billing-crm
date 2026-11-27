@@ -919,19 +919,10 @@ class CronService {
       const targetMonth = moment().month() + 1;
       const targetYear  = moment().year();
 
-      // Untuk source 'startup': cek apakah sudah ada invoice di periode bulan ini.
-      // Kalau sudah ada (artinya cron sudah jalan atau admin sudah generate manual), skip.
-      // Untuk source 'cron': tetap jalan (idempotent — sudah di-handle di generateInvoicesForPeriod).
+      // Startup catch-up: jangan skip seluruh periode hanya karena 1 invoice sudah ada.
+      // generateInvoicesForPeriod idempotent per-pelanggan (unik DB + prefetch).
+      // Tetap nunggu cron jam 01:30 kalau restart di tanggal 1 pagi.
       if (source === 'startup') {
-        const { Invoice } = require('../models');
-        const existing = await Invoice.count({
-          where: { period_month: targetMonth, period_year: targetYear }
-        });
-        if (existing > 0) {
-          logger.info(`[Cron:AutoGenInvoice] Startup catch-up skipped — period ${targetMonth}/${targetYear} sudah ada ${existing} invoice`);
-          return;
-        }
-        // Hanya catch-up kalau sudah lewat tanggal 1 (kalau hari ini tgl 1, biarkan cron jam 01:30 yg jalan)
         const now = moment();
         if (now.date() === 1 && now.hour() < 2) {
           logger.info(`[Cron:AutoGenInvoice] Startup catch-up skipped — nunggu cron jam 01:30`);

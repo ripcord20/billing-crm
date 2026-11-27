@@ -38,6 +38,8 @@ const METHOD_LABEL = require('./paymentMethodLabel').LABELS;
  * @param {number} params.paymentId      ID Payment record yg baru dibuat
  * @param {string} [params.channel]      Sumber pembayaran (mis. 'midtrans','xendit','duitku')
  * @param {string} [params.referenceNo]  Reference number eksternal (order_id / external_id / dll)
+ * @param {boolean} [params.skipWa]      true = jangan kirim WA (retry webhook / checkbox admin off)
+ * @param {string}  [params.dueDateAfter] Override jatuh tempo berikutnya (YYYY-MM-DD)
  * @returns {Promise<{
  *   customerActivated: boolean,
  *   keuanganSynced: boolean,
@@ -46,7 +48,14 @@ const METHOD_LABEL = require('./paymentMethodLabel').LABELS;
  *   waSent: 'sent'|'failed'|'skipped'
  * }>}
  */
-async function finalizePaidInvoice({ invoiceId, paymentId, channel = 'gateway', referenceNo = null }) {
+async function finalizePaidInvoice({
+  invoiceId,
+  paymentId,
+  channel = 'gateway',
+  referenceNo = null,
+  skipWa = false,
+  dueDateAfter = null
+}) {
   const result = {
     customerActivated: false,
     keuanganSynced:    false,
@@ -98,9 +107,16 @@ async function finalizePaidInvoice({ invoiceId, paymentId, channel = 'gateway', 
       installation_date: customer.installation_date
         || (payment?.payment_date) || moment().format('YYYY-MM-DD'),
     };
-    if (!alreadyExtended) {
+    const overrideDue = dueDateAfter && moment(dueDateAfter, 'YYYY-MM-DD', true).isValid()
+      ? dueDateAfter
+      : null;
+    if (overrideDue) {
+      custUpdate.due_date = overrideDue;
+    } else if (!alreadyExtended) {
       custUpdate.due_date = nextDue;
-      const newDueDay = moment(nextDue).date();
+    }
+    if (custUpdate.due_date) {
+      const newDueDay = moment(custUpdate.due_date).date();
       if (newDueDay >= 1 && newDueDay <= 28) custUpdate.billing_date = newDueDay;
     }
     await customer.update(custUpdate);
@@ -131,7 +147,7 @@ async function finalizePaidInvoice({ invoiceId, paymentId, channel = 'gateway', 
           ref_number:  ref,
           notes:       `Invoice: ${invoice.invoice_number || '-'} | Metode: ${methodStr} (${channel})`
                        + (referenceNo ? ` | Ref: ${referenceNo}` : ''),
-          recorded_by: null   // null = otomatis dari gateway
+          recorded_by: payment.recorded_by || null
         });
         logger.info(`[paymentFinalizer] Keuangan synced: ${ref} (${customer.name}, via ${channel})`);
       }
@@ -142,9 +158,16 @@ async function finalizePaidInvoice({ invoiceId, paymentId, channel = 'gateway', 
   }
 
   // ── 3. Auto-restore isolir MikroTik ──────────────────────────────
-  // (sesuai pattern di PaymentController.record line 304-315)
-  // Re-fetch isolir_status karena di webhook bisa jadi belum di-update
-  if (customer.isolir_status === 'isolated' || customer.isolir_status === 'restoring') {
+  // Baca isolir_status terbaru dari DB (object customer di-load di awal).
+  let isolirStatus = customer.isolir_status;
+  try {
+    const stRows = await sequelize.query(
+      'SELECT isolir_status FROM customers WHERE id=?',
+      { replacements: [customer.id], type: sequelize.QueryTypes.SELECT }
+    );
+    if (stRows[0] && stRows[0].isolir_status) isolirStatus = stRows[0].isolir_status;
+  } catch (_) { /* pakai nilai yang sudah ada */ }
+  if (isolirStatus === 'isolated' || isolirStatus === 'restoring') {
     try {
       const IsolirSvc = require('../services/IsolirService');
       const r = await IsolirSvc.restoreAfterPayment(customer.id);
@@ -169,7 +192,7 @@ async function finalizePaidInvoice({ invoiceId, paymentId, channel = 'gateway', 
   }
 
   // ── 4. Kirim WA konfirmasi pembayaran (best-effort) ─────────────
-  if (customer.phone && payment) {
+  if (!skipWa && customer.phone && payment) {
     try {
       const WAService = require('../services/WAService');
       const { WaSession, WaTemplate } = require('../models');
